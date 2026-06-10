@@ -5,6 +5,7 @@ from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.contrib.auth.models import Group, User
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -160,7 +161,11 @@ class Command(BaseCommand):
                     "status": AppointmentSeries.Status.ACTIVE,
                 },
             )
-            created = series.materialize_series()
+            try:
+                created = series.materialize_series()
+            except ValidationError as exc:
+                self.stdout.write(self.style.WARNING(f"  Серия «{title}» пропущена: {exc}"))
+                continue
             if created:
                 self.stdout.write(f"  Серия «{title}»: создано {created} занятий")
 
