@@ -9,7 +9,7 @@ echo.
 echo === Rehab Center Remote Demo ===
 echo.
 echo This starts the local Docker app and opens a temporary public Cloudflare link.
-echo Keep this window open while the remote demo is running.
+echo This is the phone-ready path. Keep this window open while the demo is running.
 echo.
 
 where docker >nul 2>nul
@@ -89,7 +89,8 @@ echo Local demo is ready:
 echo http://localhost:8000/
 echo.
 echo Public link will appear below as https://....trycloudflare.com
-echo Send that link to the director. Login: admin / admin12345
+echo Send that link to the director or open it on a smartphone.
+echo Demo login: admin / admin12345
 echo.
 start "" "http://localhost:8000/"
 %CLOUDFLARED% tunnel --url http://localhost:8000
