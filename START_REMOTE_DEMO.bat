@@ -93,5 +93,5 @@ echo Send that link to the director or open it on a smartphone.
 echo Demo login: admin / admin12345
 echo.
 start "" "http://localhost:8000/"
-%CLOUDFLARED% tunnel --url http://localhost:8000
+%CLOUDFLARED% tunnel --protocol http2 --url http://localhost:8000
 pause

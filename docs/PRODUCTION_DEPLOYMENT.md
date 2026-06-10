@@ -1,0 +1,160 @@
+# Продакшен-размещение
+
+Цель: постоянный доступ к системе по домену, без Cloudflare Quick Tunnel, ngrok, локальной сети и открытых баз данных.
+
+## Рекомендуемая схема
+
+- VPS или облачный сервер в российском дата-центре.
+- Домен вида `rm.example.ru`.
+- Docker Compose на сервере.
+- Caddy как reverse proxy с автоматическим HTTPS.
+- Django + Gunicorn.
+- PostgreSQL внутри закрытой Docker-сети.
+- Ежедневные бэкапы PostgreSQL и media-файлов.
+
+Смартфон, ноутбук администратора и кабинет специалиста открывают один и тот же адрес: `https://ваш-домен`.
+
+## Почему не туннели
+
+Cloudflare Quick Tunnel и ngrok хороши для короткой демонстрации, но не для эксплуатации:
+
+- ссылка временная;
+- нет гарантии доступности;
+- при сетевых ограничениях возможны ошибки 1033 и разрывы;
+- сложно объяснить администратору, почему доступ зависит от открытой консоли.
+
+Для постоянной работы нужна обычная серверная схема: домен → HTTPS → приложение.
+
+## Хостинг
+
+Для этого проекта нужен VPS с Docker. Минимум:
+
+- 2 vCPU;
+- 4 GB RAM;
+- 40 GB NVMe;
+- Ubuntu 24.04 LTS;
+- публичный IPv4;
+- автоматические снапшоты или отдельное резервное хранилище.
+
+Рабочие варианты:
+
+- Timeweb Cloud: проще для старта, есть серверы, домены, S3 и заявленное соответствие 152-ФЗ УЗ 1.
+- Selectel: серьёзнее для бизнеса, сильная инфраструктура, удобен, если нужен рост и регуляторика.
+- Beget VPS: проще и дешевле, есть VPS с предустановленным Docker.
+
+Мой выбор для первого настоящего запуска: Timeweb Cloud или Selectel. Для проекта с персональными данными получателей не надо начинать с самого дешёвого случайного VPS.
+
+## Домен
+
+Лучше купить отдельный домен:
+
+- `radost-moya.ru`, если свободен;
+- или поддомен на уже существующем домене организации, например `crm.radostmoya.ru`.
+
+DNS-записи:
+
+- `A crm.radostmoya.ru → IP_СЕРВЕРА`
+- при необходимости `A www.crm.radostmoya.ru → IP_СЕРВЕРА`
+
+## Подготовка сервера
+
+На сервере:
+
+```bash
+apt update
+apt install -y ca-certificates curl git ufw
+curl -fsSL https://get.docker.com | sh
+apt install -y docker-compose-plugin
+ufw allow OpenSSH
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw --force enable
+```
+
+## Развёртывание
+
+```bash
+git clone https://github.com/Gordey-ap01/rm.git /opt/rm
+cd /opt/rm
+cp .env.production.example .env.production
+nano .env.production
+```
+
+В `.env.production` обязательно поменять:
+
+- `APP_DOMAIN`;
+- `DJANGO_SECRET_KEY`;
+- `DJANGO_ALLOWED_HOSTS`;
+- `DJANGO_CSRF_TRUSTED_ORIGINS`;
+- `POSTGRES_PASSWORD`;
+- SMTP-настройки для писем.
+
+Запуск:
+
+```bash
+docker compose --env-file .env.production -f compose.prod.yaml up -d --build
+docker compose --env-file .env.production -f compose.prod.yaml exec web python manage.py createsuperuser
+```
+
+Проверка:
+
+```bash
+docker compose --env-file .env.production -f compose.prod.yaml ps
+docker compose --env-file .env.production -f compose.prod.yaml logs -f web
+```
+
+После этого открыть:
+
+```text
+https://ваш-домен
+```
+
+## Бэкапы
+
+Ручной запуск:
+
+```bash
+sh scripts/backup_prod.sh
+```
+
+Cron для ежедневного бэкапа в 03:20:
+
+```bash
+crontab -e
+```
+
+Добавить:
+
+```cron
+20 3 * * * cd /opt/rm && /bin/sh scripts/backup_prod.sh >> /var/log/rm-backup.log 2>&1
+```
+
+Важно: локальные бэкапы на том же сервере защищают от ошибки в базе, но не защищают от потери сервера. Для серьёзной эксплуатации нужен второй слой: S3/объектное хранилище или выгрузка на другой сервер.
+
+## Обновление системы
+
+```bash
+cd /opt/rm
+git pull
+docker compose --env-file .env.production -f compose.prod.yaml up -d --build
+docker compose --env-file .env.production -f compose.prod.yaml exec web python manage.py migrate
+```
+
+## Что нельзя делать
+
+- Нельзя открывать PostgreSQL наружу.
+- Нельзя работать с `DJANGO_DEBUG=1`.
+- Нельзя использовать тестовый пароль `admin12345` в реальной эксплуатации.
+- Нельзя хранить единственный бэкап на том же сервере.
+- Нельзя давать всем одну учётную запись администратора.
+
+## Следующий уровень
+
+После первого продакшен-запуска нужно добавить:
+
+- нормальную почту организации;
+- автоматическую выгрузку бэкапов в S3;
+- журнал доступа и регламент ролей;
+- отдельные аккаунты администратора, руководителя и специалистов;
+- мониторинг доступности;
+- документ по персональным данным и доступам.
