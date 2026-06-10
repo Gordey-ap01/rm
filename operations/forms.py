@@ -1,0 +1,808 @@
+from __future__ import annotations
+
+from collections import defaultdict
+from datetime import datetime, time, timedelta
+from decimal import Decimal
+from typing import Any
+
+from django import forms
+from django.db import transaction
+from django.db.models import Q
+from django.utils import timezone
+
+from .models import (
+    ACTIVE_APPOINTMENT_STATUSES,
+    Appointment,
+    AppointmentConfirmation,
+    BalanceAccount,
+    Child,
+    Consent,
+    Document,
+    FundingSource,
+    LedgerEntry,
+    ParentGuardian,
+    Payment,
+    Recommendation,
+    Room,
+    Service,
+    StaffAvailability,
+    StaffMember,
+    TimeOffRequest,
+)
+
+DATE_INPUT = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
+TIME_INPUT = forms.TimeInput(attrs={"type": "time"}, format="%H:%M")
+
+
+def appointment_conflicts(starts_at, ends_at, child, staff_member, room=None, exclude_pk=None):
+    qs = Appointment.objects.filter(
+        status__in=ACTIVE_APPOINTMENT_STATUSES,
+        starts_at__lt=ends_at,
+        ends_at__gt=starts_at,
+    )
+    if exclude_pk:
+        qs = qs.exclude(pk=exclude_pk)
+
+    conflicts = {}
+    if child:
+        conflicts["child"] = qs.filter(child=child)
+    if staff_member:
+        conflicts["staff"] = qs.filter(staff_member=staff_member)
+    if room:
+        conflicts["room"] = qs.filter(room=room)
+    return conflicts
+
+
+def conflict_messages(conflicts):
+    messages = []
+    if conflicts.get("child") and conflicts["child"].exists():
+        messages.append("у получателя уже есть занятие в это время")
+    if conflicts.get("staff") and conflicts["staff"].exists():
+        messages.append("специалист уже занят в это время")
+    if conflicts.get("room") and conflicts["room"].exists():
+        messages.append("кабинет уже занят в это время")
+    return messages
+
+
+def staff_unavailability_reason(staff_member, starts_at, ends_at):
+    if not staff_member or not starts_at or not ends_at:
+        return ""
+
+    local_start = timezone.localtime(starts_at)
+    local_end = timezone.localtime(ends_at)
+    day = local_start.date()
+    if local_end.date() != day:
+        return "занятие должно помещаться в один рабочий день"
+
+    if TimeOffRequest.objects.filter(
+        staff_member=staff_member,
+        status=TimeOffRequest.Status.APPROVED,
+        starts_on__lte=day,
+        ends_on__gte=day,
+    ).exists():
+        return "у специалиста согласован отпуск/отгул на эту дату"
+
+    windows = list(
+        StaffAvailability.objects.filter(
+            staff_member=staff_member,
+            weekday=day.weekday(),
+            is_active=True,
+        ).order_by("starts_at")
+    )
+    if not windows:
+        return ""
+
+    start_time = local_start.time().replace(second=0, microsecond=0)
+    end_time = local_end.time().replace(second=0, microsecond=0)
+    if not windows:
+        if time(9, 0) <= start_time and end_time <= time(18, 0):
+            return ""
+        return "время вне базового рабочего окна 09:00-18:00"
+
+    if any(window.starts_at <= start_time and end_time <= window.ends_at for window in windows):
+        return ""
+    return "время вне рабочего графика специалиста"
+
+
+def build_local_datetime(day, clock):
+    value = datetime.combine(day, clock)
+    return timezone.make_aware(value, timezone.get_current_timezone())
+
+
+def default_charge_amount(account, appointment):
+    if not account:
+        return Decimal("0")
+    if account.unit == BalanceAccount.Unit.SESSIONS:
+        return Decimal("-1")
+    return -appointment.service.default_price
+
+
+def sync_ledger_to_target(appointment, targets_by_account, user, reason):
+    current_by_account = defaultdict(Decimal)
+    accounts_by_id = {}
+    entries = LedgerEntry.objects.filter(appointment=appointment).select_related("account")
+    for entry in entries:
+        current_by_account[entry.account_id] += entry.amount
+        accounts_by_id[entry.account_id] = entry.account
+
+    target_ids = set(current_by_account) | set(targets_by_account)
+    for account_id in target_ids:
+        account = targets_by_account.get(account_id, {}).get("account") or accounts_by_id[account_id]
+        target_amount = targets_by_account.get(account_id, {}).get("amount", Decimal("0"))
+        delta = target_amount - current_by_account[account_id]
+        if delta == 0:
+            continue
+
+        entry_type = LedgerEntry.EntryType.CORRECTION
+        if current_by_account[account_id] == 0 and delta < 0:
+            entry_type = LedgerEntry.EntryType.DEBIT
+
+        LedgerEntry.objects.create(
+            account=account,
+            entry_type=entry_type,
+            amount=delta,
+            appointment=appointment,
+            created_by=user,
+            reason=reason,
+        )
+
+
+class AppointmentForm(forms.ModelForm):
+    date = forms.DateField(label="Дата", widget=DATE_INPUT, input_formats=["%Y-%m-%d"])
+    time = forms.TimeField(label="Время", widget=TIME_INPUT, input_formats=["%H:%M"])
+    duration_minutes = forms.IntegerField(label="Длительность, минут", min_value=5, max_value=240)
+
+    class Meta:
+        model = Appointment
+        fields = (
+            "child",
+            "service",
+            "staff_member",
+            "room",
+            "billing_account",
+            "status",
+            "admin_note",
+        )
+        widgets = {
+            "admin_note": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        instance = kwargs.get("instance")
+        initial = kwargs.pop("initial", {}).copy()
+        if instance and instance.pk:
+            local_start = timezone.localtime(instance.starts_at)
+            initial.setdefault("date", local_start.date())
+            initial.setdefault("time", local_start.time().replace(second=0, microsecond=0))
+            initial.setdefault("duration_minutes", instance.duration_minutes)
+        else:
+            initial.setdefault("status", Appointment.Status.CONFIRMED)
+
+        super().__init__(*args, initial=initial, **kwargs)
+        self.fields["child"].queryset = Child.objects.order_by("last_name", "first_name")
+        self.fields["child"].label = "Получатель"
+        self.fields["service"].queryset = Service.objects.filter(is_active=True).order_by("name")
+        self.fields["staff_member"].queryset = StaffMember.objects.filter(status=StaffMember.Status.ACTIVE).order_by("full_name")
+        self.fields["room"].queryset = Room.objects.filter(is_active=True).order_by("name")
+        self.fields["room"].required = False
+        self.fields["billing_account"].required = False
+        self.fields["billing_account"].queryset = self._billing_accounts_queryset()
+        self.fields["admin_note"].required = False
+
+    def _selected_child_id(self):
+        if self.is_bound:
+            return self.data.get(self.add_prefix("child"))
+        if self.instance and self.instance.pk:
+            return self.instance.child_id
+        initial = self.initial.get("child")
+        return getattr(initial, "id", initial)
+
+    def _selected_service_id(self):
+        if self.is_bound:
+            return self.data.get(self.add_prefix("service"))
+        if self.instance and self.instance.pk:
+            return self.instance.service_id
+        initial = self.initial.get("service")
+        return getattr(initial, "id", initial)
+
+    def _billing_accounts_queryset(self):
+        qs = BalanceAccount.objects.select_related("child", "funding_source", "service").filter(
+            status=BalanceAccount.Status.ACTIVE
+        )
+        service_id = self._selected_service_id()
+        if service_id:
+            qs = qs.filter(Q(service_scope=BalanceAccount.ServiceScope.ANY) | Q(service_id=service_id))
+        return qs.order_by("child__last_name", "funding_source__name", "service__name")
+
+    def clean(self):
+        cleaned = super().clean()
+        day = cleaned.get("date")
+        clock = cleaned.get("time")
+        duration = cleaned.get("duration_minutes")
+        child = cleaned.get("child")
+        service = cleaned.get("service")
+        staff_member = cleaned.get("staff_member")
+        room = cleaned.get("room")
+        account = cleaned.get("billing_account")
+
+        if day and clock and duration:
+            starts_at = build_local_datetime(day, clock)
+            ends_at = starts_at + timedelta(minutes=duration)
+            cleaned["starts_at"] = starts_at
+            cleaned["ends_at"] = ends_at
+            self.instance.starts_at = starts_at
+            self.instance.ends_at = ends_at
+            messages = conflict_messages(
+                appointment_conflicts(starts_at, ends_at, child, staff_member, room, exclude_pk=self.instance.pk)
+            )
+            if messages and cleaned.get("status") in ACTIVE_APPOINTMENT_STATUSES:
+                raise forms.ValidationError("Конфликт расписания: " + ", ".join(messages) + ".")
+            unavailable = staff_unavailability_reason(staff_member, starts_at, ends_at)
+            if unavailable and cleaned.get("status") in ACTIVE_APPOINTMENT_STATUSES:
+                raise forms.ValidationError("Недоступность специалиста: " + unavailable + ".")
+
+        if account and child and account.child_id != child.id:
+            self.add_error("billing_account", "Счет должен принадлежать выбранному получателю.")
+        if account and service and not account.can_pay_for(service):
+            self.add_error("billing_account", "Счет не подходит для выбранной услуги.")
+        return cleaned
+
+    def save(self, commit=True):
+        appointment = super().save(commit=False)
+        appointment.starts_at = self.cleaned_data["starts_at"]
+        appointment.ends_at = self.cleaned_data["ends_at"]
+        if commit:
+            appointment.save()
+            self.save_m2m()
+        return appointment
+
+
+class AppointmentMoveForm(forms.Form):
+    date = forms.DateField(label="Новая дата", widget=DATE_INPUT, input_formats=["%Y-%m-%d"])
+    time = forms.TimeField(label="Новое время", widget=TIME_INPUT, input_formats=["%H:%M"])
+    duration_minutes = forms.IntegerField(label="Длительность, минут", min_value=5, max_value=240)
+    staff_member: Any = forms.ModelChoiceField(label="Специалист", queryset=StaffMember.objects.none())
+    room: Any = forms.ModelChoiceField(label="Кабинет", queryset=Room.objects.none(), required=False)
+    admin_note = forms.CharField(label="Комментарий к переносу", widget=forms.Textarea(attrs={"rows": 3}), required=False)
+
+    def __init__(self, *args, appointment, **kwargs):
+        self.appointment = appointment
+        super().__init__(*args, **kwargs)
+        self.fields["staff_member"].queryset = StaffMember.objects.filter(status=StaffMember.Status.ACTIVE).order_by("full_name")
+        self.fields["room"].queryset = Room.objects.filter(is_active=True).order_by("name")
+
+    def clean(self):
+        cleaned = super().clean()
+        day = cleaned.get("date")
+        clock = cleaned.get("time")
+        duration = cleaned.get("duration_minutes")
+        staff_member = cleaned.get("staff_member")
+        room = cleaned.get("room")
+        if day and clock and duration and staff_member:
+            starts_at = build_local_datetime(day, clock)
+            ends_at = starts_at + timedelta(minutes=duration)
+            cleaned["starts_at"] = starts_at
+            cleaned["ends_at"] = ends_at
+            if (
+                starts_at == self.appointment.starts_at
+                and ends_at == self.appointment.ends_at
+                and staff_member == self.appointment.staff_member
+                and room == self.appointment.room
+            ):
+                raise forms.ValidationError("Новое время совпадает с текущим занятием.")
+            messages = conflict_messages(
+                appointment_conflicts(
+                    starts_at,
+                    ends_at,
+                    self.appointment.child,
+                    staff_member,
+                    room,
+                    exclude_pk=self.appointment.pk,
+                )
+            )
+            if messages:
+                raise forms.ValidationError("Конфликт расписания: " + ", ".join(messages) + ".")
+            unavailable = staff_unavailability_reason(staff_member, starts_at, ends_at)
+            if unavailable:
+                raise forms.ValidationError("Недоступность специалиста: " + unavailable + ".")
+        return cleaned
+
+    @transaction.atomic
+    def save(self):
+        old = self.appointment
+        starts_at = self.cleaned_data["starts_at"]
+        ends_at = self.cleaned_data["ends_at"]
+        staff_member = self.cleaned_data["staff_member"]
+        room = self.cleaned_data["room"]
+        note = self.cleaned_data.get("admin_note", "").strip()
+        local_start = timezone.localtime(starts_at)
+
+        old.status = Appointment.Status.RESCHEDULED
+        old.admin_note = "\n".join(
+            part
+            for part in [
+                old.admin_note,
+                f"Перенесено на {local_start:%d.%m.%Y %H:%M}.",
+                note,
+            ]
+            if part
+        )
+        old.save(update_fields=["status", "admin_note", "updated_at"])
+
+        return Appointment.objects.create(
+            child=old.child,
+            service=old.service,
+            staff_member=staff_member,
+            room=room,
+            starts_at=starts_at,
+            ends_at=ends_at,
+            status=Appointment.Status.CONFIRMED,
+            attendance_status=Appointment.AttendanceStatus.UNKNOWN,
+            billing_decision=Appointment.BillingDecision.UNDECIDED,
+            billing_account=old.billing_account,
+            source_appointment=old,
+            series=old.series,
+            admin_note=note,
+        )
+
+
+class AppointmentCancelForm(forms.Form):
+    STATUS_CHOICES = (
+        (Appointment.Status.CANCELLED, "Отменено"),
+        (Appointment.Status.NO_SHOW, "Неявка"),
+    )
+    REASON_CHOICES = (
+        ("sick", "Получатель заболел"),
+        ("representative_cancel", "Отмена представителем"),
+        ("specialist_cancel", "Отмена специалистом"),
+        ("center_cancel", "Отмена центром"),
+        ("other", "Другое"),
+    )
+
+    status = forms.ChoiceField(label="Статус", choices=STATUS_CHOICES)
+    reason = forms.ChoiceField(label="Причина", choices=REASON_CHOICES)
+    admin_note = forms.CharField(label="Комментарий", widget=forms.Textarea(attrs={"rows": 3}), required=False)
+
+    def __init__(self, *args, appointment, **kwargs):
+        self.appointment = appointment
+        super().__init__(*args, **kwargs)
+
+    def save(self):
+        appointment = self.appointment
+        reason = dict(self.REASON_CHOICES)[self.cleaned_data["reason"]]
+        note = self.cleaned_data.get("admin_note", "").strip()
+        appointment.status = self.cleaned_data["status"]
+        appointment.admin_note = "\n".join(
+            part for part in [appointment.admin_note, f"Причина отмены: {reason}.", note] if part
+        )
+        appointment.save(update_fields=["status", "admin_note", "updated_at"])
+        return appointment
+
+
+class BillingDecisionForm(forms.Form):
+    DECISION_CHOICES = (
+        (Appointment.BillingDecision.CHARGE, "Списать"),
+        (Appointment.BillingDecision.DO_NOT_CHARGE, "Не списывать"),
+    )
+
+    billing_decision = forms.ChoiceField(label="Решение", choices=DECISION_CHOICES)
+    billing_account: Any = forms.ModelChoiceField(label="Счет баланса", queryset=BalanceAccount.objects.none(), required=False)
+    amount = forms.DecimalField(label="Сумма операции", max_digits=12, decimal_places=2, required=False)
+    reason = forms.CharField(label="Основание", widget=forms.Textarea(attrs={"rows": 2}), required=False)
+
+    def __init__(self, *args, appointment, **kwargs):
+        self.appointment = appointment
+        super().__init__(*args, **kwargs)
+        self.fields["billing_account"].queryset = (
+            BalanceAccount.objects.select_related("child", "funding_source", "service")
+            .filter(
+                Q(service_scope=BalanceAccount.ServiceScope.ANY) | Q(service=appointment.service),
+                child=appointment.child,
+                status=BalanceAccount.Status.ACTIVE,
+            )
+            .order_by("funding_source__name", "service__name")
+        )
+        account = appointment.billing_account
+        if account:
+            self.initial.setdefault("billing_account", account)
+        self.initial.setdefault("billing_decision", appointment.billing_decision)
+
+    def clean(self):
+        cleaned = super().clean()
+        decision = cleaned.get("billing_decision")
+        account = cleaned.get("billing_account")
+        amount = cleaned.get("amount")
+        if decision == Appointment.BillingDecision.CHARGE:
+            if not account:
+                self.add_error("billing_account", "Для списания нужен счет баланса.")
+            else:
+                if amount is None:
+                    amount = default_charge_amount(account, self.appointment)
+                    cleaned["amount"] = amount
+                if amount >= 0:
+                    self.add_error("amount", "Списание должно быть отрицательным числом.")
+                if not account.can_pay_for(self.appointment.service):
+                    self.add_error("billing_account", "Счет не подходит для услуги занятия.")
+        return cleaned
+
+    @transaction.atomic
+    def save(self, user):
+        decision = self.cleaned_data["billing_decision"]
+        reason = self.cleaned_data.get("reason", "").strip() or "Решение администратора по занятию."
+        appointment = self.appointment
+
+        if decision == Appointment.BillingDecision.CHARGE:
+            account = self.cleaned_data["billing_account"]
+            amount = self.cleaned_data["amount"]
+            appointment.billing_decision = Appointment.BillingDecision.CHARGE
+            appointment.billing_account = account
+            appointment.save(update_fields=["billing_decision", "billing_account", "updated_at"])
+            sync_ledger_to_target(
+                appointment,
+                {account.id: {"account": account, "amount": amount}},
+                user,
+                reason,
+            )
+        else:
+            appointment.billing_decision = Appointment.BillingDecision.DO_NOT_CHARGE
+            appointment.billing_account = None
+            appointment.save(update_fields=["billing_decision", "billing_account", "updated_at"])
+            sync_ledger_to_target(appointment, {}, user, reason)
+        return appointment
+
+
+class RepresentativeForm(forms.ModelForm):
+    class Meta:
+        model = ParentGuardian
+        fields = (
+            "last_name",
+            "first_name",
+            "middle_name",
+            "relationship_type",
+            "phone",
+            "phone_alt",
+            "email",
+            "notes",
+        )
+        labels = {
+            "last_name": "Фамилия",
+            "first_name": "Имя",
+            "middle_name": "Отчество",
+            "relationship_type": "Тип представительства",
+            "phone": "Телефон",
+            "phone_alt": "Дополнительный телефон",
+            "notes": "Примечания",
+        }
+        widgets = {"notes": forms.Textarea(attrs={"rows": 3})}
+
+
+class RecipientForm(forms.ModelForm):
+    class Meta:
+        model = Child
+        fields = (
+            "last_name",
+            "first_name",
+            "middle_name",
+            "birth_date",
+            "phone",
+            "email",
+            "status",
+            "primary_parent",
+            "diagnosis",
+            "notes",
+        )
+        labels = {
+            "last_name": "Фамилия",
+            "first_name": "Имя",
+            "middle_name": "Отчество",
+            "birth_date": "Дата рождения",
+            "phone": "Телефон получателя",
+            "email": "Email получателя",
+            "status": "Статус",
+            "primary_parent": "Основной представитель",
+            "diagnosis": "Диагноз/особенности",
+            "notes": "Примечания",
+        }
+        widgets = {
+            "birth_date": DATE_INPUT,
+            "diagnosis": forms.Textarea(attrs={"rows": 3}),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["primary_parent"].queryset = ParentGuardian.objects.order_by("last_name", "first_name")
+
+
+class BalanceAccountForm(forms.ModelForm):
+    class Meta:
+        model = BalanceAccount
+        fields = (
+            "child",
+            "funding_source",
+            "unit",
+            "service_scope",
+            "service",
+            "initial_amount",
+            "valid_from",
+            "valid_until",
+            "status",
+            "notes",
+        )
+        labels = {
+            "child": "Получатель",
+            "funding_source": "Источник финансирования",
+            "unit": "Единица учета",
+            "service_scope": "Область применения",
+            "service": "Услуга",
+            "initial_amount": "Начальный остаток",
+            "valid_from": "Действует с",
+            "valid_until": "Действует до",
+            "status": "Статус",
+            "notes": "Примечания",
+        }
+        widgets = {
+            "valid_from": DATE_INPUT,
+            "valid_until": DATE_INPUT,
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["child"].queryset = Child.objects.order_by("last_name", "first_name")
+        self.fields["funding_source"].queryset = FundingSource.objects.order_by("name")
+        self.fields["service"].queryset = Service.objects.filter(is_active=True).order_by("name")
+        self.fields["service"].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        unit = cleaned.get("unit")
+        amount = cleaned.get("initial_amount")
+        if unit == BalanceAccount.Unit.SESSIONS and amount is not None and amount != int(amount):
+            self.add_error("initial_amount", "Для учёта в занятиях число должно быть целым.")
+        return cleaned
+
+
+class AppointmentConfirmationSendForm(forms.Form):
+    target_type = forms.ChoiceField(label="Кому отправить")
+    subject = forms.CharField(label="Тема письма", max_length=200)
+    message = forms.CharField(label="Текст письма", widget=forms.Textarea(attrs={"rows": 7}))
+
+    def __init__(self, *args, appointment, **kwargs):
+        self.appointment = appointment
+        super().__init__(*args, **kwargs)
+        local_start = timezone.localtime(appointment.starts_at)
+        self.targets = self._build_targets(appointment)
+        if self.targets:
+            self.fields["target_type"].choices = [(key, target["label"]) for key, target in self.targets.items()]
+        else:
+            self.fields["target_type"].choices = [("", "Нет email у специалиста, представителя или получателя")]
+            self.fields["target_type"].disabled = True
+        self.initial.setdefault("subject", f"Подтверждение занятия {local_start:%d.%m.%Y %H:%M}")
+        self.initial.setdefault(
+            "message",
+            "\n".join(
+                [
+                    "Здравствуйте.",
+                    "",
+                    "Просим подтвердить занятие:",
+                    f"Получатель: {appointment.child.full_name}",
+                    f"Услуга: {appointment.service.name}",
+                    f"Специалист: {appointment.staff_member.full_name}",
+                    f"Дата и время: {local_start:%d.%m.%Y %H:%M}",
+                    f"Кабинет: {appointment.room.name if appointment.room else 'не указан'}",
+                    "",
+                    "Ответьте по ссылке ниже: подтвердить или отклонить.",
+                ]
+            ),
+        )
+
+    def _build_targets(self, appointment):
+        targets = {}
+        staff_email = appointment.staff_member.email or (
+            appointment.staff_member.user.email if appointment.staff_member.user_id else ""
+        )
+        if staff_email:
+            targets[AppointmentConfirmation.TargetType.SPECIALIST] = {
+                "label": f"Сначала специалисту: {appointment.staff_member.full_name} ({staff_email})",
+                "email": staff_email,
+                "representative": None,
+            }
+        representative = appointment.child.primary_parent
+        if representative.email:
+            targets[AppointmentConfirmation.TargetType.REPRESENTATIVE] = {
+                "label": f"Представителю: {representative.full_name} ({representative.email})",
+                "email": representative.email,
+                "representative": representative,
+            }
+        if appointment.child.email:
+            targets[AppointmentConfirmation.TargetType.RECIPIENT] = {
+                "label": f"Получателю: {appointment.child.full_name} ({appointment.child.email})",
+                "email": appointment.child.email,
+                "representative": None,
+            }
+        return targets
+
+    def clean_target_type(self):
+        target_type = self.cleaned_data["target_type"]
+        if target_type not in self.targets:
+            raise forms.ValidationError("Для выбранного адресата нет email.")
+        return target_type
+
+    def save(self, user):
+        target = self.targets[self.cleaned_data["target_type"]]
+        return AppointmentConfirmation.objects.create(
+            appointment=self.appointment,
+            target_type=self.cleaned_data["target_type"],
+            representative=target["representative"],
+            email=target["email"],
+            subject=self.cleaned_data["subject"],
+            message=self.cleaned_data["message"],
+            sent_by=user,
+        )
+
+
+class ConfirmationResponseForm(forms.Form):
+    ACTION_CHOICES = (
+        ("confirm", "Подтвердить"),
+        ("decline", "Отклонить"),
+    )
+    action = forms.ChoiceField(label="Решение", choices=ACTION_CHOICES)
+    response_note = forms.CharField(label="Комментарий", widget=forms.Textarea(attrs={"rows": 3}), required=False)
+
+
+class StaffAvailabilityForm(forms.ModelForm):
+    class Meta:
+        model = StaffAvailability
+        fields = ("weekday", "starts_at", "ends_at", "note")
+        labels = {
+            "weekday": "День недели",
+            "starts_at": "Начало",
+            "ends_at": "Окончание",
+            "note": "Комментарий",
+        }
+        widgets = {
+            "starts_at": TIME_INPUT,
+            "ends_at": TIME_INPUT,
+        }
+
+
+class TimeOffRequestForm(forms.ModelForm):
+    class Meta:
+        model = TimeOffRequest
+        fields = ("request_type", "starts_on", "ends_on", "reason")
+        labels = {
+            "request_type": "Тип заявки",
+            "starts_on": "Дата начала",
+            "ends_on": "Дата окончания",
+            "reason": "Причина/комментарий",
+        }
+        widgets = {
+            "starts_on": DATE_INPUT,
+            "ends_on": DATE_INPUT,
+            "reason": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+class RecommendationForm(forms.ModelForm):
+    class Meta:
+        model = Recommendation
+        fields = ("child", "staff_member", "appointment", "category", "title", "body", "due_on")
+        labels = {
+            "child": "Получатель",
+            "staff_member": "Специалист",
+            "appointment": "Занятие",
+            "category": "Категория",
+            "title": "Заголовок",
+            "body": "Текст",
+            "due_on": "Срок",
+        }
+        widgets = {"due_on": DATE_INPUT, "body": forms.Textarea(attrs={"rows": 4})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["child"].queryset = Child.objects.order_by("last_name", "first_name")
+        self.fields["staff_member"].queryset = StaffMember.objects.filter(status=StaffMember.Status.ACTIVE).order_by("full_name")
+        self.fields["appointment"].required = False
+
+
+class DocumentForm(forms.ModelForm):
+    class Meta:
+        model = Document
+        fields = ("child", "category", "title", "file", "issued_on", "expires_on", "note")
+        labels = {
+            "child": "Получатель",
+            "category": "Категория",
+            "title": "Название",
+            "file": "Файл",
+            "issued_on": "Дата выпуска",
+            "expires_on": "Действителен до",
+            "note": "Комментарий",
+        }
+        widgets = {
+            "issued_on": DATE_INPUT,
+            "expires_on": DATE_INPUT,
+            "note": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["child"].queryset = Child.objects.order_by("last_name", "first_name")
+
+
+class ConsentForm(forms.ModelForm):
+    class Meta:
+        model = Consent
+        fields = ("child", "consent_type", "document", "signed_on", "expires_on", "note")
+        labels = {
+            "child": "Получатель",
+            "consent_type": "Тип согласия",
+            "document": "Документ",
+            "signed_on": "Дата подписания",
+            "expires_on": "Действителен до",
+            "note": "Примечание",
+        }
+        widgets = {
+            "signed_on": DATE_INPUT,
+            "expires_on": DATE_INPUT,
+            "note": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["child"].queryset = Child.objects.order_by("last_name", "first_name")
+        self.fields["document"].required = False
+
+
+class PaymentForm(forms.ModelForm):
+    class Meta:
+        model = Payment
+        fields = ("balance_account", "amount", "method", "paid_at", "reference", "comment")
+        labels = {
+            "balance_account": "Счёт",
+            "amount": "Сумма",
+            "method": "Способ оплаты",
+            "paid_at": "Дата оплаты",
+            "reference": "Номер платёжки / комментарий",
+            "comment": "Комментарий",
+        }
+        widgets = {
+            "paid_at": DATE_INPUT,
+            "comment": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+class TimeSheetFilterForm(forms.Form):
+    date_from = forms.DateField(label="Дата начала", widget=DATE_INPUT)
+    date_to = forms.DateField(label="Дата окончания", widget=DATE_INPUT)
+
+    def __init__(self, *args, staff: StaffMember | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if staff is not None:
+            self.staff = staff
+
+    def clean(self):
+        cleaned = super().clean()
+        date_from = cleaned.get("date_from")
+        date_to = cleaned.get("date_to")
+        if date_from and date_to and date_to < date_from:
+            raise forms.ValidationError("Дата окончания не может быть раньше даты начала.")
+        return cleaned
+
+
+class GrantReportFilterForm(forms.Form):
+    funding: Any = forms.ModelChoiceField(
+        label="Источник финансирования",
+        queryset=FundingSource.objects.filter(archived_at__isnull=True).order_by("name"),
+    )
+    date_from = forms.DateField(label="Дата начала", widget=DATE_INPUT)
+    date_to = forms.DateField(label="Дата окончания", widget=DATE_INPUT)
+
+    def clean(self):
+        cleaned = super().clean()
+        date_from = cleaned.get("date_from")
+        date_to = cleaned.get("date_to")
+        if date_from and date_to and date_to < date_from:
+            raise forms.ValidationError("Дата окончания не может быть раньше даты начала.")
+        return cleaned
+

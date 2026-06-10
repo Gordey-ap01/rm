@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Календарь специалиста{% endblock %}
+
+{% block content %}
+<section class="page-header specialist-header">
+  <div>
+    <h1>{{ staff.full_name }}</h1>
+    <p>Неделя с {{ today|date:"d.m" }} по {{ week_end|date:"d.m" }}</p>
+  </div>
+  {% if user.is_staff %}
+    <form method="get" class="inline-form compact-form" aria-label="Выбор специалиста">
+      <select name="staff_id">
+        {% for option in staff_members %}
+          <option value="{{ option.id }}" {% if option.id == staff.id %}selected{% endif %}>{{ option.full_name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Открыть</button>
+    </form>
+  {% endif %}
+  <div class="summary-strip" aria-label="Сводка специалиста">
+    <div>
+      <strong>{{ appointments|length }}</strong>
+      <span>в расписании</span>
+    </div>
+    <div>
+      <strong>{{ summary }}</strong>
+      <span>отмечено</span>
+    </div>
+  </div>
+</section>
+
+<section class="detail-grid staff-ops">
+  <article class="panel">
+    <h2>Рабочий график</h2>
+    <table>
+      <thead><tr><th>День</th><th>Время</th><th>Статус</th><th></th></tr></thead>
+      <tbody>
+      {% for window in availability_windows %}
+        <tr>
+          <td>{{ window.get_weekday_display }}</td>
+          <td>{{ window.starts_at|time:"H:i" }}-{{ window.ends_at|time:"H:i" }}</td>
+          <td>{% if window.is_active %}Активно{% else %}Выключено{% endif %}</td>
+          <td>
+            <form method="post" action="{% url 'staff_availability_toggle' window.pk %}" class="mini-form">
+              {% csrf_token %}
+              <button class="secondary-button small-action" type="submit">{% if window.is_active %}Выключить{% else %}Включить{% endif %}</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4">Индивидуальный график не задан. Система считает доступным базовое окно 09:00-18:00.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <form method="post" action="{% url 'staff_availability_create' %}" class="form compact-stack">
+      {% csrf_token %}
+      {% if user.is_staff %}<input type="hidden" name="staff_id" value="{{ staff.pk }}">{% endif %}
+      <div class="form-grid">
+        {% for field in availability_form %}
+          <label class="field">
+            <span>{{ field.label }}</span>
+            {{ field }}
+          </label>
+        {% endfor %}
+      </div>
+      <button type="submit">Добавить рабочее окно</button>
+    </form>
+  </article>
+
+  <article class="panel">
+    <h2>Отпуск и отгулы</h2>
+    <table>
+      <thead><tr><th>Период</th><th>Тип</th><th>Статус</th></tr></thead>
+      <tbody>
+      {% for request_item in time_off_requests %}
+        <tr>
+          <td>{{ request_item.starts_on|date:"d.m" }}-{{ request_item.ends_on|date:"d.m" }}</td>
+          <td>{{ request_item.get_request_type_display }}</td>
+          <td>{{ request_item.get_status_display }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3">Заявок пока нет.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <form method="post" action="{% url 'time_off_request_create' %}" class="form compact-stack">
+      {% csrf_token %}
+      {% if user.is_staff %}<input type="hidden" name="staff_id" value="{{ staff.pk }}">{% endif %}
+      <div class="form-grid">
+        {% for field in time_off_form %}
+          <label class="field {% if field.name == 'reason' %}form-wide{% endif %}">
+            <span>{{ field.label }}</span>
+            {{ field }}
+          </label>
+        {% endfor %}
+      </div>
+      <button type="submit">Отправить заявку</button>
+    </form>
+  </article>
+</section>
+
+<section class="calendar-board specialist-calendar" aria-label="Календарь специалиста на неделю">
+  {% for day in week_days %}
+    <article class="calendar-day">
+      <header class="calendar-day-head">
+        <span>{{ day.label }}</span>
+        <small>{{ day.date|date:"d.m" }}</small>
+      </header>
+      <div class="calendar-day-body">
+        {% for item in day.appointments %}
+          <div class="calendar-card status-{{ item.status }}">
+            <div class="calendar-time">{{ item.starts_at|date:"H:i" }}-{{ item.ends_at|date:"H:i" }}</div>
+            <h2>{{ item.child }}</h2>
+            <p>{{ item.service }}</p>
+            <p class="muted">{% if item.room %}{{ item.room }}{% else %}Кабинет не указан{% endif %}</p>
+            <div class="card-row">
+              <span class="status-pill">{{ item.get_status_display }}</span>
+              <span class="status-pill muted-pill">{{ item.get_attendance_status_display }}</span>
+            </div>
+            <form method="post" action="{% url 'mark_appointment' item.pk %}" class="mark-form">
+              {% csrf_token %}
+              <textarea name="specialist_note" placeholder="Заметка по занятию">{{ item.specialist_note }}</textarea>
+              <div class="mark-actions">
+                <button type="submit" name="action" value="completed">Проведено</button>
+                <button class="secondary-button" type="submit" name="action" value="not_completed">Не проведено</button>
+              </div>
+            </form>
+          </div>
+        {% empty %}
+          <p class="empty-state">Нет занятий</p>
+        {% endfor %}
+      </div>
+    </article>
+  {% empty %}
+    <p>На ближайшую неделю занятий нет.</p>
+  {% endfor %}
+</section>
+{% endblock %}

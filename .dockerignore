@@ -1,0 +1,12 @@
+.git
+.venv
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+db-data/
+media/
+docs/interviews/*.jsonl
+*.m4a
+*.pdf

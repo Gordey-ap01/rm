@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Расписание{% endblock %}
+
+{% block extra_head %}
+<style>
+  #calendar { max-width: 100%; margin: 0; min-height: 400px; }
+  .fc-toolbar-title { font-size: 1.2rem !important; }
+  .fc-event { border-radius: 4px !important; cursor: pointer !important; border-left-width: 4px !important; border-left-style: solid !important; }
+  .fc-daygrid-event { padding: 2px 6px !important; }
+  .fc-timegrid-event { padding: 3px 6px !important; }
+  .fc-event .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; flex-shrink: 0; }
+  .fc-event-title { font-weight: 500 !important; }
+  .fc-event-time { font-size: .8em !important; }
+
+  #status-legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: .5rem; }
+  #status-legend span { display: flex; align-items: center; gap: 4px; font-size: .8rem; }
+
+  #filter-bar label { font-size: .85rem; }
+
+  @media (max-width: 768px) {
+    #filter-bar .row > div { margin-bottom: .5rem; }
+    .fc-toolbar.fc-header-toolbar { flex-direction: column; gap: .5rem; }
+    .fc-toolbar-chunk { display: flex; justify-content: center; flex-wrap: wrap; gap: .25rem; }
+    .fc-toolbar-title { font-size: 1rem !important; }
+    .fc-button { font-size: .75rem !important; padding: .25rem .5rem !important; }
+    #status-legend { gap: .5rem; }
+    #calendar { min-height: 300px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="page-header d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="h3 mb-0">Расписание</h1>
+  </div>
+  <div>
+    <a class="btn btn-primary btn-sm" href="{% url 'appointment_create' %}">Создать занятие</a>
+  </div>
+</section>
+
+<section id="filter-bar" class="bg-white border rounded p-2 shadow-sm mb-3">
+  <div class="row g-2 align-items-center">
+    <div class="col-auto">
+      <label class="form-label small fw-semibold mb-0">Специалист</label>
+      <select id="staffFilter" class="form-select form-select-sm" style="min-width:160px">
+        <option value="">Все</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <label class="form-label small fw-semibold mb-0">Услуга</label>
+      <select id="serviceFilter" class="form-select form-select-sm" style="min-width:160px">
+        <option value="">Все</option>
+      </select>
+    </div>
+    <div class="col-auto d-flex align-items-end gap-2">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="showUnavailable" checked>
+        <label class="form-check-label small" for="showUnavailable">Отпуска/отгулы</label>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="calendar-section">
+  <div id="calendar"></div>
+</section>
+
+<!-- Status Legend -->
+<div id="status-legend" class="mb-3"></div>
+
+<!-- Detail Modal -->
+<div class="modal fade" id="appointmentModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitle">Занятие</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <p id="modalChild"></p>
+        <p id="modalService"></p>
+        <p id="modalStaff"></p>
+        <p id="modalRoom"></p>
+        <p id="modalTime"></p>
+        <p id="modalStatus"></p>
+      </div>
+      <div class="modal-footer">
+        <a id="modalDetailLink" class="btn btn-outline-primary btn-sm" href="#">Подробнее</a>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Закрыть</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'operations/fullcalendar/index.global.min.js' %}"></script>
+<script>
+(function(){
+  var el = document.getElementById("calendar");
+  if (!el) { console.error("#calendar not found"); return; }
+  if (typeof FullCalendar === "undefined") {
+    el.innerHTML = '<div class="alert alert-warning">Не удалось загрузить календарь.</div>';
+    return;
+  }
+
+  function getCookie(name) {
+    var m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+    return m ? m[2] : "";
+  }
+
+  // Detect CSP
+  var cspBlocked = false;
+  try { new Function(""); } catch(e) { cspBlocked = true; }
+  if (cspBlocked) {
+    el.innerHTML = '<div class="alert alert-warning">Календарь не работает: CSP блокирует eval(). Отключите расширение (NoScript/ScriptSafe) для localhost.</div>';
+    return;
+  }
+
+  // Russian locale
+  FullCalendar.globalLocales.push({
+    code: "ru",
+    week: { dow: 1, doy: 4 },
+    buttonText: { prev: "Пред", next: "След", today: "Сегодня", year: "Год", month: "Месяц", week: "Неделя", day: "День", list: "Повестка дня" },
+    weekText: "Нед", allDayText: "Весь день",
+    moreLinkText: function(n) { return "+ ещё " + n; },
+    noEventsText: "Нет событий"
+  });
+
+  var statusDefs = {
+    draft:     { label:"Черновик",    color:"#9ca3af" },
+    proposed:  { label:"Предложено",  color:"#ea580c" },
+    confirmed: { label:"Согласовано", color:"#16a34a" },
+    reserved:  { label:"Бронь",       color:"#a855f7" },
+    completed: { label:"Проведено",   color:"#6b7280" },
+    cancelled: { label:"Отменено",    color:"#ef4444" },
+    no_show:   { label:"Неявка",      color:"#dc2626" },
+    rescheduled:{label:"Перенесено",  color:"#f59e0b" }
+  };
+
+  // Build legend
+  var legendEl = document.getElementById("status-legend");
+  for (var k in statusDefs) {
+    var s = document.createElement("span");
+    s.innerHTML = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + statusDefs[k].color + '"></span> ' + statusDefs[k].label;
+    legendEl.appendChild(s);
+  }
+
+  var calendar = new FullCalendar.Calendar(el, {
+    locale: "ru",
+    initialView: "dayGridMonth",
+    firstDay: 1,
+    height: "auto",
+    headerToolbar: { left:"prev,next today", center:"title", right:"dayGridMonth,timeGridWeek,timeGridDay,listWeek" },
+    slotMinTime: "08:00:00",
+    slotMaxTime: "20:00:00",
+    slotDuration: "00:30:00",
+    eventSources: [
+      {
+        id: "appointments",
+        url: "/api/appointments/",
+        method: "GET",
+        extraParams: function(info) {
+          try { return { start: info.start.toISOString(), end: info.end.toISOString() }; }
+          catch(e) { return {}; }
+        },
+        failure: function(e) { console.error("Appointments API error:", e); }
+      },
+      {
+        id: "unavailability",
+        url: "/api/unavailability/",
+        method: "GET",
+        extraParams: function(info) {
+          try { return { start: info.start.toISOString(), end: info.end.toISOString() }; }
+          catch(e) { return {}; }
+        },
+        failure: function(e) { console.error("Unavailability API error:", e); }
+      }
+    ],
+    eventContent: function(arg) {
+      if (arg.event.source && arg.event.source.id === "unavailability") {
+        return { html: arg.event.title };
+      }
+      var p = arg.event.extendedProps;
+      var html = '<span class="status-dot" style="background:' + (p.statusColor || "#999") + '"></span>';
+      html += '<strong>' + arg.timeText + '</strong> ' + arg.event.title;
+      return { html: html };
+    },
+    eventDidMount: function(info) {
+      if (info.event.source && info.event.source.id === "unavailability") {
+        var cb = document.getElementById("showUnavailable");
+        info.el.style.display = cb && cb.checked ? "" : "none";
+        return;
+      }
+      var p = info.event.extendedProps;
+      if (p && p.staffId) info.el.dataset.staffId = p.staffId;
+      if (p && p.serviceId) info.el.dataset.serviceId = p.serviceId;
+    },
+    eventClick: function(info) {
+      if (info.event.source && info.event.source.id === "unavailability") return;
+      var p = info.event.extendedProps;
+      document.getElementById("modalTitle").textContent = info.event.title || "";
+      document.getElementById("modalChild").textContent = "Получатель: " + (p.child || "");
+      document.getElementById("modalService").textContent = "Услуга: " + (p.service || "");
+      document.getElementById("modalStaff").textContent = "Специалист: " + (p.staff || "");
+      document.getElementById("modalRoom").textContent = "Кабинет: " + (p.room || "");
+      document.getElementById("modalTime").textContent = "Время: " + (info.event.start ? info.event.start.toLocaleString("ru-RU") : "") + " — " + (info.event.end ? info.event.end.toLocaleString("ru-RU") : "");
+      document.getElementById("modalStatus").textContent = "Статус: " + (statusDefs[p.status] ? statusDefs[p.status].label : p.status || "");
+      document.getElementById("modalDetailLink").href = "/appointments/" + info.event.id + "/";
+      var modal = new bootstrap.Modal(document.getElementById("appointmentModal"));
+      modal.show();
+    },
+    eventDrop: function(info) {
+      var start = info.event.start.toISOString();
+      var end = info.event.end ? info.event.end.toISOString() : start;
+      fetch("/api/appointments/" + info.event.id + "/move/", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+        body: JSON.stringify({ starts_at: start, ends_at: end })
+      }).then(function(r) {
+        if (!r.ok) { alert("Ошибка переноса: " + r.status); info.revert(); }
+      }).catch(function() { info.revert(); });
+    },
+    editable: true, selectable: true, selectMirror: true, eventDurationEditable: true, nowIndicator: true
+  });
+
+  calendar.render();
+
+  // Filters
+  document.getElementById("staffFilter").addEventListener("change", function() {
+    var v = this.value;
+    document.querySelectorAll(".fc-event").forEach(function(e) {
+      e.style.display = (v && e.dataset.staffId && e.dataset.staffId !== v) ? "none" : "";
+    });
+  });
+  document.getElementById("serviceFilter").addEventListener("change", function() {
+    var v = this.value;
+    document.querySelectorAll(".fc-event").forEach(function(e) {
+      e.style.display = (v && e.dataset.serviceId && e.dataset.serviceId !== v) ? "none" : "";
+    });
+  });
+  document.getElementById("showUnavailable").addEventListener("change", function() {
+    calendar.getEventSources().forEach(function(s) { if (s.id === "unavailability") s.refetch(); });
+  });
+
+  // Populate filters
+  fetch("/api/staff/").then(function(r) { return r.json(); }).then(function(d) {
+    var sel = document.getElementById("staffFilter");
+    d.forEach(function(s) {
+      var o = document.createElement("option"); o.value = s.id; o.textContent = s.full_name;
+      o.style.borderLeft = "4px solid " + (s.color || "#ccc");
+      sel.appendChild(o);
+    });
+  });
+  fetch("/api/services/").then(function(r) { return r.json(); }).then(function(d) {
+    var sel = document.getElementById("serviceFilter");
+    d.forEach(function(s) { var o = document.createElement("option"); o.value = s.id; o.textContent = s.name; sel.appendChild(o); });
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Перенести занятие{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Перенести занятие</h1>
+    <p>{{ appointment.child }} · {{ appointment.service }} · сейчас {{ appointment.starts_at|date:"d.m.Y H:i" }}</p>
+  </div>
+  <a class="button-link secondary" href="{% url 'appointment_detail' appointment.pk %}">Назад</a>
+</section>
+
+<section class="detail-grid">
+  <article class="panel form-panel">
+    <h2>Новое время</h2>
+    <form method="post" class="form-grid">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="form-error form-wide">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% for field in form %}
+        <label class="field {% if field.name == 'admin_note' %}form-wide{% endif %}">
+          <span>{{ field.label }}</span>
+          {{ field }}
+          {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+        </label>
+      {% endfor %}
+      <div class="form-actions form-wide">
+        <button type="submit">Перенести</button>
+        <a class="button-link secondary" href="{% url 'appointment_detail' appointment.pk %}">Отмена</a>
+      </div>
+    </form>
+  </article>
+
+  <article class="panel">
+    <h2>Предложения системы</h2>
+    <div class="slot-list">
+      {% for slot in suggested_slots %}
+        <a class="slot-link" href="{{ slot.move_url }}">
+          <strong>{{ slot.date|date:"d.m" }} {{ slot.time }}</strong>
+          <span>{{ slot.staff.full_name }}</span>
+          <small>{% if slot.room %}{{ slot.room }}{% else %}Кабинет выбрать вручную{% endif %}</small>
+        </a>
+      {% empty %}
+        <p class="empty-state">Подходящих окон на ближайшие дни не найдено.</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+{% endblock %}

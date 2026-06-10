@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Получатели{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Получатели</h1>
+    <p>Быстрый поиск по получателю, представителю или телефону.</p>
+  </div>
+  <div class="header-actions">
+    <a class="button-link" href="{% url 'recipient_create' %}">Добавить получателя</a>
+    <a class="button-link secondary" href="{% url 'representative_create' %}">Добавить представителя</a>
+    <form method="get" class="inline-form search-form">
+      <input type="search" name="q" value="{{ query }}" placeholder="Фамилия, имя, телефон">
+      <button type="submit">Найти</button>
+    </form>
+  </div>
+</section>
+
+<section class="panel">
+  <table>
+    <thead>
+    <tr>
+      <th>Получатель</th>
+      <th>Статус</th>
+      <th>Представитель</th>
+      <th>Телефон</th>
+      <th>Занятий</th>
+      <th>Счетов</th>
+      <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for recipient in recipients %}
+      <tr>
+        <td><a href="{% url 'recipient_detail' recipient.pk %}">{{ recipient.full_name }}</a></td>
+        <td>{{ recipient.get_status_display }}</td>
+        <td>{% if recipient.primary_parent %}{{ recipient.primary_parent.full_name }}{% else %}—{% endif %}</td>
+        <td>{% if recipient.primary_parent %}{{ recipient.primary_parent.phone }}{% else %}—{% endif %}</td>
+        <td>{{ recipient.appointments_count }}</td>
+        <td>{{ recipient.balance_accounts_count }}</td>
+        <td><a class="button-link secondary small-action" href="{% url 'recipient_detail' recipient.pk %}">Открыть</a></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7">Ничего не найдено.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Рекомендации{% endblock %}
+{% block content %}
+<h1>Рекомендации специалистов</h1>
+<p><a class="button" href="{% url 'recommendation_create' %}">+ Новая рекомендация</a></p>
+{% if recommendations %}
+<table class="grid">
+  <thead><tr><th>Дата</th><th>Получатель</th><th>Специалист</th><th>Категория</th><th>Заголовок</th><th>Срок</th><th>Принято</th><th></th></tr></thead>
+  <tbody>
+  {% for r in recommendations %}
+    <tr>
+      <td>{{ r.created_at|date:"d.m.Y" }}</td>
+      <td><a href="{% url 'child_detail' pk=r.child_id %}">{{ r.child }}</a></td>
+      <td>{{ r.staff_member }}</td>
+      <td>{{ r.get_category_display }}</td>
+      <td>{{ r.title }}</td>
+      <td>{% if r.due_on %}{{ r.due_on|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+      <td>{% if r.is_acknowledged %}✓{% else %}—{% endif %}</td>
+      <td>{% if not r.is_acknowledged %}<form method="post" action="{% url 'recommendation_acknowledge' pk=r.pk %}" class="inline">{% csrf_token %}<button>Принято</button></form>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="empty">Рекомендаций нет.</p>{% endif %}
+{% endblock %}

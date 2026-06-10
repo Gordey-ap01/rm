@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Согласия{% endblock %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Согласия представителей</h1>
+    <p>{% if child_id %}Согласия получателя{% else %}Все согласия{% endif %}</p>
+  </div>
+  <div class="header-actions">
+    <a class="button-link" href="{% url 'consent_create' %}">+ Зафиксировать согласие</a>
+    {% if child_id %}<a class="button-link secondary" href="{% url 'consent_list' %}">Все согласия</a>{% endif %}
+  </div>
+</section>
+<section class="panel">
+  <table>
+    <thead><tr><th>Получатель</th><th>Тип</th><th>Подписано</th><th>Действует до</th><th></th></tr></thead>
+    <tbody>
+    {% for c in consents %}
+      <tr>
+        <td><a href="{% url 'child_detail' pk=c.child_id %}">{{ c.child }}</a></td>
+        <td>{{ c.get_consent_type_display }}</td>
+        <td>{{ c.signed_on|date:"d.m.Y" }}</td>
+        <td>{% if c.expires_on %}{{ c.expires_on|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+        <td>{% if c.is_valid %}<span class="status-pill" style="border-color:var(--ok);color:var(--ok)">активно</span>{% else %}<span class="status-pill" style="border-color:var(--danger);color:var(--danger)">истекло</span>{% endif %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5"><p class="empty-state">Согласий нет.</p></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

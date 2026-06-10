@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Грант-отчёт{% endblock %}
+{% block content %}
+<section class="page-header d-flex justify-content-between align-items-end mb-3">
+  <div>
+    <h1 class="h3 mb-1">Грант-отчёт</h1>
+    <p class="text-muted small mb-0">Аналитика по источникам финансирования</p>
+  </div>
+</section>
+
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <form method="get" class="row g-3 align-items-end">
+    {% for field in form %}
+      <div class="col-auto">
+        <label class="form-label small fw-semibold mb-1">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+      </div>
+    {% endfor %}
+    <div class="col-auto">
+      <button class="btn btn-primary" type="submit">Показать</button>
+      {% if report %}<a class="btn btn-outline-secondary ms-2" href="?{{ request.GET.urlencode }}&csv=1">Скачать CSV</a>{% endif %}
+    </div>
+  </form>
+</section>
+
+{% if report %}
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <h2 class="h5 mb-3">{{ report.funding.name }} — {{ report.date_from|date:"d.m.Y" }}…{{ report.date_to|date:"d.m.Y" }}</h2>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0" style="white-space:nowrap">
+      <thead class="table-light">
+        <tr>
+          <th>Счёт</th>
+          <th class="text-end">Начальный</th>
+          <th class="text-end">Пополнения</th>
+          <th class="text-end">Списания</th>
+          <th class="text-end">Текущий</th>
+          <th class="text-end">Занятий</th>
+          <th class="text-end">План</th>
+          <th class="text-end">Факт</th>
+          <th class="text-end">Скидок</th>
+          <th class="text-end">Сертификатов</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in report.rows %}
+          <tr>
+            <td>{{ row.account }}</td>
+            <td class="text-end">{{ row.initial_amount }}</td>
+            <td class="text-end">{{ row.topups }}</td>
+            <td class="text-end">{{ row.charges }}</td>
+            <td class="text-end fw-semibold">{{ row.current_balance }}</td>
+            <td class="text-end">{{ row.appointments_count }}</td>
+            <td class="text-end">{{ row.planned_count }}</td>
+            <td class="text-end">{{ row.completed_count }}</td>
+            <td class="text-end">{{ row.discount_count }}</td>
+            <td class="text-end">{{ row.certificate_count }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light fw-bold">
+        <tr>
+          <th>Итого</th>
+          <th class="text-end">{{ report.totals.initial_amount }}</th>
+          <th class="text-end">{{ report.totals.topups }}</th>
+          <th class="text-end">{{ report.totals.charges }}</th>
+          <th class="text-end">{{ report.totals.current_balance }}</th>
+          <th class="text-end">{{ report.totals.appointments_count }}</th>
+          <th class="text-end">{{ report.totals.planned_count }}</th>
+          <th class="text-end">{{ report.totals.completed_count }}</th>
+          <th class="text-end">{{ report.totals.discount_count }}</th>
+          <th class="text-end">{{ report.totals.certificate_count }}</th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</section>
+
+{% if report.certificates %}
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <h2 class="h5 mb-3">Сертификаты</h2>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0" style="white-space:nowrap">
+      <thead class="table-light">
+        <tr><th>Получатель</th><th>Тип</th><th>Номер</th><th class="text-end">Полная сумма</th><th class="text-end">Остаток</th></tr>
+      </thead>
+      <tbody>
+        {% for c in report.certificates %}
+          <tr>
+            <td>{{ c.child.full_name }}</td>
+            <td>{{ c.get_certificate_type_display }}</td>
+            <td>{{ c.number|default:"—" }}</td>
+            <td class="text-end">{{ c.total_amount }}</td>
+            <td class="text-end">{{ c.remaining_amount }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% if report.discounts %}
+<section class="bg-white border rounded p-3 shadow-sm">
+  <h2 class="h5 mb-3">Активные скидки</h2>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0" style="white-space:nowrap">
+      <thead class="table-light">
+        <tr><th>Получатель</th><th>Процент</th><th>Услуга</th><th>Комментарий</th></tr>
+      </thead>
+      <tbody>
+        {% for d in report.discounts %}
+          <tr>
+            <td>{{ d.child.full_name }}</td>
+            <td>{{ d.percentage }}%</td>
+            <td>{{ d.service.name|default:"Все услуги" }}</td>
+            <td>{{ d.note|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

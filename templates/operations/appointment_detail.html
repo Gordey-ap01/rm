@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Занятие{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>{{ appointment.child }}</h1>
+    <p>{{ appointment.service }} · {{ appointment.starts_at|date:"d.m.Y H:i" }}-{{ appointment.ends_at|date:"H:i" }}</p>
+  </div>
+  <div class="header-actions">
+    <a class="button-link secondary" href="{% url 'schedule' %}?date={{ schedule_date|date:'Y-m-d' }}">В расписание</a>
+    <a class="button-link secondary" href="{% url 'appointment_edit' appointment.pk %}">Редактировать</a>
+    <a class="button-link secondary" href="{% url 'appointment_move' appointment.pk %}">Перенести</a>
+    <a class="button-link danger-link" href="{% url 'appointment_cancel' appointment.pk %}">Отменить</a>
+  </div>
+</section>
+
+<section class="detail-grid">
+  <article class="panel">
+    <h2>Занятие</h2>
+    <dl class="facts">
+      <div><dt>Специалист</dt><dd>{{ appointment.staff_member }}</dd></div>
+      <div><dt>Кабинет</dt><dd>{% if appointment.room %}{{ appointment.room }}{% else %}Не указан{% endif %}</dd></div>
+      <div><dt>Статус</dt><dd>{{ appointment.get_status_display }}</dd></div>
+      <div><dt>Посещение</dt><dd>{{ appointment.get_attendance_status_display }}</dd></div>
+      <div><dt>Списание</dt><dd>{{ appointment.get_billing_decision_display }}</dd></div>
+      <div><dt>Счет</dt><dd>{% if appointment.billing_account %}{{ appointment.billing_account }}{% else %}Не выбран{% endif %}</dd></div>
+    </dl>
+    {% if appointment.admin_note %}<p class="note-block">{{ appointment.admin_note|linebreaksbr }}</p>{% endif %}
+    {% if appointment.specialist_note %}<p class="note-block">Заметка специалиста: {{ appointment.specialist_note|linebreaksbr }}</p>{% endif %}
+  </article>
+
+  <article class="panel">
+    <h2>Решение по списанию</h2>
+    <form method="post" action="{% url 'appointment_billing' appointment.pk %}" class="form">
+      {% csrf_token %}
+      {% for field in billing_form %}
+        <label class="field">
+          <span>{{ field.label }}</span>
+          {{ field }}
+          {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+        </label>
+      {% endfor %}
+      <button type="submit">Сохранить решение</button>
+    </form>
+    <h3>Операции баланса</h3>
+    <table>
+      <thead><tr><th>Дата</th><th>Тип</th><th>Сумма</th><th>Основание</th></tr></thead>
+      <tbody>
+      {% for entry in ledger_entries %}
+        <tr>
+          <td>{{ entry.created_at|date:"d.m H:i" }}</td>
+          <td>{{ entry.get_entry_type_display }}</td>
+          <td>{{ entry.amount }}</td>
+          <td>{{ entry.reason }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4">Списаний по занятию пока нет.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="panel">
+    <h2>Согласование по email</h2>
+    <form method="post" action="{% url 'appointment_send_confirmation' appointment.pk %}" class="form">
+      {% csrf_token %}
+      {% for field in confirmation_form %}
+        <label class="field">
+          <span>{{ field.label }}</span>
+          {{ field }}
+          {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+        </label>
+      {% endfor %}
+      <button type="submit" {% if confirmation_form.fields.target_type.disabled %}disabled{% endif %}>Отправить письмо</button>
+    </form>
+
+    <h3>История отправок</h3>
+    <table>
+      <thead><tr><th>Дата</th><th>Кому</th><th>Email</th><th>Ответ</th><th>Отправка</th><th></th></tr></thead>
+      <tbody>
+      {% for item in confirmations %}
+        <tr>
+          <td>{{ item.created_at|date:"d.m H:i" }}</td>
+          <td>{{ item.get_target_type_display }}</td>
+          <td>{{ item.email }}</td>
+          <td>{{ item.get_status_display }}</td>
+          <td>{{ item.get_delivery_status_display }}</td>
+          <td><a class="button-link secondary small-action" href="{% url 'appointment_confirmation_public' item.token %}">Ссылка</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">Письма по занятию еще не отправлялись.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="panel">
+    <h2>Свободные окна для переноса</h2>
+    <div class="slot-list">
+      {% for slot in suggested_slots %}
+        <a class="slot-link" href="{{ slot.move_url }}">
+          <strong>{{ slot.date|date:"d.m" }} {{ slot.time }}</strong>
+          <span>{{ slot.staff.full_name }}</span>
+          <small>{% if slot.room %}{{ slot.room }}{% else %}Кабинет выбрать вручную{% endif %}</small>
+        </a>
+      {% empty %}
+        <p class="empty-state">Подходящих окон на ближайшие дни не найдено.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <h2>Другие занятия получателя</h2>
+    <table>
+      <thead><tr><th>Дата</th><th>Услуга</th><th>Специалист</th><th>Статус</th></tr></thead>
+      <tbody>
+      {% for item in related_child_appointments %}
+        <tr>
+          <td><a href="{% url 'appointment_detail' item.pk %}">{{ item.starts_at|date:"d.m H:i" }}</a></td>
+          <td>{{ item.service }}</td>
+          <td>{{ item.staff_member }}</td>
+          <td>{{ item.get_status_display }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4">Других занятий рядом нет.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+{% endblock %}

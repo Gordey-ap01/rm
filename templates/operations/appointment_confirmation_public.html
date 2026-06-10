@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Подтверждение занятия{% endblock %}
+
+{% block content %}
+<section class="auth-panel public-confirmation">
+  <div class="auth-copy">
+    <h1>Подтверждение занятия</h1>
+    <p>{{ confirmation.appointment.child }} · {{ confirmation.appointment.service }}</p>
+  </div>
+
+  <dl class="facts">
+    <div><dt>Дата</dt><dd>{{ confirmation.appointment.starts_at|date:"d.m.Y H:i" }}-{{ confirmation.appointment.ends_at|date:"H:i" }}</dd></div>
+    <div><dt>Специалист</dt><dd>{{ confirmation.appointment.staff_member }}</dd></div>
+    <div><dt>Кабинет</dt><dd>{% if confirmation.appointment.room %}{{ confirmation.appointment.room }}{% else %}Не указан{% endif %}</dd></div>
+    <div><dt>Статус ответа</dt><dd>{{ confirmation.get_status_display }}</dd></div>
+  </dl>
+
+  {% if submitted %}
+    <p class="note-block">Ответ сохранен. Администратор увидит его в системе.</p>
+  {% elif confirmation.status != "pending" %}
+    <p class="note-block">Ответ уже был отправлен: {{ confirmation.get_status_display }}.</p>
+  {% else %}
+    <form method="post" class="form confirmation-actions">
+      {% csrf_token %}
+      <label class="field">
+        <span>{{ form.response_note.label }}</span>
+        {{ form.response_note }}
+      </label>
+      <div class="form-actions">
+        <button type="submit" name="action" value="confirm">Подтвердить</button>
+        <button class="danger-link" type="submit" name="action" value="decline">Отклонить</button>
+      </div>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

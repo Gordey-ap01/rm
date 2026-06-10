@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Панель руководителя{% endblock %}
+
+{% block content %}
+<section class="ops-hero mb-3">
+  <div>
+    <p class="ops-eyebrow mb-1">Операционный день · {{ today|date:"d.m.Y" }}</p>
+    <h1>Панель администратора и руководителя</h1>
+    <p class="mb-0">Главные действия: расписание, согласования, списания и контроль балансов.</p>
+  </div>
+  <div class="ops-hero-status">
+    <span class="ops-status-number">{{ priority_total }}</span>
+    <span>требуют решения</span>
+  </div>
+</section>
+
+<section class="quick-actions mb-3" aria-label="Быстрые действия">
+  <a href="{% url 'appointment_create' %}" class="quick-action primary">
+    <i class="bi bi-plus-circle"></i>
+    <span>Создать занятие</span>
+  </a>
+  <a href="{% url 'schedule' %}" class="quick-action">
+    <i class="bi bi-calendar-week"></i>
+    <span>Открыть календарь</span>
+  </a>
+  <a href="{% url 'work_queue' %}" class="quick-action">
+    <i class="bi bi-list-check"></i>
+    <span>Очередь решений</span>
+  </a>
+  <a href="{% url 'recipient_create' %}" class="quick-action">
+    <i class="bi bi-person-plus"></i>
+    <span>Новый получатель</span>
+  </a>
+  <a href="{% url 'balances' %}" class="quick-action">
+    <i class="bi bi-wallet2"></i>
+    <span>Балансы</span>
+  </a>
+</section>
+
+<section class="ops-metrics mb-3">
+  <article class="ops-metric">
+    <span class="ops-metric-value">{{ today_appointments|length }}</span>
+    <span>занятий сегодня</span>
+  </article>
+  <a class="ops-metric needs-action" href="{% url 'work_queue' %}">
+    <span class="ops-metric-value">{{ unresolved_billing }}</span>
+    <span>без решения списания</span>
+  </a>
+  <a class="ops-metric needs-action" href="{% url 'work_queue' %}">
+    <span class="ops-metric-value">{{ overdue_attendance }}</span>
+    <span>прошли без отметки</span>
+  </a>
+  <a class="ops-metric needs-action" href="{% url 'work_queue' %}">
+    <span class="ops-metric-value">{{ awaiting_transfer }}</span>
+    <span>ожидают переноса</span>
+  </a>
+  <a class="ops-metric needs-action" href="{% url 'work_queue' %}">
+    <span class="ops-metric-value">{{ confirmation_tasks }}</span>
+    <span>email-согласований</span>
+  </a>
+  <a class="ops-metric needs-action" href="{% url 'work_queue' %}">
+    <span class="ops-metric-value">{{ time_off_requests }}</span>
+    <span>заявок специалистов</span>
+  </a>
+</section>
+
+<section class="row g-3">
+  <div class="col-12 col-xl-7">
+    <article class="ops-panel">
+      <div class="ops-panel-head">
+        <div>
+          <h2>Сегодня</h2>
+          <p>{{ today|date:"d.m.Y" }}</p>
+        </div>
+        <a href="{% url 'schedule' %}" class="panel-link">Календарь</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0 ops-table">
+          <thead>
+            <tr><th>Время</th><th>Получатель</th><th>Занятие</th><th>Специалист</th><th>Статус</th></tr>
+          </thead>
+          <tbody>
+          {% for item in today_appointments %}
+            <tr>
+              <td class="fw-semibold">{{ item.starts_at|date:"H:i" }}</td>
+              <td>{{ item.child }}</td>
+              <td>
+                {{ item.service }}
+                {% if item.room %}<div class="small text-muted">{{ item.room }}</div>{% endif %}
+              </td>
+              <td>{{ item.staff_member }}</td>
+              <td><span class="status-pill">{{ item.get_status_display }}</span></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-4">На сегодня занятий нет.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </div>
+
+  <div class="col-12 col-xl-5">
+    <article class="ops-panel">
+      <div class="ops-panel-head">
+        <div>
+          <h2>Завтра</h2>
+          <p>{{ tomorrow|date:"d.m.Y" }}</p>
+        </div>
+        <a href="{% url 'tomorrow' %}" class="panel-link">Подготовить</a>
+      </div>
+      <div class="compact-timeline">
+        {% for item in tomorrow_appointments|slice:":9" %}
+          <a class="timeline-item" href="{% url 'appointment_detail' item.pk %}">
+            <span>{{ item.starts_at|date:"H:i" }}</span>
+            <strong>{{ item.child }}</strong>
+            <small>{{ item.service }} · {{ item.staff_member }}</small>
+          </a>
+        {% empty %}
+          <p class="empty-state">На завтра занятий нет.</p>
+        {% endfor %}
+      </div>
+    </article>
+  </div>
+</section>
+
+<section class="row g-3 mt-1">
+  <div class="col-12 col-lg-5">
+    <article class="ops-panel">
+      <div class="ops-panel-head">
+        <div>
+          <h2>Загрузка специалистов</h2>
+          <p>Ближайшие 14 дней</p>
+        </div>
+      </div>
+      <div class="load-list">
+        {% for row in staff_load %}
+          <div class="load-row">
+            <span>{{ row.staff_member__full_name }}</span>
+            <strong>{{ row.total }}</strong>
+          </div>
+        {% empty %}
+          <p class="empty-state">Нет данных.</p>
+        {% endfor %}
+      </div>
+    </article>
+  </div>
+
+  <div class="col-12 col-lg-7">
+    <article class="ops-panel">
+      <div class="ops-panel-head">
+        <div>
+          <h2>Низкие балансы</h2>
+          <p>Остаток 2 или меньше</p>
+        </div>
+        <a href="{% url 'balances' %}" class="panel-link">Все балансы</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0 ops-table">
+          <thead><tr><th>Получатель</th><th>Источник</th><th>Услуга</th><th class="text-end">Остаток</th></tr></thead>
+          <tbody>
+          {% for account in low_balances %}
+            <tr>
+              <td>{{ account.child }}</td>
+              <td>{{ account.funding_source }}</td>
+              <td>{% if account.service %}{{ account.service }}{% else %}Любые услуги{% endif %}</td>
+              <td class="text-end fw-semibold">{{ account.current_balance }} {{ account.get_unit_display }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="text-center text-muted py-4">Критичных остатков нет.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Очередь администратора{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Очередь администратора</h1>
+    <p>Ежедневный список ситуаций, где нужно решение человека.</p>
+  </div>
+  <a class="button-link" href="{% url 'schedule' %}">Открыть календарь</a>
+</section>
+
+<section class="queue-summary">
+  <article>
+    <strong>{{ needs_billing|length }}</strong>
+    <span>решений по списанию</span>
+  </article>
+  <article>
+    <strong>{{ needs_attendance|length }}</strong>
+    <span>прошли без отметки</span>
+  </article>
+  <article>
+    <strong>{{ needs_transfer|length }}</strong>
+    <span>нужен перенос</span>
+  </article>
+  <article>
+    <strong>{{ low_balances|length }}</strong>
+    <span>низкие балансы</span>
+  </article>
+  <article>
+    <strong>{{ confirmation_tasks|length }}</strong>
+    <span>email-согласования</span>
+  </article>
+  <article>
+    <strong>{{ time_off_requests|length }}</strong>
+    <span>заявки специалистов</span>
+  </article>
+</section>
+
+<section class="queue-grid">
+  <article class="panel">
+    <h2>Нужно решение по списанию</h2>
+    <div class="task-list">
+      {% for item in needs_billing %}
+        <div class="task-card status-{{ item.status }}">
+          <div>
+            <strong>{{ item.child }}</strong>
+            <p>{{ item.starts_at|date:"d.m H:i" }} · {{ item.service }} · {{ item.staff_member }}</p>
+            <p class="muted">Статус: {{ item.get_status_display }}. Посещение: {{ item.get_attendance_status_display }}</p>
+          </div>
+          <div class="task-actions">
+            {% if item.billing_account %}
+              <form method="post" action="{% url 'appointment_billing' item.pk %}" class="mini-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <input type="hidden" name="billing_decision" value="charge">
+                <input type="hidden" name="billing_account" value="{{ item.billing_account.id }}">
+                <input type="hidden" name="amount" value="{{ item.quick_charge_amount }}">
+                <input type="hidden" name="reason" value="Быстрое решение из очереди администратора.">
+                <button type="submit">Списать</button>
+              </form>
+            {% endif %}
+            <form method="post" action="{% url 'appointment_billing' item.pk %}" class="mini-form">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <input type="hidden" name="billing_decision" value="do_not_charge">
+              <input type="hidden" name="reason" value="Быстрое решение из очереди администратора.">
+              <button class="secondary-button" type="submit">Не списывать</button>
+            </form>
+            <a class="button-link secondary small-action" href="{% url 'appointment_detail' item.pk %}">Детали</a>
+          </div>
+        </div>
+      {% empty %}
+        <p class="empty-state">Нет занятий, ожидающих решения по списанию.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <h2>Прошли без отметки</h2>
+    <div class="task-list">
+      {% for item in needs_attendance %}
+        <div class="task-card status-{{ item.status }}">
+          <div>
+            <strong>{{ item.child }}</strong>
+            <p>{{ item.starts_at|date:"d.m H:i" }} · {{ item.service }}</p>
+            <p class="muted">{{ item.staff_member }}{% if item.room %} · {{ item.room }}{% endif %}</p>
+          </div>
+          <div class="task-actions">
+            <a class="button-link secondary small-action" href="{% url 'appointment_detail' item.pk %}">Открыть</a>
+          </div>
+        </div>
+      {% empty %}
+        <p class="empty-state">Просроченных занятий без отметки нет.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <h2>Нужен перенос</h2>
+    <div class="task-list">
+      {% for item in needs_transfer %}
+        <div class="task-card status-{{ item.status }}">
+          <div>
+            <strong>{{ item.child }}</strong>
+            <p>{{ item.starts_at|date:"d.m H:i" }} · {{ item.service }}</p>
+            <p class="muted">Причина и решение по списанию уточняются в карточке занятия.</p>
+          </div>
+          <div class="task-actions">
+            <a class="button-link small-action" href="{% url 'appointment_move' item.pk %}">Перенести</a>
+            <a class="button-link secondary small-action" href="{% url 'appointment_detail' item.pk %}">Детали</a>
+          </div>
+        </div>
+      {% empty %}
+        <p class="empty-state">Занятий без переноса нет.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <h2>Email-согласования</h2>
+    <div class="task-list">
+      {% for item in confirmation_tasks %}
+        <div class="task-card status-{{ item.status }}">
+          <div>
+            <strong>{{ item.appointment.child }}</strong>
+            <p>{{ item.appointment.starts_at|date:"d.m H:i" }} · {{ item.appointment.service }} · {{ item.get_target_type_display }}</p>
+            <p class="muted">Ответ: {{ item.get_status_display }}. Отправка: {{ item.get_delivery_status_display }}. {{ item.email }}</p>
+            {% if item.response_note %}<p>{{ item.response_note }}</p>{% endif %}
+          </div>
+          <div class="task-actions">
+            <a class="button-link secondary small-action" href="{% url 'appointment_detail' item.appointment.pk %}">Открыть занятие</a>
+          </div>
+        </div>
+      {% empty %}
+        <p class="empty-state">Нет активных email-согласований.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <h2>Заявки специалистов</h2>
+    <div class="task-list">
+      {% for item in time_off_requests %}
+        <div class="task-card">
+          <div>
+            <strong>{{ item.staff_member }}</strong>
+            <p>{{ item.get_request_type_display }} · {{ item.starts_on|date:"d.m.Y" }}-{{ item.ends_on|date:"d.m.Y" }}</p>
+            {% if item.reason %}<p class="muted">{{ item.reason }}</p>{% endif %}
+          </div>
+          <form method="post" action="{% url 'time_off_request_decide' item.pk %}" class="form">
+            {% csrf_token %}
+            <label class="field">
+              <span>Комментарий администратора</span>
+              <textarea name="admin_note"></textarea>
+            </label>
+            <div class="task-actions">
+              <button type="submit" name="action" value="approve">Согласовать</button>
+              <button class="secondary-button" type="submit" name="action" value="reject">Отклонить</button>
+            </div>
+          </form>
+        </div>
+      {% empty %}
+        <p class="empty-state">Новых заявок нет.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <h2>Низкие балансы</h2>
+    <table>
+      <thead><tr><th>Получатель</th><th>Источник</th><th>Услуга</th><th>Остаток</th></tr></thead>
+      <tbody>
+      {% for account in low_balances %}
+        <tr>
+          <td>{{ account.child }}</td>
+          <td>{{ account.funding_source }}</td>
+          <td>{% if account.service %}{{ account.service }}{% else %}Любые услуги{% endif %}</td>
+          <td>{{ account.current_balance }} {{ account.get_unit_display }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4">Критичных остатков нет.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+{% endblock %}

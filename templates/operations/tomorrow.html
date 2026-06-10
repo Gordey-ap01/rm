@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Завтра — {{ overview.date }}{% endblock %}
+{% block content %}
+<h1>Завтра — {{ overview.date|date:"d E Y" }}</h1>
+
+<section class="cards">
+  <div class="card"><div class="card-value">{{ overview.summary.appointments_count }}</div><div class="card-label">Занятий в расписании</div></div>
+  <div class="card"><div class="card-value">{{ overview.summary.needs_billing_count }}</div><div class="card-label">Ждут списания</div></div>
+  <div class="card"><div class="card-value">{{ overview.summary.needs_attendance_count }}</div><div class="card-label">Не отмечены</div></div>
+  <div class="card"><div class="card-value">{{ overview.summary.pending_confirmations_count }}</div><div class="card-label">Подтверждения</div></div>
+  <div class="card"><div class="card-value">{{ overview.summary.pending_time_off_count }}</div><div class="card-label">Заявки на отпуск</div></div>
+  <div class="card"><div class="card-value">{{ overview.summary.low_balances_count }}</div><div class="card-label">Низкий баланс</div></div>
+</section>
+
+<h2>Занятия дня</h2>
+{% if overview.appointments %}
+<table class="grid">
+  <thead><tr><th>Время</th><th>Получатель</th><th>Специалист</th><th>Услуга</th><th>Кабинет</th></tr></thead>
+  <tbody>
+  {% for a in overview.appointments %}
+    <tr>
+      <td>{{ a.starts_at|date:"H:i" }}–{{ a.ends_at|date:"H:i" }}</td>
+      <td><a href="{% url 'child_detail' pk=a.child_id %}">{{ a.child }}</a></td>
+      <td>{{ a.staff_member }}</td>
+      <td>{{ a.service.name }}</td>
+      <td>{{ a.room.name|default:"—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">На этот день занятий не запланировано.</p>
+{% endif %}
+
+<h2>Ждут решения по списанию</h2>
+{% if overview.needs_billing %}
+<ul class="list">
+  {% for a in overview.needs_billing %}
+    <li><a href="{% url 'appointment_detail' pk=a.pk %}">{{ a }}</a> — {{ a.billing_account|default:"без счёта" }}</li>
+  {% endfor %}
+</ul>
+{% else %}<p class="empty">—</p>{% endif %}
+
+<h2>Заявки на отпуск / больничный</h2>
+{% if overview.pending_time_off %}
+<ul class="list">
+  {% for t in overview.pending_time_off %}
+    <li><strong>{{ t.staff_member }}</strong>: {{ t.get_request_type_display }} {{ t.starts_on|date:"d.m" }}–{{ t.ends_on|date:"d.m" }}
+      <form method="post" action="{% url 'time_off_request_decide' pk=t.pk %}" class="inline">
+        {% csrf_token %}
+        <button name="action" value="approve">Согласовать</button>
+        <button name="action" value="reject">Отклонить</button>
+      </form>
+    </li>
+  {% endfor %}
+</ul>
+{% else %}<p class="empty">—</p>{% endif %}
+{% endblock %}

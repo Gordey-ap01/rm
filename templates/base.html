@@ -1,0 +1,83 @@
+{% load static %}
+{% load django_htmx %}
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}РМ-управление{% endblock %}</title>
+  <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
+  <link rel="stylesheet" href="{% static 'operations/app.css' %}">
+  <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
+  <script defer src="{% static 'vendor/alpine/alpine.min.js' %}"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' x-data="{ sidebarOpen: false }">
+  <nav class="navbar navbar-expand-lg navbar-light app-navbar sticky-top mb-3">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-semibold d-flex align-items-center" href="{% url 'dashboard' %}">
+        <img src="{% static 'operations/logo.png' %}" alt="" height="38" class="brand-logo me-2">
+        РМ-управление
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+              aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="mainNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i> Панель</a></li>
+          {% if user.is_staff %}
+          <li class="nav-item"><a class="nav-link" href="{% url 'work_queue' %}"><i class="bi bi-list-check"></i> Очередь</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'schedule' %}"><i class="bi bi-calendar-week"></i> Расписание</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'recipient_list' %}"><i class="bi bi-people"></i> Получатели</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'balances' %}"><i class="bi bi-wallet2"></i> Балансы</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'document_list' %}"><i class="bi bi-file-earmark-text"></i> Документы</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'consent_list' %}"><i class="bi bi-file-earmark-check"></i> Согласия</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'grant_report' %}"><i class="bi bi-graph-up-arrow"></i> Гранты</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'tomorrow' %}"><i class="bi bi-calendar-day"></i> Завтра</a></li>
+          <li class="nav-item"><a class="nav-link" href="/admin/"><i class="bi bi-gear"></i> Админка</a></li>
+          {% endif %}
+          <li class="nav-item"><a class="nav-link" href="{% url 'specialist_home' %}"><i class="bi bi-person-badge"></i> Специалист</a></li>
+        </ul>
+        {% if user.is_authenticated and user.is_staff %}
+        <form class="d-flex me-2" method="get" action="{% url 'recipient_list' %}">
+          <input class="form-control form-control-sm" type="search" name="q" placeholder="Поиск..." value="{{ request.GET.q }}" aria-label="Поиск">
+        </form>
+        {% endif %}
+        {% if user.is_authenticated %}
+        <div class="dropdown">
+          <button class="btn btn-outline-success btn-sm dropdown-toggle" data-bs-toggle="dropdown"
+                  aria-expanded="false">
+            <i class="bi bi-person-circle"></i> {{ user.username }}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+              <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button class="dropdown-item" type="submit"><i class="bi bi-box-arrow-right"></i> Выйти</button>
+              </form>
+            </li>
+          </ul>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <main class="container-fluid px-3 pb-4">
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

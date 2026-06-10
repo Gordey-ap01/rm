@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Массовый перенос — {{ staff.full_name }}{% endblock %}
+{% block content %}
+<h1>Массовый перенос — {{ staff.full_name }}</h1>
+<p class="hint">Все активные занятия специалиста в выбранном диапазоне будут отменены, а представителям разосланы уведомления со ссылками на свободные слоты у других специалистов.</p>
+
+<form method="post" class="form"
+      hx-post="{% url 'staff_mass_reschedule' pk=staff.pk %}"
+      hx-target="#mass-reschedule-result"
+      hx-swap="innerHTML"
+      hx-confirm="Точно отменить все активные занятия и разослать уведомления?">
+  {% csrf_token %}
+  <label>Дата начала: <input type="date" name="date_from" value="{{ initial.date_from|date:'Y-m-d' }}" required></label>
+  <label>Дата окончания: <input type="date" name="date_to" value="{{ initial.date_to|date:'Y-m-d' }}" required></label>
+  <label>Причина: <textarea name="reason" rows="3" required></textarea></label>
+  <button type="submit">Отменить и разослать уведомления</button>
+  <a class="button secondary" href="{{ cancel_url }}">Отмена</a>
+</form>
+<div id="mass-reschedule-result"></div>
+{% endblock %}

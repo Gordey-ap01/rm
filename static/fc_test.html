@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>FC Test</title>
+<script src="http://localhost:8000/static/operations/fullcalendar/index.global.min.js"></script>
+</head>
+<body>
+<div id="cal" style="max-width:900px;margin:20px auto"></div>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var el = document.getElementById("cal");
+    console.log("FC typeof:", typeof FullCalendar);
+    if (typeof FullCalendar !== "undefined") {
+        var cal = new FullCalendar.Calendar(el, {
+            initialView: "dayGridMonth",
+            height: 400
+        });
+        cal.render();
+        el.innerHTML += "<p style='color:green'>Calendar rendered</p>";
+    } else {
+        el.innerHTML = "<p style='color:red'>FullCalendar NOT loaded</p>";
+    }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}{{ recipient.full_name }}{% endblock %}
+
+{% block content %}
+<section class="page-header d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-1">{{ recipient.full_name }}</h1>
+    <p class="text-muted small mb-0">{{ recipient.get_status_display }}{% if recipient.birth_date %} · {{ recipient.birth_date|date:"d.m.Y" }}{% endif %}</p>
+  </div>
+  <div class="d-flex flex-wrap gap-1">
+    <a class="btn btn-primary btn-sm" href="{% url 'appointment_create' %}?child_id={{ recipient.pk }}"><i class="bi bi-plus-circle"></i> Занятие</a>
+    <a class="btn btn-outline-success btn-sm" href="{% url 'recipient_contract_pdf' recipient.pk %}"><i class="bi bi-file-pdf"></i> Договор</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'balance_account_create' %}?recipient_id={{ recipient.pk }}"><i class="bi bi-wallet2"></i> Счёт</a>
+    <a class="btn btn-outline-info btn-sm" href="{% url 'recommendation_list' %}?child_id={{ recipient.pk }}">Рекомендации</a>
+    <a class="btn btn-outline-info btn-sm" href="{% url 'document_list' %}?child_id={{ recipient.pk }}">Документы</a>
+    <a class="btn btn-outline-info btn-sm" href="{% url 'consent_list' %}?child_id={{ recipient.pk }}">Согласия</a>
+    <a class="btn btn-outline-info btn-sm" href="{% url 'document_create_for_child' recipient.pk %}">+ Документ</a>
+    <a class="btn btn-outline-info btn-sm" href="{% url 'consent_create_for_child' recipient.pk %}">+ Согласие</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'recipient_edit' recipient.pk %}"><i class="bi bi-pencil"></i></a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'recipient_list' %}">К списку</a>
+  </div>
+</section>
+
+<section class="detail-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px">
+  <article class="panel bg-white border rounded p-3 shadow-sm">
+    <h2 class="h6 mb-3">Контакты</h2>
+    <dl class="facts" style="display:grid;gap:8px">
+      <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">Телефон</dt><dd class="mb-0">{% if recipient.phone %}{{ recipient.phone }}{% else %}<span class="text-muted">Не указан</span>{% endif %}</dd></div>
+      <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">Email</dt><dd class="mb-0">{% if recipient.email %}{{ recipient.email }}{% else %}<span class="text-muted">Не указан</span>{% endif %}</dd></div>
+      <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">Диагноз</dt><dd class="mb-0">{% if recipient.diagnosis %}{{ recipient.diagnosis }}{% else %}<span class="text-muted">—</span>{% endif %}</dd></div>
+    </dl>
+  </article>
+
+  <article class="panel bg-white border rounded p-3 shadow-sm">
+    <h2 class="h6 mb-3">Представитель</h2>
+    {% if representative %}
+    <dl class="facts" style="display:grid;gap:8px">
+      <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">ФИО</dt><dd class="mb-0">{{ representative.full_name }}</dd></div>
+      <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">Телефон</dt><dd class="mb-0">{{ representative.phone }}</dd></div>
+      <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">Email</dt><dd class="mb-0">{% if representative.email %}{{ representative.email }}{% else %}<span class="text-muted">—</span>{% endif %}</dd></div>
+    </dl>
+    {% else %}<p class="text-muted small mb-0">Представитель не назначен.</p>{% endif %}
+  </article>
+
+  <article class="panel bg-white border rounded p-3 shadow-sm">
+    <h2 class="h6 mb-3">Счета баланса</h2>
+    {% if accounts %}
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light"><tr><th>Источник</th><th>Остаток</th><th></th></tr></thead>
+        <tbody>
+        {% for acc in accounts %}
+          <tr>
+            <td>{{ acc.funding_source }}{% if acc.service %} ({{ acc.service }}){% endif %}</td>
+            <td class="fw-semibold">{{ acc.current_balance }} {{ acc.get_unit_display }}</td>
+            <td class="text-end text-nowrap">
+              <a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'balance_account_edit' acc.pk %}">Править</a>
+              <a class="btn btn-outline-primary btn-sm py-0" href="{% url 'payment_create_for_account' acc.pk %}">Пополнить</a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="text-muted small mb-0">Счетов нет.</p>{% endif %}
+  </article>
+</section>
+
+<section class="panel bg-white border rounded p-3 shadow-sm mt-3">
+  <h2 class="h6 mb-3">Предстоящие занятия</h2>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-light"><tr><th>Дата</th><th>Специалист</th><th>Услуга</th><th>Статус</th></tr></thead>
+      <tbody>
+      {% for a in upcoming_appointments %}
+        <tr>
+          <td><a href="{% url 'appointment_detail' a.pk %}">{{ a.starts_at|date:"d.m.Y H:i" }}</a></td>
+          <td>{{ a.staff_member }}</td>
+          <td>{{ a.service }}</td>
+          <td><span class="status-pill">{{ a.get_status_display }}</span></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="text-center text-muted py-3">Нет предстоящих занятий.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel bg-white border rounded p-3 shadow-sm mt-3">
+  <h2 class="h6 mb-3">Прошедшие занятия</h2>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-light"><tr><th>Дата</th><th>Специалист</th><th>Услуга</th><th>Статус</th></tr></thead>
+      <tbody>
+      {% for a in recent_appointments %}
+        <tr>
+          <td><a href="{% url 'appointment_detail' a.pk %}">{{ a.starts_at|date:"d.m.Y H:i" }}</a></td>
+          <td>{{ a.staff_member }}</td>
+          <td>{{ a.service }}</td>
+          <td><span class="status-pill">{{ a.get_status_display }}</span></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="text-center text-muted py-3">Нет прошедших занятий.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

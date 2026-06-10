@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Табель — {{ staff.full_name }}{% endblock %}
+{% block content %}
+<h1>Табель — {{ staff.full_name }}</h1>
+
+<form method="get" class="filters">
+  {{ form.as_p }}
+  <button type="submit">Показать</button>
+  {% if sheet %}<a href="?{{ request.GET.urlencode }}&csv=1">Скачать CSV</a>{% endif %}
+</form>
+
+{% if sheet %}
+<table class="grid">
+  <thead><tr><th>Дата</th><th>Всего</th><th>Проведено</th><th>Отменено</th><th>Не явился</th><th>Часов</th></tr></thead>
+  <tbody>
+    {% for row in sheet.rows %}
+      <tr>
+        <td>{{ row.date|date:"d E" }} {{ row.date|date:"l" }}</td>
+        <td>{{ row.total }}</td>
+        <td>{{ row.completed }}</td>
+        <td>{{ row.cancelled }}</td>
+        <td>{{ row.no_show }}</td>
+        <td>{{ row.hours }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr><th>Итого</th><th>{{ sheet.totals.total }}</th><th>{{ sheet.totals.completed }}</th><th>{{ sheet.totals.cancelled }}</th><th>{{ sheet.totals.no_show }}</th><th>{{ sheet.totals.hours }}</th></tr>
+  </tfoot>
+</table>
+{% else %}
+<p class="empty">Выберите период.</p>
+{% endif %}
+
+<p><a href="{% url 'staff_mass_reschedule' pk=staff.pk %}">Массовый перенос занятий</a></p>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Отменить занятие{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Отменить занятие</h1>
+    <p>{{ appointment.child }} · {{ appointment.service }} · {{ appointment.starts_at|date:"d.m.Y H:i" }}</p>
+  </div>
+  <a class="button-link secondary" href="{% url 'appointment_detail' appointment.pk %}">Назад</a>
+</section>
+
+<section class="panel form-panel warning-panel">
+  <p>Отмена или неявка не списывает занятие автоматически. После сохранения отдельно примите решение по списанию.</p>
+  <form method="post" class="form-grid">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="form-error form-wide">{{ form.non_field_errors }}</div>
+    {% endif %}
+    {% for field in form %}
+      <label class="field {% if field.name == 'admin_note' %}form-wide{% endif %}">
+        <span>{{ field.label }}</span>
+        {{ field }}
+        {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+      </label>
+    {% endfor %}
+    <div class="form-actions form-wide">
+      <button type="submit">Сохранить отмену</button>
+      <a class="button-link secondary" href="{% url 'appointment_detail' appointment.pk %}">Отмена</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

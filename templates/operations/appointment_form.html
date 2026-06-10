@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>{{ title }}</h1>
+    {% if appointment %}
+      <p>{{ appointment.child }} · {{ appointment.starts_at|date:"d.m.Y H:i" }}</p>
+    {% else %}
+      <p>Заполните основные поля, система проверит конфликты получателя, специалиста и кабинета.</p>
+    {% endif %}
+  </div>
+  <a class="button-link secondary" href="{% if appointment %}{% url 'appointment_detail' appointment.pk %}{% else %}{% url 'schedule' %}{% endif %}">Назад</a>
+</section>
+
+<section class="panel form-panel">
+  <form method="post" class="form-grid">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="form-error form-wide">{{ form.non_field_errors }}</div>
+    {% endif %}
+    {% for field in form %}
+      <label class="field {% if field.name == 'admin_note' %}form-wide{% endif %}">
+        <span>{{ field.label }}</span>
+        {{ field }}
+        {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+        {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+      </label>
+    {% endfor %}
+    <div class="form-actions form-wide">
+      <button type="submit">Сохранить</button>
+      <a class="button-link secondary" href="{% if appointment %}{% url 'appointment_detail' appointment.pk %}{% else %}{% url 'schedule' %}{% endif %}">Отмена</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
