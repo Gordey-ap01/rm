@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Миграция средств каскада{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Миграция средств</h1>
+    <p>{{ block.program.child }} · {{ block.number }}. {{ block.title }}</p>
+  </div>
+  <a class="button-link secondary" href="{{ cancel_url }}">Назад</a>
+</section>
+
+<section class="wizard-shell">
+  <article class="panel wizard-summary">
+    <div>
+      <span class="eyebrow">Целевой каскад</span>
+      <strong>{{ block.service }}</strong>
+    </div>
+    <div>
+      <span class="eyebrow">Текущий счёт</span>
+      <strong>{% if block.balance_account %}{{ block.balance_account }}{% else %}не выбран{% endif %}</strong>
+    </div>
+    <div>
+      <span class="eyebrow">Остаток</span>
+      <strong>{% if block.balance_account %}{{ block.balance_account.current_balance }} {{ block.balance_account.get_unit_display }}{% else %}—{% endif %}</strong>
+    </div>
+  </article>
+
+  <article class="panel form-panel">
+    <form method="post" class="form-grid">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="form-error form-wide">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% for field in form %}
+        <label class="field {% if field.name == 'reason' %}form-wide{% endif %}">
+          <span>{{ field.label }}</span>
+          {{ field }}
+          {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+          {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+        </label>
+      {% endfor %}
+      <div class="form-actions form-wide">
+        <button type="submit"><i class="bi bi-arrow-left-right"></i> Перенести</button>
+        <a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>
+      </div>
+    </form>
+  </article>
+</section>
+{% endblock %}

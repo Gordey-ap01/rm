@@ -19,16 +19,19 @@ from operations.models import (
     LedgerEntry,
     ParentGuardian,
     Payment,
+    ProgramBlock,
     Room,
     Service,
     StaffAvailability,
     StaffMember,
     TimeOffRequest,
+    TreatmentProgram,
 )
 from operations.services import (
     appointments as appt_svc,
     billing as billing_svc,
     notifications as notif_svc,
+    program_wizard as wizard_svc,
     reports as reports_svc,
     scheduling as sched_svc,
 )
@@ -283,6 +286,23 @@ class SchedulingServiceTests(_FixturesMixin, TestCase):
         )
         self.assertIn("рабочего графика", reason)
 
+    def test_find_free_slots_respects_staff_availability(self):
+        StaffAvailability.objects.create(
+            staff_member=self.staff_a,
+            weekday=self.day.weekday(),
+            starts_at=time(9, 0),
+            ends_at=time(10, 0),
+        )
+        slots = sched_svc.find_free_slots(
+            self.day,
+            30,
+            staff_member=self.staff_a,
+            child=self.child,
+            room=self.room1,
+        )
+        self.assertIn(time(9, 0), [slot.time() for slot in slots])
+        self.assertNotIn(time(10, 30), [slot.time() for slot in slots])
+
     def test_mass_reschedule_cancels_and_creates_confirmations(self):
         appt_svc.create_appointment(
             child=self.child, staff_member=self.staff_a, service=self.service_log,
@@ -304,6 +324,116 @@ class SchedulingServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(len(result.confirmations), 2)
         for a in result.cancelled:
             self.assertEqual(a.status, Appointment.Status.CANCELLED)
+
+
+class ProgramWizardServiceTests(_FixturesMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.program = TreatmentProgram.objects.create(
+            child=self.child,
+            title="Программа после консультации",
+            status=TreatmentProgram.Status.ACTIVE,
+        )
+        self.block = ProgramBlock.objects.create(
+            program=self.program,
+            number=1,
+            title="Логопедический каскад",
+            service=self.service_log,
+            staff_member=self.staff_a,
+            planned_sessions=4,
+            balance_account=self.account,
+        )
+
+    def _preview(self, **overrides):
+        params = {
+            "date_from": self.day,
+            "date_to": self.day,
+            "weekdays": {self.day.weekday()},
+            "time_from": time(10, 0),
+            "time_until": time(12, 0),
+            "duration_minutes": 30,
+            "staff_member": self.staff_a,
+            "room": self.room1,
+            "requested_count": 2,
+        }
+        params.update(overrides)
+        return wizard_svc.suggest_program_block_slots(self.block, **params)
+
+    def test_suggest_allows_second_specialist_when_room_capacity_allows(self):
+        self.room1.capacity = 2
+        self.room1.save(update_fields=["capacity"])
+        other_child = Child.objects.create(last_name="Сидоров", first_name="Коля", primary_parent=self.parent)
+        appt_svc.create_appointment(
+            child=other_child,
+            staff_member=self.staff_b,
+            service=self.service_log,
+            starts_at=_local(self.day, time(10, 0)),
+            ends_at=_local(self.day, time(10, 30)),
+            room=self.room1,
+        )
+
+        preview = self._preview(requested_count=1)
+
+        self.assertEqual(len(preview.slots), 1)
+        self.assertEqual(preview.slots[0].starts_at.time(), time(10, 0))
+        self.assertEqual(preview.slots[0].room_occupancy, 1)
+        self.assertEqual(preview.slots[0].room_capacity, 2)
+
+    def test_suggest_skips_slot_when_room_capacity_is_full(self):
+        self.room1.capacity = 2
+        self.room1.save(update_fields=["capacity"])
+        child_b = Child.objects.create(last_name="Петров", first_name="Илья", primary_parent=self.parent)
+        child_c = Child.objects.create(last_name="Федоров", first_name="Олег", primary_parent=self.parent)
+        appt_svc.create_appointment(
+            child=child_b,
+            staff_member=self.staff_b,
+            service=self.service_log,
+            starts_at=_local(self.day, time(10, 0)),
+            ends_at=_local(self.day, time(10, 30)),
+            room=self.room1,
+        )
+        appt_svc.create_appointment(
+            child=child_c,
+            staff_member=self.staff_afk,
+            service=self.service_afk,
+            starts_at=_local(self.day, time(10, 0)),
+            ends_at=_local(self.day, time(10, 45)),
+            room=self.room1,
+        )
+
+        preview = self._preview(requested_count=1)
+
+        self.assertEqual(len(preview.slots), 1)
+        self.assertNotEqual(preview.slots[0].starts_at.time(), time(10, 0))
+
+    def test_balance_limit_caps_requested_sessions(self):
+        low_account = BalanceAccount.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            unit=BalanceAccount.Unit.SESSIONS,
+            service_scope=BalanceAccount.ServiceScope.SPECIFIC_SERVICE,
+            service=self.service_log,
+            initial_amount=Decimal("1"),
+        )
+        self.block.balance_account = low_account
+        self.block.save(update_fields=["balance_account"])
+
+        preview = self._preview(requested_count=3)
+
+        self.assertEqual(preview.allowed_count, 1)
+        self.assertTrue(preview.limited_by_balance)
+        self.assertEqual(len(preview.slots), 1)
+
+    def test_create_schedule_assigns_block_and_sequence(self):
+        preview = self._preview(requested_count=2)
+
+        result = wizard_svc.create_schedule_from_preview(preview, actor=self.user)
+
+        self.block.refresh_from_db()
+        self.assertEqual(len(result.appointments), 2)
+        self.assertEqual(self.block.status, ProgramBlock.Status.SCHEDULED)
+        self.assertEqual([appt.sequence_number for appt in result.appointments], [1, 2])
+        self.assertTrue(all(appt.program_block_id == self.block.pk for appt in result.appointments))
 
 
 class ReportsServiceTests(_FixturesMixin, TestCase):

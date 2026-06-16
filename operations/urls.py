@@ -14,6 +14,16 @@ urlpatterns = [
     path("recipients/<int:pk>/contract/", views.recipient_contract_pdf, name="recipient_contract_pdf"),
     path("recipients/<int:child_id>/programs/new/", views.program_create, name="program_create_for_child"),
     path("programs/<int:program_id>/blocks/new/", views.program_block_create, name="program_block_create"),
+    path(
+        "program-blocks/<int:block_id>/schedule-wizard/",
+        views.program_block_schedule_wizard,
+        name="program_block_schedule_wizard",
+    ),
+    path(
+        "program-blocks/<int:block_id>/transfer-funds/",
+        views.program_block_transfer_funds,
+        name="program_block_transfer_funds",
+    ),
     path("representatives/new/", views.representative_create, name="representative_create"),
     path("representatives/<int:pk>/edit/", views.representative_edit, name="representative_edit"),
     path("balance-accounts/new/", views.balance_account_create, name="balance_account_create"),

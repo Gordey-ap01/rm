@@ -144,6 +144,10 @@ def transfer_between_accounts(
         raise ValueError("Сумма перевода должна быть положительной.")
     if from_account.pk == to_account.pk:
         raise ValueError("Нельзя переводить в тот же счёт.")
+    if from_account.unit != to_account.unit:
+        raise ValueError("Нельзя переводить между счетами с разными единицами учета.")
+    if amount > from_account.current_balance:
+        raise ValueError("Недостаточно средств на исходном счете.")
 
     source = from_account.funding_source
     if source.transfer_policy == FundingSource.TransferPolicy.NOT_TRANSFERABLE:

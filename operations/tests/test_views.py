@@ -19,10 +19,12 @@ from operations.models import (
     FundingSource,
     ParentGuardian,
     Payment,
+    ProgramBlock,
     Recommendation,
     Room,
     Service,
     StaffMember,
+    TreatmentProgram,
 )
 
 
@@ -592,6 +594,98 @@ class SuggestedTransferSlotsTests(NewViewsTestBase):
         from operations.views.scheduling_helpers import suggested_transfer_slots
         slots = suggested_transfer_slots(appt, days=7, limit=3)
         self.assertLessEqual(len(slots), 3)
+
+
+class ProgramBlockWizardViewTests(NewViewsTestBase):
+    def setUp(self):
+        super().setUp()
+        self.program = TreatmentProgram.objects.create(
+            child=self.child,
+            title="Программа занятий",
+            status=TreatmentProgram.Status.ACTIVE,
+        )
+        self.block = ProgramBlock.objects.create(
+            program=self.program,
+            number=1,
+            title="Логопедический каскад",
+            service=self.service,
+            staff_member=self.staff,
+            planned_sessions=3,
+            balance_account=self.account,
+        )
+
+    def _wizard_payload(self, day, action="preview"):
+        return {
+            "start_date": day.isoformat(),
+            "end_date": day.isoformat(),
+            "weekdays": [str(day.weekday())],
+            "time_from": "10:00",
+            "time_until": "12:00",
+            "duration_minutes": "30",
+            "requested_count": "2",
+            "staff_member": str(self.staff.pk),
+            "room": str(self.room.pk),
+            "appointment_status": Appointment.Status.PROPOSED,
+            "action": action,
+        }
+
+    def test_schedule_wizard_get(self):
+        response = self.client.get(reverse("program_block_schedule_wizard", args=[self.block.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("form", response.context)
+        self.assertEqual(response.context["block"], self.block)
+
+    def test_schedule_wizard_create_creates_appointments(self):
+        day = timezone.localdate() + timedelta(days=8)
+        response = self.client.post(
+            reverse("program_block_schedule_wizard", args=[self.block.pk]),
+            self._wizard_payload(day, action="create"),
+        )
+        self.assertEqual(response.status_code, 302)
+        appointments = Appointment.objects.filter(program_block=self.block).order_by("sequence_number")
+        self.assertEqual(appointments.count(), 2)
+        self.assertEqual([appt.sequence_number for appt in appointments], [1, 2])
+
+    def test_transfer_funds_between_block_accounts(self):
+        movable_source = FundingSource.objects.create(
+            name="Переносимый грант",
+            source_type=FundingSource.SourceType.GRANT,
+            transfer_policy=FundingSource.TransferPolicy.WITHIN_CHILD,
+        )
+        source = BalanceAccount.objects.create(
+            child=self.child,
+            funding_source=movable_source,
+            unit=BalanceAccount.Unit.SESSIONS,
+            service_scope=BalanceAccount.ServiceScope.SPECIFIC_SERVICE,
+            service=self.service2,
+            initial_amount=Decimal("5"),
+        )
+        target = BalanceAccount.objects.create(
+            child=self.child,
+            funding_source=movable_source,
+            unit=BalanceAccount.Unit.SESSIONS,
+            service_scope=BalanceAccount.ServiceScope.SPECIFIC_SERVICE,
+            service=self.service,
+            initial_amount=Decimal("0"),
+        )
+        self.block.balance_account = target
+        self.block.save(update_fields=["balance_account"])
+
+        response = self.client.post(
+            reverse("program_block_transfer_funds", args=[self.block.pk]),
+            {
+                "from_account": source.pk,
+                "to_account": target.pk,
+                "amount": "2",
+                "reason": "Перенос тест",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        source.refresh_from_db()
+        target.refresh_from_db()
+        self.assertEqual(source.current_balance, Decimal("3"))
+        self.assertEqual(target.current_balance, Decimal("2"))
 
 
 class AppointmentDetailAndMoveTests(NewViewsTestBase):

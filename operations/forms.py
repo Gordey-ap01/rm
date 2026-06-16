@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime, time, timedelta
-from decimal import Decimal
+from decimal import ROUND_FLOOR, Decimal
 from typing import Any
 
 from django import forms
@@ -729,6 +729,156 @@ class ProgramBlockForm(forms.ModelForm):
             obj.save()
             self.save_m2m()
         return obj
+
+
+WEEKDAY_CHOICES = (
+    ("0", "ПН"),
+    ("1", "ВТ"),
+    ("2", "СР"),
+    ("3", "ЧТ"),
+    ("4", "ПТ"),
+    ("5", "СБ"),
+    ("6", "ВС"),
+)
+
+
+class ProgramBlockScheduleWizardForm(forms.Form):
+    start_date = forms.DateField(label="Начать с", widget=DATE_INPUT)
+    end_date = forms.DateField(label="Закончить до", widget=DATE_INPUT)
+    weekdays = forms.MultipleChoiceField(
+        label="Дни недели",
+        choices=WEEKDAY_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+    )
+    time_from = forms.TimeField(label="Искать с", widget=TIME_INPUT)
+    time_until = forms.TimeField(label="Искать до", widget=TIME_INPUT)
+    duration_minutes = forms.IntegerField(label="Длительность, мин", min_value=15, max_value=240)
+    requested_count = forms.IntegerField(label="Сколько занятий подобрать", min_value=1, max_value=120)
+    staff_member = forms.ModelChoiceField(label="Специалист", queryset=StaffMember.objects.none())
+    room = forms.ModelChoiceField(
+        label="Кабинет",
+        queryset=Room.objects.none(),
+        help_text="Обязателен: вместимость кабинета ограничивает число одновременных специалистов.",
+    )
+    appointment_status = forms.ChoiceField(
+        label="Статус создаваемых занятий",
+        choices=(
+            (Appointment.Status.PROPOSED, "Предложено / на согласование"),
+            (Appointment.Status.RESERVED, "Бронь"),
+            (Appointment.Status.CONFIRMED, "Подтверждено"),
+        ),
+        initial=Appointment.Status.PROPOSED,
+    )
+    allow_unpaid_reserve = forms.BooleanField(
+        label="Разрешить бронь сверх доступной оплаты",
+        required=False,
+        help_text="Использовать только если администратор осознанно ставит неоплаченные занятия.",
+    )
+    allow_outside_availability = forms.BooleanField(required=False, widget=forms.HiddenInput)
+
+    def __init__(self, *args, block: ProgramBlock, **kwargs):
+        self.block = block
+        super().__init__(*args, **kwargs)
+        self.fields["staff_member"].queryset = StaffMember.objects.filter(
+            status=StaffMember.Status.ACTIVE
+        ).order_by("full_name")
+        self.fields["room"].queryset = Room.objects.filter(is_active=True).order_by("name")
+
+        remaining = max(block.planned_sessions - block.scheduled_count, 1)
+        today = timezone.localdate()
+        self.initial.setdefault("start_date", block.program.starts_on or today)
+        self.initial.setdefault("end_date", block.program.ends_on or today + timedelta(days=30))
+        self.initial.setdefault("weekdays", ["0", "1", "2", "3", "4"])
+        self.initial.setdefault("time_from", time(9, 0))
+        self.initial.setdefault("time_until", time(18, 0))
+        self.initial.setdefault("duration_minutes", block.service.default_duration_minutes)
+        self.initial.setdefault("requested_count", remaining)
+        if block.staff_member_id:
+            self.initial.setdefault("staff_member", block.staff_member_id)
+
+    def clean(self):
+        cleaned = super().clean()
+        start_date = cleaned.get("start_date")
+        end_date = cleaned.get("end_date")
+        time_from = cleaned.get("time_from")
+        time_until = cleaned.get("time_until")
+        duration = cleaned.get("duration_minutes")
+
+        if start_date and end_date and end_date < start_date:
+            self.add_error("end_date", "Дата окончания не может быть раньше даты начала.")
+        if time_from and time_until and time_until <= time_from:
+            self.add_error("time_until", "Время окончания поиска должно быть позже начала.")
+        if time_from and time_until and duration:
+            start_dt = datetime.combine(timezone.localdate(), time_from)
+            end_dt = datetime.combine(timezone.localdate(), time_until)
+            if start_dt + timedelta(minutes=duration) > end_dt:
+                self.add_error("duration_minutes", "Длительность не помещается в выбранное окно.")
+        return cleaned
+
+
+class ProgramFundsTransferForm(forms.Form):
+    from_account = forms.ModelChoiceField(label="Откуда переносим", queryset=BalanceAccount.objects.none())
+    to_account = forms.ModelChoiceField(
+        label="Куда переносим",
+        queryset=BalanceAccount.objects.none(),
+        required=False,
+        help_text="Если у каскада уже выбран счёт, он будет подставлен автоматически.",
+    )
+    amount = forms.DecimalField(label="Сумма / количество", min_value=Decimal("0.01"), max_digits=12, decimal_places=2)
+    reason = forms.CharField(
+        label="Основание переноса",
+        widget=forms.Textarea(attrs={"rows": 3}),
+        initial="Миграция средств между каскадами занятий.",
+    )
+
+    def __init__(self, *args, block: ProgramBlock, **kwargs):
+        self.block = block
+        super().__init__(*args, **kwargs)
+        accounts = BalanceAccount.objects.select_related("funding_source", "service").filter(
+            child=block.program.child,
+            status=BalanceAccount.Status.ACTIVE,
+        )
+        target = block.balance_account
+        self.fields["from_account"].queryset = accounts.exclude(pk=target.pk).order_by(
+            "funding_source__name", "service__name"
+        ) if target else accounts.order_by("funding_source__name", "service__name")
+        self.fields["to_account"].queryset = accounts.order_by("funding_source__name", "service__name")
+        if target:
+            self.fields["to_account"].initial = target.pk
+            self.fields["to_account"].disabled = True
+
+    def clean(self):
+        cleaned = super().clean()
+        from_account = cleaned.get("from_account")
+        to_account = cleaned.get("to_account") or self.block.balance_account
+        amount = cleaned.get("amount")
+
+        if not to_account:
+            self.add_error("to_account", "Укажите счёт каскада, куда переносим средства.")
+            return cleaned
+        cleaned["to_account"] = to_account
+
+        if from_account and from_account.pk == to_account.pk:
+            self.add_error("from_account", "Нельзя переносить в тот же счёт.")
+        if from_account and from_account.unit != to_account.unit:
+            self.add_error("to_account", "Счета должны быть в одинаковых единицах: занятия или рубли.")
+        if to_account and not to_account.can_pay_for(self.block.service):
+            self.add_error("to_account", "Целевой счёт не подходит для услуги этого каскада.")
+        if from_account and amount and amount > from_account.current_balance:
+            self.add_error("amount", "На исходном счёте недостаточно средств.")
+        return cleaned
+
+    def estimated_sessions_after_transfer(self) -> int | None:
+        if not self.is_valid():
+            return None
+        to_account = self.cleaned_data["to_account"]
+        amount = self.cleaned_data["amount"]
+        if to_account.unit == BalanceAccount.Unit.SESSIONS:
+            return int(amount.to_integral_value(rounding=ROUND_FLOOR))
+        price = self.block.service.default_price
+        if not price or price <= 0:
+            return None
+        return int((amount / price).to_integral_value(rounding=ROUND_FLOOR))
 
 
 class AppointmentConfirmationSendForm(forms.Form):

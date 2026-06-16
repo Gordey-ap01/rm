@@ -159,11 +159,9 @@ def find_free_slots(
 
     while cursor + window <= window_end:
         slot_end = cursor + window
-        if not find_overlaps(cursor, slot_end, child=child, staff_member=staff_member, room=room).has_conflict:
-            if not is_within_availability(staff_member, cursor, slot_end):
-                pass
-            else:
-                starts.append(cursor)
+        report = find_overlaps(cursor, slot_end, child=child, staff_member=staff_member, room=room)
+        if not report.has_conflict and not is_within_availability(staff_member, cursor, slot_end):
+            starts.append(cursor)
         cursor += step
     return starts
 

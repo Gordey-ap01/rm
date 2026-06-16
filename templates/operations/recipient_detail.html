@@ -86,7 +86,7 @@
         </div>
         <div class="table-responsive">
           <table class="table table-sm table-hover mb-0">
-            <thead class="table-light"><tr><th>№</th><th>Блок</th><th>Услуга</th><th>Специалист</th><th>План</th><th>Расписано</th><th>Списано</th><th>Счёт</th></tr></thead>
+            <thead class="table-light"><tr><th>№</th><th>Блок</th><th>Услуга</th><th>Специалист</th><th>План</th><th>Расписано</th><th>Списано</th><th>Счёт</th><th></th></tr></thead>
             <tbody>
             {% for block in program.blocks.all %}
               <tr>
@@ -98,9 +98,17 @@
                 <td>{{ block.scheduled_count }}</td>
                 <td>{{ block.paid_count }}</td>
                 <td>{% if block.balance_account %}{{ block.balance_account.current_balance }} {{ block.balance_account.get_unit_display }}{% else %}<span class="text-muted">не выбран</span>{% endif %}</td>
+                <td class="text-end text-nowrap">
+                  <a class="btn btn-outline-primary btn-sm py-0" href="{% url 'program_block_schedule_wizard' block.pk %}">
+                    <i class="bi bi-calendar-plus"></i> Подобрать
+                  </a>
+                  <a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'program_block_transfer_funds' block.pk %}">
+                    <i class="bi bi-arrow-left-right"></i> Средства
+                  </a>
+                </td>
               </tr>
             {% empty %}
-              <tr><td colspan="8" class="text-muted">Блоки ещё не созданы.</td></tr>
+              <tr><td colspan="9" class="text-muted">Блоки ещё не созданы.</td></tr>
             {% endfor %}
             </tbody>
           </table>
