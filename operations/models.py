@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import time
 from decimal import Decimal
 from typing import Any
 
@@ -149,6 +150,7 @@ class Child(TimeStampedModel, SoftDeleteMixin):
     )
     diagnosis = models.TextField("диагноз/особенности", blank=True)
     notes = models.TextField("примечания", blank=True)
+    color = models.CharField("цветовая метка", max_length=20, default="#00a443")
 
     class Meta:
         verbose_name = "получатель"
@@ -323,6 +325,7 @@ class BalanceAccount(TimeStampedModel, SoftDeleteMixin):
     valid_from = models.DateField("действует с", null=True, blank=True)
     valid_until = models.DateField("действует до", null=True, blank=True)
     status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.ACTIVE)
+    color = models.CharField("цветовая метка", max_length=20, default="#f59e0b")
     notes = models.TextField("примечания", blank=True)
 
     class Meta:
@@ -348,6 +351,122 @@ class BalanceAccount(TimeStampedModel, SoftDeleteMixin):
     def can_pay_for(self, service: Service) -> bool:
         return self.service_scope == self.ServiceScope.ANY or self.service_id == service.id
 
+    @property
+    def warning_level(self) -> str:
+        balance = self.current_balance
+        if balance <= 0:
+            return "exhausted"
+        if self.unit == self.Unit.SESSIONS:
+            if balance <= 1:
+                return "critical"
+            if balance <= 3:
+                return "warning"
+            if balance <= 7:
+                return "notice"
+            return "ok"
+        if self.service_id and self.service.default_price:
+            price = self.service.default_price
+            if balance <= price:
+                return "critical"
+            if balance <= price * Decimal("3"):
+                return "warning"
+            if balance <= price * Decimal("7"):
+                return "notice"
+        return "ok"
+
+    @property
+    def is_low_balance(self) -> bool:
+        return self.warning_level in {"exhausted", "critical", "warning", "notice"}
+
+    @property
+    def warning_label(self) -> str:
+        return {
+            "exhausted": "исчерпан",
+            "critical": "1 занятие",
+            "warning": "до 3",
+            "notice": "до 7",
+            "ok": "ок",
+        }.get(self.warning_level, "ок")
+
+
+class TreatmentProgram(TimeStampedModel):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Черновик"
+        ACTIVE = "active", "Активна"
+        PAUSED = "paused", "Пауза"
+        COMPLETED = "completed", "Завершена"
+        CANCELLED = "cancelled", "Отменена"
+
+    child = models.ForeignKey(Child, verbose_name="получатель", on_delete=models.CASCADE, related_name="treatment_programs")
+    title = models.CharField("название", max_length=200)
+    consultation = models.ForeignKey(
+        "Appointment",
+        verbose_name="первичная консультация",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_programs",
+    )
+    status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.DRAFT)
+    starts_on = models.DateField("дата начала", null=True, blank=True)
+    ends_on = models.DateField("дата окончания", null=True, blank=True)
+    color = models.CharField("цвет", max_length=20, default="#1267f2")
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "программа занятий"
+        verbose_name_plural = "программы занятий"
+        ordering = ["child__last_name", "starts_on", "title"]
+
+    def __str__(self) -> str:
+        return f"{self.child}: {self.title}"
+
+
+class ProgramBlock(TimeStampedModel):
+    class Status(models.TextChoices):
+        PLANNED = "planned", "Запланирован"
+        SCHEDULED = "scheduled", "Расписан"
+        IN_PROGRESS = "in_progress", "Идёт"
+        COMPLETED = "completed", "Завершён"
+        CANCELLED = "cancelled", "Отменён"
+
+    program = models.ForeignKey(TreatmentProgram, verbose_name="программа", on_delete=models.CASCADE, related_name="blocks")
+    number = models.PositiveIntegerField("номер блока", default=1)
+    title = models.CharField("название блока", max_length=200)
+    service = models.ForeignKey(Service, verbose_name="услуга", on_delete=models.PROTECT)
+    staff_member = models.ForeignKey(StaffMember, verbose_name="специалист", on_delete=models.PROTECT, null=True, blank=True)
+    planned_sessions = models.PositiveIntegerField("план занятий", default=1)
+    balance_account = models.ForeignKey(
+        BalanceAccount,
+        verbose_name="счёт оплаты",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="program_blocks",
+    )
+    status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.PLANNED)
+    color = models.CharField("цвет", max_length=20, default="#b71b55")
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "блок программы"
+        verbose_name_plural = "блоки программ"
+        ordering = ["program", "number"]
+        constraints = [
+            models.UniqueConstraint(fields=["program", "number"], name="unique_program_block_number"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.program} / {self.number}. {self.title}"
+
+    @property
+    def scheduled_count(self) -> int:
+        return self.appointments.exclude(status=Appointment.Status.CANCELLED).count()
+
+    @property
+    def paid_count(self) -> int:
+        return self.appointments.filter(billing_decision=Appointment.BillingDecision.CHARGE).count()
+
 
 class AppointmentSeries(TimeStampedModel):
     class Status(models.TextChoices):
@@ -360,6 +479,14 @@ class AppointmentSeries(TimeStampedModel):
     service = models.ForeignKey(Service, verbose_name="услуга", on_delete=models.PROTECT)
     staff_member = models.ForeignKey(StaffMember, verbose_name="специалист", on_delete=models.PROTECT)
     room = models.ForeignKey(Room, verbose_name="помещение", on_delete=models.PROTECT, null=True, blank=True)
+    program_block = models.ForeignKey(
+        ProgramBlock,
+        verbose_name="блок программы",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="series",
+    )
     title = models.CharField("название серии", max_length=200)
     start_date = models.DateField("дата начала")
     end_date = models.DateField("дата окончания")
@@ -425,6 +552,14 @@ class AppointmentSeries(TimeStampedModel):
             ends_at = starts_at + dtmod.timedelta(minutes=self.duration_minutes)
             if starts_at in overlaps:
                 continue
+            sequence_number = None
+            if self.program_block_id:
+                sequence_number = (
+                    Appointment.objects.filter(program_block=self.program_block)
+                    .exclude(status=Appointment.Status.CANCELLED)
+                    .count()
+                    + 1
+                )
             Appointment.objects.create(
                 child=self.child,
                 staff_member=self.staff_member,
@@ -434,6 +569,8 @@ class AppointmentSeries(TimeStampedModel):
                 ends_at=ends_at,
                 status=Appointment.Status.CONFIRMED,
                 series=self,
+                program_block=self.program_block,
+                sequence_number=sequence_number,
             )
             created += 1
         return created
@@ -504,6 +641,15 @@ class Appointment(TimeStampedModel):
         blank=True,
         related_name="appointments",
     )
+    program_block = models.ForeignKey(
+        ProgramBlock,
+        verbose_name="блок программы",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="appointments",
+    )
+    sequence_number = models.PositiveIntegerField("номер в блоке", null=True, blank=True)
     admin_note = models.TextField("заметка администратора", blank=True)
     specialist_note = models.TextField("заметка специалиста", blank=True)
     specialist_marked_at = models.DateTimeField("специалист отметил", null=True, blank=True)
@@ -522,15 +668,28 @@ class Appointment(TimeStampedModel):
             raise ValidationError({"ends_at": "Окончание должно быть позже начала."})
         if self.status in ACTIVE_APPOINTMENT_STATUSES and self.starts_at and self.ends_at:
             self._validate_no_overlap()
+            self._validate_staff_availability()
         if self.billing_account_id:
             if self.billing_account.child_id != self.child_id:
                 raise ValidationError({"billing_account": "Счет должен принадлежать этому получателю."})
             if not self.billing_account.can_pay_for(self.service):
                 raise ValidationError({"billing_account": "Счет не подходит для этой услуги."})
+        if self.program_block_id:
+            if self.program_block.program.child_id != self.child_id:
+                raise ValidationError({"program_block": "Блок программы должен принадлежать этому получателю."})
+            if self.program_block.service_id != self.service_id:
+                raise ValidationError({"program_block": "Блок программы должен соответствовать услуге занятия."})
         if self.billing_decision == self.BillingDecision.CHARGE and not self.billing_account_id:
             raise ValidationError({"billing_account": "Для списания нужно выбрать счет баланса."})
 
     def save(self, *args: object, validate_schedule: bool = True, **kwargs: object) -> None:
+        if not self.pk and self.program_block_id and not self.sequence_number:
+            self.sequence_number = (
+                Appointment.objects.filter(program_block_id=self.program_block_id)
+                .exclude(status=Appointment.Status.CANCELLED)
+                .count()
+                + 1
+            )
         if validate_schedule:
             self.full_clean(exclude={"specialist_note"} if not self.pk else None)
         super().save(*args, **kwargs)
@@ -559,10 +718,47 @@ class Appointment(TimeStampedModel):
             )
         if self.staff_member_id and qs.filter(staff_member_id=self.staff_member_id).exists():
             messages.append("специалист уже занят в это время")
-        if self.room_id and qs.filter(room_id=self.room_id).exists():
-            messages.append("кабинет уже занят в это время")
+        if self.room_id:
+            room_capacity = max(getattr(self.room, "capacity", 1) or 1, 1)
+            if qs.filter(room_id=self.room_id).count() >= room_capacity:
+                messages.append("кабинет уже занят в это время")
         if messages:
             raise ValidationError("Конфликт расписания: " + ", ".join(messages) + ".")
+
+    def _validate_staff_availability(self) -> None:
+        if not self.staff_member_id or not self.starts_at or not self.ends_at:
+            return
+
+        local_start = timezone.localtime(self.starts_at)
+        local_end = timezone.localtime(self.ends_at)
+        day = local_start.date()
+        if local_end.date() != day:
+            raise ValidationError("Недоступность специалиста: занятие должно помещаться в один день.")
+
+        if TimeOffRequest.objects.filter(
+            staff_member_id=self.staff_member_id,
+            status=TimeOffRequest.Status.APPROVED,
+            starts_on__lte=day,
+            ends_on__gte=day,
+        ).exists():
+            raise ValidationError("Недоступность специалиста: согласован отпуск/отгул.")
+
+        windows = list(
+            StaffAvailability.objects.filter(
+                staff_member_id=self.staff_member_id,
+                weekday=day.weekday(),
+                is_active=True,
+            ).order_by("starts_at")
+        )
+        start_time = local_start.time().replace(second=0, microsecond=0)
+        end_time = local_end.time().replace(second=0, microsecond=0)
+        if not windows:
+            if time(9, 0) <= start_time and end_time <= time(18, 0):
+                return
+            raise ValidationError("Недоступность специалиста: время вне базового окна 09:00-18:00.")
+
+        if not any(window.starts_at <= start_time and end_time <= window.ends_at for window in windows):
+            raise ValidationError("Недоступность специалиста: время вне рабочего графика.")
 
     @property
     def duration_minutes(self) -> int:

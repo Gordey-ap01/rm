@@ -18,6 +18,9 @@
       <button type="submit">Открыть</button>
     </form>
   {% endif %}
+  <div class="header-actions">
+    <a class="button-link secondary" href="{% url 'schedule' %}?staff_id={{ staff.pk }}">Составить расписание на месяц</a>
+  </div>
   <div class="summary-strip" aria-label="Сводка специалиста">
     <div>
       <strong>{{ appointments|length }}</strong>

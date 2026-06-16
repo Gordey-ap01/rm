@@ -13,12 +13,14 @@ from .models import (
     Note,
     ParentGuardian,
     Payment,
+    ProgramBlock,
     Recommendation,
     Room,
     Service,
     StaffAvailability,
     StaffMember,
     TimeOffRequest,
+    TreatmentProgram,
 )
 
 admin.site.site_header = "Реабилитационный центр"
@@ -104,19 +106,43 @@ class PaymentInline(admin.TabularInline):
 
 @admin.register(BalanceAccount)
 class BalanceAccountAdmin(admin.ModelAdmin):
-    list_display = ("child", "funding_source", "unit", "service_scope", "service", "status", "current_balance", "archived_at")
+    list_display = ("child", "funding_source", "unit", "service_scope", "service", "status", "current_balance", "warning_level", "archived_at")
     search_fields = ("child__last_name", "child__first_name", "funding_source__name", "service__name")
     list_filter = ("unit", "service_scope", "status", "funding_source__source_type", SoftDeletedFilter)
     autocomplete_fields = ("child", "funding_source", "service")
     inlines = (LedgerEntryInline, PaymentInline)
 
 
+class ProgramBlockInline(admin.TabularInline):
+    model = ProgramBlock
+    extra = 0
+    fields = ("number", "title", "service", "staff_member", "planned_sessions", "balance_account", "status", "color")
+    autocomplete_fields = ("service", "staff_member", "balance_account")
+
+
+@admin.register(TreatmentProgram)
+class TreatmentProgramAdmin(admin.ModelAdmin):
+    list_display = ("title", "child", "status", "starts_on", "ends_on")
+    search_fields = ("title", "child__last_name", "child__first_name", "notes")
+    list_filter = ("status",)
+    autocomplete_fields = ("child", "consultation")
+    inlines = (ProgramBlockInline,)
+
+
+@admin.register(ProgramBlock)
+class ProgramBlockAdmin(admin.ModelAdmin):
+    list_display = ("program", "number", "title", "service", "staff_member", "planned_sessions", "scheduled_count", "paid_count", "status")
+    search_fields = ("title", "program__title", "program__child__last_name", "program__child__first_name")
+    list_filter = ("status", "service", "staff_member")
+    autocomplete_fields = ("program", "service", "staff_member", "balance_account")
+
+
 @admin.register(AppointmentSeries)
 class AppointmentSeriesAdmin(admin.ModelAdmin):
-    list_display = ("title", "child", "service", "staff_member", "start_date", "end_date", "status")
+    list_display = ("title", "child", "service", "staff_member", "program_block", "start_date", "end_date", "status")
     search_fields = ("title", "child__last_name", "child__first_name", "service__name", "staff_member__full_name")
     list_filter = ("status", "service", "staff_member")
-    autocomplete_fields = ("child", "service", "staff_member", "room")
+    autocomplete_fields = ("child", "service", "staff_member", "room", "program_block")
 
 
 @admin.register(Appointment)
@@ -128,12 +154,14 @@ class AppointmentAdmin(admin.ModelAdmin):
         "staff_member",
         "service",
         "room",
+        "program_block",
+        "sequence_number",
         "status",
         "billing_decision",
     )
     search_fields = ("child__last_name", "child__first_name", "staff_member__full_name", "service__name")
     list_filter = ("status", "attendance_status", "billing_decision", "service", "staff_member")
-    autocomplete_fields = ("child", "staff_member", "service", "room", "billing_account", "source_appointment", "series")
+    autocomplete_fields = ("child", "staff_member", "service", "room", "billing_account", "source_appointment", "series", "program_block")
     date_hierarchy = "starts_at"
 
 

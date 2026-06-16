@@ -58,7 +58,7 @@ def low_balance_accounts():
     return [
         account
         for account in BalanceAccount.objects.select_related("child", "funding_source", "service")
-        if account.current_balance <= 2
+        if account.is_low_balance
     ]
 
 

@@ -10,6 +10,7 @@
   </div>
   <div class="d-flex flex-wrap gap-1">
     <a class="btn btn-primary btn-sm" href="{% url 'appointment_create' %}?child_id={{ recipient.pk }}"><i class="bi bi-plus-circle"></i> Занятие</a>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'program_create_for_child' recipient.pk %}"><i class="bi bi-diagram-3"></i> Программа</a>
     <a class="btn btn-outline-success btn-sm" href="{% url 'recipient_contract_pdf' recipient.pk %}"><i class="bi bi-file-pdf"></i> Договор</a>
     <a class="btn btn-outline-secondary btn-sm" href="{% url 'balance_account_create' %}?recipient_id={{ recipient.pk }}"><i class="bi bi-wallet2"></i> Счёт</a>
     <a class="btn btn-outline-info btn-sm" href="{% url 'recommendation_list' %}?child_id={{ recipient.pk }}">Рекомендации</a>
@@ -48,12 +49,13 @@
     {% if accounts %}
     <div class="table-responsive">
       <table class="table table-sm table-hover mb-0">
-        <thead class="table-light"><tr><th>Источник</th><th>Остаток</th><th></th></tr></thead>
+        <thead class="table-light"><tr><th>Источник</th><th>Остаток</th><th>Риск</th><th></th></tr></thead>
         <tbody>
         {% for acc in accounts %}
           <tr>
-            <td>{{ acc.funding_source }}{% if acc.service %} ({{ acc.service }}){% endif %}</td>
+            <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ acc.color }}"></span> {{ acc.funding_source }}{% if acc.service %} ({{ acc.service }}){% endif %}</td>
             <td class="fw-semibold">{{ acc.current_balance }} {{ acc.get_unit_display }}</td>
+            <td><span class="status-pill balance-{{ acc.warning_level }}">{{ acc.warning_label }}</span></td>
             <td class="text-end text-nowrap">
               <a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'balance_account_edit' acc.pk %}">Править</a>
               <a class="btn btn-outline-primary btn-sm py-0" href="{% url 'payment_create_for_account' acc.pk %}">Пополнить</a>
@@ -65,6 +67,49 @@
     </div>
     {% else %}<p class="text-muted small mb-0">Счетов нет.</p>{% endif %}
   </article>
+</section>
+
+<section class="panel bg-white border rounded p-3 shadow-sm mt-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h2 class="h6 mb-0">Программы и каскады занятий</h2>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'program_create_for_child' recipient.pk %}">+ Программа</a>
+  </div>
+  {% if programs %}
+    {% for program in programs %}
+      <div class="program-strip mb-3" style="border-left:6px solid {{ program.color }};padding-left:12px">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+          <div>
+            <strong>{{ program.title }}</strong>
+            <span class="status-pill">{{ program.get_status_display }}</span>
+          </div>
+          <a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'program_block_create' program.pk %}">+ Блок</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="table-light"><tr><th>№</th><th>Блок</th><th>Услуга</th><th>Специалист</th><th>План</th><th>Расписано</th><th>Списано</th><th>Счёт</th></tr></thead>
+            <tbody>
+            {% for block in program.blocks.all %}
+              <tr>
+                <td>{{ block.number }}</td>
+                <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ block.color }}"></span> {{ block.title }}</td>
+                <td>{{ block.service }}</td>
+                <td>{% if block.staff_member %}{{ block.staff_member }}{% else %}<span class="text-muted">не выбран</span>{% endif %}</td>
+                <td>{{ block.planned_sessions }}</td>
+                <td>{{ block.scheduled_count }}</td>
+                <td>{{ block.paid_count }}</td>
+                <td>{% if block.balance_account %}{{ block.balance_account.current_balance }} {{ block.balance_account.get_unit_display }}{% else %}<span class="text-muted">не выбран</span>{% endif %}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="8" class="text-muted">Блоки ещё не созданы.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p class="text-muted small mb-0">Программ пока нет. После первичной консультации можно создать программу и добавить блоки занятий.</p>
+  {% endif %}
 </section>
 
 <section class="panel bg-white border rounded p-3 shadow-sm mt-3">

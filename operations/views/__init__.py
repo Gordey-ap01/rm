@@ -26,6 +26,7 @@ from .dashboard import (
 )
 from .documents import document_create, document_list
 from .payments import payment_create
+from .programs import program_block_create, program_create
 from .recipients import (
     recipient_contract_pdf,
     recipient_create,
@@ -79,6 +80,8 @@ __all__ = [
     "needs_billing_queryset",
     "needs_transfer_queryset",
     "payment_create",
+    "program_block_create",
+    "program_create",
     "recipient_contract_pdf",
     "recipient_create",
     "recipient_detail",

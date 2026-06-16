@@ -28,6 +28,8 @@ class ConflictReport:
     child_conflict: Appointment | None
     staff_conflict: Appointment | None
     room_conflict: Appointment | None
+    room_capacity: int = 1
+    room_occupancy: int = 0
 
     @property
     def has_conflict(self) -> bool:
@@ -68,10 +70,15 @@ def find_overlaps(
     )
     if exclude_pk:
         qs = qs.exclude(pk=exclude_pk)
+    room_qs = qs.filter(room=room) if room else qs.none()
+    room_occupancy = room_qs.count() if room else 0
+    room_capacity = max(getattr(room, "capacity", 1) or 1, 1)
     return ConflictReport(
         child_conflict=qs.filter(child=child).first() if child else None,
         staff_conflict=qs.filter(staff_member=staff_member).first() if staff_member else None,
-        room_conflict=qs.filter(room=room).first() if room else None,
+        room_conflict=room_qs.first() if room and room_occupancy >= room_capacity else None,
+        room_capacity=room_capacity,
+        room_occupancy=room_occupancy,
     )
 
 
@@ -256,7 +263,7 @@ def mass_reschedule(
                         appt.duration_minutes,
                         staff_member=peer,
                         child=appt.child,
-                        room=appt.room,
+                        room=None,
                     )[: max_suggestions_per_appointment - len(slots)]
                 )
                 if len(slots) >= max_suggestions_per_appointment:

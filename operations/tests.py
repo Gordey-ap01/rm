@@ -10,6 +10,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from .forms import AppointmentForm
 from .models import (
     Appointment,
     AppointmentConfirmation,
@@ -21,12 +22,14 @@ from .models import (
     LedgerEntry,
     ParentGuardian,
     Payment,
+    ProgramBlock,
     Recommendation,
     Room,
     Service,
     StaffAvailability,
     StaffMember,
     TimeOffRequest,
+    TreatmentProgram,
 )
 
 
@@ -413,6 +416,156 @@ class ApiAccessTests(TestCase):
         self.client.force_login(self.admin)
         response = self.client.get("/api/appointments/")
         self.assertEqual(response.status_code, 200)
+
+
+class SchedulingBusinessRulesTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.parent = ParentGuardian.objects.create(last_name="Parent", first_name="One", phone="+70000000001")
+        cls.child_a = Child.objects.create(last_name="Child", first_name="A", primary_parent=cls.parent)
+        cls.child_b = Child.objects.create(last_name="Child", first_name="B", primary_parent=cls.parent)
+        cls.child_c = Child.objects.create(last_name="Child", first_name="C", primary_parent=cls.parent)
+        cls.staff_a = StaffMember.objects.create(full_name="Staff A")
+        cls.staff_b = StaffMember.objects.create(full_name="Staff B")
+        cls.staff_c = StaffMember.objects.create(full_name="Staff C")
+        cls.service = Service.objects.create(name="Speech", code="SP", default_duration_minutes=30)
+        cls.room = Room.objects.create(name="Shared room", capacity=2)
+        cls.funding = FundingSource.objects.create(name="Personal", source_type=FundingSource.SourceType.PERSONAL)
+        cls.account = BalanceAccount.objects.create(
+            child=cls.child_a,
+            funding_source=cls.funding,
+            unit=BalanceAccount.Unit.SESSIONS,
+            service_scope=BalanceAccount.ServiceScope.ANY,
+            initial_amount=Decimal("7"),
+        )
+
+    def local_dt(self, day, clock):
+        return timezone.make_aware(datetime.combine(day, clock), timezone.get_current_timezone())
+
+    def test_room_capacity_allows_several_specialists_until_full(self):
+        day = timezone.localdate() + timedelta(days=15)
+        starts_at = self.local_dt(day, time(10, 0))
+        ends_at = starts_at + timedelta(minutes=30)
+
+        Appointment.objects.create(
+            child=self.child_a,
+            service=self.service,
+            staff_member=self.staff_a,
+            room=self.room,
+            starts_at=starts_at,
+            ends_at=ends_at,
+        )
+        Appointment.objects.create(
+            child=self.child_b,
+            service=self.service,
+            staff_member=self.staff_b,
+            room=self.room,
+            starts_at=starts_at,
+            ends_at=ends_at,
+        )
+
+        with self.assertRaises(ValidationError):
+            Appointment.objects.create(
+                child=self.child_c,
+                service=self.service,
+                staff_member=self.staff_c,
+                room=self.room,
+                starts_at=starts_at,
+                ends_at=ends_at,
+            )
+
+    def test_appointment_outside_specialist_work_time_is_rejected(self):
+        day = timezone.localdate() + timedelta(days=16)
+        starts_at = self.local_dt(day, time(19, 0))
+
+        with self.assertRaises(ValidationError):
+            Appointment.objects.create(
+                child=self.child_a,
+                service=self.service,
+                staff_member=self.staff_a,
+                room=self.room,
+                starts_at=starts_at,
+                ends_at=starts_at + timedelta(minutes=30),
+            )
+
+    def test_program_block_numbers_appointments_and_counts_payment_decisions(self):
+        program = TreatmentProgram.objects.create(child=self.child_a, title="Base program")
+        block = ProgramBlock.objects.create(
+            program=program,
+            number=1,
+            title="Speech block",
+            service=self.service,
+            staff_member=self.staff_a,
+            planned_sessions=2,
+            balance_account=self.account,
+        )
+        day = timezone.localdate() + timedelta(days=17)
+        first_start = self.local_dt(day, time(10, 0))
+        second_start = self.local_dt(day + timedelta(days=1), time(10, 0))
+
+        first = Appointment.objects.create(
+            child=self.child_a,
+            service=self.service,
+            staff_member=self.staff_a,
+            room=self.room,
+            starts_at=first_start,
+            ends_at=first_start + timedelta(minutes=30),
+            program_block=block,
+            billing_account=self.account,
+            billing_decision=Appointment.BillingDecision.CHARGE,
+        )
+        second = Appointment.objects.create(
+            child=self.child_a,
+            service=self.service,
+            staff_member=self.staff_a,
+            room=self.room,
+            starts_at=second_start,
+            ends_at=second_start + timedelta(minutes=30),
+            program_block=block,
+        )
+
+        self.assertEqual(first.sequence_number, 1)
+        self.assertEqual(second.sequence_number, 2)
+        self.assertEqual(block.scheduled_count, 2)
+        self.assertEqual(block.paid_count, 1)
+
+    def test_appointment_form_rejects_program_block_from_other_recipient(self):
+        program = TreatmentProgram.objects.create(child=self.child_b, title="Other program")
+        block = ProgramBlock.objects.create(
+            program=program,
+            number=1,
+            title="Other block",
+            service=self.service,
+            planned_sessions=1,
+        )
+        day = timezone.localdate() + timedelta(days=18)
+
+        form = AppointmentForm(
+            {
+                "child": self.child_a.id,
+                "service": self.service.id,
+                "staff_member": self.staff_a.id,
+                "room": self.room.id,
+                "program_block": block.id,
+                "status": Appointment.Status.CONFIRMED,
+                "admin_note": "",
+                "date": day.isoformat(),
+                "time": "10:00",
+                "duration_minutes": "30",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("program_block", form.errors)
+
+    def test_balance_warning_levels_follow_7_3_1_thresholds(self):
+        self.assertEqual(self.account.warning_level, "notice")
+        self.account.initial_amount = Decimal("3")
+        self.assertEqual(self.account.warning_level, "warning")
+        self.account.initial_amount = Decimal("1")
+        self.assertEqual(self.account.warning_level, "critical")
+        self.account.initial_amount = Decimal("0")
+        self.assertEqual(self.account.warning_level, "exhausted")
 
 
 class SoftDeleteMixinTests(TestCase):

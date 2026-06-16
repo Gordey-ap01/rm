@@ -198,6 +198,10 @@
       var p = info.event.extendedProps;
       if (p && p.staffId) info.el.dataset.staffId = p.staffId;
       if (p && p.serviceId) info.el.dataset.serviceId = p.serviceId;
+      var staffFilter = document.getElementById("staffFilter");
+      var serviceFilter = document.getElementById("serviceFilter");
+      if (staffFilter && staffFilter.value && p.staffId && String(p.staffId) !== staffFilter.value) info.el.style.display = "none";
+      if (serviceFilter && serviceFilter.value && p.serviceId && String(p.serviceId) !== serviceFilter.value) info.el.style.display = "none";
     },
     eventClick: function(info) {
       if (info.event.source && info.event.source.id === "unavailability") return;
@@ -249,11 +253,16 @@
   // Populate filters
   fetch("/api/staff/").then(function(r) { return r.json(); }).then(function(d) {
     var sel = document.getElementById("staffFilter");
+    var selectedStaff = new URLSearchParams(window.location.search).get("staff_id");
     d.forEach(function(s) {
       var o = document.createElement("option"); o.value = s.id; o.textContent = s.full_name;
       o.style.borderLeft = "4px solid " + (s.color || "#ccc");
       sel.appendChild(o);
     });
+    if (selectedStaff) {
+      sel.value = selectedStaff;
+      sel.dispatchEvent(new Event("change"));
+    }
   });
   fetch("/api/services/").then(function(r) { return r.json(); }).then(function(d) {
     var sel = document.getElementById("serviceFilter");

@@ -717,6 +717,30 @@ th {
   border-color: var(--line);
 }
 
+.balance-exhausted {
+  background: var(--danger-soft);
+  border-color: #fda29b;
+  color: var(--danger);
+}
+
+.balance-critical {
+  background: #fff1f2;
+  border-color: #fb7185;
+  color: #be123c;
+}
+
+.balance-warning {
+  background: var(--warn-soft);
+  border-color: #fdba74;
+  color: var(--warn);
+}
+
+.balance-notice {
+  background: #fefce8;
+  border-color: #fde047;
+  color: #854d0e;
+}
+
 .empty-state {
   margin: 0;
   padding: 14px;

@@ -17,16 +17,17 @@
   <div class="table-responsive">
     <table class="table table-hover align-middle mb-0">
       <thead class="table-light">
-      <tr><th>Получатель</th><th>Источник</th><th>Тип</th><th>Услуга</th><th class="text-end">Остаток</th><th>Статус</th><th class="text-end"></th></tr>
+      <tr><th>Получатель</th><th>Источник</th><th>Тип</th><th>Услуга</th><th class="text-end">Остаток</th><th>Риск</th><th>Статус</th><th class="text-end"></th></tr>
       </thead>
       <tbody>
       {% for account in accounts %}
         <tr>
-          <td>{{ account.child }}</td>
-          <td>{{ account.funding_source }}</td>
+          <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ account.child.color }}"></span> {{ account.child }}</td>
+          <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ account.color }}"></span> {{ account.funding_source }}</td>
           <td>{{ account.get_unit_display }}</td>
           <td>{% if account.service %}{{ account.service }}{% else %}<span class="text-muted">Любые</span>{% endif %}</td>
           <td class="text-end fw-semibold">{{ account.current_balance }}</td>
+          <td><span class="status-pill balance-{{ account.warning_level }}">{{ account.warning_label }}</span></td>
           <td><span class="status-pill">{{ account.get_status_display }}</span></td>
           <td class="text-end text-nowrap">
             <a class="btn btn-outline-secondary btn-sm" href="{% url 'balance_account_edit' account.pk %}">Править</a>
@@ -42,7 +43,7 @@
           </td>
         </tr>
       {% empty %}
-        <tr><td colspan="7" class="text-center py-4 text-muted">Счетов пока нет.</td></tr>
+        <tr><td colspan="8" class="text-center py-4 text-muted">Счетов пока нет.</td></tr>
       {% endfor %}
       </tbody>
     </table>

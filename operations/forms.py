@@ -22,12 +22,14 @@ from .models import (
     LedgerEntry,
     ParentGuardian,
     Payment,
+    ProgramBlock,
     Recommendation,
     Room,
     Service,
     StaffAvailability,
     StaffMember,
     TimeOffRequest,
+    TreatmentProgram,
 )
 
 DATE_INPUT = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
@@ -49,7 +51,11 @@ def appointment_conflicts(starts_at, ends_at, child, staff_member, room=None, ex
     if staff_member:
         conflicts["staff"] = qs.filter(staff_member=staff_member)
     if room:
-        conflicts["room"] = qs.filter(room=room)
+        room_qs = qs.filter(room=room)
+        if room_qs.count() >= max(room.capacity, 1):
+            conflicts["room"] = room_qs
+        else:
+            conflicts["room"] = qs.none()
     return conflicts
 
 
@@ -89,8 +95,6 @@ def staff_unavailability_reason(staff_member, starts_at, ends_at):
             is_active=True,
         ).order_by("starts_at")
     )
-    if not windows:
-        return ""
 
     start_time = local_start.time().replace(second=0, microsecond=0)
     end_time = local_end.time().replace(second=0, microsecond=0)
@@ -159,6 +163,7 @@ class AppointmentForm(forms.ModelForm):
             "service",
             "staff_member",
             "room",
+            "program_block",
             "billing_account",
             "status",
             "admin_note",
@@ -185,6 +190,10 @@ class AppointmentForm(forms.ModelForm):
         self.fields["staff_member"].queryset = StaffMember.objects.filter(status=StaffMember.Status.ACTIVE).order_by("full_name")
         self.fields["room"].queryset = Room.objects.filter(is_active=True).order_by("name")
         self.fields["room"].required = False
+        self.fields["program_block"].queryset = ProgramBlock.objects.select_related("program", "service").order_by(
+            "program__child__last_name", "program__title", "number"
+        )
+        self.fields["program_block"].required = False
         self.fields["billing_account"].required = False
         self.fields["billing_account"].queryset = self._billing_accounts_queryset()
         self.fields["admin_note"].required = False
@@ -224,6 +233,7 @@ class AppointmentForm(forms.ModelForm):
         staff_member = cleaned.get("staff_member")
         room = cleaned.get("room")
         account = cleaned.get("billing_account")
+        program_block = cleaned.get("program_block")
 
         if day and clock and duration:
             starts_at = build_local_datetime(day, clock)
@@ -245,6 +255,10 @@ class AppointmentForm(forms.ModelForm):
             self.add_error("billing_account", "Счет должен принадлежать выбранному получателю.")
         if account and service and not account.can_pay_for(service):
             self.add_error("billing_account", "Счет не подходит для выбранной услуги.")
+        if program_block and child and program_block.program.child_id != child.id:
+            self.add_error("program_block", "Блок программы должен принадлежать выбранному получателю.")
+        if program_block and service and program_block.service_id != service.id:
+            self.add_error("program_block", "Блок программы должен соответствовать выбранной услуге.")
         return cleaned
 
     def save(self, commit=True):
@@ -342,6 +356,8 @@ class AppointmentMoveForm(forms.Form):
             billing_account=old.billing_account,
             source_appointment=old,
             series=old.series,
+            program_block=old.program_block,
+            sequence_number=old.sequence_number,
             admin_note=note,
         )
 
@@ -487,6 +503,7 @@ class RecipientForm(forms.ModelForm):
             "phone",
             "email",
             "status",
+            "color",
             "primary_parent",
             "diagnosis",
             "notes",
@@ -499,12 +516,14 @@ class RecipientForm(forms.ModelForm):
             "phone": "Телефон получателя",
             "email": "Email получателя",
             "status": "Статус",
+            "color": "Цветовая метка",
             "primary_parent": "Основной представитель",
             "diagnosis": "Диагноз/особенности",
             "notes": "Примечания",
         }
         widgets = {
             "birth_date": DATE_INPUT,
+            "color": forms.TextInput(attrs={"type": "color"}),
             "diagnosis": forms.Textarea(attrs={"rows": 3}),
             "notes": forms.Textarea(attrs={"rows": 3}),
         }
@@ -512,6 +531,10 @@ class RecipientForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["primary_parent"].queryset = ParentGuardian.objects.order_by("last_name", "first_name")
+        self.fields["color"].required = False
+
+    def clean_color(self):
+        return self.cleaned_data.get("color") or Child._meta.get_field("color").default
 
 
 class BalanceAccountForm(forms.ModelForm):
@@ -527,6 +550,7 @@ class BalanceAccountForm(forms.ModelForm):
             "valid_from",
             "valid_until",
             "status",
+            "color",
             "notes",
         )
         labels = {
@@ -539,11 +563,13 @@ class BalanceAccountForm(forms.ModelForm):
             "valid_from": "Действует с",
             "valid_until": "Действует до",
             "status": "Статус",
+            "color": "Цветовая метка",
             "notes": "Примечания",
         }
         widgets = {
             "valid_from": DATE_INPUT,
             "valid_until": DATE_INPUT,
+            "color": forms.TextInput(attrs={"type": "color"}),
             "notes": forms.Textarea(attrs={"rows": 3}),
         }
 
@@ -553,6 +579,10 @@ class BalanceAccountForm(forms.ModelForm):
         self.fields["funding_source"].queryset = FundingSource.objects.order_by("name")
         self.fields["service"].queryset = Service.objects.filter(is_active=True).order_by("name")
         self.fields["service"].required = False
+        self.fields["color"].required = False
+
+    def clean_color(self):
+        return self.cleaned_data.get("color") or BalanceAccount._meta.get_field("color").default
 
     def clean(self):
         cleaned = super().clean()
@@ -561,6 +591,103 @@ class BalanceAccountForm(forms.ModelForm):
         if unit == BalanceAccount.Unit.SESSIONS and amount is not None and amount != int(amount):
             self.add_error("initial_amount", "Для учёта в занятиях число должно быть целым.")
         return cleaned
+
+
+class TreatmentProgramForm(forms.ModelForm):
+    class Meta:
+        model = TreatmentProgram
+        fields = ("child", "title", "consultation", "status", "starts_on", "ends_on", "color", "notes")
+        widgets = {
+            "starts_on": DATE_INPUT,
+            "ends_on": DATE_INPUT,
+            "color": forms.TextInput(attrs={"type": "color"}),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, child: Child | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.child = child
+        self.fields["child"].queryset = Child.objects.order_by("last_name", "first_name")
+        self.fields["consultation"].required = False
+        consultations = Appointment.objects.select_related("service", "staff_member").order_by("-starts_at")
+        if child is not None:
+            self.fields["child"].initial = child
+            self.fields["child"].disabled = True
+            consultations = consultations.filter(child=child)
+        self.fields["consultation"].queryset = consultations
+        self.fields["color"].required = False
+
+    def clean_color(self):
+        return self.cleaned_data.get("color") or TreatmentProgram._meta.get_field("color").default
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if self.child is not None:
+            obj.child = self.child
+        if commit:
+            obj.save()
+            self.save_m2m()
+        return obj
+
+
+class ProgramBlockForm(forms.ModelForm):
+    class Meta:
+        model = ProgramBlock
+        fields = (
+            "program",
+            "number",
+            "title",
+            "service",
+            "staff_member",
+            "planned_sessions",
+            "balance_account",
+            "status",
+            "color",
+            "notes",
+        )
+        widgets = {
+            "color": forms.TextInput(attrs={"type": "color"}),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, program: TreatmentProgram | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.program = program
+        self.fields["program"].queryset = TreatmentProgram.objects.select_related("child").order_by("child__last_name", "title")
+        self.fields["service"].queryset = Service.objects.filter(is_active=True).order_by("name")
+        self.fields["staff_member"].queryset = StaffMember.objects.filter(status=StaffMember.Status.ACTIVE).order_by("full_name")
+        self.fields["staff_member"].required = False
+        self.fields["balance_account"].required = False
+        accounts = BalanceAccount.objects.select_related("child", "funding_source", "service").filter(status=BalanceAccount.Status.ACTIVE)
+        if program is not None:
+            self.fields["program"].initial = program
+            self.fields["program"].disabled = True
+            accounts = accounts.filter(child=program.child)
+        self.fields["balance_account"].queryset = accounts.order_by("funding_source__name", "service__name")
+        self.fields["color"].required = False
+
+    def clean_color(self):
+        return self.cleaned_data.get("color") or ProgramBlock._meta.get_field("color").default
+
+    def clean(self):
+        cleaned = super().clean()
+        program = self.program or cleaned.get("program")
+        service = cleaned.get("service")
+        account = cleaned.get("balance_account")
+        if account and program and account.child_id != program.child_id:
+            self.add_error("balance_account", "Счёт должен принадлежать получателю программы.")
+        if account and service and not account.can_pay_for(service):
+            self.add_error("balance_account", "Счёт не подходит для услуги блока.")
+        return cleaned
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if self.program is not None:
+            obj.program = self.program
+        if commit:
+            obj.save()
+            self.save_m2m()
+        return obj
 
 
 class AppointmentConfirmationSendForm(forms.Form):
@@ -805,4 +932,3 @@ class GrantReportFilterForm(forms.Form):
         if date_from and date_to and date_to < date_from:
             raise forms.ValidationError("Дата окончания не может быть раньше даты начала.")
         return cleaned
-

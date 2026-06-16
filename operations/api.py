@@ -54,7 +54,7 @@ class ErrorOut(Schema):
 @api.get("/appointments/", response=list[AppointmentEventOut])
 def list_appointments(request, start: str = "", end: str = ""):
     qs = Appointment.objects.filter(status__in=ACTIVE_APPOINTMENT_STATUSES).select_related(
-        "child", "staff_member", "service", "room"
+        "child", "staff_member", "service", "room", "billing_account", "program_block", "program_block__program"
     )
     if start:
         qs = qs.filter(ends_at__gte=start)
@@ -75,6 +75,9 @@ def list_appointments(request, start: str = "", end: str = ""):
             "rescheduled": "#f59e0b",
         }
         staff_color = a.staff_member.color if a.staff_member and a.staff_member.color else "#3b82f6"
+        child_color = a.child.color if a.child and a.child.color else "#00a443"
+        account_color = a.billing_account.color if a.billing_account_id and a.billing_account.color else ""
+        program_color = a.program_block.color if a.program_block_id and a.program_block.color else ""
         status_color = status_colors.get(a.status, "#3b82f6")
         results.append(
             AppointmentEventOut(
@@ -93,10 +96,16 @@ def list_appointments(request, start: str = "", end: str = ""):
                     "staff": a.staff_member.full_name if a.staff_member else "",
                     "staffId": a.staff_member_id,
                     "staffColor": staff_color,
+                    "childColor": child_color,
+                    "accountColor": account_color,
+                    "programColor": program_color,
                     "room": a.room.name if a.room else "",
                     "roomId": a.room_id,
                     "childId": a.child_id,
                     "serviceId": a.service_id,
+                    "programBlock": str(a.program_block) if a.program_block_id else "",
+                    "sequenceNumber": a.sequence_number,
+                    "billingAccountId": a.billing_account_id,
                 },
             )
         )

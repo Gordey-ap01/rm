@@ -87,6 +87,8 @@ def reschedule(
         billing_account=appointment.billing_account,
         source_appointment=appointment,
         series=appointment.series,
+        program_block=appointment.program_block,
+        sequence_number=appointment.sequence_number,
         admin_note=note,
     )
     return MoveResult(old=appointment, new=new)

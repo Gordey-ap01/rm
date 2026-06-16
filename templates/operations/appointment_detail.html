@@ -26,6 +26,7 @@
       <div><dt>Посещение</dt><dd>{{ appointment.get_attendance_status_display }}</dd></div>
       <div><dt>Списание</dt><dd>{{ appointment.get_billing_decision_display }}</dd></div>
       <div><dt>Счет</dt><dd>{% if appointment.billing_account %}{{ appointment.billing_account }}{% else %}Не выбран{% endif %}</dd></div>
+      <div><dt>Каскад</dt><dd>{% if appointment.program_block %}{{ appointment.program_block }}{% if appointment.sequence_number %} · №{{ appointment.sequence_number }}{% endif %}{% else %}Не выбран{% endif %}</dd></div>
     </dl>
     {% if appointment.admin_note %}<p class="note-block">{{ appointment.admin_note|linebreaksbr }}</p>{% endif %}
     {% if appointment.specialist_note %}<p class="note-block">Заметка специалиста: {{ appointment.specialist_note|linebreaksbr }}</p>{% endif %}
@@ -33,6 +34,9 @@
 
   <article class="panel">
     <h2>Решение по списанию</h2>
+    {% if appointment.billing_account %}
+      <p><a class="button-link secondary small-action" href="{% url 'payment_create_for_account' appointment.billing_account.pk %}">Внести оплату на счёт</a></p>
+    {% endif %}
     <form method="post" action="{% url 'appointment_billing' appointment.pk %}" class="form">
       {% csrf_token %}
       {% for field in billing_form %}

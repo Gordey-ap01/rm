@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from operations.forms import RecipientForm, RepresentativeForm
-from operations.models import Child, ParentGuardian
+from operations.models import Child, ParentGuardian, TreatmentProgram
 from operations.services.pdf import contract_pdf
 
 from ._common import is_admin_user
@@ -69,6 +69,11 @@ def recipient_detail(request, pk: int):
         .select_related("staff_member", "service", "room", "billing_account")
         .order_by("-starts_at")[:20]
     )
+    programs = (
+        TreatmentProgram.objects.filter(child=recipient)
+        .prefetch_related("blocks", "blocks__service", "blocks__staff_member", "blocks__balance_account")
+        .order_by("-starts_on", "title")
+    )
     return render(
         request,
         "operations/recipient_detail.html",
@@ -76,6 +81,7 @@ def recipient_detail(request, pk: int):
             "recipient": recipient,
             "representative": getattr(recipient, "primary_parent", None),
             "accounts": accounts,
+            "programs": programs,
             "upcoming_appointments": upcoming_appointments,
             "recent_appointments": recent_appointments,
         },
