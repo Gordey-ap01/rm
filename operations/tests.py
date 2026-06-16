@@ -10,7 +10,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from .forms import AppointmentForm
+from .forms import AppointmentForm, AppointmentMoveForm
 from .models import (
     Appointment,
     AppointmentConfirmation,
@@ -400,7 +400,26 @@ class AppointmentWorkflowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Недоступность специалиста")
+        self.assertContains(response, "Удерживать, чтобы предложить специалисту выйти вне графика")
         self.assertFalse(Appointment.objects.filter(child=self.child, starts_at__date=day).exists())
+
+    def test_staff_availability_override_creates_appointment_from_form(self):
+        day = timezone.localdate() + timedelta(days=20)
+        StaffAvailability.objects.create(
+            staff_member=self.staff,
+            weekday=day.weekday(),
+            starts_at=time(9, 0),
+            ends_at=time(10, 0),
+        )
+        payload = self.appointment_payload(day, clock="11:00")
+        payload["staff_availability_override"] = "1"
+
+        response = self.client.post(reverse("appointment_create"), payload)
+
+        self.assertEqual(response.status_code, 302)
+        appointment = Appointment.objects.get(child=self.child, starts_at__date=day)
+        self.assertTrue(appointment.staff_availability_override)
+        self.assertIn("рабочего графика", appointment.staff_availability_override_reason)
 
 
 class ApiAccessTests(TestCase):
@@ -487,6 +506,75 @@ class SchedulingBusinessRulesTests(TestCase):
                 starts_at=starts_at,
                 ends_at=starts_at + timedelta(minutes=30),
             )
+
+    def test_appointment_outside_specialist_work_time_can_be_overridden(self):
+        day = timezone.localdate() + timedelta(days=16)
+        starts_at = self.local_dt(day, time(19, 0))
+
+        appointment = Appointment.objects.create(
+            child=self.child_a,
+            service=self.service,
+            staff_member=self.staff_a,
+            room=self.room,
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(minutes=30),
+            staff_availability_override=True,
+            staff_availability_override_reason="Администратор согласует выход вне графика.",
+        )
+
+        self.assertTrue(appointment.staff_availability_override)
+
+    def test_appointment_form_override_saves_outside_specialist_work_time(self):
+        day = timezone.localdate() + timedelta(days=16)
+        form = AppointmentForm(
+            {
+                "child": self.child_a.id,
+                "service": self.service.id,
+                "staff_member": self.staff_a.id,
+                "room": self.room.id,
+                "status": Appointment.Status.CONFIRMED,
+                "admin_note": "",
+                "date": day.isoformat(),
+                "time": "19:00",
+                "duration_minutes": "30",
+                "staff_availability_override": "1",
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        appointment = form.save()
+        self.assertTrue(appointment.staff_availability_override)
+        self.assertIn("09:00-18:00", appointment.staff_availability_override_reason)
+
+    def test_appointment_move_form_override_saves_outside_specialist_work_time(self):
+        day = timezone.localdate() + timedelta(days=16)
+        starts_at = self.local_dt(day, time(10, 0))
+        appointment = Appointment.objects.create(
+            child=self.child_a,
+            service=self.service,
+            staff_member=self.staff_a,
+            room=self.room,
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(minutes=30),
+        )
+
+        form = AppointmentMoveForm(
+            {
+                "date": (day + timedelta(days=1)).isoformat(),
+                "time": "19:00",
+                "duration_minutes": "30",
+                "staff_member": self.staff_b.id,
+                "room": self.room.id,
+                "staff_availability_override": "1",
+                "admin_note": "Согласовать выход специалиста.",
+            },
+            appointment=appointment,
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        moved = form.save()
+        self.assertTrue(moved.staff_availability_override)
+        self.assertIn("09:00-18:00", moved.staff_availability_override_reason)
 
     def test_program_block_numbers_appointments_and_counts_payment_decisions(self):
         program = TreatmentProgram.objects.create(child=self.child_a, title="Base program")

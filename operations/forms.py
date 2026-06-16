@@ -155,6 +155,7 @@ class AppointmentForm(forms.ModelForm):
     date = forms.DateField(label="Дата", widget=DATE_INPUT, input_formats=["%Y-%m-%d"])
     time = forms.TimeField(label="Время", widget=TIME_INPUT, input_formats=["%H:%M"])
     duration_minutes = forms.IntegerField(label="Длительность, минут", min_value=5, max_value=240)
+    staff_availability_override = forms.BooleanField(required=False, widget=forms.HiddenInput())
 
     class Meta:
         model = Appointment
@@ -184,6 +185,7 @@ class AppointmentForm(forms.ModelForm):
             initial.setdefault("status", Appointment.Status.CONFIRMED)
 
         super().__init__(*args, initial=initial, **kwargs)
+        self.availability_warning = ""
         self.fields["child"].queryset = Child.objects.order_by("last_name", "first_name")
         self.fields["child"].label = "Получатель"
         self.fields["service"].queryset = Service.objects.filter(is_active=True).order_by("name")
@@ -197,6 +199,9 @@ class AppointmentForm(forms.ModelForm):
         self.fields["billing_account"].required = False
         self.fields["billing_account"].queryset = self._billing_accounts_queryset()
         self.fields["admin_note"].required = False
+        self.fields["staff_availability_override"].initial = bool(
+            instance and getattr(instance, "staff_availability_override", False)
+        )
 
     def _selected_child_id(self):
         if self.is_bound:
@@ -222,6 +227,12 @@ class AppointmentForm(forms.ModelForm):
         if service_id:
             qs = qs.filter(Q(service_scope=BalanceAccount.ServiceScope.ANY) | Q(service_id=service_id))
         return qs.order_by("child__last_name", "funding_source__name", "service__name")
+
+    def _staff_override_requested(self) -> bool:
+        if not self.is_bound:
+            return bool(self.initial.get("staff_availability_override"))
+        raw = self.data.get(self.add_prefix("staff_availability_override"))
+        return str(raw).lower() in {"1", "on", "true", "yes"}
 
     def clean(self):
         cleaned = super().clean()
@@ -249,7 +260,18 @@ class AppointmentForm(forms.ModelForm):
                 raise forms.ValidationError("Конфликт расписания: " + ", ".join(messages) + ".")
             unavailable = staff_unavailability_reason(staff_member, starts_at, ends_at)
             if unavailable and cleaned.get("status") in ACTIVE_APPOINTMENT_STATUSES:
-                raise forms.ValidationError("Недоступность специалиста: " + unavailable + ".")
+                self.availability_warning = unavailable
+                if not self._staff_override_requested():
+                    raise forms.ValidationError("Недоступность специалиста: " + unavailable + ".")
+                cleaned["staff_availability_override"] = True
+                cleaned["staff_availability_override_reason"] = unavailable
+                self.instance.staff_availability_override = True
+                self.instance.staff_availability_override_reason = unavailable
+            else:
+                cleaned["staff_availability_override"] = False
+                cleaned["staff_availability_override_reason"] = ""
+                self.instance.staff_availability_override = False
+                self.instance.staff_availability_override_reason = ""
 
         if account and child and account.child_id != child.id:
             self.add_error("billing_account", "Счет должен принадлежать выбранному получателю.")
@@ -265,6 +287,8 @@ class AppointmentForm(forms.ModelForm):
         appointment = super().save(commit=False)
         appointment.starts_at = self.cleaned_data["starts_at"]
         appointment.ends_at = self.cleaned_data["ends_at"]
+        appointment.staff_availability_override = self.cleaned_data.get("staff_availability_override", False)
+        appointment.staff_availability_override_reason = self.cleaned_data.get("staff_availability_override_reason", "")
         if commit:
             appointment.save()
             self.save_m2m()
@@ -277,13 +301,21 @@ class AppointmentMoveForm(forms.Form):
     duration_minutes = forms.IntegerField(label="Длительность, минут", min_value=5, max_value=240)
     staff_member: Any = forms.ModelChoiceField(label="Специалист", queryset=StaffMember.objects.none())
     room: Any = forms.ModelChoiceField(label="Кабинет", queryset=Room.objects.none(), required=False)
+    staff_availability_override = forms.BooleanField(required=False, widget=forms.HiddenInput())
     admin_note = forms.CharField(label="Комментарий к переносу", widget=forms.Textarea(attrs={"rows": 3}), required=False)
 
     def __init__(self, *args, appointment, **kwargs):
         self.appointment = appointment
         super().__init__(*args, **kwargs)
+        self.availability_warning = ""
         self.fields["staff_member"].queryset = StaffMember.objects.filter(status=StaffMember.Status.ACTIVE).order_by("full_name")
         self.fields["room"].queryset = Room.objects.filter(is_active=True).order_by("name")
+
+    def _staff_override_requested(self) -> bool:
+        if not self.is_bound:
+            return bool(self.initial.get("staff_availability_override"))
+        raw = self.data.get(self.add_prefix("staff_availability_override"))
+        return str(raw).lower() in {"1", "on", "true", "yes"}
 
     def clean(self):
         cleaned = super().clean()
@@ -318,7 +350,14 @@ class AppointmentMoveForm(forms.Form):
                 raise forms.ValidationError("Конфликт расписания: " + ", ".join(messages) + ".")
             unavailable = staff_unavailability_reason(staff_member, starts_at, ends_at)
             if unavailable:
-                raise forms.ValidationError("Недоступность специалиста: " + unavailable + ".")
+                self.availability_warning = unavailable
+                if not self._staff_override_requested():
+                    raise forms.ValidationError("Недоступность специалиста: " + unavailable + ".")
+                cleaned["staff_availability_override"] = True
+                cleaned["staff_availability_override_reason"] = unavailable
+            else:
+                cleaned["staff_availability_override"] = False
+                cleaned["staff_availability_override_reason"] = ""
         return cleaned
 
     @transaction.atomic
@@ -358,6 +397,8 @@ class AppointmentMoveForm(forms.Form):
             series=old.series,
             program_block=old.program_block,
             sequence_number=old.sequence_number,
+            staff_availability_override=self.cleaned_data.get("staff_availability_override", False),
+            staff_availability_override_reason=self.cleaned_data.get("staff_availability_override_reason", ""),
             admin_note=note,
         )
 

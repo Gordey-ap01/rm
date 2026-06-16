@@ -650,6 +650,8 @@ class Appointment(TimeStampedModel):
         related_name="appointments",
     )
     sequence_number = models.PositiveIntegerField("номер в блоке", null=True, blank=True)
+    staff_availability_override = models.BooleanField("назначено вне графика специалиста", default=False)
+    staff_availability_override_reason = models.TextField("причина назначения вне графика", blank=True)
     admin_note = models.TextField("заметка администратора", blank=True)
     specialist_note = models.TextField("заметка специалиста", blank=True)
     specialist_marked_at = models.DateTimeField("специалист отметил", null=True, blank=True)
@@ -734,6 +736,8 @@ class Appointment(TimeStampedModel):
         day = local_start.date()
         if local_end.date() != day:
             raise ValidationError("Недоступность специалиста: занятие должно помещаться в один день.")
+        if self.staff_availability_override:
+            return
 
         if TimeOffRequest.objects.filter(
             staff_member_id=self.staff_member_id,

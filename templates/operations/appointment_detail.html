@@ -27,7 +27,9 @@
       <div><dt>Списание</dt><dd>{{ appointment.get_billing_decision_display }}</dd></div>
       <div><dt>Счет</dt><dd>{% if appointment.billing_account %}{{ appointment.billing_account }}{% else %}Не выбран{% endif %}</dd></div>
       <div><dt>Каскад</dt><dd>{% if appointment.program_block %}{{ appointment.program_block }}{% if appointment.sequence_number %} · №{{ appointment.sequence_number }}{% endif %}{% else %}Не выбран{% endif %}</dd></div>
+      <div><dt>График специалиста</dt><dd>{% if appointment.staff_availability_override %}<span class="status-pill balance-warning">Вне графика</span>{% else %}По графику{% endif %}</dd></div>
     </dl>
+    {% if appointment.staff_availability_override_reason %}<p class="note-block">Причина выхода вне графика: {{ appointment.staff_availability_override_reason }}</p>{% endif %}
     {% if appointment.admin_note %}<p class="note-block">{{ appointment.admin_note|linebreaksbr }}</p>{% endif %}
     {% if appointment.specialist_note %}<p class="note-block">Заметка специалиста: {{ appointment.specialist_note|linebreaksbr }}</p>{% endif %}
   </article>

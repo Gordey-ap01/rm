@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -18,10 +19,30 @@
 <section class="panel form-panel">
   <form method="post" class="form-grid">
     {% csrf_token %}
+    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
     {% if form.non_field_errors %}
       <div class="form-error form-wide">{{ form.non_field_errors }}</div>
     {% endif %}
-    {% for field in form %}
+    {% if form.availability_warning %}
+      <div class="hold-confirm-card form-wide">
+        <div>
+          <strong>Специалист не работает в это время</strong>
+          <p>Причина: {{ form.availability_warning }}. Можно предложить специалисту выйти вне графика, если администратор осознанно берёт это в работу.</p>
+        </div>
+        <button
+          type="button"
+          class="hold-confirm-button"
+          data-hold-submit="true"
+          data-target-id="id_staff_availability_override"
+          data-hold-ms="1300"
+        >
+          <span class="hold-confirm-progress" aria-hidden="true"></span>
+          <span class="hold-confirm-label">Удерживать, чтобы предложить специалисту выйти вне графика</span>
+        </button>
+        <small class="muted">Удерживайте кнопку до заполнения индикатора. Обычная кнопка “Сохранить” оставит занятие заблокированным.</small>
+      </div>
+    {% endif %}
+    {% for field in form.visible_fields %}
       <label class="field {% if field.name == 'admin_note' %}form-wide{% endif %}">
         <span>{{ field.label }}</span>
         {{ field }}
@@ -35,4 +56,8 @@
     </div>
   </form>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'operations/hold_confirm.js' %}"></script>
 {% endblock %}

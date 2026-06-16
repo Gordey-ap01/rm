@@ -156,11 +156,12 @@ class AppointmentAdmin(admin.ModelAdmin):
         "room",
         "program_block",
         "sequence_number",
+        "staff_availability_override",
         "status",
         "billing_decision",
     )
     search_fields = ("child__last_name", "child__first_name", "staff_member__full_name", "service__name")
-    list_filter = ("status", "attendance_status", "billing_decision", "service", "staff_member")
+    list_filter = ("status", "attendance_status", "billing_decision", "staff_availability_override", "service", "staff_member")
     autocomplete_fields = ("child", "staff_member", "service", "room", "billing_account", "source_appointment", "series", "program_block")
     date_hierarchy = "starts_at"
 
