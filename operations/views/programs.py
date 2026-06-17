@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -112,24 +113,32 @@ def program_block_schedule_wizard(request, block_id: int):
                 if not preview.slots:
                     messages.warning(request, "Мастер не нашёл подходящих окон. Расписание не создано.")
                 else:
-                    result = program_wizard.create_schedule_from_preview(
-                        preview,
-                        status=data["appointment_status"],
-                        actor=request.user,
-                    )
-                    messages.success(request, f"Создано занятий: {len(result.appointments)}.")
-                    if preview.limited_by_balance:
+                    try:
+                        result = program_wizard.create_schedule_from_preview(
+                            preview,
+                            status=data["appointment_status"],
+                            actor=request.user,
+                        )
+                    except ValidationError as exc:
+                        form.add_error(None, exc)
                         messages.warning(
                             request,
-                            "Количество было ограничено доступным балансом. Для продолжения пополните счёт "
-                            "или включите бронь сверх оплаты.",
+                            "За время согласования расписание изменилось. Нажмите «Подобрать окна» ещё раз.",
                         )
-                    if preview.missing_count:
-                        messages.warning(
-                            request,
-                            f"Не хватило свободных окон: {preview.missing_count}. Расширьте даты или время поиска.",
-                        )
-                    return redirect("recipient_detail", pk=block.program.child_id)
+                    else:
+                        messages.success(request, f"Создано занятий: {len(result.appointments)}.")
+                        if preview.limited_by_balance:
+                            messages.warning(
+                                request,
+                                "Количество было ограничено доступным балансом. Для продолжения пополните счёт "
+                                "или включите бронь сверх оплаты.",
+                            )
+                        if preview.missing_count:
+                            messages.warning(
+                                request,
+                                f"Не хватило свободных окон: {preview.missing_count}. Расширьте даты или время поиска.",
+                            )
+                        return redirect("recipient_detail", pk=block.program.child_id)
             elif not preview.slots:
                 messages.warning(request, "Подходящих окон не найдено. Попробуйте расширить период, время или кабинет.")
     else:

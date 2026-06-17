@@ -435,6 +435,21 @@ class ProgramWizardServiceTests(_FixturesMixin, TestCase):
         self.assertEqual([appt.sequence_number for appt in result.appointments], [1, 2])
         self.assertTrue(all(appt.program_block_id == self.block.pk for appt in result.appointments))
 
+    def test_preview_slots_do_not_overlap_each_other_when_duration_exceeds_step(self):
+        preview = self._preview(
+            requested_count=3,
+            time_from=time(9, 0),
+            time_until=time(12, 0),
+            duration_minutes=45,
+        )
+
+        for previous, current in zip(preview.slots, preview.slots[1:], strict=False):
+            self.assertGreaterEqual(current.starts_at, previous.ends_at)
+
+        result = wizard_svc.create_schedule_from_preview(preview, actor=self.user)
+
+        self.assertEqual(len(result.appointments), 3)
+
 
 class ReportsServiceTests(_FixturesMixin, TestCase):
     def setUp(self):

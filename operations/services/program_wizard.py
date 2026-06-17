@@ -121,6 +121,10 @@ def estimate_sessions_for_amount(account: BalanceAccount | None, service, amount
     return int((value / service.default_price).to_integral_value(rounding=ROUND_FLOOR))
 
 
+def _overlaps_selected_slots(starts_at: datetime, ends_at: datetime, slots: list[ScheduleSlot]) -> bool:
+    return any(starts_at < slot.ends_at and ends_at > slot.starts_at for slot in slots)
+
+
 def suggest_program_block_slots(
     block: ProgramBlock,
     *,
@@ -159,6 +163,10 @@ def suggest_program_block_slots(
         if day < timezone.localdate():
             continue
         for starts_at, ends_at in _iter_day_starts(day, time_from, time_until, duration_minutes, step_minutes):
+            if _overlaps_selected_slots(starts_at, ends_at, slots):
+                skipped_conflicts += 1
+                continue
+
             report = scheduling.find_overlaps(
                 starts_at,
                 ends_at,
