@@ -754,11 +754,19 @@ class ProgramBlockScheduleWizardForm(forms.Form):
     time_until = forms.TimeField(label="Искать до", widget=TIME_INPUT)
     duration_minutes = forms.IntegerField(label="Длительность, мин", min_value=15, max_value=240)
     requested_count = forms.IntegerField(label="Сколько занятий подобрать", min_value=1, max_value=120)
-    staff_member = forms.ModelChoiceField(label="Специалист", queryset=StaffMember.objects.none())
+    staff_member = forms.ModelChoiceField(
+        label="Специалист",
+        queryset=StaffMember.objects.none(),
+        required=False,
+        empty_label="Автоматически подобрать",
+        help_text="Оставьте пустым, чтобы мастер сам выбрал свободного специалиста.",
+    )
     room = forms.ModelChoiceField(
         label="Кабинет",
         queryset=Room.objects.none(),
-        help_text="Обязателен: вместимость кабинета ограничивает число одновременных специалистов.",
+        required=False,
+        empty_label="Автоматически подобрать",
+        help_text="Оставьте пустым, чтобы мастер сам выбрал кабинет. Вместимость всё равно ограничивает число одновременных специалистов.",
     )
     appointment_status = forms.ChoiceField(
         label="Статус создаваемых занятий",

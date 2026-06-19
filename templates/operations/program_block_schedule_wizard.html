@@ -30,6 +30,10 @@
       <span class="eyebrow">Счёт</span>
       <strong>{% if block.balance_account %}{{ block.balance_account.current_balance }} {{ block.balance_account.get_unit_display }}{% else %}не выбран{% endif %}</strong>
     </div>
+    <div>
+      <span class="eyebrow">Режим</span>
+      <strong>автоподбор доступен</strong>
+    </div>
   </article>
 
   <article class="panel form-panel">
@@ -54,8 +58,15 @@
             {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
             {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
           </label>
+        {% elif field.name == "staff_member" or field.name == "room" %}
+          <label class="field auto-pick-field">
+            <span>{{ field.label }}</span>
+            {{ field }}
+            {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+            {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+          </label>
         {% else %}
-          <label class="field {% if field.name == 'room' %}form-wide{% endif %}">
+          <label class="field">
             <span>{{ field.label }}</span>
             {{ field }}
             {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
@@ -92,6 +103,10 @@
                 {% if preview.missing_count %}Не хватило окон: {{ preview.missing_count }}.{% endif %}
               </p>
             </div>
+            <div class="wizard-preview-stats" aria-label="Статистика подбора">
+              <span>Конфликты: {{ preview.skipped_conflicts }}</span>
+              <span>Вне графика: {{ preview.skipped_availability }}</span>
+            </div>
           </div>
           {% if preview.slots %}
             <div class="table-responsive">
@@ -103,6 +118,7 @@
                     <th>Специалист</th>
                     <th>Кабинет</th>
                     <th>Вместимость</th>
+                    <th>Почему выбран</th>
                     <th>График</th>
                   </tr>
                 </thead>
@@ -114,6 +130,13 @@
                       <td>{{ slot.staff_member }}</td>
                       <td>{{ slot.room }}</td>
                       <td>{{ slot.room_occupancy|add:1 }} / {{ slot.room_capacity }}</td>
+                      <td>
+                        {% if slot.selection_note %}
+                          <span class="status-pill balance-notice">{{ slot.selection_note }}</span>
+                        {% else %}
+                          <span class="muted">по заданным условиям</span>
+                        {% endif %}
+                      </td>
                       <td>
                         {% if slot.availability_warning %}
                           <span class="status-pill balance-warning">{{ slot.availability_warning }}</span>

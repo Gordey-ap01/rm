@@ -13,6 +13,7 @@ htmlcov/
 media/
 db-data/
 data/
+серверапаролиключи/
 *.sqlite3
 staticfiles/
 build/

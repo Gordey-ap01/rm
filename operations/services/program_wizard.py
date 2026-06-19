@@ -8,6 +8,7 @@ from decimal import ROUND_FLOOR, Decimal
 from typing import Any
 
 from django.db import transaction
+from django.db.models import QuerySet
 from django.utils import timezone
 
 from operations.models import Appointment, BalanceAccount, ProgramBlock, Room, StaffMember
@@ -23,6 +24,7 @@ class ScheduleSlot:
     room_capacity: int
     room_occupancy: int
     availability_warning: str = ""
+    selection_note: str = ""
 
 
 @dataclass(frozen=True)
@@ -125,6 +127,45 @@ def _overlaps_selected_slots(starts_at: datetime, ends_at: datetime, slots: list
     return any(starts_at < slot.ends_at and ends_at > slot.starts_at for slot in slots)
 
 
+def _ordered_staff_candidates(block: ProgramBlock, selected: StaffMember | None) -> list[StaffMember]:
+    if selected is not None:
+        return [selected]
+
+    qs: QuerySet[StaffMember] = StaffMember.objects.filter(status=StaffMember.Status.ACTIVE).order_by("full_name")
+    staff = list(qs)
+    if block.staff_member_id:
+        staff.sort(key=lambda item: (item.pk != block.staff_member_id, item.full_name))
+    return staff
+
+
+def _ordered_room_candidates(selected: Room | None) -> list[Room]:
+    if selected is not None:
+        return [selected]
+    return list(Room.objects.filter(is_active=True).order_by("-capacity", "name"))
+
+
+def _service_match_score(block: ProgramBlock, staff_member: StaffMember) -> int:
+    haystack = f"{staff_member.specializations} {staff_member.full_name}".lower()
+    service_name = block.service.name.lower()
+    category_label = block.service.get_category_display().lower()
+    if service_name and service_name in haystack:
+        return 0
+    if category_label and category_label in haystack:
+        return 1
+    if block.staff_member_id and staff_member.pk == block.staff_member_id:
+        return 2
+    return 3
+
+
+def _slot_rank(block: ProgramBlock, slot: ScheduleSlot) -> tuple[int, int, int, str]:
+    return (
+        1 if slot.availability_warning else 0,
+        _service_match_score(block, slot.staff_member),
+        slot.room_occupancy,
+        slot.staff_member.full_name,
+    )
+
+
 def suggest_program_block_slots(
     block: ProgramBlock,
     *,
@@ -134,8 +175,8 @@ def suggest_program_block_slots(
     time_from: time,
     time_until: time,
     duration_minutes: int,
-    staff_member: StaffMember,
-    room: Room,
+    staff_member: StaffMember | None = None,
+    room: Room | None = None,
     requested_count: int,
     allow_outside_availability: bool = False,
     allow_unpaid_reserve: bool = False,
@@ -159,6 +200,9 @@ def suggest_program_block_slots(
             slots=[],
         )
 
+    staff_candidates = _ordered_staff_candidates(block, staff_member)
+    room_candidates = _ordered_room_candidates(room)
+
     for day in _iter_days(date_from, date_to, weekdays):
         if day < timezone.localdate():
             continue
@@ -167,33 +211,54 @@ def suggest_program_block_slots(
                 skipped_conflicts += 1
                 continue
 
-            report = scheduling.find_overlaps(
-                starts_at,
-                ends_at,
-                child=block.program.child,
-                staff_member=staff_member,
-                room=room,
-            )
-            if report.has_conflict:
-                skipped_conflicts += 1
+            candidates_for_start: list[ScheduleSlot] = []
+            had_conflict = False
+            had_availability_skip = False
+            for staff_candidate in staff_candidates:
+                for room_candidate in room_candidates:
+                    report = scheduling.find_overlaps(
+                        starts_at,
+                        ends_at,
+                        child=block.program.child,
+                        staff_member=staff_candidate,
+                        room=room_candidate,
+                    )
+                    if report.has_conflict:
+                        had_conflict = True
+                        continue
+
+                    availability_warning = scheduling.is_within_availability(staff_candidate, starts_at, ends_at)
+                    if availability_warning and not allow_outside_availability:
+                        had_availability_skip = True
+                        continue
+
+                    candidates_for_start.append(
+                        ScheduleSlot(
+                            starts_at=starts_at,
+                            ends_at=ends_at,
+                            staff_member=staff_candidate,
+                            room=room_candidate,
+                            room_capacity=report.room_capacity,
+                            room_occupancy=report.room_occupancy,
+                            availability_warning=availability_warning,
+                            selection_note=_selection_note(
+                                block,
+                                staff_member=staff_member,
+                                room=room,
+                                staff_candidate=staff_candidate,
+                                room_candidate=room_candidate,
+                            ),
+                        )
+                    )
+
+            if not candidates_for_start:
+                if had_availability_skip:
+                    skipped_availability += 1
+                elif had_conflict:
+                    skipped_conflicts += 1
                 continue
 
-            availability_warning = scheduling.is_within_availability(staff_member, starts_at, ends_at)
-            if availability_warning and not allow_outside_availability:
-                skipped_availability += 1
-                continue
-
-            slots.append(
-                ScheduleSlot(
-                    starts_at=starts_at,
-                    ends_at=ends_at,
-                    staff_member=staff_member,
-                    room=room,
-                    room_capacity=report.room_capacity,
-                    room_occupancy=report.room_occupancy,
-                    availability_warning=availability_warning,
-                )
-            )
+            slots.append(sorted(candidates_for_start, key=lambda candidate: _slot_rank(block, candidate))[0])
             if len(slots) >= allowed_count:
                 return SchedulePreview(
                     block=block,
@@ -214,6 +279,27 @@ def suggest_program_block_slots(
         skipped_conflicts=skipped_conflicts,
         skipped_availability=skipped_availability,
     )
+
+
+def _selection_note(
+    block: ProgramBlock,
+    *,
+    staff_member: StaffMember | None,
+    room: Room | None,
+    staff_candidate: StaffMember,
+    room_candidate: Room,
+) -> str:
+    notes: list[str] = []
+    if staff_member is None:
+        if block.staff_member_id and staff_candidate.pk == block.staff_member_id:
+            notes.append("специалист из каскада")
+        elif _service_match_score(block, staff_candidate) <= 1:
+            notes.append("похожая специализация")
+        else:
+            notes.append("свободный специалист")
+    if room is None:
+        notes.append("свободный кабинет")
+    return ", ".join(notes)
 
 
 @transaction.atomic

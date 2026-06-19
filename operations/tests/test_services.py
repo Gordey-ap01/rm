@@ -406,6 +406,43 @@ class ProgramWizardServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(len(preview.slots), 1)
         self.assertNotEqual(preview.slots[0].starts_at.time(), time(10, 0))
 
+    def test_auto_suggest_uses_another_staff_and_room_when_primary_is_busy(self):
+        other_child = Child.objects.create(last_name="Сидоров", first_name="Коля", primary_parent=self.parent)
+        appt_svc.create_appointment(
+            child=other_child,
+            staff_member=self.staff_a,
+            service=self.service_log,
+            starts_at=_local(self.day, time(10, 0)),
+            ends_at=_local(self.day, time(10, 30)),
+            room=self.room1,
+        )
+
+        preview = self._preview(staff_member=None, room=None, requested_count=1)
+
+        self.assertEqual(len(preview.slots), 1)
+        slot = preview.slots[0]
+        self.assertEqual(slot.starts_at.time(), time(10, 0))
+        self.assertNotEqual(slot.staff_member, self.staff_a)
+        self.assertEqual(slot.room, self.room2)
+        self.assertIn("свободный", slot.selection_note)
+
+    def test_auto_suggest_respects_room_capacity_across_rooms(self):
+        child_b = Child.objects.create(last_name="Петров", first_name="Илья", primary_parent=self.parent)
+        appt_svc.create_appointment(
+            child=child_b,
+            staff_member=self.staff_b,
+            service=self.service_log,
+            starts_at=_local(self.day, time(10, 0)),
+            ends_at=_local(self.day, time(10, 30)),
+            room=self.room1,
+        )
+
+        preview = self._preview(staff_member=None, room=None, requested_count=1)
+
+        self.assertEqual(len(preview.slots), 1)
+        self.assertEqual(preview.slots[0].starts_at.time(), time(10, 0))
+        self.assertEqual(preview.slots[0].room, self.room2)
+
     def test_balance_limit_caps_requested_sessions(self):
         low_account = BalanceAccount.objects.create(
             child=self.child,

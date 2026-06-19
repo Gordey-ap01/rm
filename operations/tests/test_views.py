@@ -646,6 +646,19 @@ class ProgramBlockWizardViewTests(NewViewsTestBase):
         self.assertEqual(appointments.count(), 2)
         self.assertEqual([appt.sequence_number for appt in appointments], [1, 2])
 
+    def test_schedule_wizard_create_can_auto_pick_staff_and_room(self):
+        day = timezone.localdate() + timedelta(days=8)
+        payload = self._wizard_payload(day, action="create")
+        payload["staff_member"] = ""
+        payload["room"] = ""
+
+        response = self.client.post(reverse("program_block_schedule_wizard", args=[self.block.pk]), payload)
+
+        self.assertEqual(response.status_code, 302)
+        appointment = Appointment.objects.get(program_block=self.block, sequence_number=1)
+        self.assertIsNotNone(appointment.staff_member_id)
+        self.assertIsNotNone(appointment.room_id)
+
     def test_transfer_funds_between_block_accounts(self):
         movable_source = FundingSource.objects.create(
             name="Переносимый грант",
