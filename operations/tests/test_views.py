@@ -402,6 +402,8 @@ class ScheduleViewTests(NewViewsTestBase):
         response = self.client.get(reverse("schedule"))
         self.assertEqual(response.status_code, 200)
         self.assertIn("day", response.context)
+        self.assertContains(response, "staffDaySchedule")
+        self.assertContains(response, "День по специалистам")
 
 
 class SpecialistHomeTests(NewViewsTestBase):

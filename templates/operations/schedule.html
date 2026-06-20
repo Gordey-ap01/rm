@@ -19,6 +19,316 @@
 
   #filter-bar label { font-size: .85rem; }
 
+  .schedule-mode-switch {
+    display: inline-flex;
+    gap: 6px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .72);
+    box-shadow: var(--shadow-sm);
+  }
+  .schedule-mode-switch .btn {
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .schedule-mode-switch .is-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .schedule-mode-switch .btn:not(.is-active) {
+    background: rgba(255, 255, 255, .84);
+    border-color: var(--line-strong);
+    color: var(--text);
+  }
+  .schedule-mode-switch .btn:not(.is-active):hover {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .schedule-staff-day {
+    display: grid;
+    gap: 12px;
+  }
+  .staff-day-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, .72);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: var(--glass-blur);
+  }
+  .staff-day-date-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .staff-day-date-controls input {
+    width: auto;
+    min-width: 154px;
+    min-height: 34px;
+    padding: 6px 10px;
+  }
+  .staff-day-date-controls .btn {
+    min-width: 38px;
+    min-height: 38px;
+    background: rgba(255, 255, 255, .84);
+    border-color: var(--line-strong);
+    color: var(--text);
+    box-shadow: none;
+  }
+  .staff-day-date-controls .btn:hover {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .staff-day-date-controls .btn.btn-outline-success {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .staff-day-nav-symbol {
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1;
+  }
+  .staff-day-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .staff-day-board {
+    overflow: auto;
+    max-height: calc(100vh - 230px);
+    min-height: 520px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, .82), rgba(245, 250, 252, .76)),
+      repeating-linear-gradient(0deg, rgba(8, 35, 44, .025) 0 2px, transparent 2px 4px);
+    box-shadow: var(--shadow-md);
+  }
+  .staff-day-grid {
+    display: grid;
+    align-items: start;
+    min-width: max-content;
+  }
+  .staff-day-corner,
+  .staff-day-column-head {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    min-height: 68px;
+    border-bottom: 1px solid var(--line-strong);
+    background: rgba(248, 252, 253, .94);
+    backdrop-filter: var(--glass-blur);
+  }
+  .staff-day-corner {
+    left: 0;
+    z-index: 6;
+    display: grid;
+    place-items: center;
+    border-right: 1px solid var(--line-strong);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .staff-day-column-head {
+    display: grid;
+    gap: 2px;
+    align-content: center;
+    padding: 10px 12px;
+    border-right: 1px solid var(--line);
+  }
+  .staff-day-column-head strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--heading);
+    font-size: 14px;
+  }
+  .staff-day-column-head span {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .staff-day-column-head::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--staff-color, var(--accent));
+  }
+  .staff-day-time-column {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    height: var(--timeline-height);
+    border-right: 1px solid var(--line-strong);
+    background: rgba(248, 252, 253, .95);
+  }
+  .staff-day-tick {
+    position: absolute;
+    left: 0;
+    right: 0;
+    min-height: 1px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .staff-day-tick span {
+    position: absolute;
+    top: -9px;
+    right: 10px;
+    padding: 1px 4px;
+    background: rgba(248, 252, 253, .96);
+  }
+  .staff-day-lane {
+    position: relative;
+    height: var(--timeline-height);
+    min-width: 220px;
+    border-right: 1px solid var(--line);
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        rgba(112, 141, 152, .22) 0 1px,
+        transparent 1px calc(var(--half-hour-height) - 1px),
+        rgba(112, 141, 152, .12) calc(var(--half-hour-height) - 1px) var(--half-hour-height)
+      ),
+      linear-gradient(180deg, rgba(255, 255, 255, .54), rgba(255, 255, 255, .28));
+  }
+  .staff-day-lane:hover {
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        rgba(0, 164, 67, .25) 0 1px,
+        transparent 1px calc(var(--half-hour-height) - 1px),
+        rgba(112, 141, 152, .12) calc(var(--half-hour-height) - 1px) var(--half-hour-height)
+      ),
+      linear-gradient(180deg, rgba(0, 164, 67, .045), rgba(255, 255, 255, .3));
+  }
+  .staff-day-slot-hit {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 1;
+    text-decoration: none;
+  }
+  .staff-day-slot-hit:hover {
+    background: rgba(0, 164, 67, .08);
+    outline: 1px dashed rgba(0, 164, 67, .32);
+    outline-offset: -2px;
+  }
+  .staff-day-now {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    height: 2px;
+    background: var(--danger);
+    box-shadow: 0 0 0 1px rgba(198, 40, 23, .14);
+  }
+  .staff-day-card {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    z-index: 3;
+    display: grid;
+    align-content: start;
+    gap: 2px;
+    min-height: 30px;
+    padding: 6px 8px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--staff-color, #3b82f6) 52%, #1f2937);
+    border-left: 5px solid var(--staff-color, #3b82f6);
+    border-radius: 8px;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--staff-color, #3b82f6) 24%, white), rgba(255, 255, 255, .86));
+    color: #12262e;
+    text-decoration: none;
+    box-shadow: 0 8px 18px rgba(8, 35, 44, .12);
+  }
+  .staff-day-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 26px rgba(8, 35, 44, .16);
+  }
+  .staff-day-card-time {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1.1;
+  }
+  .staff-day-card strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    line-height: 1.15;
+  }
+  .staff-day-card small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: rgba(18, 38, 46, .78);
+    font-size: 11px;
+    line-height: 1.15;
+  }
+  .staff-day-card.is-compact small,
+  .staff-day-card.is-compact .staff-day-card-badges {
+    display: none;
+  }
+  .staff-day-card-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 2px;
+  }
+  .staff-day-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 16px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .72);
+    color: #12262e;
+    font-size: 10px;
+    font-weight: 900;
+  }
+  .staff-day-card[data-status="proposed"],
+  .staff-day-card[data-status="reserved"] {
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--status-color, #ea580c) 20%, white), rgba(255, 255, 255, .86));
+  }
+  .staff-day-card[data-status="completed"] {
+    opacity: .76;
+  }
+  .staff-day-empty {
+    margin: 18px;
+    padding: 18px;
+    border: 1.5px dashed var(--line-strong);
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    text-align: center;
+    font-weight: 700;
+  }
+
   @media (max-width: 768px) {
     #filter-bar .row > div { margin-bottom: .5rem; }
     .fc-toolbar.fc-header-toolbar { flex-direction: column; gap: .5rem; }
@@ -27,6 +337,9 @@
     .fc-button { font-size: .75rem !important; padding: .25rem .5rem !important; }
     #status-legend { gap: .5rem; }
     #calendar { min-height: 300px; }
+    .staff-day-toolbar { align-items: stretch; flex-direction: column; }
+    .staff-day-meta { justify-content: flex-start; }
+    .staff-day-board { max-height: calc(100vh - 270px); }
   }
 </style>
 {% endblock %}
@@ -36,8 +349,16 @@
   <div>
     <h1 class="h3 mb-0">Расписание</h1>
   </div>
-  <div>
-    <a class="btn btn-primary btn-sm" href="{% url 'appointment_create' %}">Создать занятие</a>
+  <div class="header-actions">
+    <div class="schedule-mode-switch" role="group" aria-label="Режим расписания">
+      <button id="staffDayMode" type="button" class="btn btn-sm btn-outline-success">
+        <i class="bi bi-columns-gap"></i> День по специалистам
+      </button>
+      <button id="calendarMode" type="button" class="btn btn-sm btn-outline-success">
+        <i class="bi bi-calendar-week"></i> Календарь
+      </button>
+    </div>
+    <a class="btn btn-primary btn-sm" href="{% url 'appointment_create' %}"><i class="bi bi-plus-lg"></i> Создать занятие</a>
   </div>
 </section>
 
@@ -66,6 +387,32 @@
 
 <section id="calendar-section">
   <div id="calendar"></div>
+</section>
+
+<section id="staff-day-section" class="schedule-staff-day d-none" aria-label="День по специалистам">
+  <div class="staff-day-toolbar">
+    <div class="staff-day-date-controls">
+      <button id="staffDayPrev" type="button" class="btn btn-sm btn-outline-secondary" aria-label="Предыдущий день">
+        <span class="staff-day-nav-symbol" aria-hidden="true">‹</span>
+      </button>
+      <input id="staffDayDate" class="form-control form-control-sm" type="date" value="{{ day|date:'Y-m-d' }}" aria-label="Дата расписания">
+      <button id="staffDayNext" type="button" class="btn btn-sm btn-outline-secondary" aria-label="Следующий день">
+        <span class="staff-day-nav-symbol" aria-hidden="true">›</span>
+      </button>
+      <button id="staffDayToday" type="button" class="btn btn-sm btn-outline-success">Сегодня</button>
+    </div>
+    <div id="staffDayMeta" class="staff-day-meta">
+      <span>Загрузка расписания...</span>
+    </div>
+  </div>
+  <div
+    id="staffDaySchedule"
+    class="staff-day-board"
+    data-initial-day="{{ day|date:'Y-m-d' }}"
+    data-create-url="{% url 'appointment_create' %}"
+  >
+    <div class="staff-day-empty">Загрузка расписания...</div>
+  </div>
 </section>
 
 <!-- Status Legend -->
@@ -232,6 +579,7 @@
   });
 
   calendar.render();
+  window.rmScheduleCalendar = calendar;
 
   // Filters
   document.getElementById("staffFilter").addEventListener("change", function() {
@@ -270,4 +618,5 @@
   });
 })();
 </script>
+<script src="{% static 'operations/schedule_staff_day.js' %}"></script>
 {% endblock %}
