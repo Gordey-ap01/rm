@@ -7,6 +7,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import ROUND_FLOOR, Decimal
 from typing import Any
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import QuerySet
 from django.utils import timezone
@@ -302,6 +303,32 @@ def _selection_note(
     return ", ".join(notes)
 
 
+def _format_slot_range(starts_at: datetime, ends_at: datetime) -> str:
+    local_start = timezone.localtime(starts_at)
+    local_end = timezone.localtime(ends_at)
+    if local_start.date() == local_end.date():
+        return f"{local_start:%d.%m.%Y %H:%M}-{local_end:%H:%M}"
+    return f"{local_start:%d.%m.%Y %H:%M}-{local_end:%d.%m.%Y %H:%M}"
+
+
+def _validate_slot_still_free(block: ProgramBlock, slot: ScheduleSlot) -> None:
+    report = scheduling.find_overlaps(
+        slot.starts_at,
+        slot.ends_at,
+        child=block.program.child,
+        staff_member=slot.staff_member,
+        room=slot.room,
+    )
+    if not report.has_conflict:
+        return
+
+    messages = ", ".join(report.human_messages())
+    raise ValidationError(
+        f"Окно {_format_slot_range(slot.starts_at, slot.ends_at)} уже занято: {messages}. "
+        "Нажмите «Подобрать окна» ещё раз."
+    )
+
+
 @transaction.atomic
 def create_schedule_from_preview(
     preview: SchedulePreview,
@@ -312,6 +339,7 @@ def create_schedule_from_preview(
     appointments: list[Appointment] = []
     block = preview.block
     for slot in preview.slots:
+        _validate_slot_still_free(block, slot)
         override_reason = ""
         if slot.availability_warning:
             override_reason = f"Создано мастером расписания вне графика: {slot.availability_warning}."

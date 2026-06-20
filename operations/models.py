@@ -713,7 +713,7 @@ class Appointment(TimeStampedModel):
         messages: list[str] = []
         if self.child_id and qs.filter(child_id=self.child_id).exists():
             other = qs.filter(child_id=self.child_id).first()
-            when = other.starts_at.strftime("%d.%m %H:%M") if other else ""
+            when = timezone.localtime(other.starts_at).strftime("%d.%m %H:%M") if other else ""
             messages.append(
                 f"у получателя уже есть занятие в это время ({when})" if when
                 else "у получателя уже есть занятие в это время"

@@ -38,9 +38,10 @@ class ConflictReport:
     def human_messages(self) -> list[str]:
         out: list[str] = []
         if self.child_conflict:
+            local_start = timezone.localtime(self.child_conflict.starts_at)
             out.append(
                 f"у получателя уже есть занятие в это время "
-                f"({self.child_conflict.starts_at:%d.%m %H:%M})"
+                f"({local_start:%d.%m %H:%M})"
             )
         if self.staff_conflict:
             out.append("специалист уже занят в это время")

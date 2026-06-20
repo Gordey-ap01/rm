@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.core import mail
+from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
@@ -486,6 +487,24 @@ class ProgramWizardServiceTests(_FixturesMixin, TestCase):
         result = wizard_svc.create_schedule_from_preview(preview, actor=self.user)
 
         self.assertEqual(len(result.appointments), 3)
+
+    def test_create_schedule_rejects_stale_preview_with_local_time(self):
+        preview = self._preview(requested_count=1)
+        stale_slot = preview.slots[0]
+
+        appt_svc.create_appointment(
+            child=self.child,
+            staff_member=self.staff_b,
+            service=self.service_log,
+            starts_at=stale_slot.starts_at,
+            ends_at=stale_slot.ends_at,
+            room=self.room2,
+        )
+
+        with self.assertRaisesMessage(ValidationError, "Нажмите «Подобрать окна» ещё раз"):
+            wizard_svc.create_schedule_from_preview(preview, actor=self.user)
+
+        self.assertFalse(Appointment.objects.filter(program_block=self.block).exists())
 
 
 class ReportsServiceTests(_FixturesMixin, TestCase):
