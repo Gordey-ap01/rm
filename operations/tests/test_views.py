@@ -404,6 +404,7 @@ class ScheduleViewTests(NewViewsTestBase):
         self.assertIn("day", response.context)
         self.assertContains(response, "staffDaySchedule")
         self.assertContains(response, "День по специалистам")
+        self.assertContains(response, "operations/searchable_select.js")
 
 
 class SpecialistHomeTests(NewViewsTestBase):

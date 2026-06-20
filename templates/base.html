@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="{% static 'operations/app.css' %}">
   <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
   <script defer src="{% static 'vendor/alpine/alpine.min.js' %}"></script>
+  <script defer src="{% static 'operations/searchable_select.js' %}"></script>
   {% block extra_head %}{% endblock %}
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' x-data="{ sidebarOpen: false }">
