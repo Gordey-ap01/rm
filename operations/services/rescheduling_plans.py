@@ -26,8 +26,10 @@ from operations.models import (
     Appointment,
     AppointmentConfirmation,
     AppointmentParticipant,
+    AppointmentRescheduleChain,
     AppointmentReschedulePlan,
     AppointmentRescheduleStep,
+    AppointmentRescheduleStepDependency,
     AppointmentStaffAssignment,
     ParentGuardian,
     StaffMember,
@@ -49,6 +51,13 @@ class StepConfirmationResult:
     existing: list[AppointmentConfirmation] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class ChainBuildResult:
+    chain: AppointmentRescheduleChain
+    steps: list[AppointmentRescheduleStep] = field(default_factory=list)
+    dependencies: list[AppointmentRescheduleStepDependency] = field(default_factory=list)
+
+
 ACTIVE_APPOINTMENT_STATUSES = (
     Appointment.Status.PROPOSED,
     Appointment.Status.CONFIRMED,
@@ -59,6 +68,178 @@ TERMINAL_STEP_STATUSES = (
     AppointmentRescheduleStep.Status.APPLIED,
     AppointmentRescheduleStep.Status.SKIPPED,
 )
+
+TERMINAL_PLAN_STATUSES = (
+    AppointmentReschedulePlan.Status.APPLIED,
+    AppointmentReschedulePlan.Status.CANCELLED,
+)
+
+
+def _dependency_input_parts(raw: Any) -> tuple[int, int, str, str, dict[str, Any]]:
+    relation_default = AppointmentRescheduleStepDependency.RelationType.FREES_TARGET_SLOT
+    if isinstance(raw, dict):
+        predecessor_id = int(raw["predecessor_step_id"])
+        successor_id = int(raw["successor_step_id"])
+        relation_type = raw.get("relation_type") or relation_default
+        reason = raw.get("reason", "")
+        snapshot = raw.get("snapshot", {})
+    else:
+        predecessor_id = int(raw[0])
+        successor_id = int(raw[1])
+        relation_type = raw[2] if len(raw) > 2 else relation_default
+        reason = raw[3] if len(raw) > 3 else ""
+        snapshot = raw[4] if len(raw) > 4 else {}
+    return predecessor_id, successor_id, relation_type, reason, snapshot
+
+
+def _topological_step_ids(
+    step_ids: set[int],
+    edges: list[tuple[int, int]],
+    *,
+    position_by_step_id: dict[int, int],
+) -> list[int]:
+    successors: dict[int, list[int]] = {step_id: [] for step_id in step_ids}
+    indegree: dict[int, int] = {step_id: 0 for step_id in step_ids}
+    for predecessor_id, successor_id in edges:
+        successors[predecessor_id].append(successor_id)
+        indegree[successor_id] += 1
+
+    ready = sorted(
+        [step_id for step_id, degree in indegree.items() if degree == 0],
+        key=lambda step_id: (position_by_step_id[step_id], step_id),
+    )
+    ordered: list[int] = []
+    while ready:
+        step_id = ready.pop(0)
+        ordered.append(step_id)
+        for successor_id in sorted(
+            successors[step_id],
+            key=lambda sid: (position_by_step_id[sid], sid),
+        ):
+            indegree[successor_id] -= 1
+            if indegree[successor_id] == 0:
+                ready.append(successor_id)
+                ready.sort(key=lambda sid: (position_by_step_id[sid], sid))
+
+    if len(ordered) != len(step_ids):
+        raise ValidationError("Цепочка переноса содержит цикл зависимостей.")
+    return ordered
+
+
+@transaction.atomic
+def create_chain_for_steps(
+    plan: AppointmentReschedulePlan,
+    *,
+    step_ids: list[int],
+    dependencies: list[Any],
+    title: str = "",
+    actor: Any = None,
+) -> ChainBuildResult:
+    if len(step_ids) < 2:
+        raise ValidationError("Для цепочки нужно выбрать минимум два шага.")
+    if len(step_ids) != len(set(step_ids)):
+        raise ValidationError("Один и тот же шаг нельзя добавить в цепочку дважды.")
+    if not dependencies:
+        raise ValidationError("Для цепочки нужна хотя бы одна зависимость между шагами.")
+
+    plan = AppointmentReschedulePlan.objects.select_for_update().get(pk=plan.pk)
+    if plan.status in TERMINAL_PLAN_STATUSES:
+        raise ValidationError("Цепочку нельзя создать для завершенного или отмененного плана.")
+    step_id_set = set(step_ids)
+    steps = list(
+        AppointmentRescheduleStep.objects.select_for_update()
+        .select_related("source_appointment")
+        .filter(plan=plan, pk__in=step_id_set)
+        .order_by("position", "pk")
+    )
+    if len(steps) != len(step_id_set):
+        raise ValidationError("Все шаги цепочки должны принадлежать выбранному плану.")
+    if any(step.chain_id for step in steps):
+        raise ValidationError("Шаг уже входит в цепочку переноса.")
+    if any(step.action_type != AppointmentRescheduleStep.ActionType.MOVE for step in steps):
+        raise ValidationError("В цепочку можно включать только шаги переноса.")
+    if any(step.status in TERMINAL_STEP_STATUSES for step in steps):
+        raise ValidationError("Примененные или пропущенные шаги нельзя включать в новую цепочку.")
+
+    source_ids = [step.source_appointment_id for step in steps]
+    if len(source_ids) != len(set(source_ids)):
+        raise ValidationError(
+            "Несколько шагов одного исходного занятия являются альтернативами, а не цепочкой."
+        )
+
+    normalized_dependencies: list[tuple[int, int, str, str, dict[str, Any]]] = []
+    dependency_keys: set[tuple[int, int, str]] = set()
+    connected_step_ids: set[int] = set()
+    for raw_dependency in dependencies:
+        predecessor_id, successor_id, relation_type, reason, snapshot = _dependency_input_parts(
+            raw_dependency
+        )
+        if predecessor_id == successor_id:
+            raise ValidationError("Шаг не может зависеть от самого себя.")
+        if predecessor_id not in step_id_set or successor_id not in step_id_set:
+            raise ValidationError("Зависимости цепочки должны ссылаться только на выбранные шаги.")
+        if relation_type not in AppointmentRescheduleStepDependency.RelationType.values:
+            raise ValidationError("Неизвестный тип зависимости цепочки.")
+        dependency_key = (predecessor_id, successor_id, relation_type)
+        if dependency_key in dependency_keys:
+            raise ValidationError("Одна и та же зависимость указана дважды.")
+        dependency_keys.add(dependency_key)
+        connected_step_ids.update([predecessor_id, successor_id])
+        normalized_dependencies.append(
+            (predecessor_id, successor_id, relation_type, reason, snapshot)
+        )
+    if connected_step_ids != step_id_set:
+        raise ValidationError("Каждый шаг цепочки должен участвовать хотя бы в одной зависимости.")
+
+    step_by_id = {step.pk: step for step in steps}
+    ordered_step_ids = _topological_step_ids(
+        step_id_set,
+        [(pred, succ) for pred, succ, *_ in normalized_dependencies],
+        position_by_step_id={step.pk: step.position for step in steps},
+    )
+
+    chain = AppointmentRescheduleChain.objects.create(
+        plan=plan,
+        title=title.strip(),
+        status=AppointmentRescheduleChain.Status.DRAFT,
+        created_by=actor if getattr(actor, "is_authenticated", False) else None,
+        validation_summary={
+            "structural": "ok",
+            "steps": len(ordered_step_ids),
+            "dependencies": len(normalized_dependencies),
+            "topological_step_ids": ordered_step_ids,
+        },
+    )
+    ordered_steps: list[AppointmentRescheduleStep] = []
+    for chain_position, step_id in enumerate(ordered_step_ids, start=1):
+        step = step_by_id[step_id]
+        step.chain = chain
+        step.chain_position = chain_position
+        step.chain_required = True
+        step.full_clean()
+        step.save(update_fields=["chain", "chain_position", "chain_required", "updated_at"])
+        ordered_steps.append(step)
+
+    created_dependencies: list[AppointmentRescheduleStepDependency] = []
+    for predecessor_id, successor_id, relation_type, reason, snapshot in normalized_dependencies:
+        dependency = AppointmentRescheduleStepDependency(
+            plan=plan,
+            chain=chain,
+            predecessor_step=step_by_id[predecessor_id],
+            successor_step=step_by_id[successor_id],
+            relation_type=relation_type,
+            reason=reason,
+            snapshot=snapshot,
+        )
+        dependency.full_clean()
+        dependency.save()
+        created_dependencies.append(dependency)
+
+    return ChainBuildResult(
+        chain=chain,
+        steps=ordered_steps,
+        dependencies=created_dependencies,
+    )
 
 
 def _finish_plan_if_all_steps_terminal(

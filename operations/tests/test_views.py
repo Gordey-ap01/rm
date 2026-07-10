@@ -4460,6 +4460,72 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertContains(response, 'data-label="Команда"')
         self.assertContains(response, "Перепроверить план")
 
+    def test_reschedule_plan_detail_renders_chain_read_only_block(self):
+        first_source = self._appointment()
+        second_start = _local_dt(timezone.localdate() + timedelta(days=5), time(11, 0))
+        second_source = Appointment.objects.create(
+            child=self.child,
+            service=self.service,
+            staff_member=self.staff,
+            room=self.room,
+            starts_at=second_start,
+            ends_at=second_start + timedelta(minutes=30),
+            billing_account=self.account,
+        )
+        plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.READY,
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            reason="Буферная цепочка",
+            created_by=self.admin,
+        )
+        first = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            source_appointment=second_source,
+            proposed_starts_at=_local_dt(timezone.localdate() + timedelta(days=5), time(12, 0)),
+            proposed_ends_at=_local_dt(timezone.localdate() + timedelta(days=5), time(12, 30)),
+            proposed_room=self.room,
+            proposed_primary_staff=self.staff,
+        )
+        second = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=2,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            source_appointment=first_source,
+            proposed_starts_at=second_start,
+            proposed_ends_at=second_start + timedelta(minutes=30),
+            proposed_room=self.room,
+            proposed_primary_staff=self.staff,
+        )
+        plan_svc.create_chain_for_steps(
+            plan,
+            step_ids=[first.pk, second.pk],
+            dependencies=[
+                {
+                    "predecessor_step_id": first.pk,
+                    "successor_step_id": second.pk,
+                    "reason": "Освобождает окно для второго шага.",
+                }
+            ],
+            title="Буферная цепочка",
+            actor=self.admin,
+        )
+
+        response = self.client.get(reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("chains", response.context)
+        self.assertContains(response, "Буферная цепочка")
+        self.assertContains(response, "reschedule-chain-table")
+        self.assertContains(response, "reschedule-chain-dependency-table")
+        self.assertContains(response, 'data-label="Порядок"')
+        self.assertContains(response, 'data-label="Предшественник"')
+        self.assertContains(response, "Атомарно все или ничего")
+        self.assertNotContains(response, "Применить цепочку")
+
     def test_staff_absence_plan_detail_renders_manual_review_actions(self):
         appointment = self._appointment()
         day = timezone.localtime(appointment.starts_at).date()

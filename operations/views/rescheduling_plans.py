@@ -7,7 +7,11 @@ from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from operations.models import Appointment, AppointmentReschedulePlan, AppointmentRescheduleStep
+from operations.models import (
+    Appointment,
+    AppointmentReschedulePlan,
+    AppointmentRescheduleStep,
+)
 from operations.services import rescheduling_plans as plan_svc
 from operations.tasks import send_appointment_confirmation_email
 
@@ -399,11 +403,39 @@ def appointment_reschedule_plan_detail(request, pk: int):
                     messages.warning(request, "Для этого шага нет адресатов с email.")
             return redirect("appointment_reschedule_plan_detail", pk=plan.pk)
 
+    chains = list(
+        plan.chains.prefetch_related(
+            "steps__source_appointment",
+            "steps__proposed_primary_staff",
+            "steps__proposed_room",
+            "dependencies__predecessor_step",
+            "dependencies__successor_step",
+        ).order_by("created_at", "pk")
+    )
+    for chain in chains:
+        chain.ordered_steps = list(
+            chain.steps.select_related(
+                "source_appointment",
+                "proposed_primary_staff",
+                "proposed_room",
+            ).order_by("chain_position", "position", "pk")
+        )
+        chain.dependency_rows = list(
+            chain.dependencies.select_related(
+                "predecessor_step",
+                "successor_step",
+            ).order_by(
+                "predecessor_step__chain_position",
+                "successor_step__chain_position",
+            )
+        )
+
     return render(
         request,
         "operations/reschedule_plan_detail.html",
         {
             "plan": plan,
+            "chains": chains,
             "steps": plan.steps.select_related(
                 "source_appointment",
                 "blocking_appointment",

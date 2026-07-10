@@ -4,7 +4,9 @@
 
 Статус: контракт принят как направление. Срез 1 "Схема и read-only цепочка"
 реализован 2026-07-02 через миграцию `operations.0021_reschedule_chains`.
-Применение цепочки, построение цепочки сервисом и UX цепочки еще не начинались.
+Срез 2 "Построение цепочки без применения" реализован 2026-07-10 через сервис
+`create_chain_for_steps()` и read-only блок цепочек в detail плана. Revalidate chain,
+atomic apply chain и расширенный UX цепочек еще не реализованы.
 
 ## Зачем нужен документ
 
@@ -45,15 +47,19 @@
   принимает решение по списанию и не меняет ledger/payroll.
 - После успешного `apply_step()` альтернативы того же `source_appointment`
   получают `skipped`.
+- `AppointmentRescheduleChain` и `AppointmentRescheduleStepDependency` существуют.
+- `create_chain_for_steps()` строит черновую цепочку из выбранных `move`-шагов,
+  проверяет cycle, дубли, mismatch, участие всех шагов и запрещает превращать
+  альтернативы одного `source_appointment` в цепочку.
+- Detail плана показывает read-only блок цепочек, порядок шагов и зависимости.
 
 Не сделано:
 
-- Нет явной сущности цепочки.
-- Нет зависимостей между шагами.
-- Нет топологического порядка применения.
 - Нет atomic all-or-nothing применения нескольких шагов.
-- Нет UI, который отличает "варианты" от "цепочки".
-- Нет валидации циклов и цепочек без свободного буферного окна.
+- Нет `revalidate_chain()`.
+- Нет кнопки и сервиса `apply_chain()`.
+- Нет готовности chain `ready` после повторной проверки.
+- Нет UX-метрик цепочек в реестре и dashboard руководителя.
 
 ## Термины
 
@@ -212,7 +218,7 @@ Acceptance criteria:
 
 ### Срез 2. Построение цепочки без применения
 
-Статус: следующий безопасный срез.
+Статус: выполнено 2026-07-10.
 
 Acceptance criteria:
 
@@ -221,6 +227,22 @@ Acceptance criteria:
 - сервис отклоняет cycle и зависимость внутри одного `source_appointment`,
   если это альтернатива, а не цепочка;
 - UI detail показывает блок "Цепочка" отдельно от альтернативных шагов.
+
+Факт реализации:
+
+- добавлен `create_chain_for_steps(plan, step_ids, dependencies, title, actor)` в
+  `operations/services/rescheduling_plans.py`;
+- сервис работает в `transaction.atomic()`, блокирует plan/steps через
+  `select_for_update()`, строит topological order и сохраняет его в
+  `validation_summary`;
+- сервис отклоняет terminal plan, дубли step/dependency, self-edge, cycle,
+  невыбранные edge, не-`move` шаги, терминальные шаги, уже привязанные
+  chain-шаги и альтернативы одного `source_appointment`;
+- detail плана загружает `chains`, `ordered_steps`, `dependency_rows` и показывает
+  отдельные read-only таблицы `reschedule-chain-table` и
+  `reschedule-chain-dependency-table`;
+- focused tests: `ReschedulingPlanServiceTests` и `ReschedulePlanViewTests`
+  прошли (`36 passed`).
 
 ### Срез 3. Перепроверка chain
 

@@ -51,6 +51,95 @@
   </div>
 </section>
 
+{% if chains %}
+  <section class="panel">
+    <h2>Цепочки переноса</h2>
+    <p class="muted">
+      Цепочка показывает зависимый порядок шагов. Этот блок ничего не применяет:
+      атомарное применение будет отдельным срезом после повторной проверки.
+    </p>
+    {% for chain in chains %}
+      <div class="appointment-attention">
+        <h3>{{ chain.title|default:"Цепочка" }} · {{ chain.get_status_display }}</h3>
+        <p>
+          Правило: {{ chain.get_apply_policy_display }}.
+          Шагов: {{ chain.ordered_steps|length }}.
+          Зависимостей: {{ chain.dependency_rows|length }}.
+        </p>
+        {% if chain.validation_summary %}
+          <p class="muted">
+            Структура: {{ chain.validation_summary.structural|default:"не проверена" }}.
+          </p>
+        {% endif %}
+      </div>
+      <table class="appointment-detail-table reschedule-chain-table">
+        <thead>
+          <tr>
+            <th>Порядок</th>
+            <th>Шаг</th>
+            <th>Исходное занятие</th>
+            <th>Новое окно</th>
+            <th>Специалист</th>
+            <th>Кабинет</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for step in chain.ordered_steps %}
+            <tr>
+              <td data-label="Порядок">{{ step.chain_position }}</td>
+              <td data-label="Шаг">{{ step.position }} · {{ step.get_status_display }}</td>
+              <td data-label="Исходное занятие">
+                <a href="{% url 'appointment_detail' step.source_appointment.pk %}">
+                  {{ step.source_appointment }}
+                </a>
+              </td>
+              <td data-label="Новое окно">
+                {% if step.proposed_starts_at %}
+                  {{ step.proposed_starts_at|date:"d.m H:i" }}-{{ step.proposed_ends_at|date:"H:i" }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td data-label="Специалист">
+                {% if step.proposed_primary_staff %}{{ step.proposed_primary_staff }}{% else %}—{% endif %}
+              </td>
+              <td data-label="Кабинет">
+                {% if step.proposed_room %}{{ step.proposed_room }}{% else %}Не выбран{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <table class="appointment-detail-table reschedule-chain-dependency-table">
+        <thead>
+          <tr>
+            <th>Предшественник</th>
+            <th>Следующий шаг</th>
+            <th>Тип</th>
+            <th>Причина</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for dependency in chain.dependency_rows %}
+            <tr>
+              <td data-label="Предшественник">
+                {{ dependency.predecessor_step.chain_position }} · шаг {{ dependency.predecessor_step.position }}
+              </td>
+              <td data-label="Следующий шаг">
+                {{ dependency.successor_step.chain_position }} · шаг {{ dependency.successor_step.position }}
+              </td>
+              <td data-label="Тип">{{ dependency.get_relation_type_display }}</td>
+              <td data-label="Причина">{{ dependency.reason|default:"—" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" data-label="Зависимости">Зависимости не заданы.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endfor %}
+  </section>
+{% endif %}
+
 <section class="panel">
   <h2>Шаги плана</h2>
   <table class="appointment-detail-table reschedule-plan-table">

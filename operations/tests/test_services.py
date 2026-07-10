@@ -1034,6 +1034,230 @@ class ReschedulingPlanServiceTests(_FixturesMixin, TestCase):
         with self.assertRaises(ValidationError):
             mismatch.full_clean()
 
+    def test_create_chain_for_steps_builds_dependencies_without_applying(self):
+        first_source = appt_svc.create_appointment(
+            child=self.child,
+            staff_member=self.staff_a,
+            service=self.service_log,
+            starts_at=_local(self.day, time(11, 0)),
+            ends_at=_local(self.day, time(11, 30)),
+            room=self.room1,
+            billing_account=self.account,
+        )
+        second_source = self._appointment()
+        plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.READY,
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            reason="Буферная цепочка",
+            created_by=self.user,
+        )
+        first = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=2,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            source_appointment=first_source,
+            proposed_starts_at=_local(self.day, time(12, 0)),
+            proposed_ends_at=_local(self.day, time(12, 30)),
+            proposed_room=self.room1,
+            proposed_primary_staff=self.staff_a,
+        )
+        second = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            source_appointment=second_source,
+            proposed_starts_at=_local(self.day, time(11, 0)),
+            proposed_ends_at=_local(self.day, time(11, 30)),
+            proposed_room=self.room1,
+            proposed_primary_staff=self.staff_a,
+        )
+
+        result = plan_svc.create_chain_for_steps(
+            plan,
+            step_ids=[second.pk, first.pk],
+            dependencies=[
+                {
+                    "predecessor_step_id": first.pk,
+                    "successor_step_id": second.pk,
+                    "reason": "Первый перенос освобождает окно для второго.",
+                }
+            ],
+            title="Буферная цепочка",
+            actor=self.user,
+        )
+
+        self.assertEqual(result.chain.status, AppointmentRescheduleChain.Status.DRAFT)
+        self.assertEqual(result.chain.created_by, self.user)
+        self.assertEqual(result.chain.validation_summary["structural"], "ok")
+        self.assertEqual(result.chain.validation_summary["topological_step_ids"], [first.pk, second.pk])
+        self.assertEqual([step.pk for step in result.steps], [first.pk, second.pk])
+        self.assertEqual(len(result.dependencies), 1)
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(first.chain, result.chain)
+        self.assertEqual(first.chain_position, 1)
+        self.assertTrue(first.chain_required)
+        self.assertEqual(second.chain, result.chain)
+        self.assertEqual(second.chain_position, 2)
+        self.assertTrue(second.chain_required)
+        self.assertEqual(AppointmentRescheduleStepDependency.objects.count(), 1)
+        first_source.refresh_from_db()
+        second_source.refresh_from_db()
+        self.assertEqual(first_source.status, Appointment.Status.CONFIRMED)
+        self.assertEqual(second_source.status, Appointment.Status.CONFIRMED)
+        self.assertFalse(Appointment.objects.filter(source_appointment__in=[first_source, second_source]).exists())
+
+    def test_create_chain_for_steps_rejects_alternatives_for_same_source(self):
+        appointment = self._appointment()
+        plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.READY,
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            reason="Альтернативы одного занятия",
+            created_by=self.user,
+        )
+        first = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            source_appointment=appointment,
+            proposed_starts_at=_local(self.day, time(11, 0)),
+            proposed_ends_at=_local(self.day, time(11, 30)),
+            proposed_room=self.room1,
+            proposed_primary_staff=self.staff_a,
+        )
+        second = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=2,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            source_appointment=appointment,
+            proposed_starts_at=_local(self.day, time(12, 0)),
+            proposed_ends_at=_local(self.day, time(12, 30)),
+            proposed_room=self.room1,
+            proposed_primary_staff=self.staff_a,
+        )
+
+        with self.assertRaises(ValidationError):
+            plan_svc.create_chain_for_steps(
+                plan,
+                step_ids=[first.pk, second.pk],
+                dependencies=[(first.pk, second.pk)],
+                actor=self.user,
+            )
+
+        self.assertFalse(AppointmentRescheduleChain.objects.exists())
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertIsNone(first.chain_id)
+        self.assertIsNone(second.chain_id)
+
+    def test_create_chain_for_steps_rejects_terminal_plan(self):
+        first_source = self._appointment()
+        second_source = appt_svc.create_appointment(
+            child=self.child,
+            staff_member=self.staff_a,
+            service=self.service_log,
+            starts_at=_local(self.day, time(11, 0)),
+            ends_at=_local(self.day, time(11, 30)),
+            room=self.room1,
+            billing_account=self.account,
+        )
+        plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.CANCELLED,
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            reason="Отмененный план",
+            created_by=self.user,
+        )
+        first = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            source_appointment=first_source,
+            proposed_starts_at=_local(self.day, time(12, 0)),
+            proposed_ends_at=_local(self.day, time(12, 30)),
+            proposed_room=self.room1,
+            proposed_primary_staff=self.staff_a,
+        )
+        second = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=2,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            source_appointment=second_source,
+            proposed_starts_at=_local(self.day, time(13, 0)),
+            proposed_ends_at=_local(self.day, time(13, 30)),
+            proposed_room=self.room1,
+            proposed_primary_staff=self.staff_a,
+        )
+
+        with self.assertRaises(ValidationError):
+            plan_svc.create_chain_for_steps(
+                plan,
+                step_ids=[first.pk, second.pk],
+                dependencies=[(first.pk, second.pk)],
+                actor=self.user,
+            )
+
+        self.assertFalse(AppointmentRescheduleChain.objects.exists())
+
+    def test_create_chain_for_steps_rejects_cycles(self):
+        first_source = self._appointment()
+        second_source = appt_svc.create_appointment(
+            child=self.child,
+            staff_member=self.staff_a,
+            service=self.service_log,
+            starts_at=_local(self.day, time(11, 0)),
+            ends_at=_local(self.day, time(11, 30)),
+            room=self.room1,
+            billing_account=self.account,
+        )
+        plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.READY,
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            reason="Цикл зависимостей",
+            created_by=self.user,
+        )
+        first = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            source_appointment=first_source,
+            proposed_starts_at=_local(self.day, time(12, 0)),
+            proposed_ends_at=_local(self.day, time(12, 30)),
+            proposed_room=self.room1,
+            proposed_primary_staff=self.staff_a,
+        )
+        second = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=2,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            source_appointment=second_source,
+            proposed_starts_at=_local(self.day, time(13, 0)),
+            proposed_ends_at=_local(self.day, time(13, 30)),
+            proposed_room=self.room1,
+            proposed_primary_staff=self.staff_a,
+        )
+
+        with self.assertRaises(ValidationError):
+            plan_svc.create_chain_for_steps(
+                plan,
+                step_ids=[first.pk, second.pk],
+                dependencies=[(first.pk, second.pk), (second.pk, first.pk)],
+                actor=self.user,
+            )
+
+        self.assertFalse(AppointmentRescheduleChain.objects.exists())
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertIsNone(first.chain_id)
+        self.assertIsNone(second.chain_id)
+
     def test_revalidate_marks_step_stale_when_window_becomes_busy(self):
         appointment = self._appointment()
         plan = plan_svc.create_plan_for_appointment(
