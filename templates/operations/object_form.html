@@ -11,24 +11,61 @@
   {% if cancel_url %}<a class="button-link secondary" href="{{ cancel_url }}">Назад</a>{% endif %}
 </section>
 
-<section class="panel form-panel">
-  <form method="post" class="form-grid">
-    {% csrf_token %}
-    {% if form.non_field_errors %}
-      <div class="form-error form-wide">{{ form.non_field_errors }}</div>
-    {% endif %}
-    {% for field in form %}
-      <label class="field {% if field.name == 'notes' or field.name == 'diagnosis' %}form-wide{% endif %}">
-        <span>{{ field.label }}</span>
-        {{ field }}
-        {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
-        {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
-      </label>
-    {% endfor %}
-    <div class="form-actions form-wide">
-      <button type="submit">Сохранить</button>
-      {% if cancel_url %}<a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>{% endif %}
+<form method="post" class="object-form-layout">
+  {% csrf_token %}
+  <section class="panel form-panel object-form-main">
+    <div class="object-form-head">
+      <div>
+        <h2>{{ form_panel_title|default:"Данные" }}</h2>
+        <p>{{ form_intro|default:"Параметры справочника, которые используются в расписании, финансах или отчетах." }}</p>
+      </div>
     </div>
-  </form>
-</section>
+    <div class="form-grid">
+      {% if form.non_field_errors %}
+        <div class="form-error form-wide">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% for field in form %}
+        <label class="field {% if field.name == 'notes' or field.name == 'note' or field.name == 'diagnosis' %}form-wide{% endif %}">
+          <span>{{ field.label }}</span>
+          {{ field }}
+          {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+          {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+        </label>
+      {% endfor %}
+    </div>
+  </section>
+
+  <aside class="object-form-sidebar" aria-label="Контроль формы">
+    <section class="panel object-form-control">
+      <h2>{{ control_title|default:"Контроль сохранения" }}</h2>
+      <ul class="object-form-check-list">
+        {% if object_form_control_items %}
+          {% for item in object_form_control_items %}
+            <li{% if item.tone %} class="is-{{ item.tone }}"{% endif %}>
+              <strong>{{ item.title }}</strong>
+              <span>{{ item.detail }}</span>
+            </li>
+          {% endfor %}
+        {% else %}
+          <li>
+            <strong>Обязательные поля</strong>
+            <span>Пустые обязательные поля будут отмечены перед сохранением.</span>
+          </li>
+          <li>
+            <strong>Связанные данные</strong>
+            <span>Изменения в справочнике могут повлиять на новые занятия, счета, табели или отчеты.</span>
+          </li>
+          <li>
+            <strong>История</strong>
+            <span>Архивирование и восстановление выполняются со страницы списка, если доступны для этого объекта.</span>
+          </li>
+        {% endif %}
+      </ul>
+      <div class="form-actions object-form-actions">
+        <button type="submit">Сохранить</button>
+        {% if cancel_url %}<a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>{% endif %}
+      </div>
+    </section>
+  </aside>
+</form>
 {% endblock %}

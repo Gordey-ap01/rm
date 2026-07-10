@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Кабинеты{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Кабинеты</h1>
+    <p>Настройки вместимости для расписания, групповых занятий и ручных исключений.</p>
+  </div>
+  <a class="button-link" href="{% url 'room_create' %}">Создать кабинет</a>
+</section>
+
+<section class="directory-overview">
+  <a class="directory-next-action is-{{ room_next_action.tone }}" href="{{ room_next_action.href }}">
+    <span>{{ room_next_action.label }}</span>
+    <strong>{{ room_next_action.title }}</strong>
+    <small>{{ room_next_action.detail }}</small>
+  </a>
+  <div class="directory-summary-grid" aria-label="Сводка кабинетов">
+    {% for item in room_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="directory-layout">
+  <div class="directory-main">
+    <section class="panel directory-panel" id="room-list">
+      <div class="directory-panel-head">
+        <div>
+          <h2>Кабинеты и вместимость</h2>
+          <p>Лимиты используются при создании и переносе занятий; одноразовое разрешение фиксируется в занятии.</p>
+        </div>
+      </div>
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>Кабинет</th>
+              <th>Тип</th>
+              <th>Специалисты</th>
+              <th>Получатели</th>
+              <th>Группы</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for room in rooms %}
+            <tr{% if not room.is_active %} class="muted-row"{% endif %}>
+              <td data-label="Кабинет">
+                <span class="color-dot" style="background:{{ room.color }}"></span>
+                <strong>{{ room.name }}</strong>
+              </td>
+              <td data-label="Тип">{{ room.get_room_type_display }}</td>
+              <td data-label="Специалисты">
+                {% if room.limit_staff_count %}
+                  <span class="status-pill">{{ room.effective_max_staff_count }}</span>
+                {% else %}
+                  <span class="status-pill muted-pill">без лимита</span>
+                {% endif %}
+              </td>
+              <td data-label="Получатели">
+                {% if room.limit_recipient_count %}
+                  <span class="status-pill">{{ room.effective_max_recipient_count }}</span>
+                {% else %}
+                  <span class="status-pill muted-pill">без лимита</span>
+                {% endif %}
+              </td>
+              <td data-label="Группы">
+                {% if room.allow_group_sessions %}
+                  <span class="status-pill">разрешены</span>
+                {% else %}
+                  <span class="status-pill muted-pill">только индивидуально</span>
+                {% endif %}
+              </td>
+              <td data-label="Статус">
+                {% if room.is_active %}
+                  <span class="status-pill">активен</span>
+                {% else %}
+                  <span class="status-pill muted-pill">выключен</span>
+                {% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'room_edit' room.pk %}">Править</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" data-label="Кабинеты"><div class="empty-state">Кабинеты еще не созданы.</div></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="directory-sidebar" aria-label="Контроль кабинетов">
+    <section class="panel directory-control-panel">
+      <h2>Контроль</h2>
+      <ul class="directory-check-list">
+        <li>
+          <strong>Одиночный кабинет</strong>
+          <span>Включенные лимиты 1 специалист / 1 получатель блокируют пересечения.</span>
+        </li>
+        <li>
+          <strong>Групповое занятие</strong>
+          <span>Нужно разрешить группы и задать лимит получателей больше одного или снять лимит.</span>
+        </li>
+        <li>
+          <strong>Несколько специалистов</strong>
+          <span>Если занятие ведут двое, лимит специалистов должен быть больше одного или снят.</span>
+        </li>
+        <li>
+          <strong>Исключения вручную</strong>
+          <span>Разовое проведение не по правилам оформляется в карточке занятия, а не в справочнике.</span>
+        </li>
+      </ul>
+    </section>
+  </aside>
+</section>
+{% endblock %}

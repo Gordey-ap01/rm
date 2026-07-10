@@ -12,8 +12,15 @@ from .appointments import (
     appointment_detail_context,
     appointment_edit,
     appointment_move,
+    appointment_participant_program,
 )
 from .balances import balance_account_create, balance_account_delete, balance_account_edit, balances
+from .compensation_rules import (
+    staff_compensation_rule_create,
+    staff_compensation_rule_edit,
+    staff_compensation_rule_list,
+    staff_compensation_rule_toggle,
+)
 from .confirmations import appointment_confirmation_public, appointment_send_confirmation
 from .consents import consent_create, consent_list
 from .dashboard import (
@@ -25,6 +32,14 @@ from .dashboard import (
     work_queue,
 )
 from .documents import document_create, document_list
+from .funding_sources import (
+    funding_source_archive,
+    funding_source_create,
+    funding_source_edit,
+    funding_source_list,
+    funding_source_restore,
+)
+from .imports import recipient_import_preview
 from .payments import payment_create
 from .programs import (
     program_block_create,
@@ -38,13 +53,36 @@ from .recipients import (
     recipient_detail,
     recipient_edit,
     recipient_list,
+    recipient_representative_create,
+    recipient_representative_edit,
     representative_create,
     representative_edit,
 )
 from .recommendations import recommendation_acknowledge, recommendation_create, recommendation_list
-from .reports import grant_report, staff_mass_reschedule, staff_timesheet
+from .reports import (
+    funding_service_quota_create,
+    funding_service_quota_delete,
+    funding_service_quota_edit,
+    funding_staff_allocation_create,
+    funding_staff_allocation_delete,
+    funding_staff_allocation_edit,
+    grant_recipient_allocation_create,
+    grant_recipient_allocation_delete,
+    grant_recipient_allocation_edit,
+    grant_report,
+    payroll_sheet_detail,
+    staff_mass_reschedule,
+    staff_timesheet,
+)
+from .rescheduling_plans import (
+    appointment_reschedule_plan_create,
+    appointment_reschedule_plan_detail,
+    reschedule_plan_list,
+)
+from .rooms import room_create, room_edit, room_list
 from .schedule import schedule
 from .scheduling_helpers import suggested_transfer_slots
+from .services import service_archive, service_create, service_edit, service_list, service_restore
 from .specialist import (
     mark_appointment,
     specialist_action_staff,
@@ -54,6 +92,13 @@ from .specialist import (
     staff_availability_toggle,
     time_off_request_create,
     time_off_request_decide,
+)
+from .staff_members import (
+    staff_member_archive,
+    staff_member_create,
+    staff_member_edit,
+    staff_member_list,
+    staff_member_restore,
 )
 from .tomorrow import tomorrow
 
@@ -66,6 +111,9 @@ __all__ = [
     "appointment_detail_context",
     "appointment_edit",
     "appointment_move",
+    "appointment_participant_program",
+    "appointment_reschedule_plan_create",
+    "appointment_reschedule_plan_detail",
     "appointment_send_confirmation",
     "balance_account_create",
     "balance_account_delete",
@@ -77,6 +125,20 @@ __all__ = [
     "dashboard",
     "document_create",
     "document_list",
+    "funding_service_quota_create",
+    "funding_service_quota_delete",
+    "funding_service_quota_edit",
+    "funding_source_archive",
+    "funding_source_create",
+    "funding_source_edit",
+    "funding_source_list",
+    "funding_source_restore",
+    "funding_staff_allocation_create",
+    "funding_staff_allocation_delete",
+    "funding_staff_allocation_edit",
+    "grant_recipient_allocation_create",
+    "grant_recipient_allocation_delete",
+    "grant_recipient_allocation_edit",
     "grant_report",
     "is_admin_user",
     "low_balance_accounts",
@@ -85,6 +147,7 @@ __all__ = [
     "needs_billing_queryset",
     "needs_transfer_queryset",
     "payment_create",
+    "payroll_sheet_detail",
     "program_block_create",
     "program_block_schedule_wizard",
     "program_block_transfer_funds",
@@ -93,20 +156,41 @@ __all__ = [
     "recipient_create",
     "recipient_detail",
     "recipient_edit",
+    "recipient_import_preview",
     "recipient_list",
+    "recipient_representative_create",
+    "recipient_representative_edit",
     "recommendation_acknowledge",
     "recommendation_create",
     "recommendation_list",
     "representative_create",
     "representative_edit",
+    "reschedule_plan_list",
+    "room_create",
+    "room_edit",
+    "room_list",
     "safe_next_url",
     "schedule",
+    "service_archive",
+    "service_create",
+    "service_edit",
+    "service_list",
+    "service_restore",
     "specialist_action_staff",
     "specialist_home",
     "specialist_home_redirect",
     "staff_availability_create",
     "staff_availability_toggle",
+    "staff_compensation_rule_create",
+    "staff_compensation_rule_edit",
+    "staff_compensation_rule_list",
+    "staff_compensation_rule_toggle",
     "staff_mass_reschedule",
+    "staff_member_archive",
+    "staff_member_create",
+    "staff_member_edit",
+    "staff_member_list",
+    "staff_member_restore",
     "staff_timesheet",
     "suggested_transfer_slots",
     "time_off_request_create",

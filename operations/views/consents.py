@@ -13,6 +13,110 @@ from operations.models import Child, Consent
 from ._common import is_admin_user
 
 
+def _consent_create_url(child_id: int | str | None) -> str:
+    if child_id:
+        return reverse("consent_create_for_child", args=[child_id])
+    return reverse("consent_create")
+
+
+def _consent_summary_items(consents: list[Consent]) -> list[dict[str, str]]:
+    active = [consent for consent in consents if consent.is_valid]
+    expired = [consent for consent in consents if not consent.is_valid]
+    linked_documents = [consent for consent in consents if consent.document_id]
+    unsigned = [consent for consent in consents if consent.signed_on is None]
+    return [
+        {
+            "label": "Всего в списке",
+            "value": str(len(consents)),
+            "hint": "показаны последние 80",
+        },
+        {
+            "label": "Активны",
+            "value": str(len(active)),
+            "hint": "можно использовать",
+        },
+        {
+            "label": "Истекли",
+            "value": str(len(expired)),
+            "hint": "нет действующего срока",
+        },
+        {
+            "label": "С документом",
+            "value": str(len(linked_documents)),
+            "hint": f"без даты подписи: {len(unsigned)}",
+        },
+    ]
+
+
+def _consent_next_action(consents: list[Consent], child_id: int | str | None) -> dict[str, str]:
+    expired_count = sum(1 for consent in consents if not consent.is_valid)
+    if expired_count:
+        return {
+            "tone": "warning",
+            "label": "Следующий шаг",
+            "title": "Обновить истекшие",
+            "detail": f"Согласий без действующего срока: {expired_count}.",
+            "href": "#consent-list",
+        }
+    return {
+        "tone": "success",
+        "label": "Следующий шаг",
+        "title": "Зафиксировать согласие",
+        "detail": "Истекших согласий в текущем списке нет.",
+        "href": _consent_create_url(child_id),
+    }
+
+
+def _consent_control_items(
+    consents: list[Consent],
+    child_id: int | str | None,
+) -> list[dict[str, str]]:
+    expired_count = sum(1 for consent in consents if not consent.is_valid)
+    unsigned_count = sum(1 for consent in consents if consent.signed_on is None)
+    items = []
+    if child_id:
+        items.append(
+            {
+                "tone": "info",
+                "title": "Фильтр по получателю",
+                "text": "Список показывает согласия только выбранного получателя.",
+            }
+        )
+    if expired_count:
+        items.append(
+            {
+                "tone": "warning",
+                "title": "Есть недействующие согласия",
+                "text": f"Согласий без действующего срока: {expired_count}.",
+            }
+        )
+    if unsigned_count:
+        items.append(
+            {
+                "tone": "warning",
+                "title": "Не указана дата подписи",
+                "text": f"Согласий без даты подписи: {unsigned_count}.",
+            }
+        )
+    if not consents:
+        items.append(
+            {
+                "tone": "info",
+                "title": "Согласий пока нет",
+                "text": "Зафиксируйте согласие на персональные данные, фото/видео или внешнего специалиста.",
+            }
+        )
+    if not items:
+        items.append(
+            {
+                "tone": "success",
+                "title": "Критичных согласий нет",
+                "text": "В текущем списке все согласия действуют.",
+            }
+        )
+    return items
+
+
 @login_required
 @user_passes_test(is_admin_user)
 def consent_list(request, child_id: int | None = None):
@@ -21,7 +125,19 @@ def consent_list(request, child_id: int | None = None):
         child_id = request.GET.get("child_id")
     if child_id:
         qs = qs.filter(child_id=child_id)
-    return render(request, "operations/consent_list.html", {"consents": qs[:80], "child_id": child_id})
+    consents = list(qs[:80])
+    return render(
+        request,
+        "operations/consent_list.html",
+        {
+            "consents": consents,
+            "child_id": child_id,
+            "consent_create_url": _consent_create_url(child_id),
+            "consent_summary_items": _consent_summary_items(consents),
+            "consent_next_action": _consent_next_action(consents, child_id),
+            "consent_control_items": _consent_control_items(consents, child_id),
+        },
+    )
 
 
 @login_required

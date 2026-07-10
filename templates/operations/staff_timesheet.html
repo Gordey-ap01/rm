@@ -1,36 +1,260 @@
 {% extends "base.html" %}
 {% block title %}Табель — {{ staff.full_name }}{% endblock %}
 {% block content %}
-<h1>Табель — {{ staff.full_name }}</h1>
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Табель специалиста</p>
+    <h1>{{ staff.full_name }}</h1>
+    <p>Проверка занятий, ставок, сохраненных начислений и расчетных листов за выбранный период.</p>
+  </div>
+  <div class="header-actions">
+    <a class="button-link secondary-button" href="{% url 'staff_mass_reschedule' pk=staff.pk %}">Массовый перенос</a>
+    {% if sheet %}
+      <a class="button-link secondary-button" href="?date_from={{ selected_date_from|date:'Y-m-d' }}&date_to={{ selected_date_to|date:'Y-m-d' }}&csv=1">Скачать CSV</a>
+    {% endif %}
+  </div>
+</section>
 
-<form method="get" class="filters">
-  {{ form.as_p }}
-  <button type="submit">Показать</button>
-  {% if sheet %}<a href="?{{ request.GET.urlencode }}&csv=1">Скачать CSV</a>{% endif %}
-</form>
+<section class="panel timesheet-filter-panel">
+  <form method="get" class="timesheet-filter-form">
+    {% if form.non_field_errors %}
+      <div class="form-errors">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <div>
+      <label for="{{ form.date_from.id_for_label }}">{{ form.date_from.label }}</label>
+      {{ form.date_from }}
+      {% for error in form.date_from.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+    </div>
+    <div>
+      <label for="{{ form.date_to.id_for_label }}">{{ form.date_to.label }}</label>
+      {{ form.date_to }}
+      {% for error in form.date_to.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+    </div>
+    <button type="submit">Показать табель</button>
+  </form>
+</section>
 
-{% if sheet %}
-<table class="grid">
-  <thead><tr><th>Дата</th><th>Всего</th><th>Проведено</th><th>Отменено</th><th>Не явился</th><th>Часов</th></tr></thead>
-  <tbody>
-    {% for row in sheet.rows %}
-      <tr>
-        <td>{{ row.date|date:"d E" }} {{ row.date|date:"l" }}</td>
-        <td>{{ row.total }}</td>
-        <td>{{ row.completed }}</td>
-        <td>{{ row.cancelled }}</td>
-        <td>{{ row.no_show }}</td>
-        <td>{{ row.hours }}</td>
-      </tr>
-    {% endfor %}
-  </tbody>
-  <tfoot>
-    <tr><th>Итого</th><th>{{ sheet.totals.total }}</th><th>{{ sheet.totals.completed }}</th><th>{{ sheet.totals.cancelled }}</th><th>{{ sheet.totals.no_show }}</th><th>{{ sheet.totals.hours }}</th></tr>
-  </tfoot>
-</table>
-{% else %}
-<p class="empty">Выберите период.</p>
-{% endif %}
+<section class="timesheet-layout">
+  <main class="timesheet-main">
+    {% if sheet %}
+      <section class="panel timesheet-action-panel">
+        <div>
+          <h2>Действия по периоду</h2>
+          <p>Сначала обновите начисления по текущим ставкам. Расчетный лист создается из сохраненных начислений.</p>
+        </div>
+        <div class="timesheet-actions">
+          <form method="post" class="mini-form">
+            {% csrf_token %}
+            <input type="hidden" name="date_from" value="{{ selected_date_from|date:'Y-m-d' }}">
+            <input type="hidden" name="date_to" value="{{ selected_date_to|date:'Y-m-d' }}">
+            <button type="submit" name="action" value="generate_accruals">Обновить начисления</button>
+          </form>
+          <form method="post" class="mini-form">
+            {% csrf_token %}
+            <input type="hidden" name="date_from" value="{{ selected_date_from|date:'Y-m-d' }}">
+            <input type="hidden" name="date_to" value="{{ selected_date_to|date:'Y-m-d' }}">
+            <button class="secondary-button" type="submit" name="action" value="create_payroll_sheet">Создать расчетный лист</button>
+          </form>
+        </div>
+      </section>
 
-<p><a href="{% url 'staff_mass_reschedule' pk=staff.pk %}">Массовый перенос занятий</a></p>
+      <section class="panel timesheet-table-panel">
+        <div class="timesheet-table-head">
+          <div>
+            <h2>Дни периода</h2>
+            <p>Итоги по расписанию специалиста, включая назначения вторым специалистом.</p>
+          </div>
+          <span>{{ sheet.rows|length }} дн.</span>
+        </div>
+        <table class="grid timesheet-mobile-table timesheet-period-table">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Всего</th>
+              <th>Проведено</th>
+              <th>Отменено</th>
+              <th>Не явился</th>
+              <th>Часов</th>
+              <th>К начислению</th>
+              <th>Сумма</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in sheet.rows %}
+              <tr>
+                <td data-label="Дата">{{ row.date|date:"d E" }} {{ row.date|date:"l" }}</td>
+                <td data-label="Всего">{{ row.total }}</td>
+                <td data-label="Проведено">{{ row.completed }}</td>
+                <td data-label="Отменено">{{ row.cancelled }}</td>
+                <td data-label="Не явился">{{ row.no_show }}</td>
+                <td data-label="Часов">{{ row.hours }}</td>
+                <td data-label="К начислению">{{ row.payable }}</td>
+                <td data-label="Сумма">{{ row.pay_amount }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th data-label="Итог">Итого</th>
+              <th data-label="Всего">{{ sheet.totals.total }}</th>
+              <th data-label="Проведено">{{ sheet.totals.completed }}</th>
+              <th data-label="Отменено">{{ sheet.totals.cancelled }}</th>
+              <th data-label="Не явился">{{ sheet.totals.no_show }}</th>
+              <th data-label="Часов">{{ sheet.totals.hours }}</th>
+              <th data-label="К начислению">{{ sheet.totals.payable }}</th>
+              <th data-label="Сумма">{{ sheet.totals.pay_amount }}</th>
+            </tr>
+          </tfoot>
+        </table>
+      </section>
+
+      <section class="panel timesheet-table-panel">
+        <div class="timesheet-table-head">
+          <div>
+            <h2>Сохраненные начисления</h2>
+            <p>Строки, которые уже записаны в базу и могут попасть в расчетный лист.</p>
+          </div>
+          <span>{{ payroll_accruals|length }} строк</span>
+        </div>
+        <table class="grid timesheet-mobile-table timesheet-accrual-table">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Услуга</th>
+              <th>Источник</th>
+              <th>Статус</th>
+              <th>Сумма</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for accrual in payroll_accruals %}
+              <tr>
+                <td data-label="Дата">{{ accrual.work_date|date:"d.m.Y" }}</td>
+                <td data-label="Услуга">{{ accrual.service.name }}</td>
+                <td data-label="Источник">{% if accrual.funding_source %}{{ accrual.funding_source.name }}{% else %}—{% endif %}</td>
+                <td data-label="Статус">{{ accrual.get_status_display }}</td>
+                <td data-label="Сумма">{{ accrual.amount }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5" data-label="Начисления">Сохраненных начислений за период пока нет.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="panel timesheet-table-panel">
+        <div class="timesheet-table-head">
+          <div>
+            <h2>Расчетные листы</h2>
+            <p>Листы, которые пересекаются с выбранным периодом.</p>
+          </div>
+          <span>{{ payroll_sheets|length }} шт.</span>
+        </div>
+        <table class="grid timesheet-mobile-table timesheet-sheets-table">
+          <thead>
+            <tr>
+              <th>Период</th>
+              <th>Статус</th>
+              <th>Сумма</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for payroll_sheet in payroll_sheets %}
+              <tr>
+                <td data-label="Период">{{ payroll_sheet.date_from|date:"d.m.Y" }}-{{ payroll_sheet.date_to|date:"d.m.Y" }}</td>
+                <td data-label="Статус">{{ payroll_sheet.get_status_display }}</td>
+                <td data-label="Сумма">{{ payroll_sheet.total_amount }}</td>
+                <td data-label="Действие"><a href="{% url 'payroll_sheet_detail' payroll_sheet.pk %}">Открыть</a></td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" data-label="Расчетные листы">Расчетных листов за период пока нет.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="panel timesheet-table-panel">
+        <div class="timesheet-table-head">
+          <div>
+            <h2>Расшифровка начислений</h2>
+            <p>Каждая строка показывает основание начисления, источник финансирования и найденную ставку.</p>
+          </div>
+          <span>{{ sheet.pay_lines|length }} строк</span>
+        </div>
+        <table class="grid timesheet-mobile-table timesheet-pay-lines">
+          <thead>
+            <tr>
+              <th>Время</th>
+              <th>Услуга</th>
+              <th>Источник</th>
+              <th>Статус</th>
+              <th>Списание</th>
+              <th>Основание</th>
+              <th>Ставка</th>
+              <th>Сумма</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for line in sheet.pay_lines %}
+              <tr class="{% if not line.payable %}muted-row{% elif not line.has_rate %}warning-row{% endif %}">
+                <td data-label="Время">
+                  <a href="{% url 'appointment_detail' line.appointment.pk %}">{{ line.starts_at|date:"d.m H:i" }}-{{ line.ends_at|date:"H:i" }}</a>
+                </td>
+                <td data-label="Услуга">{{ line.service_name }}</td>
+                <td data-label="Источник">{% if line.funding_source %}{{ line.funding_source.name }}{% else %}Не указан{% endif %}</td>
+                <td data-label="Статус">{{ line.status }}</td>
+                <td data-label="Списание">{{ line.billing_decision }}</td>
+                <td data-label="Основание">{{ line.note }}</td>
+                <td data-label="Ставка">
+                  {% if line.has_rate %}
+                    {{ line.rate_label }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td data-label="Сумма">{{ line.amount }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="8" data-label="Начисления">Нет занятий за выбранный период.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    {% else %}
+      <section class="panel empty-state-panel">
+        <h2>Период не построен</h2>
+        <p class="empty">Выберите даты и нажмите «Показать табель», чтобы увидеть занятия, начисления и расчетные листы специалиста.</p>
+      </section>
+    {% endif %}
+  </main>
+
+  <aside class="timesheet-sidebar" aria-label="Сводка табеля">
+    <article class="panel appointment-form-summary timesheet-summary">
+      <h2>Сводка табеля</h2>
+      <dl>
+        {% for item in timesheet_summary_items %}
+          <div>
+            <dt>{{ item.label }}</dt>
+            <dd>
+              <strong>{{ item.value }}</strong>
+              <small>{{ item.hint }}</small>
+            </dd>
+          </div>
+        {% endfor %}
+      </dl>
+    </article>
+    <article class="panel appointment-form-summary timesheet-summary">
+      <h2>Контроль перед выплатой</h2>
+      <div class="appointment-form-alerts">
+        {% for item in timesheet_attention_items %}
+          <div class="appointment-attention-item is-{{ item.tone }}">
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.detail }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </article>
+  </aside>
+</section>
 {% endblock %}

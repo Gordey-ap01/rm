@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}План переноса{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>План переноса</h1>
+    <p>
+      {{ plan.get_plan_type_display }} · {{ plan.get_status_display }}
+      {% if plan.root_appointment %} · {{ plan.root_appointment }}{% endif %}
+    </p>
+  </div>
+  <div class="header-actions">
+    {% if plan.root_appointment %}
+      <a class="button-link secondary" href="{% url 'appointment_detail' plan.root_appointment.pk %}">К занятию</a>
+      <a class="button-link secondary" href="{% url 'appointment_move' plan.root_appointment.pk %}">К переносу</a>
+    {% endif %}
+  </div>
+</section>
+
+<section class="appointment-brief" aria-label="Сводка плана переноса">
+  <div class="appointment-brief-grid">
+    <div class="appointment-brief-item">
+      <span>Статус</span>
+      <strong>{{ plan.get_status_display }}</strong>
+      <small>План не меняет расписание, пока администратор не применит шаг.</small>
+    </div>
+    <div class="appointment-brief-item">
+      <span>Шаги</span>
+      <strong>{{ steps|length }}</strong>
+      <small>Свободные окна и занятые кандидаты сохранены как данные.</small>
+    </div>
+    <div class="appointment-brief-item">
+      <span>Создан</span>
+      <strong>{{ plan.created_at|date:"d.m.Y H:i" }}</strong>
+      <small>{% if plan.created_by %}{{ plan.created_by }}{% else %}Автор не сохранен{% endif %}</small>
+    </div>
+  </div>
+  <div class="appointment-attention{% if plan.status == 'ready' %} is-clear{% endif %}">
+    <h2>Контроль</h2>
+    <p>
+      Перед применением шага система повторно проверяет получателей, специалистов,
+      кабинет и график. Списание исходного занятия остается отдельным решением.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="revalidate">
+      <button type="submit" class="button-link secondary">Перепроверить план</button>
+    </form>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Шаги плана</h2>
+  <table class="appointment-detail-table reschedule-plan-table">
+    <thead>
+      <tr>
+        <th>№</th>
+        <th>Действие</th>
+        <th>Статус</th>
+        <th>Новое окно</th>
+        <th>Специалист</th>
+        <th>Кабинет</th>
+        <th>Конфликт</th>
+        <th>Проверка</th>
+        <th>Согласования</th>
+        <th>Команда</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for step in steps %}
+        <tr>
+          <td data-label="№">{{ step.position }}</td>
+          <td data-label="Действие">{{ step.get_action_type_display }}</td>
+          <td data-label="Статус">{{ step.get_status_display }}</td>
+          <td data-label="Новое окно">
+            {% if step.proposed_starts_at %}
+              {{ step.proposed_starts_at|date:"d.m H:i" }}-{{ step.proposed_ends_at|date:"H:i" }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td data-label="Специалист">
+            {% if step.proposed_primary_staff %}{{ step.proposed_primary_staff }}{% else %}—{% endif %}
+          </td>
+          <td data-label="Кабинет">
+            {% if step.proposed_room %}{{ step.proposed_room }}{% else %}Не выбран{% endif %}
+          </td>
+          <td data-label="Конфликт">
+            {% if step.blocking_appointment %}
+              <a href="{% url 'appointment_detail' step.blocking_appointment.pk %}">
+                {{ step.blocking_appointment.starts_at|date:"d.m H:i" }} · {{ step.blocking_appointment }}
+              </a>
+            {% else %}
+              Нет
+            {% endif %}
+          </td>
+          <td data-label="Проверка">
+            {% if step.validation_messages %}
+              {{ step.validation_messages|join:", " }}
+            {% else %}
+              Участников: {{ step.participant_snapshot|length }} · специалистов: {{ step.staff_snapshot|length }}
+            {% endif %}
+          </td>
+          <td data-label="Согласования">
+            <div><strong>{{ step.get_confirmation_status_display }}</strong></div>
+            {% if step.confirmations.all %}
+              {% if step.confirmation_summary.total %}
+                <div class="muted">
+                  Всего: {{ step.confirmation_summary.total }},
+                  подтверждено: {{ step.confirmation_summary.confirmed }},
+                  отказов: {{ step.confirmation_summary.declined }},
+                  ждут: {{ step.confirmation_summary.pending }}
+                </div>
+              {% endif %}
+              <div class="stacked-actions">
+                {% for confirmation in step.confirmations.all %}
+                  <a class="small-action" href="{% url 'appointment_confirmation_public' confirmation.token %}">
+                    {{ confirmation.get_target_type_display }} · {{ confirmation.get_status_display }}
+                  </a>
+                {% endfor %}
+              </div>
+            {% else %}
+              Нет
+            {% endif %}
+          </td>
+          <td data-label="Команда">
+            {% if step.action_type == "move" and step.status == "valid" %}
+              {% if step.confirmation_status == "not_requested" %}
+                <form method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="send_step_confirmations">
+                  <input type="hidden" name="step_id" value="{{ step.pk }}">
+                  <button type="submit" class="button-link secondary small-action">Отправить согласования</button>
+                </form>
+              {% endif %}
+              {% if step.confirmation_status == "waiting" %}
+                <span class="muted">Ждем ответы</span>
+              {% elif step.confirmation_status == "declined" %}
+                <span class="muted">Есть отказ</span>
+              {% else %}
+                <form method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="apply_step">
+                  <input type="hidden" name="step_id" value="{{ step.pk }}">
+                  {% if step.requires_room_override %}
+                    <div class="muted">Нужно одноразовое разрешение кабинета.</div>
+                  {% endif %}
+                  {% if step.confirmation_status == "approved" %}
+                    <button type="submit"
+                            class="button-link secondary small-action"
+                            onclick="return confirm('Применить согласованный перенос? Система еще раз проверит расписание перед записью.')">
+                      Применить согласованный перенос
+                    </button>
+                  {% else %}
+                    <button type="submit"
+                            class="button-link secondary small-action"
+                            onclick="return confirm('Применить перенос без согласований? Система еще раз проверит расписание перед записью.')">
+                      Применить без согласований
+                    </button>
+                  {% endif %}
+                </form>
+                {% if step.requires_room_override %}
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="apply_step">
+                    <input type="hidden" name="step_id" value="{{ step.pk }}">
+                    <input type="hidden" name="allow_room_override" value="1">
+                    <button type="submit"
+                            class="button-link secondary small-action"
+                            onclick="return confirm('Применить перенос с одноразовым разрешением кабинета? Система сохранит разрешение в истории нового занятия.')">
+                      Применить с разрешением кабинета
+                    </button>
+                  </form>
+                {% endif %}
+              {% endif %}
+            {% elif step.action_type == "review_conflict" %}
+              <div class="stacked-actions">
+                <span class="muted">Исходное: {{ step.source_appointment.get_status_display }}</span>
+                <a class="button-link secondary small-action" href="{% url 'appointment_detail' step.source_appointment.pk %}">Открыть занятие</a>
+                <a class="button-link secondary small-action" href="{% url 'appointment_move' step.source_appointment.pk %}">Перенести вручную</a>
+                <a class="button-link danger-link small-action" href="{% url 'appointment_cancel' step.source_appointment.pk %}">Отменить</a>
+                {% if step.status != "skipped" and step.status != "applied" %}
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="mark_review_conflict_resolved">
+                    <input type="hidden" name="step_id" value="{{ step.pk }}">
+                    <button type="submit"
+                            class="button-link secondary small-action"
+                            onclick="return confirm('Отметить конфликт разобранным? Занятие должно быть уже перенесено или отменено вручную.')">
+                      Отметить разобранным
+                    </button>
+                  </form>
+                {% else %}
+                  <span class="muted">Разобрано</span>
+                {% endif %}
+              </div>
+            {% elif step.created_appointment %}
+              <a class="button-link secondary small-action" href="{% url 'appointment_detail' step.created_appointment.pk %}">Открыть новое</a>
+            {% else %}
+              <span class="muted">Ручное решение</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="10" data-label="Шаги">Шагов пока нет.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

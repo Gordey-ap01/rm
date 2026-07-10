@@ -12,7 +12,9 @@
 
   var state = {
     date: root.dataset.initialDay || todayIso(),
+    laneMode: "staff",
     staff: [],
+    rooms: [],
     appointments: [],
     loading: false,
   };
@@ -36,9 +38,15 @@
   var prevBtn = document.getElementById("staffDayPrev");
   var nextBtn = document.getElementById("staffDayNext");
   var todayBtn = document.getElementById("staffDayToday");
+  var staffLaneMode = document.getElementById("staffLaneMode");
+  var roomLaneMode = document.getElementById("roomLaneMode");
   var meta = document.getElementById("staffDayMeta");
+  var statusSummary = document.getElementById("staffDayStatusSummary");
   var staffFilter = document.getElementById("staffFilter");
   var serviceFilter = document.getElementById("serviceFilter");
+  var roomFilter = document.getElementById("roomFilter");
+  var statusFilter = document.getElementById("statusFilter");
+  var statusOrder = ["proposed", "reserved", "confirmed", "completed", "rescheduled", "cancelled", "no_show", "draft"];
 
   function pad(value) {
     return String(value).padStart(2, "0");
@@ -98,11 +106,21 @@
     return Math.max(duration || STEP_MINUTES, 15);
   }
 
-  function createUrl(staffId, minutes) {
+  function createUrl(column, minutes) {
     var url = new URL(root.dataset.createUrl || "/appointments/new/", window.location.origin);
     url.searchParams.set("date", state.date);
     url.searchParams.set("time", formatMinutes(minutes));
-    url.searchParams.set("staff_id", staffId);
+    var staffId = selectedStaffId();
+    var serviceId = selectedServiceId();
+    var roomId = selectedRoomId();
+    if (state.laneMode === "room") {
+      url.searchParams.set("room_id", column.id);
+      if (staffId) url.searchParams.set("staff_id", staffId);
+    } else {
+      url.searchParams.set("staff_id", column.id);
+      if (roomId) url.searchParams.set("room_id", roomId);
+    }
+    if (serviceId) url.searchParams.set("service_id", serviceId);
     return url.pathname + url.search;
   }
 
@@ -118,7 +136,36 @@
     return serviceFilter && serviceFilter.value ? String(serviceFilter.value) : "";
   }
 
-  function filteredStaff() {
+  function selectedRoomId() {
+    return roomFilter && roomFilter.value ? String(roomFilter.value) : "";
+  }
+
+  function selectedStatus() {
+    return statusFilter && statusFilter.value ? String(statusFilter.value) : "";
+  }
+
+  function staffMatches(props, staffId) {
+    var ids = props.staffIds || (props.staffId ? [props.staffId] : []);
+    return ids.map(String).indexOf(String(staffId)) !== -1;
+  }
+
+  function hasStaff(props) {
+    var ids = props.staffIds || (props.staffId ? [props.staffId] : []);
+    return ids.length > 0;
+  }
+
+  function roomMatches(props, roomId) {
+    return String(props.roomId || "") === String(roomId);
+  }
+
+  function filteredColumns() {
+    if (state.laneMode === "room") {
+      var selectedRoom = selectedRoomId();
+      if (!selectedRoom) return state.rooms;
+      return state.rooms.filter(function (item) {
+        return String(item.id) === selectedRoom;
+      });
+    }
     var selected = selectedStaffId();
     if (!selected) return state.staff;
     return state.staff.filter(function (item) {
@@ -129,12 +176,18 @@
   function filteredAppointments() {
     var staffId = selectedStaffId();
     var serviceId = selectedServiceId();
+    var roomId = selectedRoomId();
+    var status = selectedStatus();
     return state.appointments
       .filter(function (item) {
         var props = item.extendedProps || {};
         if (String(item.start).slice(0, 10) !== state.date) return false;
-        if (staffId && String(props.staffId) !== staffId) return false;
+        if (state.laneMode === "staff" && !hasStaff(props)) return false;
+        if (state.laneMode === "room" && !props.roomId) return false;
+        if (staffId && !staffMatches(props, staffId)) return false;
         if (serviceId && String(props.serviceId) !== serviceId) return false;
+        if (roomId && String(props.roomId) !== roomId) return false;
+        if (status && String(props.status) !== status) return false;
         return true;
       })
       .sort(function (a, b) {
@@ -149,10 +202,41 @@
       month: "long",
       year: "numeric",
     });
+    var columnLabel = state.laneMode === "room" ? "каб." : "спец.";
     meta.innerHTML =
       "<span>" + escapeHtml(dateLabel) + "</span>" +
-      "<span>" + columns.length + " спец.</span>" +
+      "<span>" + columns.length + " " + columnLabel + "</span>" +
       "<span>" + appointments.length + " зан.</span>";
+  }
+
+  function renderStatusSummary(appointments) {
+    if (!statusSummary) return;
+    if (!appointments.length) {
+      statusSummary.innerHTML = '<span class="staff-day-status-empty">Нет занятий по фильтрам</span>';
+      return;
+    }
+    var counts = {};
+    appointments.forEach(function (item) {
+      var status = (item.extendedProps && item.extendedProps.status) || "confirmed";
+      counts[status] = (counts[status] || 0) + 1;
+    });
+    var statuses = statusOrder.filter(function (status) {
+      return counts[status];
+    });
+    statusSummary.innerHTML = statuses
+      .map(function (status) {
+        var def = statusDefs[status] || { label: status, color: "#64748b" };
+        return (
+          '<span class="staff-day-status-chip" style="--status-color:' +
+          escapeHtml(def.color) +
+          '">' +
+          escapeHtml(def.label) +
+          " " +
+          counts[status] +
+          "</span>"
+        );
+      })
+      .join("");
   }
 
   function renderTimeColumn() {
@@ -165,13 +249,13 @@
     return html;
   }
 
-  function renderSlotHits(staffId) {
+  function renderSlotHits(column) {
     var html = "";
     for (var minute = START_HOUR * 60; minute < END_HOUR * 60; minute += STEP_MINUTES) {
       var top = (minute - START_HOUR * 60) * MINUTE_HEIGHT;
       html +=
         '<a class="staff-day-slot-hit" href="' +
-        escapeHtml(createUrl(staffId, minute)) +
+        escapeHtml(createUrl(column, minute)) +
         '" style="top:' +
         top +
         "px;height:" +
@@ -204,7 +288,22 @@
     var staffColor = props.staffColor || "#3b82f6";
     var sequence = props.sequenceNumber ? "№" + props.sequenceNumber : "";
     var account = props.billingAccountId ? '<span class="staff-day-badge">счёт</span>' : "";
+    var group = props.participantCount > 1 ? '<span class="staff-day-badge">группа ' + escapeHtml(props.participantCount) + "</span>" : "";
+    var multiStaff = props.staffCount > 1 ? '<span class="staff-day-badge">' + escapeHtml(props.staffCount) + " спец.</span>" : "";
+    var program = props.programBlock ? '<span class="staff-day-badge">каскад</span>' : "";
     var compactClass = duration <= STEP_MINUTES ? " is-compact" : "";
+    var groupTitle = item.title ? String(item.title).split(" / ")[0] : "";
+    var childLabel = props.participantCount > 1 ? groupTitle || "Группа" : props.child || item.title || "Занятие";
+    var title = [
+      formatMinutes(startMinutes) + "-" + formatMinutes(endMinutes),
+      props.child,
+      props.staff,
+      props.service,
+      props.room,
+      props.programBlock,
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     return (
       '<a class="staff-day-card' +
@@ -213,6 +312,8 @@
       escapeHtml(status) +
       '" href="' +
       escapeHtml(detailUrl(item.id)) +
+      '" title="' +
+      escapeHtml(title) +
       '" style="top:' +
       top +
       "px;height:" +
@@ -227,7 +328,7 @@
       (sequence ? "<em>" + escapeHtml(sequence) + "</em>" : "") +
       "</span>" +
       "<strong>" +
-      escapeHtml(props.child || item.title || "Занятие") +
+      escapeHtml(childLabel) +
       "</strong>" +
       "<small>" +
       escapeHtml([props.service, props.room].filter(Boolean).join(" · ")) +
@@ -235,34 +336,56 @@
       '<span class="staff-day-card-badges"><span class="staff-day-badge">' +
       escapeHtml(statusDef.label) +
       "</span>" +
+      group +
+      multiStaff +
+      program +
       account +
       "</span>" +
       "</a>"
     );
   }
 
-  function renderLane(staff, appointments) {
-    var staffAppointments = appointments.filter(function (item) {
-      return String((item.extendedProps || {}).staffId) === String(staff.id);
+  function columnName(column) {
+    return column.full_name || column.name || "";
+  }
+
+  function columnColor(column) {
+    return column.color || (state.laneMode === "room" ? "#64748b" : "#00a443");
+  }
+
+  function columnLabel() {
+    return state.laneMode === "room" ? "Кабинет" : "Специалист";
+  }
+
+  function appointmentInColumn(item, column) {
+    var props = item.extendedProps || {};
+    if (state.laneMode === "room") return roomMatches(props, column.id);
+    return staffMatches(props, column.id);
+  }
+
+  function renderLane(column, appointments) {
+    var columnAppointments = appointments.filter(function (item) {
+      return appointmentInColumn(item, column);
     });
     return (
-      '<div class="staff-day-lane" data-staff-id="' +
-      escapeHtml(staff.id) +
+      '<div class="staff-day-lane" data-column-id="' +
+      escapeHtml(column.id) +
       '">' +
-      renderSlotHits(staff.id) +
+      renderSlotHits(column) +
       renderNowLine() +
-      staffAppointments.map(renderAppointmentCard).join("") +
+      columnAppointments.map(renderAppointmentCard).join("") +
       "</div>"
     );
   }
 
   function render() {
-    var columns = filteredStaff();
+    var columns = filteredColumns();
     var appointments = filteredAppointments();
     setMeta(columns, appointments);
+    renderStatusSummary(appointments);
 
     if (!columns.length) {
-      root.innerHTML = '<div class="staff-day-empty">Нет активных специалистов для выбранного фильтра.</div>';
+      root.innerHTML = '<div class="staff-day-empty">Нет колонок для выбранного фильтра.</div>';
       return;
     }
 
@@ -277,19 +400,21 @@
       'px">';
 
     html += '<div class="staff-day-corner">Время</div>';
-    columns.forEach(function (staff) {
+    columns.forEach(function (column) {
       html +=
         '<div class="staff-day-column-head" style="--staff-color:' +
-        escapeHtml(staff.color || "#00a443") +
+        escapeHtml(columnColor(column)) +
         '">' +
         "<strong>" +
-        escapeHtml(staff.full_name) +
-        "</strong><span>Специалист</span></div>";
+        escapeHtml(columnName(column)) +
+        "</strong><span>" +
+        columnLabel() +
+        "</span></div>";
     });
 
     html += renderTimeColumn();
-    columns.forEach(function (staff) {
-      html += renderLane(staff, appointments);
+    columns.forEach(function (column) {
+      html += renderLane(column, appointments);
     });
 
     html += "</div>";
@@ -326,6 +451,7 @@
     if (window.rmScheduleCalendar && typeof window.rmScheduleCalendar.gotoDate === "function") {
       window.rmScheduleCalendar.gotoDate(value + "T00:00:00");
     }
+    if (window.rmScheduleRefreshCreateLink) window.rmScheduleRefreshCreateLink();
     loadAppointments();
   }
 
@@ -345,6 +471,14 @@
     }
   }
 
+  function setLaneMode(mode) {
+    state.laneMode = mode === "room" ? "room" : "staff";
+    if (staffLaneMode) staffLaneMode.classList.toggle("is-active", state.laneMode === "staff");
+    if (roomLaneMode) roomLaneMode.classList.toggle("is-active", state.laneMode === "room");
+    window.localStorage.setItem("rmScheduleLaneMode", state.laneMode);
+    render();
+  }
+
   function loadStaff() {
     return fetch("/api/staff/")
       .then(function (response) {
@@ -353,6 +487,20 @@
       })
       .then(function (items) {
         state.staff = items || [];
+      });
+  }
+
+  function loadRooms() {
+    return fetch("/api/rooms/")
+      .then(function (response) {
+        if (!response.ok) throw new Error("rooms api " + response.status);
+        return response.json();
+      })
+      .then(function (items) {
+        state.rooms = items || [];
+      })
+      .catch(function () {
+        state.rooms = [];
       });
   }
 
@@ -386,11 +534,27 @@
       setDate(todayIso());
     });
   }
+  if (staffLaneMode) {
+    staffLaneMode.addEventListener("click", function () {
+      setLaneMode("staff");
+    });
+  }
+  if (roomLaneMode) {
+    roomLaneMode.addEventListener("click", function () {
+      setLaneMode("room");
+    });
+  }
   if (staffFilter) {
     staffFilter.addEventListener("change", render);
   }
   if (serviceFilter) {
     serviceFilter.addEventListener("change", render);
+  }
+  if (roomFilter) {
+    roomFilter.addEventListener("change", render);
+  }
+  if (statusFilter) {
+    statusFilter.addEventListener("change", render);
   }
 
   var params = new URLSearchParams(window.location.search);
@@ -399,7 +563,14 @@
     if (dateInput) dateInput.value = state.date;
   }
 
-  Promise.all([loadStaff(), loadAppointments()]).then(function () {
+  var savedLaneMode = window.localStorage.getItem("rmScheduleLaneMode");
+  if (savedLaneMode === "room") {
+    state.laneMode = "room";
+    if (staffLaneMode) staffLaneMode.classList.remove("is-active");
+    if (roomLaneMode) roomLaneMode.classList.add("is-active");
+  }
+
+  Promise.all([loadStaff(), loadRooms(), loadAppointments()]).then(function () {
     var savedMode = window.localStorage.getItem("rmScheduleMode");
     setMode(savedMode || "staff");
   });

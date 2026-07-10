@@ -14,10 +14,58 @@
   .fc-event-title { font-weight: 500 !important; }
   .fc-event-time { font-size: .8em !important; }
 
-  #status-legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: .5rem; }
-  #status-legend span { display: flex; align-items: center; gap: 4px; font-size: .8rem; }
+  .schedule-status-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 12px;
+  }
+  .schedule-status-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 26px;
+    padding: 3px 8px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .74);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+  }
 
-  #filter-bar label { font-size: .85rem; }
+  #filter-bar label { font-size: .8rem; }
+
+  .schedule-filter-bar {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px;
+    background: rgba(255, 255, 255, .78);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: var(--glass-blur);
+  }
+  .schedule-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(150px, 1fr)) auto auto;
+    gap: 10px;
+    align-items: end;
+  }
+  .schedule-filter-field {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+  .schedule-filter-check {
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    padding: 0 2px 2px;
+  }
+  .schedule-filter-reset {
+    align-self: end;
+    min-height: 32px;
+    white-space: nowrap;
+  }
 
   .schedule-mode-switch {
     display: inline-flex;
@@ -63,6 +111,12 @@
     box-shadow: var(--shadow-sm);
     backdrop-filter: var(--glass-blur);
   }
+  .staff-day-insights {
+    display: grid;
+    gap: 6px;
+    justify-items: end;
+    min-width: min(100%, 420px);
+  }
   .staff-day-date-controls {
     display: flex;
     flex-wrap: wrap;
@@ -97,6 +151,26 @@
     font-weight: 900;
     line-height: 1;
   }
+  .staff-day-lane-switch {
+    display: inline-flex;
+    gap: 4px;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .72);
+  }
+  .staff-day-lane-switch .btn {
+    min-width: 0;
+    min-height: 32px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    box-shadow: none;
+  }
+  .staff-day-lane-switch .is-active {
+    background: var(--heading);
+    border-color: var(--heading);
+    color: #fff;
+  }
   .staff-day-meta {
     display: flex;
     flex-wrap: wrap;
@@ -105,6 +179,38 @@
     color: var(--muted);
     font-size: 13px;
     font-weight: 700;
+  }
+  .staff-day-status-summary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 5px;
+  }
+  .staff-day-status-chip,
+  .staff-day-status-empty {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 22px;
+    padding: 2px 7px;
+    border: 1px solid color-mix(in srgb, var(--status-color, #64748b) 36%, var(--line));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--status-color, #64748b) 12%, white);
+    color: #12262e;
+    font-size: 11px;
+    font-weight: 900;
+  }
+  .staff-day-status-chip::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--status-color, #64748b);
+  }
+  .staff-day-status-empty {
+    border-color: var(--line);
+    background: rgba(255, 255, 255, .64);
+    color: var(--muted);
   }
   .staff-day-board {
     overflow: auto;
@@ -330,15 +436,17 @@
   }
 
   @media (max-width: 768px) {
-    #filter-bar .row > div { margin-bottom: .5rem; }
     .fc-toolbar.fc-header-toolbar { flex-direction: column; gap: .5rem; }
     .fc-toolbar-chunk { display: flex; justify-content: center; flex-wrap: wrap; gap: .25rem; }
     .fc-toolbar-title { font-size: 1rem !important; }
     .fc-button { font-size: .75rem !important; padding: .25rem .5rem !important; }
-    #status-legend { gap: .5rem; }
+    .schedule-status-legend { gap: .5rem; }
     #calendar { min-height: 300px; }
+    .schedule-filter-grid { grid-template-columns: 1fr; }
     .staff-day-toolbar { align-items: stretch; flex-direction: column; }
+    .staff-day-insights { justify-items: start; min-width: 0; }
     .staff-day-meta { justify-content: flex-start; }
+    .staff-day-status-summary { justify-content: flex-start; }
     .staff-day-board { max-height: calc(100vh - 270px); }
   }
 </style>
@@ -358,32 +466,54 @@
         <i class="bi bi-calendar-week"></i> Календарь
       </button>
     </div>
-    <a class="btn btn-primary btn-sm" href="{% url 'appointment_create' %}"><i class="bi bi-plus-lg"></i> Создать занятие</a>
+    <a
+      id="scheduleCreateLink"
+      class="btn btn-primary btn-sm"
+      href="{% url 'appointment_create' %}?date={{ day|date:'Y-m-d' }}"
+      data-base-url="{% url 'appointment_create' %}"
+    ><i class="bi bi-plus-lg"></i> Создать занятие</a>
   </div>
 </section>
 
-<section id="filter-bar" class="bg-white border rounded p-2 shadow-sm mb-3">
-  <div class="row g-2 align-items-center">
-    <div class="col-auto">
-      <label class="form-label small fw-semibold mb-0">Специалист</label>
-      <select id="staffFilter" class="form-select form-select-sm" style="min-width:160px">
+<section id="filter-bar" class="schedule-filter-bar mb-3" aria-label="Фильтры расписания">
+  <div class="schedule-filter-grid">
+    <div class="schedule-filter-field">
+      <label class="form-label small fw-semibold mb-0" for="staffFilter">Специалист</label>
+      <select id="staffFilter" class="form-select form-select-sm">
         <option value="">Все</option>
       </select>
     </div>
-    <div class="col-auto">
-      <label class="form-label small fw-semibold mb-0">Услуга</label>
-      <select id="serviceFilter" class="form-select form-select-sm" style="min-width:160px">
+    <div class="schedule-filter-field">
+      <label class="form-label small fw-semibold mb-0" for="serviceFilter">Услуга</label>
+      <select id="serviceFilter" class="form-select form-select-sm">
         <option value="">Все</option>
       </select>
     </div>
-    <div class="col-auto d-flex align-items-end gap-2">
+    <div class="schedule-filter-field">
+      <label class="form-label small fw-semibold mb-0" for="roomFilter">Кабинет</label>
+      <select id="roomFilter" class="form-select form-select-sm">
+        <option value="">Все</option>
+      </select>
+    </div>
+    <div class="schedule-filter-field">
+      <label class="form-label small fw-semibold mb-0" for="statusFilter">Статус</label>
+      <select id="statusFilter" class="form-select form-select-sm">
+        <option value="">Все</option>
+      </select>
+    </div>
+    <div class="schedule-filter-check">
       <div class="form-check">
         <input class="form-check-input" type="checkbox" id="showUnavailable" checked>
         <label class="form-check-label small" for="showUnavailable">Отпуска/отгулы</label>
       </div>
     </div>
+    <button id="resetScheduleFilters" type="button" class="btn btn-sm btn-outline-secondary schedule-filter-reset">
+      <i class="bi bi-x-circle"></i> Сбросить
+    </button>
   </div>
 </section>
+
+<div id="status-legend" class="schedule-status-legend" aria-label="Статусы занятий"></div>
 
 <section id="calendar-section">
   <div id="calendar"></div>
@@ -400,9 +530,20 @@
         <span class="staff-day-nav-symbol" aria-hidden="true">›</span>
       </button>
       <button id="staffDayToday" type="button" class="btn btn-sm btn-outline-success">Сегодня</button>
+      <div class="staff-day-lane-switch" role="group" aria-label="Колонки дневного расписания">
+        <button id="staffLaneMode" type="button" class="btn btn-sm btn-outline-secondary is-active">
+          <i class="bi bi-person-workspace"></i> Специалисты
+        </button>
+        <button id="roomLaneMode" type="button" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-door-open"></i> Кабинеты
+        </button>
+      </div>
     </div>
-    <div id="staffDayMeta" class="staff-day-meta">
-      <span>Загрузка расписания...</span>
+    <div class="staff-day-insights">
+      <div id="staffDayMeta" class="staff-day-meta">
+        <span>Загрузка расписания...</span>
+      </div>
+      <div id="staffDayStatusSummary" class="staff-day-status-summary" aria-live="polite"></div>
     </div>
   </div>
   <div
@@ -414,9 +555,6 @@
     <div class="staff-day-empty">Загрузка расписания...</div>
   </div>
 </section>
-
-<!-- Status Legend -->
-<div id="status-legend" class="mb-3"></div>
 
 <!-- Detail Modal -->
 <div class="modal fade" id="appointmentModal" tabindex="-1">
@@ -435,6 +573,12 @@
         <p id="modalStatus"></p>
       </div>
       <div class="modal-footer">
+        <a id="modalMoveLink" class="btn btn-outline-warning btn-sm" href="#">
+          <i class="bi bi-arrow-left-right"></i> Перенести
+        </a>
+        <a id="modalCancelLink" class="btn btn-outline-danger btn-sm" href="#">
+          <i class="bi bi-x-octagon"></i> Отменить
+        </a>
         <a id="modalDetailLink" class="btn btn-outline-primary btn-sm" href="#">Подробнее</a>
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Закрыть</button>
       </div>
@@ -453,6 +597,7 @@
     el.innerHTML = '<div class="alert alert-warning">Не удалось загрузить календарь.</div>';
     return;
   }
+  var scheduleParams = new URLSearchParams(window.location.search);
 
   function getCookie(name) {
     var m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
@@ -487,14 +632,90 @@
     no_show:   { label:"Неявка",      color:"#dc2626" },
     rescheduled:{label:"Перенесено",  color:"#f59e0b" }
   };
+  var statusOrder = ["proposed", "reserved", "confirmed", "completed", "rescheduled", "cancelled", "no_show", "draft"];
 
   // Build legend
   var legendEl = document.getElementById("status-legend");
-  for (var k in statusDefs) {
+  var statusFilter = document.getElementById("statusFilter");
+  statusOrder.forEach(function(k) {
     var s = document.createElement("span");
     s.innerHTML = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + statusDefs[k].color + '"></span> ' + statusDefs[k].label;
     legendEl.appendChild(s);
+    if (statusFilter) {
+      var option = document.createElement("option");
+      option.value = k;
+      option.textContent = statusDefs[k].label;
+      statusFilter.appendChild(option);
+    }
+  });
+
+  function selectedValue(id) {
+    var el = document.getElementById(id);
+    return el && el.value ? String(el.value) : "";
   }
+
+  function calendarEventMatchesFilters(el) {
+    var staff = selectedValue("staffFilter");
+    var service = selectedValue("serviceFilter");
+    var room = selectedValue("roomFilter");
+    var status = selectedValue("statusFilter");
+    var staffIds = String(el.dataset.staffIds || el.dataset.staffId || "").split(",").filter(Boolean);
+    if (staff && staffIds.indexOf(staff) === -1) return false;
+    if (service && String(el.dataset.serviceId || "") !== service) return false;
+    if (room && String(el.dataset.roomId || "") !== room) return false;
+    if (status && String(el.dataset.status || "") !== status) return false;
+    return true;
+  }
+
+  function applyCalendarFilters() {
+    document.querySelectorAll(".fc-event").forEach(function(e) {
+      e.style.display = calendarEventMatchesFilters(e) ? "" : "none";
+    });
+  }
+
+  function currentScheduleDate() {
+    var dateInput = document.getElementById("staffDayDate");
+    if (dateInput && dateInput.value) return dateInput.value;
+    return new URLSearchParams(window.location.search).get("date") || "{{ day|date:'Y-m-d' }}";
+  }
+
+  function appointmentCreateUrl() {
+    var link = document.getElementById("scheduleCreateLink");
+    var url = new URL((link && link.dataset.baseUrl) || "{% url 'appointment_create' %}", window.location.origin);
+    url.searchParams.set("date", currentScheduleDate());
+    [
+      ["staff_id", "staffFilter"],
+      ["service_id", "serviceFilter"],
+      ["room_id", "roomFilter"],
+    ].forEach(function(pair) {
+      var value = selectedValue(pair[1]);
+      if (value) url.searchParams.set(pair[0], value);
+    });
+    return url.pathname + url.search;
+  }
+
+  function refreshCreateLink() {
+    var link = document.getElementById("scheduleCreateLink");
+    if (link) link.href = appointmentCreateUrl();
+  }
+
+  function resetScheduleFilters() {
+    ["staffFilter", "serviceFilter", "roomFilter", "statusFilter"].forEach(function(id) {
+      var filter = document.getElementById(id);
+      if (filter) {
+        filter.value = "";
+        filter.dispatchEvent(new Event("change"));
+      }
+    });
+    var unavailable = document.getElementById("showUnavailable");
+    if (unavailable) {
+      unavailable.checked = true;
+      unavailable.dispatchEvent(new Event("change"));
+    }
+    refreshCreateLink();
+  }
+
+  window.rmScheduleRefreshCreateLink = refreshCreateLink;
 
   var calendar = new FullCalendar.Calendar(el, {
     locale: "ru",
@@ -543,24 +764,27 @@
         return;
       }
       var p = info.event.extendedProps;
+      var staffIds = (p.staffIds || (p.staffId ? [p.staffId] : [])).map(String);
+      if (staffIds.length) info.el.dataset.staffIds = staffIds.join(",");
       if (p && p.staffId) info.el.dataset.staffId = p.staffId;
       if (p && p.serviceId) info.el.dataset.serviceId = p.serviceId;
-      var staffFilter = document.getElementById("staffFilter");
-      var serviceFilter = document.getElementById("serviceFilter");
-      if (staffFilter && staffFilter.value && p.staffId && String(p.staffId) !== staffFilter.value) info.el.style.display = "none";
-      if (serviceFilter && serviceFilter.value && p.serviceId && String(p.serviceId) !== serviceFilter.value) info.el.style.display = "none";
+      if (p && p.roomId) info.el.dataset.roomId = p.roomId;
+      if (p && p.status) info.el.dataset.status = p.status;
+      if (!calendarEventMatchesFilters(info.el)) info.el.style.display = "none";
     },
     eventClick: function(info) {
       if (info.event.source && info.event.source.id === "unavailability") return;
       var p = info.event.extendedProps;
       document.getElementById("modalTitle").textContent = info.event.title || "";
-      document.getElementById("modalChild").textContent = "Получатель: " + (p.child || "");
+      document.getElementById("modalChild").textContent = (p.participantCount > 1 ? "Получатели: " : "Получатель: ") + (p.child || "");
       document.getElementById("modalService").textContent = "Услуга: " + (p.service || "");
-      document.getElementById("modalStaff").textContent = "Специалист: " + (p.staff || "");
+      document.getElementById("modalStaff").textContent = (p.staffCount > 1 ? "Специалисты: " : "Специалист: ") + (p.staff || "");
       document.getElementById("modalRoom").textContent = "Кабинет: " + (p.room || "");
       document.getElementById("modalTime").textContent = "Время: " + (info.event.start ? info.event.start.toLocaleString("ru-RU") : "") + " — " + (info.event.end ? info.event.end.toLocaleString("ru-RU") : "");
       document.getElementById("modalStatus").textContent = "Статус: " + (statusDefs[p.status] ? statusDefs[p.status].label : p.status || "");
       document.getElementById("modalDetailLink").href = "/appointments/" + info.event.id + "/";
+      document.getElementById("modalMoveLink").href = "/appointments/" + info.event.id + "/move/";
+      document.getElementById("modalCancelLink").href = "/appointments/" + info.event.id + "/cancel/";
       var modal = new bootstrap.Modal(document.getElementById("appointmentModal"));
       modal.show();
     },
@@ -582,26 +806,31 @@
   window.rmScheduleCalendar = calendar;
 
   // Filters
-  document.getElementById("staffFilter").addEventListener("change", function() {
-    var v = this.value;
-    document.querySelectorAll(".fc-event").forEach(function(e) {
-      e.style.display = (v && e.dataset.staffId && e.dataset.staffId !== v) ? "none" : "";
-    });
-  });
-  document.getElementById("serviceFilter").addEventListener("change", function() {
-    var v = this.value;
-    document.querySelectorAll(".fc-event").forEach(function(e) {
-      e.style.display = (v && e.dataset.serviceId && e.dataset.serviceId !== v) ? "none" : "";
-    });
+  ["staffFilter", "serviceFilter", "roomFilter", "statusFilter"].forEach(function(id) {
+    var filter = document.getElementById(id);
+    if (filter) {
+      filter.addEventListener("change", function() {
+        applyCalendarFilters();
+        refreshCreateLink();
+      });
+    }
   });
   document.getElementById("showUnavailable").addEventListener("change", function() {
     calendar.getEventSources().forEach(function(s) { if (s.id === "unavailability") s.refetch(); });
   });
+  var createLink = document.getElementById("scheduleCreateLink");
+  if (createLink) {
+    createLink.addEventListener("click", function() {
+      createLink.href = appointmentCreateUrl();
+    });
+  }
+  var resetFilters = document.getElementById("resetScheduleFilters");
+  if (resetFilters) resetFilters.addEventListener("click", resetScheduleFilters);
 
   // Populate filters
   fetch("/api/staff/").then(function(r) { return r.json(); }).then(function(d) {
     var sel = document.getElementById("staffFilter");
-    var selectedStaff = new URLSearchParams(window.location.search).get("staff_id");
+    var selectedStaff = scheduleParams.get("staff_id");
     d.forEach(function(s) {
       var o = document.createElement("option"); o.value = s.id; o.textContent = s.full_name;
       o.style.borderLeft = "4px solid " + (s.color || "#ccc");
@@ -615,7 +844,27 @@
   fetch("/api/services/").then(function(r) { return r.json(); }).then(function(d) {
     var sel = document.getElementById("serviceFilter");
     d.forEach(function(s) { var o = document.createElement("option"); o.value = s.id; o.textContent = s.name; sel.appendChild(o); });
+    var selectedService = scheduleParams.get("service_id");
+    if (selectedService) {
+      sel.value = selectedService;
+      sel.dispatchEvent(new Event("change"));
+    }
   });
+  fetch("/api/rooms/").then(function(r) { return r.json(); }).then(function(d) {
+    var sel = document.getElementById("roomFilter");
+    d.forEach(function(room) { var o = document.createElement("option"); o.value = room.id; o.textContent = room.name; sel.appendChild(o); });
+    var selectedRoom = scheduleParams.get("room_id");
+    if (selectedRoom) {
+      sel.value = selectedRoom;
+      sel.dispatchEvent(new Event("change"));
+    }
+  });
+  var selectedStatus = scheduleParams.get("status");
+  if (selectedStatus && statusFilter) {
+    statusFilter.value = selectedStatus;
+    statusFilter.dispatchEvent(new Event("change"));
+  }
+  refreshCreateLink();
 })();
 </script>
 <script src="{% static 'operations/schedule_staff_day.js' %}"></script>

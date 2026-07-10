@@ -1,11 +1,84 @@
 {% extends "base.html" %}
+
 {% block title %}{{ title }}{% endblock %}
+
 {% block content %}
-<h1>{{ title }}</h1>
-<form method="post" enctype="multipart/form-data" class="form">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Сохранить</button>
-  <a class="button secondary" href="{{ cancel_url }}">Отмена</a>
-</form>
+<section class="page-header">
+  <div>
+    <h1>{{ title }}</h1>
+    <p>Пополнение счета баланса с созданием платежа и ledger-записи.</p>
+  </div>
+  <div class="page-actions">
+    <a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>
+  </div>
+</section>
+
+<section class="payment-overview" aria-label="Сводка платежа">
+  <a class="payment-next-action is-{{ payment_next_action.tone }}" href="{{ payment_next_action.href }}">
+    <span>{{ payment_next_action.label }}</span>
+    <strong>{{ payment_next_action.title }}</strong>
+    <small>{{ payment_next_action.detail }}</small>
+  </a>
+  <div class="payment-summary-grid">
+    {% for item in payment_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="payment-layout">
+  <div class="payment-main">
+    <form method="post" class="panel payment-form" id="payment-form">
+      {% csrf_token %}
+      <div class="payment-form-head">
+        <h2>Данные платежа</h2>
+        <p>Проверьте счет и сумму перед сохранением. Отрицательные суммы не сохраняются.</p>
+      </div>
+      {% if form.non_field_errors %}
+        <div class="form-error form-wide">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <div class="form-grid">
+        {% for field in form %}
+          <label class="field {% if field.name == 'reference' or field.name == 'comment' %}form-wide{% endif %}">
+            <span>{{ field.label }}</span>
+            {{ field }}
+            {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+          </label>
+        {% endfor %}
+      </div>
+      <div class="payment-actions">
+        <button type="submit">Сохранить</button>
+        <a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>
+      </div>
+    </form>
+  </div>
+
+  <aside class="payment-sidebar">
+    <section class="panel payment-control-panel">
+      <h2>Контроль платежа</h2>
+      <ul class="payment-check-list">
+        <li>
+          <strong>Счет</strong>
+          <span>{% if selected_account %}{{ selected_account }}{% else %}Выберите счет баланса в форме.{% endif %}</span>
+        </li>
+        <li>
+          <strong>Баланс</strong>
+          <span>{% if selected_account %}Текущий остаток: {{ selected_account.current_balance }} {{ selected_account.get_unit_display }}.{% else %}Появится после выбора счета.{% endif %}</span>
+        </li>
+        <li>
+          <strong>Проводка</strong>
+          <span>После сохранения сервис создаст платеж и ledger-пополнение выбранного счета.</span>
+        </li>
+        <li>
+          <strong>Проверка</strong>
+          <span>Сумма должна быть положительной; источник и единица счета берутся из счета баланса.</span>
+        </li>
+      </ul>
+    </section>
+  </aside>
+</section>
 {% endblock %}

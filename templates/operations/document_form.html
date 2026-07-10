@@ -1,11 +1,50 @@
 {% extends "base.html" %}
+
 {% block title %}{{ title }}{% endblock %}
+
 {% block content %}
-<h1>{{ title }}</h1>
-<form method="post" enctype="multipart/form-data" class="form">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Сохранить</button>
-  <a class="button secondary" href="{{ cancel_url }}">Отмена</a>
-</form>
+<section class="page-header">
+  <div>
+    <h1>{{ title }}</h1>
+    <p>Файл, категория, получатель и срок действия документа.</p>
+  </div>
+  <a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>
+</section>
+
+<section class="support-form-layout">
+  <article class="panel support-form-panel">
+    <div class="support-form-head">
+      <h2>Данные документа</h2>
+      <p>Проверьте получателя и срок действия перед загрузкой файла.</p>
+    </div>
+    <form method="post" enctype="multipart/form-data" class="form-grid" id="document-form">
+      {% csrf_token %}
+      {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+      {% if form.non_field_errors %}<div class="form-error form-wide">{{ form.non_field_errors }}</div>{% endif %}
+      {% for field in form.visible_fields %}
+        <label class="field {% if field.name == 'note' %}form-wide{% endif %}">
+          <span>{{ field.label }}</span>
+          {{ field }}
+          {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+          {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+        </label>
+      {% endfor %}
+      <div class="form-actions form-wide">
+        <button type="submit">Сохранить</button>
+        <a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>
+      </div>
+    </form>
+  </article>
+
+  <aside class="support-form-sidebar" aria-label="Контроль документа">
+    <article class="panel support-form-control">
+      <h2>Контроль записи</h2>
+      <ul>
+        <li><strong>Получатель</strong><span>Документ попадет в карточку выбранного получателя.</span></li>
+        <li><strong>Срок действия</strong><span>Дата окончания влияет на предупреждения в реестре документов.</span></li>
+        <li><strong>Файл</strong><span>Не загружайте реальные персональные данные в тестовое окружение.</span></li>
+      </ul>
+    </article>
+  </aside>
+</section>
 {% endblock %}

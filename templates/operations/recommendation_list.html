@@ -1,25 +1,105 @@
 {% extends "base.html" %}
+
 {% block title %}Рекомендации{% endblock %}
+
 {% block content %}
-<h1>Рекомендации специалистов</h1>
-<p><a class="button" href="{% url 'recommendation_create' %}">+ Новая рекомендация</a></p>
-{% if recommendations %}
-<table class="grid">
-  <thead><tr><th>Дата</th><th>Получатель</th><th>Специалист</th><th>Категория</th><th>Заголовок</th><th>Срок</th><th>Принято</th><th></th></tr></thead>
-  <tbody>
-  {% for r in recommendations %}
-    <tr>
-      <td>{{ r.created_at|date:"d.m.Y" }}</td>
-      <td><a href="{% url 'child_detail' pk=r.child_id %}">{{ r.child }}</a></td>
-      <td>{{ r.staff_member }}</td>
-      <td>{{ r.get_category_display }}</td>
-      <td>{{ r.title }}</td>
-      <td>{% if r.due_on %}{{ r.due_on|date:"d.m.Y" }}{% else %}—{% endif %}</td>
-      <td>{% if r.is_acknowledged %}✓{% else %}—{% endif %}</td>
-      <td>{% if not r.is_acknowledged %}<form method="post" action="{% url 'recommendation_acknowledge' pk=r.pk %}" class="inline">{% csrf_token %}<button>Принято</button></form>{% endif %}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% else %}<p class="empty">Рекомендаций нет.</p>{% endif %}
+<section class="page-header">
+  <div>
+    <h1>Рекомендации специалистов</h1>
+    <p>{% if child_id %}Рекомендации выбранного получателя{% else %}Последние рекомендации по получателям{% endif %}</p>
+  </div>
+  <div class="header-actions">
+    <a class="button-link" href="{{ recommendation_create_url }}">+ Новая рекомендация</a>
+    {% if child_id %}<a class="button-link secondary" href="{% url 'recommendation_list' %}">Все рекомендации</a>{% endif %}
+  </div>
+</section>
+
+<section class="recommendation-overview" aria-label="Сводка рекомендаций">
+  <a class="recommendation-next-action is-{{ recommendation_next_action.tone }}" href="{{ recommendation_next_action.href }}">
+    <span>{{ recommendation_next_action.label }}</span>
+    <strong>{{ recommendation_next_action.title }}</strong>
+    <small>{{ recommendation_next_action.detail }}</small>
+  </a>
+  <div class="recommendation-summary-grid">
+    {% for item in recommendation_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="recommendation-layout">
+  <article class="panel recommendation-panel" id="recommendation-list">
+    <div class="recommendation-panel-head">
+      <h2>Список рекомендаций</h2>
+      <p>Рекомендации фиксируют домашние задания, методики, материалы и наблюдения специалистов.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table class="recommendation-table">
+        <thead>
+          <tr>
+            <th>Дата</th>
+            <th>Получатель</th>
+            <th>Специалист</th>
+            <th>Категория</th>
+            <th>Рекомендация</th>
+            <th>Срок</th>
+            <th>Статус</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in recommendations %}
+            <tr>
+              <td data-label="Дата">{{ r.created_at|date:"d.m.Y" }}</td>
+              <td data-label="Получатель"><a href="{% url 'child_detail' pk=r.child_id %}">{{ r.child }}</a></td>
+              <td data-label="Специалист">{% if r.staff_member %}{{ r.staff_member }}{% else %}—{% endif %}</td>
+              <td data-label="Категория">{{ r.get_category_display }}</td>
+              <td data-label="Рекомендация">
+                <strong>{{ r.title }}</strong>
+                {% if r.appointment %}<small><a href="{% url 'appointment_detail' r.appointment.pk %}">занятие {{ r.appointment.starts_at|date:"d.m H:i" }}</a></small>{% endif %}
+              </td>
+              <td data-label="Срок">{% if r.due_on %}{{ r.due_on|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+              <td data-label="Статус">
+                {% if r.is_acknowledged %}
+                  <span class="status-pill balance-ok">Принято</span>
+                {% else %}
+                  <span class="status-pill balance-warning">Ожидает</span>
+                {% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                {% if not r.is_acknowledged %}
+                  <form method="post" action="{% url 'recommendation_acknowledge' pk=r.pk %}" class="inline">
+                    {% csrf_token %}
+                    <button class="small-action" type="submit">Принято</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="8" data-label="Рекомендации"><p class="empty-state">Рекомендаций нет.</p></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <aside class="recommendation-sidebar" aria-label="Контроль рекомендаций">
+    <article class="panel recommendation-control-panel">
+      <h2>Контроль рекомендаций</h2>
+      <ul class="recommendation-check-list">
+        {% for item in recommendation_control_items %}
+          <li class="is-{{ item.tone }}">
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.text }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+  </aside>
+</section>
 {% endblock %}

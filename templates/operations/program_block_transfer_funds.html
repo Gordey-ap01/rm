@@ -11,35 +11,47 @@
   <a class="button-link secondary" href="{{ cancel_url }}">Назад</a>
 </section>
 
-<section class="wizard-shell">
-  <article class="panel wizard-summary">
-    <div>
-      <span class="eyebrow">Целевой каскад</span>
-      <strong>{{ block.service }}</strong>
-    </div>
-    <div>
-      <span class="eyebrow">Текущий счёт</span>
-      <strong>{% if block.balance_account %}{{ block.balance_account }}{% else %}не выбран{% endif %}</strong>
-    </div>
-    <div>
-      <span class="eyebrow">Остаток</span>
-      <strong>{% if block.balance_account %}{{ block.balance_account.current_balance }} {{ block.balance_account.get_unit_display }}{% else %}—{% endif %}</strong>
-    </div>
-  </article>
+<section class="transfer-overview" aria-label="Сводка переноса средств">
+  <a class="transfer-next-action is-{{ transfer_next_action.tone }}" href="{{ transfer_next_action.href }}">
+    <span>{{ transfer_next_action.label }}</span>
+    <strong>{{ transfer_next_action.title }}</strong>
+    <small>{{ transfer_next_action.detail }}</small>
+  </a>
+  <div class="transfer-summary-grid">
+    {% for item in transfer_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
 
-  <article class="panel form-panel">
-    <form method="post" class="form-grid">
+<section class="transfer-layout">
+  <article class="panel transfer-main">
+    <div class="transfer-panel-head">
+      <h2>Параметры переноса</h2>
+      <p>Средства переносятся между активными счетами одного получателя. После сохранения система создаст проводки ledger.</p>
+    </div>
+
+    <form method="post" class="form-grid transfer-form" id="transfer-form">
       {% csrf_token %}
+      {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
       {% if form.non_field_errors %}
         <div class="form-error form-wide">{{ form.non_field_errors }}</div>
       {% endif %}
       {% for field in form %}
+        {% if field.is_hidden %}
+          {{ field }}
+        {% else %}
         <label class="field {% if field.name == 'reason' %}form-wide{% endif %}">
           <span>{{ field.label }}</span>
           {{ field }}
           {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
           {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
         </label>
+        {% endif %}
       {% endfor %}
       <div class="form-actions form-wide">
         <button type="submit"><i class="bi bi-arrow-left-right"></i> Перенести</button>
@@ -47,5 +59,29 @@
       </div>
     </form>
   </article>
+
+  <aside class="transfer-sidebar" aria-label="Контроль переноса средств">
+    <article class="panel transfer-control-panel">
+      <h2>Контроль переноса средств</h2>
+      <ul class="transfer-check-list">
+        {% for item in transfer_control_items %}
+          <li class="is-{{ item.tone }}">
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.text }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+
+    <article class="panel transfer-control-panel">
+      <h2>Каскад</h2>
+      <dl class="facts">
+        <div><dt>Получатель</dt><dd>{{ block.program.child }}</dd></div>
+        <div><dt>Услуга</dt><dd>{{ block.service }}</dd></div>
+        <div><dt>План</dt><dd>{{ block.scheduled_count }} / {{ block.planned_sessions }}</dd></div>
+        <div><dt>Счет</dt><dd>{% if block.balance_account %}{{ block.balance_account }}{% else %}не выбран{% endif %}</dd></div>
+      </dl>
+    </article>
+  </aside>
 </section>
 {% endblock %}

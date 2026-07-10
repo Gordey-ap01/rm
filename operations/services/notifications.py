@@ -31,15 +31,35 @@ def build_confirmation_email(
     Используется в view, которая создаёт ``AppointmentConfirmation`` и зовёт эту функцию.
     """
     local_start = timezone.localtime(appointment.starts_at)
+    participants = list(
+        appointment.participants.select_related("child").order_by(
+            "starts_at_snapshot", "child__last_name", "child__first_name"
+        )
+    )
+    if participants:
+        child_names = ", ".join(participant.child.full_name for participant in participants)
+    else:
+        child_names = appointment.child.full_name
+    assignments = list(
+        appointment.staff_assignments.select_related("staff_member").order_by(
+            "starts_at_snapshot", "staff_member__full_name"
+        )
+    )
+    if assignments:
+        staff_names = ", ".join(
+            assignment.staff_member.full_name for assignment in assignments
+        )
+    else:
+        staff_names = appointment.staff_member.full_name
     subject = f"Подтверждение занятия {local_start:%d.%m.%Y %H:%M}"
     body = "\n".join(
         [
             "Здравствуйте.",
             "",
             "Просим подтвердить занятие:",
-            f"Получатель: {appointment.child.full_name}",
+            f"Получатель: {child_names}",
             f"Услуга: {appointment.service.name}",
-            f"Специалист: {appointment.staff_member.full_name}",
+            f"Специалист: {staff_names}",
             f"Дата и время: {local_start:%d.%m.%Y %H:%M}",
             f"Кабинет: {appointment.room.name if appointment.room else 'не указан'}",
             "",
@@ -77,8 +97,9 @@ def send_confirmation_email(confirmation_id: int) -> bool:
         logger.warning("Confirmation %s disappeared before send", confirmation_id)
         return False
 
+    confirmation.appointment._pending_token = confirmation.token
     email = build_confirmation_email(confirmation.appointment)
-    body = f"{email.body}\n\nСсылка для ответа: {email.url}"
+    body = f"{confirmation.message}\n\nСсылка для ответа: {email.url}"
     try:
         send_mail(
             confirmation.subject,

@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Планы переноса{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Планы переноса</h1>
+    <p>Рабочие планы переносов, согласований и ручных решений по расписанию.</p>
+  </div>
+  <a class="button-link secondary" href="{% url 'schedule' %}">К расписанию</a>
+</section>
+
+<section class="directory-overview reschedule-plan-overview">
+  <div class="reschedule-metrics-head">
+    <div>
+      <h2>Текущий контроль</h2>
+      <p>Активные планы и шаги, которые требуют внимания сейчас.</p>
+    </div>
+  </div>
+  <div class="directory-summary-grid" aria-label="Сводка планов переноса">
+    {% for item in summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="directory-overview reschedule-plan-overview">
+  <div class="reschedule-metrics-head">
+    <div>
+      <h2>Динамика</h2>
+      <p>{{ metrics_period_label }}</p>
+    </div>
+  </div>
+  <div class="directory-summary-grid" aria-label="Динамика планов переноса">
+    {% for item in metric_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel directory-panel">
+  <div class="directory-panel-head">
+    <div>
+      <h2>Реестр планов</h2>
+      <p>План не меняет расписание сам: администратор открывает план, проверяет шаги и применяет решение вручную.</p>
+    </div>
+    <form method="get" class="inline-form compact-form">
+      <label>
+        Период метрик
+        <select name="metrics_period">
+          {% for value, label in metrics_period_choices %}
+            <option value="{{ value }}"{% if current_metrics_period == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Статус
+        <select name="status">
+          <option value="active"{% if current_status == "active" %} selected{% endif %}>Активные</option>
+          {% for value, label in status_choices %}
+            <option value="{{ value }}"{% if current_status == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Согласования
+        <select name="confirmation">
+          <option value="">Все</option>
+          {% for value, label in confirmation_choices %}
+            <option value="{{ value }}"{% if current_confirmation == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Контроль
+        <select name="focus">
+          {% for value, label in focus_choices %}
+            <option value="{{ value }}"{% if current_focus == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="secondary-button small-action">Показать</button>
+    </form>
+  </div>
+
+  <div class="table-wrap directory-table-wrap">
+    <table class="directory-table reschedule-plan-list-table">
+      <thead>
+        <tr>
+          <th>Создан</th>
+          <th>Статус</th>
+          <th>Согласования</th>
+          <th>Контроль</th>
+          <th>Основание</th>
+          <th>Период</th>
+          <th>Шаги</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for plan in plans %}
+          <tr>
+            <td data-label="Создан">
+              <strong>{{ plan.created_at|date:"d.m.Y H:i" }}</strong>
+              <div class="muted">{% if plan.created_by %}{{ plan.created_by }}{% else %}автор не указан{% endif %}</div>
+            </td>
+            <td data-label="Статус">
+              <span class="status-pill">{{ plan.get_status_display }}</span>
+              <div class="muted">{{ plan.get_plan_type_display }}</div>
+            </td>
+            <td data-label="Согласования">
+              {% if plan.declined_step_count %}
+                <span class="status-pill muted-pill">Есть отказ: {{ plan.declined_step_count }}</span>
+              {% elif plan.waiting_step_count %}
+                <span class="status-pill muted-pill">Ждет ответов: {{ plan.waiting_step_count }}</span>
+              {% elif plan.approved_step_count %}
+                <span class="status-pill">Согласовано: {{ plan.approved_step_count }}</span>
+              {% else %}
+                <span class="status-pill muted-pill">Не запрошено</span>
+              {% endif %}
+            </td>
+            <td data-label="Контроль">
+              <div class="stacked-actions">
+                {% if plan.failed_step_count %}
+                  <span class="status-pill muted-pill">Ошибки: {{ plan.failed_step_count }}</span>
+                {% endif %}
+                {% if plan.manual_review_step_count %}
+                  <span class="status-pill muted-pill">Ручной разбор: {{ plan.manual_review_step_count }}</span>
+                {% endif %}
+                {% if plan.stale_step_count %}
+                  <span class="status-pill muted-pill">Устарело: {{ plan.stale_step_count }}</span>
+                {% endif %}
+                {% if plan.ready_step_count %}
+                  <span class="status-pill">Можно применять: {{ plan.ready_step_count }}</span>
+                {% endif %}
+                {% if not plan.failed_step_count and not plan.manual_review_step_count and not plan.stale_step_count and not plan.ready_step_count %}
+                  <span class="muted">Нет действий</span>
+                {% endif %}
+              </div>
+            </td>
+            <td data-label="Основание">
+              {% if plan.root_appointment %}
+                <a href="{% url 'appointment_detail' plan.root_appointment.pk %}">
+                  {{ plan.root_appointment.starts_at|date:"d.m H:i" }} · {{ plan.root_appointment.child }}
+                </a>
+                <div class="muted">{{ plan.root_appointment.service }} · {{ plan.root_appointment.staff_member }}</div>
+              {% elif plan.staff_member %}
+                {{ plan.staff_member }}
+              {% else %}
+                Ручной план
+              {% endif %}
+            </td>
+            <td data-label="Период">
+              {% if plan.date_from or plan.date_to %}
+                {{ plan.date_from|date:"d.m.Y"|default:"—" }}-{{ plan.date_to|date:"d.m.Y"|default:"—" }}
+              {% elif plan.root_appointment %}
+                {{ plan.root_appointment.starts_at|date:"d.m.Y" }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td data-label="Шаги">{{ plan.step_count }}</td>
+            <td class="table-actions" data-label="Действия">
+              <a class="small-action" href="{% url 'appointment_reschedule_plan_detail' plan.pk %}">Открыть</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="8" data-label="Планы"><div class="empty-state">Планов переноса по выбранным фильтрам нет.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

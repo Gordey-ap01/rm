@@ -1,20 +1,100 @@
 {% extends "base.html" %}
-{% block title %}Массовый перенос — {{ staff.full_name }}{% endblock %}
-{% block content %}
-<h1>Массовый перенос — {{ staff.full_name }}</h1>
-<p class="hint">Все активные занятия специалиста в выбранном диапазоне будут отменены, а представителям разосланы уведомления со ссылками на свободные слоты у других специалистов.</p>
 
-<form method="post" class="form"
-      hx-post="{% url 'staff_mass_reschedule' pk=staff.pk %}"
-      hx-target="#mass-reschedule-result"
-      hx-swap="innerHTML"
-      hx-confirm="Точно отменить все активные занятия и разослать уведомления?">
-  {% csrf_token %}
-  <label>Дата начала: <input type="date" name="date_from" value="{{ initial.date_from|date:'Y-m-d' }}" required></label>
-  <label>Дата окончания: <input type="date" name="date_to" value="{{ initial.date_to|date:'Y-m-d' }}" required></label>
-  <label>Причина: <textarea name="reason" rows="3" required></textarea></label>
-  <button type="submit">Отменить и разослать уведомления</button>
-  <a class="button secondary" href="{{ cancel_url }}">Отмена</a>
-</form>
-<div id="mass-reschedule-result"></div>
+{% block title %}Массовый перенос — {{ staff.full_name }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Массовый перенос — {{ staff.full_name }}</h1>
+    <p>Сначала сохраните план отсутствия, затем разберите каждое занятие. Немедленная отмена остается отдельной командой.</p>
+  </div>
+  <div class="page-actions">
+    <a class="button-link" href="{{ cancel_url }}">Вернуться в очередь</a>
+  </div>
+</section>
+
+<section class="mass-reschedule-overview" aria-label="Сводка массового переноса">
+  <a class="mass-reschedule-next-action is-{{ mass_reschedule_next_action.tone }}" href="{{ mass_reschedule_next_action.href }}">
+    <span>{{ mass_reschedule_next_action.label }}</span>
+    <strong>{{ mass_reschedule_next_action.title }}</strong>
+    <small>{{ mass_reschedule_next_action.detail }}</small>
+  </a>
+  <div class="mass-reschedule-summary-grid">
+    {% for item in mass_reschedule_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="mass-reschedule-layout">
+  <div class="mass-reschedule-main">
+    <form method="post"
+          class="panel mass-reschedule-form"
+          id="mass-reschedule-form"
+          hx-post="{% url 'staff_mass_reschedule' pk=staff.pk %}"
+          hx-target="#mass-reschedule-result"
+          hx-swap="innerHTML">
+      {% csrf_token %}
+      <div class="mass-reschedule-form-head">
+        <h2>Параметры переноса</h2>
+        <p>Укажите период и причину. План сохранит затронутые занятия без отмены, списаний и рассылки.</p>
+      </div>
+      <div class="form-grid">
+        <label>
+          Дата начала
+          <input type="date" name="date_from" value="{{ initial.date_from|date:'Y-m-d' }}" required>
+        </label>
+        <label>
+          Дата окончания
+          <input type="date" name="date_to" value="{{ initial.date_to|date:'Y-m-d' }}" required>
+        </label>
+        <label class="form-wide">
+          Причина
+          <textarea name="reason" rows="4" required placeholder="Например: болезнь специалиста, отпуск, перенос по расписанию"></textarea>
+        </label>
+      </div>
+      <div class="mass-reschedule-actions">
+        <button type="submit" name="action" value="create_plan">Сохранить план отсутствия</button>
+        <button type="submit"
+                name="action"
+                value="cancel_and_notify"
+                class="secondary-button"
+                onclick="return confirm('Точно отменить все активные занятия и разослать уведомления?')">
+          Отменить и разослать уведомления
+        </button>
+        <a class="button-link secondary-button" href="{{ cancel_url }}">Отмена</a>
+      </div>
+    </form>
+
+    <div id="mass-reschedule-result" class="mass-reschedule-result"></div>
+  </div>
+
+  <aside class="mass-reschedule-sidebar">
+    <section class="panel mass-reschedule-control-panel">
+      <h2>Контроль массового переноса</h2>
+      <ul class="mass-reschedule-check-list">
+        <li>
+          <strong>Что изменится</strong>
+          <span>План отсутствия ничего не меняет в расписании, пока администратор не применит решения.</span>
+        </li>
+        <li>
+          <strong>Кого уведомляем</strong>
+          <span>Основных и дополнительных представителей, у которых включена отправка расписания.</span>
+        </li>
+        <li>
+          <strong>Предложения слотов</strong>
+          <span>Сервис подберет свободные окна у других активных специалистов того же направления.</span>
+        </li>
+        <li>
+          <strong>Финансы</strong>
+          <span>План не списывает занятия, не создает проводки и не меняет начисления специалиста.</span>
+        </li>
+      </ul>
+    </section>
+  </aside>
+</section>
 {% endblock %}

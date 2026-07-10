@@ -23,8 +23,25 @@
   </div>
 </section>
 
+<section class="recipient-overview" aria-label="Сводка получателя">
+  <a class="recipient-next-action is-{{ recipient_detail_next_action.tone }}" href="{{ recipient_detail_next_action.href }}">
+    <span>{{ recipient_detail_next_action.label }}</span>
+    <strong>{{ recipient_detail_next_action.title }}</strong>
+    <small>{{ recipient_detail_next_action.detail }}</small>
+  </a>
+  <div class="recipient-summary-grid">
+    {% for item in recipient_detail_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="detail-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px">
-  <article class="panel bg-white border rounded p-3 shadow-sm">
+  <article class="panel bg-white border rounded p-3 shadow-sm" id="recipient-balances">
     <h2 class="h6 mb-3">Контакты</h2>
     <dl class="facts" style="display:grid;gap:8px">
       <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">Телефон</dt><dd class="mb-0">{% if recipient.phone %}{{ recipient.phone }}{% else %}<span class="text-muted">Не указан</span>{% endif %}</dd></div>
@@ -34,29 +51,52 @@
   </article>
 
   <article class="panel bg-white border rounded p-3 shadow-sm">
-    <h2 class="h6 mb-3">Представитель</h2>
-    {% if representative %}
-    <dl class="facts" style="display:grid;gap:8px">
-      <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">ФИО</dt><dd class="mb-0">{{ representative.full_name }}</dd></div>
-      <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">Телефон</dt><dd class="mb-0">{{ representative.phone }}</dd></div>
-      <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">Email</dt><dd class="mb-0">{% if representative.email %}{{ representative.email }}{% else %}<span class="text-muted">—</span>{% endif %}</dd></div>
-    </dl>
-    {% else %}<p class="text-muted small mb-0">Представитель не назначен.</p>{% endif %}
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <h2 class="h6 mb-0">Представители</h2>
+      <a class="btn btn-outline-primary btn-sm" href="{% url 'recipient_representative_create' recipient.pk %}">+ Представитель</a>
+    </div>
+    {% if representative_links %}
+    <div class="table-responsive recipient-detail-table-wrap">
+      <table class="table table-sm align-middle mb-0 recipient-detail-table recipient-representatives-table">
+        <thead class="table-light">
+          <tr><th>ФИО</th><th>Роль</th><th>Связь</th><th>Расписание</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for link in representative_links %}
+            <tr>
+              <td data-label="ФИО">
+                <div class="fw-semibold">{{ link.representative.full_name }}</div>
+                <div class="text-muted small">{{ link.representative.phone }}{% if link.representative.email %} · {{ link.representative.email }}{% endif %}</div>
+              </td>
+              <td data-label="Роль">
+                {% if link.is_primary %}<span class="badge text-bg-primary">Основной</span>{% endif %}
+                {% if link.signs_contract %}<span class="badge text-bg-secondary">Договор</span>{% endif %}
+                {% if link.is_payer %}<span class="badge text-bg-light border">Плательщик</span>{% endif %}
+              </td>
+              <td data-label="Связь">{{ link.get_relationship_type_display }}</td>
+              <td data-label="Расписание">{% if link.receives_schedule %}<span class="text-success">Да</span>{% else %}<span class="text-muted">Нет</span>{% endif %}</td>
+              <td class="text-end recipient-detail-actions" data-label="Действия"><a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'recipient_representative_edit' link.pk %}">Править</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="text-muted small mb-0">Представители не назначены.</p>{% endif %}
   </article>
 
   <article class="panel bg-white border rounded p-3 shadow-sm">
     <h2 class="h6 mb-3">Счета баланса</h2>
     {% if accounts %}
-    <div class="table-responsive">
-      <table class="table table-sm table-hover mb-0">
+    <div class="table-responsive recipient-balance-table-wrap">
+      <table class="table table-sm table-hover mb-0 recipient-balance-table">
         <thead class="table-light"><tr><th>Источник</th><th>Остаток</th><th>Риск</th><th></th></tr></thead>
         <tbody>
         {% for acc in accounts %}
           <tr>
-            <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ acc.color }}"></span> {{ acc.funding_source }}{% if acc.service %} ({{ acc.service }}){% endif %}</td>
-            <td class="fw-semibold">{{ acc.current_balance }} {{ acc.get_unit_display }}</td>
-            <td><span class="status-pill balance-{{ acc.warning_level }}">{{ acc.warning_label }}</span></td>
-            <td class="text-end text-nowrap">
+            <td data-label="Источник"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ acc.color }}"></span> {{ acc.funding_source }}{% if acc.service %} ({{ acc.service }}){% endif %}</td>
+            <td class="fw-semibold" data-label="Остаток">{{ acc.current_balance }} {{ acc.get_unit_display }}</td>
+            <td data-label="Риск"><span class="status-pill balance-{{ acc.warning_level }}">{{ acc.warning_label }}</span></td>
+            <td class="text-end text-nowrap recipient-balance-actions" data-label="Действия">
               <a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'balance_account_edit' acc.pk %}">Править</a>
               <a class="btn btn-outline-primary btn-sm py-0" href="{% url 'payment_create_for_account' acc.pk %}">Пополнить</a>
             </td>
@@ -84,21 +124,21 @@
           </div>
           <a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'program_block_create' program.pk %}">+ Блок</a>
         </div>
-        <div class="table-responsive">
-          <table class="table table-sm table-hover mb-0">
+        <div class="table-responsive recipient-detail-table-wrap">
+          <table class="table table-sm table-hover mb-0 recipient-detail-table recipient-program-blocks-table">
             <thead class="table-light"><tr><th>№</th><th>Блок</th><th>Услуга</th><th>Специалист</th><th>План</th><th>Расписано</th><th>Списано</th><th>Счёт</th><th></th></tr></thead>
             <tbody>
             {% for block in program.blocks.all %}
               <tr>
-                <td>{{ block.number }}</td>
-                <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ block.color }}"></span> {{ block.title }}</td>
-                <td>{{ block.service }}</td>
-                <td>{% if block.staff_member %}{{ block.staff_member }}{% else %}<span class="text-muted">не выбран</span>{% endif %}</td>
-                <td>{{ block.planned_sessions }}</td>
-                <td>{{ block.scheduled_count }}</td>
-                <td>{{ block.paid_count }}</td>
-                <td>{% if block.balance_account %}{{ block.balance_account.current_balance }} {{ block.balance_account.get_unit_display }}{% else %}<span class="text-muted">не выбран</span>{% endif %}</td>
-                <td class="text-end text-nowrap">
+                <td data-label="№">{{ block.number }}</td>
+                <td data-label="Блок"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ block.color }}"></span> {{ block.title }}</td>
+                <td data-label="Услуга">{{ block.service }}</td>
+                <td data-label="Специалист">{% if block.staff_member %}{{ block.staff_member }}{% else %}<span class="text-muted">не выбран</span>{% endif %}</td>
+                <td data-label="План">{{ block.planned_sessions }}</td>
+                <td data-label="Расписано">{{ block.scheduled_count }}</td>
+                <td data-label="Списано">{{ block.paid_count }}</td>
+                <td data-label="Счёт">{% if block.balance_account %}{{ block.balance_account.current_balance }} {{ block.balance_account.get_unit_display }}{% else %}<span class="text-muted">не выбран</span>{% endif %}</td>
+                <td class="text-end text-nowrap recipient-detail-actions" data-label="Действия">
                   <a class="btn btn-outline-primary btn-sm py-0" href="{% url 'program_block_schedule_wizard' block.pk %}">
                     <i class="bi bi-calendar-plus"></i> Подобрать
                   </a>
@@ -108,7 +148,7 @@
                 </td>
               </tr>
             {% empty %}
-              <tr><td colspan="9" class="text-muted">Блоки ещё не созданы.</td></tr>
+              <tr><td colspan="9" class="text-muted" data-label="Блоки">Блоки ещё не созданы.</td></tr>
             {% endfor %}
             </tbody>
           </table>
@@ -122,19 +162,32 @@
 
 <section class="panel bg-white border rounded p-3 shadow-sm mt-3">
   <h2 class="h6 mb-3">Предстоящие занятия</h2>
-  <div class="table-responsive">
-    <table class="table table-sm table-hover mb-0">
-      <thead class="table-light"><tr><th>Дата</th><th>Специалист</th><th>Услуга</th><th>Статус</th></tr></thead>
+  <div class="table-responsive recipient-detail-table-wrap">
+    <table class="table table-sm table-hover mb-0 recipient-detail-table recipient-upcoming-table">
+      <thead class="table-light"><tr><th>Дата</th><th>Получатели</th><th>Специалист</th><th>Услуга</th><th>Статус</th></tr></thead>
       <tbody>
       {% for a in upcoming_appointments %}
         <tr>
-          <td><a href="{% url 'appointment_detail' a.pk %}">{{ a.starts_at|date:"d.m.Y H:i" }}</a></td>
-          <td>{{ a.staff_member }}</td>
-          <td>{{ a.service }}</td>
-          <td><span class="status-pill">{{ a.get_status_display }}</span></td>
+          <td data-label="Дата"><a href="{% url 'appointment_detail' a.pk %}">{{ a.starts_at|date:"d.m.Y H:i" }}</a></td>
+          <td data-label="Получатели">
+            {% for participant in a.participants.all %}
+              <span class="badge text-bg-light border">{{ participant.child.full_name }}</span>
+            {% empty %}
+              {{ a.child.full_name }}
+            {% endfor %}
+          </td>
+          <td data-label="Специалист">
+            {% for assignment in a.staff_assignments.all %}
+              {{ assignment.staff_member }}{% if not forloop.last %}, {% endif %}
+            {% empty %}
+              {{ a.staff_member }}
+            {% endfor %}
+          </td>
+          <td data-label="Услуга">{{ a.service }}</td>
+          <td data-label="Статус"><span class="status-pill">{{ a.get_status_display }}</span></td>
         </tr>
       {% empty %}
-        <tr><td colspan="4" class="text-center text-muted py-3">Нет предстоящих занятий.</td></tr>
+        <tr><td colspan="5" class="text-center text-muted py-3" data-label="Занятия">Нет предстоящих занятий.</td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -143,19 +196,32 @@
 
 <section class="panel bg-white border rounded p-3 shadow-sm mt-3">
   <h2 class="h6 mb-3">Прошедшие занятия</h2>
-  <div class="table-responsive">
-    <table class="table table-sm table-hover mb-0">
-      <thead class="table-light"><tr><th>Дата</th><th>Специалист</th><th>Услуга</th><th>Статус</th></tr></thead>
+  <div class="table-responsive recipient-detail-table-wrap">
+    <table class="table table-sm table-hover mb-0 recipient-detail-table recipient-recent-table">
+      <thead class="table-light"><tr><th>Дата</th><th>Получатели</th><th>Специалист</th><th>Услуга</th><th>Статус</th></tr></thead>
       <tbody>
       {% for a in recent_appointments %}
         <tr>
-          <td><a href="{% url 'appointment_detail' a.pk %}">{{ a.starts_at|date:"d.m.Y H:i" }}</a></td>
-          <td>{{ a.staff_member }}</td>
-          <td>{{ a.service }}</td>
-          <td><span class="status-pill">{{ a.get_status_display }}</span></td>
+          <td data-label="Дата"><a href="{% url 'appointment_detail' a.pk %}">{{ a.starts_at|date:"d.m.Y H:i" }}</a></td>
+          <td data-label="Получатели">
+            {% for participant in a.participants.all %}
+              <span class="badge text-bg-light border">{{ participant.child.full_name }}</span>
+            {% empty %}
+              {{ a.child.full_name }}
+            {% endfor %}
+          </td>
+          <td data-label="Специалист">
+            {% for assignment in a.staff_assignments.all %}
+              {{ assignment.staff_member }}{% if not forloop.last %}, {% endif %}
+            {% empty %}
+              {{ a.staff_member }}
+            {% endfor %}
+          </td>
+          <td data-label="Услуга">{{ a.service }}</td>
+          <td data-label="Статус"><span class="status-pill">{{ a.get_status_display }}</span></td>
         </tr>
       {% empty %}
-        <tr><td colspan="4" class="text-center text-muted py-3">Нет прошедших занятий.</td></tr>
+        <tr><td colspan="5" class="text-center text-muted py-3" data-label="Занятия">Нет прошедших занятий.</td></tr>
       {% endfor %}
       </tbody>
     </table>

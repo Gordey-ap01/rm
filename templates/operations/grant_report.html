@@ -1,34 +1,73 @@
 {% extends "base.html" %}
 {% block title %}Грант-отчёт{% endblock %}
 {% block content %}
-<section class="page-header d-flex justify-content-between align-items-end mb-3">
+<section class="page-header">
   <div>
-    <h1 class="h3 mb-1">Грант-отчёт</h1>
-    <p class="text-muted small mb-0">Аналитика по источникам финансирования</p>
+    <p class="eyebrow">Отчет руководителя</p>
+    <h1>Грант-отчёт</h1>
+    <p>Остатки, списания, квоты по услугам, распределение между специалистами и выделения получателям.</p>
+  </div>
+  <div class="header-actions">
+    <a class="button-link" href="{% url 'funding_service_quota_create' %}{% if request.GET.funding %}?funding={{ request.GET.funding }}{% endif %}">Задать квоту</a>
+    <a class="button-link secondary-button" href="{% url 'funding_staff_allocation_create' %}{% if request.GET.funding %}?funding={{ request.GET.funding }}{% endif %}">Распределить квоту</a>
+    <a class="button-link secondary-button" href="{% url 'grant_recipient_allocation_create' %}{% if request.GET.funding %}?funding={{ request.GET.funding }}{% endif %}">Выделить получателю</a>
   </div>
 </section>
 
-<section class="bg-white border rounded p-3 shadow-sm mb-3">
-  <form method="get" class="row g-3 align-items-end">
+<section class="panel grant-filter-panel">
+  <form method="get" class="grant-filter-form">
     {% for field in form %}
-      <div class="col-auto">
-        <label class="form-label small fw-semibold mb-1">{{ field.label }}</label>
+      <div>
+        <label>{{ field.label }}</label>
         {{ field }}
-        {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+        {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
       </div>
     {% endfor %}
-    <div class="col-auto">
-      <button class="btn btn-primary" type="submit">Показать</button>
-      {% if report %}<a class="btn btn-outline-secondary ms-2" href="?{{ request.GET.urlencode }}&csv=1">Скачать CSV</a>{% endif %}
+    <div class="grant-filter-actions">
+      <button type="submit">Показать</button>
+      {% if report %}
+        <a class="button-link secondary-button" href="?funding={{ report.funding.pk }}&date_from={{ report.date_from|date:'Y-m-d' }}&date_to={{ report.date_to|date:'Y-m-d' }}&csv=1">Скачать CSV</a>
+      {% endif %}
     </div>
   </form>
+</section>
+
+<section class="grant-report-overview">
+  <article class="panel grant-summary-panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Сводка гранта</h2>
+        <p>Ключевые числа по выбранному источнику и периоду.</p>
+      </div>
+    </div>
+    <div class="grant-summary-grid">
+      {% for item in grant_summary_items %}
+        <div>
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+          <small>{{ item.hint }}</small>
+        </div>
+      {% endfor %}
+    </div>
+  </article>
+  <article class="panel grant-control-panel">
+    <h2>Контроль гранта</h2>
+    <div class="appointment-form-alerts">
+      {% for item in grant_attention_items %}
+        <div class="appointment-attention-item is-{{ item.tone }}">
+          <strong>{{ item.title }}</strong>
+          <span>{{ item.detail }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </article>
 </section>
 
 {% if report %}
 <section class="bg-white border rounded p-3 shadow-sm mb-3">
   <h2 class="h5 mb-3">{{ report.funding.name }} — {{ report.date_from|date:"d.m.Y" }}…{{ report.date_to|date:"d.m.Y" }}</h2>
-  <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0" style="white-space:nowrap">
+  <div class="table-responsive grant-report-table-wrap">
+    <table class="table table-hover align-middle mb-0 grant-report-table grant-balance-table">
       <thead class="table-light">
         <tr>
           <th>Счёт</th>
@@ -46,53 +85,187 @@
       <tbody>
         {% for row in report.rows %}
           <tr>
-            <td>{{ row.account }}</td>
-            <td class="text-end">{{ row.initial_amount }}</td>
-            <td class="text-end">{{ row.topups }}</td>
-            <td class="text-end">{{ row.charges }}</td>
-            <td class="text-end fw-semibold">{{ row.current_balance }}</td>
-            <td class="text-end">{{ row.appointments_count }}</td>
-            <td class="text-end">{{ row.planned_count }}</td>
-            <td class="text-end">{{ row.completed_count }}</td>
-            <td class="text-end">{{ row.discount_count }}</td>
-            <td class="text-end">{{ row.certificate_count }}</td>
+            <td data-label="Счёт">{{ row.account }}</td>
+            <td class="text-end" data-label="Начальный">{{ row.initial_amount }}</td>
+            <td class="text-end" data-label="Пополнения">{{ row.topups }}</td>
+            <td class="text-end" data-label="Списания">{{ row.charges }}</td>
+            <td class="text-end fw-semibold" data-label="Текущий">{{ row.current_balance }}</td>
+            <td class="text-end" data-label="Занятий">{{ row.appointments_count }}</td>
+            <td class="text-end" data-label="План">{{ row.planned_count }}</td>
+            <td class="text-end" data-label="Факт">{{ row.completed_count }}</td>
+            <td class="text-end" data-label="Скидок">{{ row.discount_count }}</td>
+            <td class="text-end" data-label="Сертификатов">{{ row.certificate_count }}</td>
           </tr>
         {% endfor %}
       </tbody>
       <tfoot class="table-light fw-bold">
         <tr>
-          <th>Итого</th>
-          <th class="text-end">{{ report.totals.initial_amount }}</th>
-          <th class="text-end">{{ report.totals.topups }}</th>
-          <th class="text-end">{{ report.totals.charges }}</th>
-          <th class="text-end">{{ report.totals.current_balance }}</th>
-          <th class="text-end">{{ report.totals.appointments_count }}</th>
-          <th class="text-end">{{ report.totals.planned_count }}</th>
-          <th class="text-end">{{ report.totals.completed_count }}</th>
-          <th class="text-end">{{ report.totals.discount_count }}</th>
-          <th class="text-end">{{ report.totals.certificate_count }}</th>
+          <th data-label="Итого">Итого</th>
+          <th class="text-end" data-label="Начальный">{{ report.totals.initial_amount }}</th>
+          <th class="text-end" data-label="Пополнения">{{ report.totals.topups }}</th>
+          <th class="text-end" data-label="Списания">{{ report.totals.charges }}</th>
+          <th class="text-end" data-label="Текущий">{{ report.totals.current_balance }}</th>
+          <th class="text-end" data-label="Занятий">{{ report.totals.appointments_count }}</th>
+          <th class="text-end" data-label="План">{{ report.totals.planned_count }}</th>
+          <th class="text-end" data-label="Факт">{{ report.totals.completed_count }}</th>
+          <th class="text-end" data-label="Скидок">{{ report.totals.discount_count }}</th>
+          <th class="text-end" data-label="Сертификатов">{{ report.totals.certificate_count }}</th>
         </tr>
       </tfoot>
     </table>
   </div>
 </section>
 
+{% if report.quota_rows %}
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <h2 class="h5 mb-3">Квоты по услугам и специалистам</h2>
+  <div class="table-responsive grant-report-table-wrap">
+    <table class="table table-hover align-middle mb-0 grant-report-table grant-quota-table">
+      <thead class="table-light">
+        <tr>
+          <th>Услуга / специалист</th>
+          <th class="text-end">План</th>
+          <th class="text-end">Распределено</th>
+          <th class="text-end">Факт списано</th>
+          <th class="text-end">Остаток</th>
+          <th class="text-end">Стоимость специалисту</th>
+          <th class="text-end">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for quota_row in report.quota_rows %}
+          <tr class="table-light fw-semibold">
+            <td data-label="Услуга / специалист">
+              <div class="grant-report-service-line">
+                <span>{{ quota_row.service.name }}</span>
+                {% if quota_row.quota %}
+                  <a class="btn btn-sm btn-outline-primary" href="{% url 'funding_staff_allocation_create' %}?quota={{ quota_row.quota.pk }}">Добавить специалиста</a>
+                {% else %}
+                  <a class="btn btn-sm btn-outline-primary" href="{% url 'funding_staff_allocation_create' %}?funding={{ report.funding.pk }}&service={{ quota_row.service.pk }}">Добавить специалиста</a>
+                {% endif %}
+              </div>
+            </td>
+            <td class="text-end" data-label="План">{{ quota_row.planned_sessions }}</td>
+            <td class="text-end" data-label="Распределено">{{ quota_row.allocated_sessions }}</td>
+            <td class="text-end" data-label="Факт списано">{{ quota_row.charged_sessions }}</td>
+            <td class="text-end" data-label="Остаток">{{ quota_row.remaining_sessions }}</td>
+            <td class="text-end" data-label="Стоимость специалисту">—</td>
+            <td class="text-end text-nowrap grant-report-actions" data-label="Действия">
+              {% if quota_row.quota %}
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'funding_service_quota_edit' quota_row.quota.pk %}">Править</a>
+                <button class="btn btn-sm btn-outline-danger"
+                        x-data
+                        @click="if(confirm('Удалить квоту по услуге «{{ quota_row.service.name }}»?')) { $el.closest('td').querySelector('form').submit() }">
+                  Удалить
+                </button>
+                <form method="post" action="{% url 'funding_service_quota_delete' quota_row.quota.pk %}" class="d-none">
+                  {% csrf_token %}
+                </form>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+          {% for staff_row in quota_row.staff_rows %}
+            <tr>
+              <td class="ps-4" data-label="Услуга / специалист">{{ staff_row.staff_member.full_name }}</td>
+              <td class="text-end" data-label="План">—</td>
+              <td class="text-end" data-label="Распределено">{{ staff_row.allocated_sessions }}</td>
+              <td class="text-end" data-label="Факт списано">{{ staff_row.charged_sessions }}</td>
+              <td class="text-end" data-label="Остаток">{{ staff_row.remaining_sessions }}</td>
+              <td class="text-end" data-label="Стоимость специалисту">{% if staff_row.session_pay_amount %}{{ staff_row.session_pay_amount }}{% else %}—{% endif %}</td>
+              <td class="text-end text-nowrap grant-report-actions" data-label="Действия">
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'funding_staff_allocation_edit' staff_row.allocation.pk %}">Править</a>
+                <button class="btn btn-sm btn-outline-danger"
+                        x-data
+                        @click="if(confirm('Удалить распределение для «{{ staff_row.staff_member.full_name }}»?')) { $el.closest('td').querySelector('form').submit() }">
+                  Удалить
+                </button>
+                <form method="post" action="{% url 'funding_staff_allocation_delete' staff_row.allocation.pk %}" class="d-none">
+                  {% csrf_token %}
+                </form>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td class="ps-4 text-muted" colspan="7" data-label="Распределение">Распределение по специалистам не задано.</td>
+            </tr>
+          {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% if report.recipient_allocation_rows %}
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <h2 class="h5 mb-3">Выделения получателям</h2>
+  <div class="table-responsive grant-report-table-wrap">
+    <table class="table table-hover align-middle mb-0 grant-report-table grant-recipient-allocation-table">
+      <thead class="table-light">
+        <tr>
+          <th>Получатель</th>
+          <th>Услуга</th>
+          <th class="text-end">Выделено</th>
+          <th class="text-end">Списано</th>
+          <th class="text-end">Остаток счета</th>
+          <th>Период</th>
+          <th>Счет</th>
+          <th class="text-end">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in report.recipient_allocation_rows %}
+          <tr>
+            <td data-label="Получатель">{{ row.child.full_name }}</td>
+            <td data-label="Услуга">{{ row.service.name }}</td>
+            <td class="text-end" data-label="Выделено">{{ row.allocated_sessions }}</td>
+            <td class="text-end" data-label="Списано">{{ row.charged_sessions }}</td>
+            <td class="text-end fw-semibold" data-label="Остаток счета">{{ row.remaining_sessions }}</td>
+            <td data-label="Период">
+              {% if row.allocation.valid_from or row.allocation.valid_until %}
+                {{ row.allocation.valid_from|date:"d.m.Y"|default:"—" }}–{{ row.allocation.valid_until|date:"d.m.Y"|default:"—" }}
+              {% else %}
+                <span class="text-muted">Без срока</span>
+              {% endif %}
+            </td>
+            <td data-label="Счет">{{ row.balance_account }}</td>
+            <td class="text-end text-nowrap grant-report-actions" data-label="Действия">
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'grant_recipient_allocation_edit' row.allocation.pk %}">Править</a>
+              <button class="btn btn-sm btn-outline-danger"
+                      x-data
+                      @click="if(confirm('Удалить выделение для «{{ row.child.full_name }}»?')) { $el.closest('td').querySelector('form').submit() }">
+                Удалить
+              </button>
+              <form method="post" action="{% url 'grant_recipient_allocation_delete' row.allocation.pk %}" class="d-none">
+                {% csrf_token %}
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
 {% if report.certificates %}
 <section class="bg-white border rounded p-3 shadow-sm mb-3">
   <h2 class="h5 mb-3">Сертификаты</h2>
-  <div class="table-responsive">
-    <table class="table table-sm align-middle mb-0" style="white-space:nowrap">
+  <div class="table-responsive grant-report-table-wrap">
+    <table class="table table-sm align-middle mb-0 grant-report-table grant-certificates-table">
       <thead class="table-light">
         <tr><th>Получатель</th><th>Тип</th><th>Номер</th><th class="text-end">Полная сумма</th><th class="text-end">Остаток</th></tr>
       </thead>
       <tbody>
         {% for c in report.certificates %}
           <tr>
-            <td>{{ c.child.full_name }}</td>
-            <td>{{ c.get_certificate_type_display }}</td>
-            <td>{{ c.number|default:"—" }}</td>
-            <td class="text-end">{{ c.total_amount }}</td>
-            <td class="text-end">{{ c.remaining_amount }}</td>
+            <td data-label="Получатель">{{ c.child.full_name }}</td>
+            <td data-label="Тип">{{ c.get_certificate_type_display }}</td>
+            <td data-label="Номер">{{ c.number|default:"—" }}</td>
+            <td class="text-end" data-label="Полная сумма">{{ c.total_amount }}</td>
+            <td class="text-end" data-label="Остаток">{{ c.remaining_amount }}</td>
           </tr>
         {% endfor %}
       </tbody>
@@ -104,18 +277,18 @@
 {% if report.discounts %}
 <section class="bg-white border rounded p-3 shadow-sm">
   <h2 class="h5 mb-3">Активные скидки</h2>
-  <div class="table-responsive">
-    <table class="table table-sm align-middle mb-0" style="white-space:nowrap">
+  <div class="table-responsive grant-report-table-wrap">
+    <table class="table table-sm align-middle mb-0 grant-report-table grant-discounts-table">
       <thead class="table-light">
         <tr><th>Получатель</th><th>Процент</th><th>Услуга</th><th>Комментарий</th></tr>
       </thead>
       <tbody>
         {% for d in report.discounts %}
           <tr>
-            <td>{{ d.child.full_name }}</td>
-            <td>{{ d.percentage }}%</td>
-            <td>{{ d.service.name|default:"Все услуги" }}</td>
-            <td>{{ d.note|default:"—" }}</td>
+            <td data-label="Получатель">{{ d.child.full_name }}</td>
+            <td data-label="Процент">{{ d.percentage }}%</td>
+            <td data-label="Услуга">{{ d.service.name|default:"Все услуги" }}</td>
+            <td data-label="Комментарий">{{ d.note|default:"—" }}</td>
           </tr>
         {% endfor %}
       </tbody>

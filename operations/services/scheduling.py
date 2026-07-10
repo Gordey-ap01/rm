@@ -10,14 +10,17 @@ from django.db import transaction
 from django.db.models import Q, QuerySet
 from django.utils import timezone
 
-from operations.forms import build_local_datetime
+from operations.forms import appointment_group_conflicts, build_local_datetime, conflict_messages
 from operations.models import (
     ACTIVE_APPOINTMENT_STATUSES,
     Appointment,
     AppointmentConfirmation,
+    AppointmentParticipant,
+    AppointmentStaffAssignment,
     StaffAvailability,
     StaffMember,
     TimeOffRequest,
+    room_usage_counts,
 )
 
 
@@ -30,6 +33,8 @@ class ConflictReport:
     room_conflict: Appointment | None
     room_capacity: int = 1
     room_occupancy: int = 0
+    room_staff_occupancy: int = 0
+    room_recipient_occupancy: int = 0
 
     @property
     def has_conflict(self) -> bool:
@@ -59,7 +64,12 @@ def find_overlaps(
     room: Any = None,
     exclude_pk: int | None = None,
 ) -> ConflictReport:
-    """Ищет пересекающиеся активные занятия (по ребёнку, специалисту или кабинету)."""
+    """Ищет пересекающиеся активные занятия (по ребёнку, специалисту или кабинету).
+
+    Новая модель хранит получателей и специалистов в отдельных таблицах.
+    Старые поля ``Appointment.child`` и ``Appointment.staff_member`` остаются
+    переходным fallback до полного перевода UI.
+    """
     qs = (
         Appointment.objects.filter(
             status__in=ACTIVE_APPOINTMENT_STATUSES,
@@ -71,15 +81,70 @@ def find_overlaps(
     )
     if exclude_pk:
         qs = qs.exclude(pk=exclude_pk)
+
+    child_conflict = None
+    if child:
+        participant_qs = AppointmentParticipant.objects.filter(
+            appointment_status__in=ACTIVE_APPOINTMENT_STATUSES,
+            child=child,
+            starts_at_snapshot__lt=ends_at,
+            ends_at_snapshot__gt=starts_at,
+        ).select_related("appointment", "appointment__child", "appointment__staff_member", "appointment__service", "appointment__room")
+        if exclude_pk:
+            participant_qs = participant_qs.exclude(appointment_id=exclude_pk)
+        participant = participant_qs.first()
+        child_conflict = participant.appointment if participant else qs.filter(child=child).first()
+
+    staff_conflict = None
+    if staff_member:
+        assignment_qs = AppointmentStaffAssignment.objects.filter(
+            appointment_status__in=ACTIVE_APPOINTMENT_STATUSES,
+            staff_member=staff_member,
+            starts_at_snapshot__lt=ends_at,
+            ends_at_snapshot__gt=starts_at,
+        ).select_related("appointment", "appointment__child", "appointment__staff_member", "appointment__service", "appointment__room")
+        if exclude_pk:
+            assignment_qs = assignment_qs.exclude(appointment_id=exclude_pk)
+        assignment = assignment_qs.first()
+        staff_conflict = assignment.appointment if assignment else qs.filter(staff_member=staff_member).first()
+
     room_qs = qs.filter(room=room) if room else qs.none()
-    room_occupancy = room_qs.count() if room else 0
-    room_capacity = max(getattr(room, "capacity", 1) or 1, 1)
+    room_staff_occupancy = 0
+    room_recipient_occupancy = 0
+    if room:
+        room_staff_occupancy, room_recipient_occupancy = room_usage_counts(room_qs)
+    room_occupancy = max(room_staff_occupancy, room_recipient_occupancy)
+    room_capacity = (
+        min(
+            getattr(room, "effective_max_staff_count", max(getattr(room, "capacity", 1) or 1, 1)),
+            getattr(room, "effective_max_recipient_count", max(getattr(room, "capacity", 1) or 1, 1)),
+        )
+        if room
+        else 1
+    )
+    room_conflict = None
+    if room:
+        incoming_staff = 1 if staff_member else 0
+        incoming_recipient = 1 if child else 0
+        staff_over_limit = (
+            room.limit_staff_count
+            and room_staff_occupancy + incoming_staff > room.effective_max_staff_count
+        )
+        recipient_over_limit = (
+            room.limit_recipient_count
+            and room_recipient_occupancy + incoming_recipient > room.effective_max_recipient_count
+        )
+        if staff_over_limit or recipient_over_limit:
+            room_conflict = room_qs.first()
+
     return ConflictReport(
-        child_conflict=qs.filter(child=child).first() if child else None,
-        staff_conflict=qs.filter(staff_member=staff_member).first() if staff_member else None,
-        room_conflict=room_qs.first() if room and room_occupancy >= room_capacity else None,
+        child_conflict=child_conflict,
+        staff_conflict=staff_conflict,
+        room_conflict=room_conflict,
         room_capacity=room_capacity,
         room_occupancy=room_occupancy,
+        room_staff_occupancy=room_staff_occupancy,
+        room_recipient_occupancy=room_recipient_occupancy,
     )
 
 
@@ -179,6 +244,80 @@ class MassRescheduleResult:
     suggested_slots_by_appointment: dict[int, list[datetime]]
 
 
+@dataclass(frozen=True)
+class RepresentativeConfirmationTarget:
+    child: Any
+    representative: Any
+    participant: AppointmentParticipant | None
+
+
+def representative_confirmation_targets(
+    appointment: Appointment,
+) -> list[RepresentativeConfirmationTarget]:
+    participants = list(
+        appointment.participants.select_related("child", "child__primary_parent").order_by(
+            "starts_at_snapshot", "child__last_name", "child__first_name"
+        )
+    )
+    if participants:
+        child_rows = [(participant.child, participant) for participant in participants]
+        if appointment.child_id and all(
+            participant.child_id != appointment.child_id for participant in participants
+        ):
+            child_rows.insert(0, (appointment.child, None))
+    else:
+        child_rows = [(appointment.child, None)]
+
+    targets: list[RepresentativeConfirmationTarget] = []
+    for child, participant in child_rows:
+        representative_links = list(
+            child.representative_links.select_related("representative").order_by(
+                "-is_primary", "representative__last_name", "representative__first_name"
+            )
+        )
+        if representative_links:
+            for link in representative_links:
+                representative = link.representative
+                if (
+                    not link.receives_schedule
+                    or not representative.email
+                ):
+                    continue
+                targets.append(
+                    RepresentativeConfirmationTarget(
+                        child=child,
+                        representative=representative,
+                        participant=participant,
+                    )
+                )
+            continue
+
+        representative = child.primary_parent
+        if (
+            not representative
+            or not representative.email
+        ):
+            continue
+        targets.append(
+            RepresentativeConfirmationTarget(
+                child=child,
+                representative=representative,
+                participant=participant,
+            )
+        )
+    return targets
+
+
+def appointment_children_for_reschedule(appointment: Appointment) -> list[Any]:
+    participants = list(appointment.participants.select_related("child").order_by("pk"))
+    if not participants:
+        return [appointment.child]
+    children = [participant.child for participant in participants]
+    if appointment.child_id and all(child.pk != appointment.child_id for child in children):
+        children.insert(0, appointment.child)
+    return children
+
+
 @transaction.atomic
 def mass_reschedule(
     staff: StaffMember,
@@ -207,13 +346,25 @@ def mass_reschedule(
     start_dt = timezone.make_aware(datetime.combine(date_from, time.min), tz)
     end_dt = timezone.make_aware(datetime.combine(date_to, time.max), tz)
 
+    active_statuses = [
+        Appointment.Status.PROPOSED,
+        Appointment.Status.CONFIRMED,
+        Appointment.Status.RESERVED,
+    ]
     appointments = list(
         Appointment.objects.filter(
-            staff_member=staff,
+            Q(staff_member=staff) | Q(staff_assignments__staff_member=staff),
             starts_at__gte=start_dt,
             starts_at__lte=end_dt,
-            status__in=[Appointment.Status.PROPOSED, Appointment.Status.CONFIRMED, Appointment.Status.RESERVED],
-        ).select_related("child", "service", "child__primary_parent")
+            status__in=active_statuses,
+        )
+        .distinct()
+        .select_related("child", "service", "child__primary_parent")
+        .prefetch_related(
+            "participants__child__primary_parent",
+            "participants__child__representative_links__representative",
+            "staff_assignments__staff_member",
+        )
     )
 
     cancelled: list[Appointment] = []
@@ -226,17 +377,17 @@ def mass_reschedule(
         appt.save(update_fields=["status", "admin_note", "updated_at"])
         cancelled.append(appt)
 
-        representative = appt.child.primary_parent
-        if representative and representative.email:
+        for target in representative_confirmation_targets(appt):
             local_start = timezone.localtime(appt.starts_at)
             confirmation = AppointmentConfirmation.objects.create(
                 appointment=appt,
                 target_type=AppointmentConfirmation.TargetType.REPRESENTATIVE,
-                representative=representative,
-                email=representative.email,
+                representative=target.representative,
+                participant=target.participant,
+                email=target.representative.email,
                 subject=f"Занятие {local_start:%d.%m.%Y %H:%M} отменено",
                 message=(
-                    f"Занятие {appt.child} у {staff.full_name} "
+                    f"Занятие {target.child} у {staff.full_name} "
                     f"{local_start:%d.%m.%Y в %H:%M} отменено по причине: {reason}. "
                     "Администратор свяжется с вами для согласования нового времени."
                 ),
@@ -255,16 +406,29 @@ def mass_reschedule(
         )
         for appt in cancelled:
             slots: list[datetime] = []
+            children = appointment_children_for_reschedule(appt)
             for peer in peer_staff:
-                slots.extend(
-                    find_free_slots(
-                        date_from,
-                        appt.duration_minutes,
-                        staff_member=peer,
-                        child=appt.child,
-                        room=None,
-                    )[: max_suggestions_per_appointment - len(slots)]
+                peer_slots = find_free_slots(
+                    date_from,
+                    appt.duration_minutes,
+                    staff_member=peer,
+                    child=None,
+                    room=None,
                 )
+                for slot in peer_slots:
+                    conflicts = appointment_group_conflicts(
+                        slot,
+                        slot + timedelta(minutes=appt.duration_minutes),
+                        children,
+                        [peer],
+                        None,
+                        exclude_pk=appt.pk,
+                    )
+                    if conflict_messages(conflicts):
+                        continue
+                    slots.append(slot)
+                    if len(slots) >= max_suggestions_per_appointment:
+                        break
                 if len(slots) >= max_suggestions_per_appointment:
                     break
             suggestions[appt.pk] = slots

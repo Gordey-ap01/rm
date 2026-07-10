@@ -19,6 +19,10 @@ backups/
 staticfiles/
 build/
 dist/
+graphify-out/cache/
+graphify-out/.graphify_python
+graphify-out/20*/
+/Радость моя интервью 23062026.md
 *.m4a
 *.mp3
 *.wav

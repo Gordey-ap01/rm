@@ -1,58 +1,249 @@
 {% extends "base.html" %}
-{% block title %}Завтра — {{ overview.date }}{% endblock %}
-{% block content %}
-<h1>Завтра — {{ overview.date|date:"d E Y" }}</h1>
 
-<section class="cards">
-  <div class="card"><div class="card-value">{{ overview.summary.appointments_count }}</div><div class="card-label">Занятий в расписании</div></div>
-  <div class="card"><div class="card-value">{{ overview.summary.needs_billing_count }}</div><div class="card-label">Ждут списания</div></div>
-  <div class="card"><div class="card-value">{{ overview.summary.needs_attendance_count }}</div><div class="card-label">Не отмечены</div></div>
-  <div class="card"><div class="card-value">{{ overview.summary.pending_confirmations_count }}</div><div class="card-label">Подтверждения</div></div>
-  <div class="card"><div class="card-value">{{ overview.summary.pending_time_off_count }}</div><div class="card-label">Заявки на отпуск</div></div>
-  <div class="card"><div class="card-value">{{ overview.summary.low_balances_count }}</div><div class="card-label">Низкий баланс</div></div>
+{% block title %}Завтра — {{ overview.date }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Завтра — {{ overview.date|date:"d E Y" }}</h1>
+    <p>Операционная сводка расписания, согласований, списаний и балансов.</p>
+  </div>
+  <div class="header-actions">
+    <a class="button-link" href="{{ schedule_day_url }}">Открыть расписание</a>
+    <a class="button-link secondary" href="{% url 'work_queue' %}">Очередь администратора</a>
+  </div>
 </section>
 
-<h2>Занятия дня</h2>
-{% if overview.appointments %}
-<table class="grid">
-  <thead><tr><th>Время</th><th>Получатель</th><th>Специалист</th><th>Услуга</th><th>Кабинет</th></tr></thead>
-  <tbody>
-  {% for a in overview.appointments %}
-    <tr>
-      <td>{{ a.starts_at|date:"H:i" }}–{{ a.ends_at|date:"H:i" }}</td>
-      <td><a href="{% url 'child_detail' pk=a.child_id %}">{{ a.child }}</a></td>
-      <td>{{ a.staff_member }}</td>
-      <td>{{ a.service.name }}</td>
-      <td>{{ a.room.name|default:"—" }}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% else %}
-<p class="empty">На этот день занятий не запланировано.</p>
-{% endif %}
+<section class="tomorrow-overview" aria-label="Сводка дня">
+  <a class="tomorrow-next-action is-{{ tomorrow_next_action.tone }}" href="{{ tomorrow_next_action.href }}">
+    <span>{{ tomorrow_next_action.label }}</span>
+    <strong>{{ tomorrow_next_action.title }}</strong>
+    <small>{{ tomorrow_next_action.detail }}</small>
+  </a>
+  <div class="tomorrow-summary-grid">
+    {% for item in tomorrow_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
 
-<h2>Ждут решения по списанию</h2>
-{% if overview.needs_billing %}
-<ul class="list">
-  {% for a in overview.needs_billing %}
-    <li><a href="{% url 'appointment_detail' pk=a.pk %}">{{ a }}</a> — {{ a.billing_account|default:"без счёта" }}</li>
-  {% endfor %}
-</ul>
-{% else %}<p class="empty">—</p>{% endif %}
+<section class="tomorrow-layout">
+  <div class="tomorrow-main">
+    <article class="panel tomorrow-panel" id="tomorrow-appointments">
+      <div class="tomorrow-panel-head">
+        <h2>Занятия дня</h2>
+        <p>Получатели, специалисты, услуги и кабинеты на выбранную дату.</p>
+      </div>
+      {% if overview.appointments %}
+        <div class="table-wrap tomorrow-table-wrap">
+          <table class="tomorrow-table">
+            <thead>
+              <tr>
+                <th>Время</th>
+                <th>Получатель</th>
+                <th>Специалист</th>
+                <th>Услуга</th>
+                <th>Кабинет</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in overview.appointments %}
+                <tr>
+                  <td data-label="Время">{{ a.starts_at|date:"H:i" }}-{{ a.ends_at|date:"H:i" }}</td>
+                  <td data-label="Получатель">
+                    {% with participants=a.participants.all %}
+                      {% if participants|length > 1 %}
+                        <a href="{% url 'appointment_detail' pk=a.pk %}">{{ a.title|default:a.service.name }}</a>
+                        <small>Участников: {{ participants|length }}</small>
+                        <small>
+                          {% for participant in participants %}
+                            {{ participant.child }}{% if not forloop.last %}, {% endif %}
+                          {% endfor %}
+                        </small>
+                      {% elif participants %}
+                        {% for participant in participants %}
+                          {% if forloop.first %}<a href="{% url 'child_detail' pk=participant.child_id %}">{{ participant.child }}</a>{% endif %}
+                        {% endfor %}
+                      {% else %}
+                        <a href="{% url 'child_detail' pk=a.child_id %}">{{ a.child }}</a>
+                      {% endif %}
+                    {% endwith %}
+                  </td>
+                  <td data-label="Специалист">
+                    {% with staff_assignments=a.staff_assignments.all %}
+                      {% if staff_assignments|length > 1 %}
+                        {% for assignment in staff_assignments %}
+                          {{ assignment.staff_member }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                      {% elif staff_assignments %}
+                        {% for assignment in staff_assignments %}
+                          {% if forloop.first %}{{ assignment.staff_member }}{% endif %}
+                        {% endfor %}
+                      {% else %}
+                        {{ a.staff_member }}
+                      {% endif %}
+                    {% endwith %}
+                  </td>
+                  <td data-label="Услуга">{{ a.service.name }}</td>
+                  <td data-label="Кабинет">{% if a.room %}{{ a.room.name }}{% else %}—{% endif %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty-state">На этот день занятий не запланировано.</p>
+      {% endif %}
+    </article>
 
-<h2>Заявки на отпуск / больничный</h2>
-{% if overview.pending_time_off %}
-<ul class="list">
-  {% for t in overview.pending_time_off %}
-    <li><strong>{{ t.staff_member }}</strong>: {{ t.get_request_type_display }} {{ t.starts_on|date:"d.m" }}–{{ t.ends_on|date:"d.m" }}
-      <form method="post" action="{% url 'time_off_request_decide' pk=t.pk %}" class="inline">
-        {% csrf_token %}
-        <button name="action" value="approve">Согласовать</button>
-        <button name="action" value="reject">Отклонить</button>
-      </form>
-    </li>
-  {% endfor %}
-</ul>
-{% else %}<p class="empty">—</p>{% endif %}
+    <article class="panel tomorrow-panel" id="tomorrow-billing">
+      <div class="tomorrow-panel-head">
+        <h2>Ждут решения по списанию</h2>
+        <p>Занятия, где администратору нужно выбрать счет или решение по оплате.</p>
+      </div>
+      {% if overview.needs_billing %}
+        <ul class="tomorrow-list">
+          {% for a in overview.needs_billing %}
+            <li>
+              <a href="{% url 'appointment_detail' pk=a.pk %}">
+                {% with participants=a.participants.all %}
+                  {% if participants|length > 1 %}
+                    {{ a.title|default:a.service.name }} — участников: {{ participants|length }}
+                  {% elif participants %}
+                    {% for participant in participants %}
+                      {% if forloop.first %}{{ participant.child }} — {{ a.service.name }}{% endif %}
+                    {% endfor %}
+                  {% else %}
+                    {{ a }}
+                  {% endif %}
+                {% endwith %}
+              </a>
+              <span>{{ a.billing_account|default:"счета выбираются в карточке занятия" }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-state">Нет занятий, ожидающих решения по списанию.</p>
+      {% endif %}
+    </article>
+
+    <article class="panel tomorrow-panel" id="tomorrow-attendance">
+      <div class="tomorrow-panel-head">
+        <h2>Не отмечены по факту</h2>
+        <p>Прошедшие занятия, где еще нет отметки посещения.</p>
+      </div>
+      {% if overview.needs_attendance %}
+        <ul class="tomorrow-list">
+          {% for a in overview.needs_attendance %}
+            <li>
+              <a href="{% url 'appointment_detail' pk=a.pk %}">{{ a.starts_at|date:"d.m H:i" }} — {{ a.service.name }}</a>
+              <span>
+                {% with participants=a.participants.all %}
+                  {% if participants|length > 1 %}
+                    участников: {{ participants|length }}
+                  {% elif participants %}
+                    {% for participant in participants %}
+                      {% if forloop.first %}{{ participant.child }}{% endif %}
+                    {% endfor %}
+                  {% else %}
+                    {{ a.child }}
+                  {% endif %}
+                {% endwith %}
+                · {{ a.staff_member }}
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-state">Нет занятий без отметки посещения.</p>
+      {% endif %}
+    </article>
+
+    <article class="panel tomorrow-panel" id="tomorrow-confirmations">
+      <div class="tomorrow-panel-head">
+        <h2>Email-согласования</h2>
+        <p>Ожидающие, отклоненные и не доставленные подтверждения.</p>
+      </div>
+      {% if overview.pending_confirmations %}
+        <ul class="tomorrow-list">
+          {% for c in overview.pending_confirmations %}
+            <li>
+              <a href="{% url 'appointment_detail' pk=c.appointment.pk %}">
+                {{ c.appointment.starts_at|date:"d.m H:i" }} — {{ c.appointment.service.name }}
+              </a>
+              <span>{{ c.get_target_type_display }} — {{ c.email }}</span>
+              {% if c.participant %}<small>Участник: {{ c.participant.child }}</small>{% endif %}
+              {% if c.staff_assignment %}<small>Специалист: {{ c.staff_assignment.staff_member }}</small>{% endif %}
+              <small>Ответ: {{ c.get_status_display }}. Отправка: {{ c.get_delivery_status_display }}</small>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-state">Нет согласований, требующих внимания.</p>
+      {% endif %}
+    </article>
+
+    <article class="panel tomorrow-panel" id="tomorrow-time-off">
+      <div class="tomorrow-panel-head">
+        <h2>Заявки на отпуск / больничный</h2>
+        <p>Решения по отсутствиям специалистов, которые могут повлиять на расписание.</p>
+      </div>
+      {% if overview.pending_time_off %}
+        <ul class="tomorrow-list">
+          {% for t in overview.pending_time_off %}
+            <li>
+              <strong>{{ t.staff_member }}</strong>
+              <span>{{ t.get_request_type_display }} {{ t.starts_on|date:"d.m" }}-{{ t.ends_on|date:"d.m" }}</span>
+              <form method="post" action="{% url 'time_off_request_decide' pk=t.pk %}" class="inline">
+                {% csrf_token %}
+                <button name="action" value="approve">Согласовать</button>
+                <button name="action" value="reject">Отклонить</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-state">Нет заявок на отпуск или больничный.</p>
+      {% endif %}
+    </article>
+
+    <article class="panel tomorrow-panel" id="tomorrow-balances">
+      <div class="tomorrow-panel-head">
+        <h2>Низкие балансы</h2>
+        <p>Счета, где остаток уже требует внимания администратора.</p>
+      </div>
+      {% if overview.low_balances %}
+        <ul class="tomorrow-list">
+          {% for account in overview.low_balances %}
+            <li>
+              <a href="{% url 'child_detail' pk=account.child.pk %}">{{ account.child }}</a>
+              <span>{{ account.funding_source }} · {% if account.service %}{{ account.service }}{% else %}Любые услуги{% endif %}</span>
+              <small>{{ account.current_balance }} {{ account.get_unit_display }}</small>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-state">Нет счетов с низким остатком.</p>
+      {% endif %}
+    </article>
+  </div>
+
+  <aside class="tomorrow-sidebar" aria-label="Контроль дня">
+    <article class="panel tomorrow-control-panel">
+      <h2>Контроль дня</h2>
+      <ul class="tomorrow-check-list">
+        {% for item in tomorrow_control_items %}
+          <li class="is-{{ item.tone }}">
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.text }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+  </aside>
+</section>
 {% endblock %}

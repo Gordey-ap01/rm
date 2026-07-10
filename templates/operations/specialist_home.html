@@ -21,30 +21,111 @@
   <div class="header-actions">
     <a class="button-link secondary" href="{% url 'schedule' %}?staff_id={{ staff.pk }}">Составить расписание на месяц</a>
   </div>
-  <div class="summary-strip" aria-label="Сводка специалиста">
-    <div>
-      <strong>{{ appointments|length }}</strong>
-      <span>в расписании</span>
-    </div>
-    <div>
-      <strong>{{ summary }}</strong>
-      <span>отмечено</span>
-    </div>
+</section>
+
+<section class="specialist-overview">
+  <a class="specialist-next-action is-{{ specialist_next_action.tone }}" href="{{ specialist_next_action.href }}">
+    <span>{{ specialist_next_action.label }}</span>
+    <strong>{{ specialist_next_action.title }}</strong>
+    <small>{{ specialist_next_action.detail }}</small>
+  </a>
+  <div class="specialist-summary-grid" aria-label="Сводка специалиста">
+    {% for item in specialist_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
   </div>
+  <nav class="specialist-quick-links" aria-label="Быстрые переходы">
+    <a href="#specialist-schedule">Расписание</a>
+    <a href="#staff-availability">График</a>
+    <a href="#staff-time-off">Отгулы</a>
+  </nav>
+</section>
+
+<section class="calendar-board specialist-calendar" id="specialist-schedule" aria-label="Календарь специалиста на неделю">
+  {% for day in week_days %}
+    <article class="calendar-day">
+      <header class="calendar-day-head">
+        <span>{{ day.label }}</span>
+        <small>{{ day.date|date:"d.m" }}</small>
+      </header>
+      <div class="calendar-day-body">
+        {% for assignment in day.assignments %}
+          {% with item=assignment.appointment participants=assignment.appointment.participants.all %}
+            <div class="calendar-card status-{{ item.status }}" id="appointment-{{ item.pk }}">
+              <div class="calendar-time">{{ assignment.starts_at_snapshot|date:"H:i" }}-{{ assignment.ends_at_snapshot|date:"H:i" }}</div>
+              <h2>
+                {% if item.session_type == "group" %}
+                  {% if item.title %}{{ item.title }}{% else %}Группа{% endif %}
+                {% else %}
+                  {{ item.child }}
+                {% endif %}
+              </h2>
+              <p>{{ item.service }}</p>
+              <p class="muted">{% if item.room %}{{ item.room }}{% else %}Кабинет не указан{% endif %}</p>
+              {% if item.session_type == "group" %}
+                <p class="muted">Участников: {{ participants|length }}</p>
+              {% endif %}
+              <div class="card-row">
+                <span class="status-pill">{{ item.get_status_display }}</span>
+                <span class="status-pill muted-pill">{{ item.get_attendance_status_display }}</span>
+                {% if assignment.role != "primary" %}<span class="status-pill muted-pill">{{ assignment.get_role_display }}</span>{% endif %}
+              </div>
+              <form method="post" action="{% url 'mark_appointment' item.pk %}" class="mark-form">
+                {% csrf_token %}
+                {% if user.is_staff %}<input type="hidden" name="staff_id" value="{{ staff.pk }}">{% endif %}
+                {% if item.session_type == "group" %}
+                  <div class="participant-attendance-list" aria-label="Посещаемость участников">
+                    {% for participant in participants %}
+                      <label class="participant-attendance-row">
+                        <span>
+                          <strong>{{ participant.child }}</strong>
+                          <small>{{ participant.get_attendance_status_display }}</small>
+                        </span>
+                        <select name="participant_status_{{ participant.pk }}">
+                          <option value="unknown" {% if participant.attendance_status == "unknown" %}selected{% endif %}>Не отмечено</option>
+                          <option value="attended" {% if participant.attendance_status == "attended" %}selected{% endif %}>Пришел</option>
+                          <option value="missed" {% if participant.attendance_status == "missed" %}selected{% endif %}>Не пришел</option>
+                          <option value="excused" {% if participant.attendance_status == "excused" %}selected{% endif %}>Уважительная причина</option>
+                        </select>
+                      </label>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+                <textarea name="specialist_note" placeholder="Заметка по занятию">{{ item.specialist_note }}</textarea>
+                <div class="mark-actions">
+                  <button type="submit" name="action" value="completed">Проведено</button>
+                  <button class="secondary-button" type="submit" name="action" value="not_completed">Не проведено</button>
+                </div>
+              </form>
+            </div>
+          {% endwith %}
+        {% empty %}
+          <p class="empty-state">Нет занятий</p>
+        {% endfor %}
+      </div>
+    </article>
+  {% empty %}
+    <p>На ближайшую неделю занятий нет.</p>
+  {% endfor %}
 </section>
 
 <section class="detail-grid staff-ops">
-  <article class="panel">
+  <article class="panel" id="staff-availability">
     <h2>Рабочий график</h2>
-    <table>
+    <div class="staff-ops-table-wrap">
+    <table class="staff-ops-table staff-availability-table">
       <thead><tr><th>День</th><th>Время</th><th>Статус</th><th></th></tr></thead>
       <tbody>
       {% for window in availability_windows %}
         <tr>
-          <td>{{ window.get_weekday_display }}</td>
-          <td>{{ window.starts_at|time:"H:i" }}-{{ window.ends_at|time:"H:i" }}</td>
-          <td>{% if window.is_active %}Активно{% else %}Выключено{% endif %}</td>
-          <td>
+          <td data-label="День">{{ window.get_weekday_display }}</td>
+          <td data-label="Время">{{ window.starts_at|time:"H:i" }}-{{ window.ends_at|time:"H:i" }}</td>
+          <td data-label="Статус">{% if window.is_active %}Активно{% else %}Выключено{% endif %}</td>
+          <td data-label="Действие" class="staff-ops-actions">
             <form method="post" action="{% url 'staff_availability_toggle' window.pk %}" class="mini-form">
               {% csrf_token %}
               <button class="secondary-button small-action" type="submit">{% if window.is_active %}Выключить{% else %}Включить{% endif %}</button>
@@ -52,10 +133,11 @@
           </td>
         </tr>
       {% empty %}
-        <tr><td colspan="4">Индивидуальный график не задан. Система считает доступным базовое окно 09:00-18:00.</td></tr>
+        <tr><td colspan="4" data-label="График">Индивидуальный график не задан. Система считает доступным базовое окно 09:00-18:00.</td></tr>
       {% endfor %}
       </tbody>
     </table>
+    </div>
 
     <form method="post" action="{% url 'staff_availability_create' %}" class="form compact-stack">
       {% csrf_token %}
@@ -72,22 +154,24 @@
     </form>
   </article>
 
-  <article class="panel">
+  <article class="panel" id="staff-time-off">
     <h2>Отпуск и отгулы</h2>
-    <table>
+    <div class="staff-ops-table-wrap">
+    <table class="staff-ops-table staff-time-off-table">
       <thead><tr><th>Период</th><th>Тип</th><th>Статус</th></tr></thead>
       <tbody>
       {% for request_item in time_off_requests %}
         <tr>
-          <td>{{ request_item.starts_on|date:"d.m" }}-{{ request_item.ends_on|date:"d.m" }}</td>
-          <td>{{ request_item.get_request_type_display }}</td>
-          <td>{{ request_item.get_status_display }}</td>
+          <td data-label="Период">{{ request_item.starts_on|date:"d.m" }}-{{ request_item.ends_on|date:"d.m" }}</td>
+          <td data-label="Тип">{{ request_item.get_request_type_display }}</td>
+          <td data-label="Статус">{{ request_item.get_status_display }}</td>
         </tr>
       {% empty %}
-        <tr><td colspan="3">Заявок пока нет.</td></tr>
+        <tr><td colspan="3" data-label="Заявки">Заявок пока нет.</td></tr>
       {% endfor %}
       </tbody>
     </table>
+    </div>
 
     <form method="post" action="{% url 'time_off_request_create' %}" class="form compact-stack">
       {% csrf_token %}
@@ -103,42 +187,5 @@
       <button type="submit">Отправить заявку</button>
     </form>
   </article>
-</section>
-
-<section class="calendar-board specialist-calendar" aria-label="Календарь специалиста на неделю">
-  {% for day in week_days %}
-    <article class="calendar-day">
-      <header class="calendar-day-head">
-        <span>{{ day.label }}</span>
-        <small>{{ day.date|date:"d.m" }}</small>
-      </header>
-      <div class="calendar-day-body">
-        {% for item in day.appointments %}
-          <div class="calendar-card status-{{ item.status }}">
-            <div class="calendar-time">{{ item.starts_at|date:"H:i" }}-{{ item.ends_at|date:"H:i" }}</div>
-            <h2>{{ item.child }}</h2>
-            <p>{{ item.service }}</p>
-            <p class="muted">{% if item.room %}{{ item.room }}{% else %}Кабинет не указан{% endif %}</p>
-            <div class="card-row">
-              <span class="status-pill">{{ item.get_status_display }}</span>
-              <span class="status-pill muted-pill">{{ item.get_attendance_status_display }}</span>
-            </div>
-            <form method="post" action="{% url 'mark_appointment' item.pk %}" class="mark-form">
-              {% csrf_token %}
-              <textarea name="specialist_note" placeholder="Заметка по занятию">{{ item.specialist_note }}</textarea>
-              <div class="mark-actions">
-                <button type="submit" name="action" value="completed">Проведено</button>
-                <button class="secondary-button" type="submit" name="action" value="not_completed">Не проведено</button>
-              </div>
-            </form>
-          </div>
-        {% empty %}
-          <p class="empty-state">Нет занятий</p>
-        {% endfor %}
-      </div>
-    </article>
-  {% empty %}
-    <p>На ближайшую неделю занятий нет.</p>
-  {% endfor %}
 </section>
 {% endblock %}

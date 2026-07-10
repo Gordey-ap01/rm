@@ -7,22 +7,44 @@
 <section class="page-header">
   <div>
     <h1>Перенести занятие</h1>
-    <p>{{ appointment.child }} · {{ appointment.service }} · сейчас {{ appointment.starts_at|date:"d.m.Y H:i" }}</p>
+    <p>{{ appointment_participants_label }} · {{ appointment.service }} · {{ appointment_staff_label }} · сейчас {{ appointment.starts_at|date:"d.m.Y H:i" }}</p>
   </div>
-  <a class="button-link secondary" href="{% url 'appointment_detail' appointment.pk %}">Назад</a>
+  <div class="page-actions">
+    <a class="button-link secondary" href="{% url 'appointment_detail' appointment.pk %}">Назад</a>
+  </div>
 </section>
 
-<section class="detail-grid">
-  <article class="panel form-panel">
-    <h2>Новое время</h2>
-    <form method="post" class="form-grid">
+<section class="appointment-move-overview" aria-label="Сводка переноса занятия">
+  <a class="appointment-move-next-action is-{{ appointment_move_next_action.tone }}" href="{{ appointment_move_next_action.href }}">
+    <span>{{ appointment_move_next_action.label }}</span>
+    <strong>{{ appointment_move_next_action.title }}</strong>
+    <small>{{ appointment_move_next_action.detail }}</small>
+  </a>
+  <div class="appointment-move-summary-grid">
+    {% for item in appointment_move_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="appointment-move-layout">
+  <div class="appointment-move-main">
+    <form method="post" class="panel appointment-move-form" id="appointment-move-form">
       {% csrf_token %}
       {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+      <div class="appointment-move-form-head">
+        <h2>Новое время</h2>
+        <p>Перенос создаст новое занятие, а решение по списанию исходного занятия останется за администратором.</p>
+      </div>
       {% if form.non_field_errors %}
         <div class="form-error form-wide">{{ form.non_field_errors }}</div>
       {% endif %}
       {% if form.availability_warning %}
-        <div class="hold-confirm-card form-wide">
+        <div class="hold-confirm-card appointment-move-hold">
           <div>
             <strong>Специалист не работает в это время</strong>
             <p>Причина: {{ form.availability_warning }}. Можно предложить специалисту выйти вне графика, если администратор осознанно переносит занятие на это время.</p>
@@ -37,37 +59,90 @@
             <span class="hold-confirm-progress" aria-hidden="true"></span>
             <span class="hold-confirm-label">Удерживать, чтобы перенести вне графика специалиста</span>
           </button>
-          <small class="muted">Удерживайте кнопку до заполнения индикатора. Обычная кнопка “Перенести” оставит перенос заблокированным.</small>
+          <small class="muted">Обычная кнопка переноса оставит действие заблокированным, пока разрешение не подтверждено удержанием.</small>
         </div>
       {% endif %}
-      {% for field in form.visible_fields %}
-        <label class="field {% if field.name == 'admin_note' %}form-wide{% endif %}">
-          <span>{{ field.label }}</span>
-          {{ field }}
-          {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
-        </label>
-      {% endfor %}
-      <div class="form-actions form-wide">
+      <div class="form-grid">
+        {% for field in form.visible_fields %}
+          <label class="field {% if field.name == 'admin_note' %}form-wide{% endif %}">
+            <span>{{ field.label }}</span>
+            {{ field }}
+            {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+          </label>
+        {% endfor %}
+      </div>
+      <div class="appointment-move-actions">
         <button type="submit">Перенести</button>
         <a class="button-link secondary" href="{% url 'appointment_detail' appointment.pk %}">Отмена</a>
       </div>
     </form>
-  </article>
 
-  <article class="panel">
-    <h2>Предложения системы</h2>
-    <div class="slot-list">
-      {% for slot in suggested_slots %}
-        <a class="slot-link" href="{{ slot.move_url }}">
-          <strong>{{ slot.date|date:"d.m" }} {{ slot.time }}</strong>
-          <span>{{ slot.staff.full_name }}</span>
-          <small>{% if slot.room %}{{ slot.room }}{% else %}Кабинет выбрать вручную{% endif %}</small>
-        </a>
-      {% empty %}
-        <p class="empty-state">Подходящих окон на ближайшие дни не найдено.</p>
-      {% endfor %}
-    </div>
-  </article>
+    <section class="panel appointment-move-slots-panel" id="transfer-slots">
+      <div class="appointment-move-panel-head">
+        <h2>Предложенные окна системы</h2>
+        <p>Сначала используйте свободные окна. Если их нет, ниже остаются занятые кандидаты для ручного сдвига расписания.</p>
+        <form method="post" action="{% url 'appointment_reschedule_plan_create' appointment.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="button-link secondary">Сохранить предложения как план</button>
+        </form>
+      </div>
+      <div class="slot-list">
+        {% for slot in suggested_slots %}
+          <a class="slot-link" href="{{ slot.move_url }}">
+            <strong>{{ slot.date|date:"d.m" }} {{ slot.time }}</strong>
+            <span>{{ slot.staff.full_name }}</span>
+            <small>{% if slot.room %}{{ slot.room }}{% else %}Кабинет выбрать вручную{% endif %}</small>
+          </a>
+        {% empty %}
+          <p class="empty-state">Подходящих окон на ближайшие дни не найдено.</p>
+        {% endfor %}
+      </div>
+      {% if not suggested_slots and shift_candidates %}
+        <div class="appointment-move-panel-head">
+          <h2>Занятые окна для ручного сдвига</h2>
+          <p>Эти варианты конфликтуют с расписанием, но помогают понять, какие занятия можно сдвинуть вручную.</p>
+        </div>
+        <div class="slot-list">
+          {% for candidate in shift_candidates %}
+            <div class="slot-link shift-candidate">
+              <strong>{{ candidate.date|date:"d.m" }} {{ candidate.time }}</strong>
+              <span>{{ candidate.staff.full_name }}</span>
+              <small>{{ candidate.messages|join:", " }}</small>
+              {% for conflict in candidate.conflicts %}
+                <a class="small-action" href="{% url 'appointment_detail' conflict.pk %}">
+                  {{ conflict.starts_at|date:"d.m H:i" }} · {{ conflict.child }} · {{ conflict.service }}
+                </a>
+              {% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <aside class="appointment-move-sidebar">
+    <section class="panel appointment-move-control-panel">
+      <h2>Контроль переноса</h2>
+      <ul class="appointment-move-check-list">
+        <li>
+          <strong>Исходное занятие</strong>
+          <span>После переноса получит статус перенесенного, а новая запись станет отдельным занятием.</span>
+        </li>
+        <li>
+          <strong>Списание</strong>
+          <span>Решение по списанию исходного занятия остается за администратором.</span>
+        </li>
+        <li>
+          <strong>Группа</strong>
+          <span>Участники, специалисты и привязки к программе переносятся через существующую форму.</span>
+        </li>
+        <li>
+          <strong>Конфликты</strong>
+          <span>Форма проверяет кабинет, получателей, специалистов и выход вне графика.</span>
+        </li>
+      </ul>
+    </section>
+  </aside>
 </section>
 {% endblock %}
 

@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Ставки специалистов{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Ставки специалистов</h1>
+    <p>Правила начисления зарплаты по специалисту, услуге, источнику и периоду.</p>
+  </div>
+  <a class="button-link" href="{% url 'staff_compensation_rule_create' %}">Создать ставку</a>
+</section>
+
+<section class="directory-overview">
+  <a class="directory-next-action is-{{ compensation_next_action.tone }}" href="{{ compensation_next_action.href }}">
+    <span>{{ compensation_next_action.label }}</span>
+    <strong>{{ compensation_next_action.title }}</strong>
+    <small>{{ compensation_next_action.detail }}</small>
+  </a>
+  <div class="directory-summary-grid" aria-label="Сводка ставок специалистов">
+    {% for item in compensation_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="directory-layout">
+  <div class="directory-main">
+    <section class="panel directory-panel" id="compensation-rule-list">
+      <div class="directory-panel-head">
+        <div>
+          <h2>Правила начисления</h2>
+          <p>При расчете табеля приоритетнее ставки по конкретному источнику, услуге, периоду и длительности.</p>
+        </div>
+      </div>
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>Специалист</th>
+              <th>Услуга</th>
+              <th>Источник</th>
+              <th>Тип</th>
+              <th>Длительность</th>
+              <th>Сумма</th>
+              <th>Период</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for rule in rules %}
+            <tr{% if not rule.is_active %} class="muted-row"{% endif %}>
+              <td data-label="Специалист"><strong>{{ rule.staff_member.full_name }}</strong></td>
+              <td data-label="Услуга">
+                {% if rule.service %}
+                  {{ rule.service.name }}
+                {% else %}
+                  <span class="status-pill muted-pill">все услуги</span>
+                {% endif %}
+              </td>
+              <td data-label="Источник">
+                {% if rule.funding_source %}
+                  {{ rule.funding_source.name }}
+                {% else %}
+                  <span class="status-pill muted-pill">любой источник</span>
+                {% endif %}
+              </td>
+              <td data-label="Тип">{{ rule.get_rate_type_display }}</td>
+              <td data-label="Длительность">
+                {% if rule.min_duration_minutes or rule.max_duration_minutes %}
+                  {{ rule.min_duration_minutes|default:"…" }}-{{ rule.max_duration_minutes|default:"…" }} мин
+                {% else %}
+                  <span class="status-pill muted-pill">любая</span>
+                {% endif %}
+              </td>
+              <td data-label="Сумма">{{ rule.amount }}</td>
+              <td data-label="Период">
+                {% if rule.starts_on or rule.ends_on %}
+                  {{ rule.starts_on|date:"d.m.Y"|default:"—" }}-{{ rule.ends_on|date:"d.m.Y"|default:"—" }}
+                {% else %}
+                  <span class="status-pill muted-pill">без срока</span>
+                {% endif %}
+              </td>
+              <td data-label="Статус">
+                <span class="status-pill{% if rule.effective_status_class %} {{ rule.effective_status_class }}{% endif %}">
+                  {{ rule.effective_status_label }}
+                </span>
+              </td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'staff_compensation_rule_edit' rule.pk %}">Править</a>
+                <form method="post" action="{% url 'staff_compensation_rule_toggle' rule.pk %}" class="inline-form compact-form">
+                  {% csrf_token %}
+                  {% if rule.is_active %}
+                    <button class="secondary-button small-action" type="submit">Отключить</button>
+                  {% else %}
+                    <button class="small-action" type="submit">Включить</button>
+                  {% endif %}
+                </form>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="9" data-label="Ставки"><div class="empty-state">Правила начисления пока не заданы.</div></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="directory-sidebar" aria-label="Контроль ставок специалистов">
+    <section class="panel directory-control-panel">
+      <h2>Контроль</h2>
+      <ul class="directory-check-list">
+        <li>
+          <strong>Табель</strong>
+          <span>Начисление появляется после списания занятия, если найдена подходящая ставка.</span>
+        </li>
+        <li>
+          <strong>Гранты</strong>
+          <span>Ставка по источнику финансирования важнее общей ставки специалиста.</span>
+        </li>
+        <li>
+          <strong>Длительность</strong>
+          <span>Для разных форматов занятия можно задать отдельные диапазоны минут.</span>
+        </li>
+        <li>
+          <strong>Период</strong>
+          <span>Дата действия защищает старые табели от будущих изменений ставок.</span>
+        </li>
+      </ul>
+    </section>
+  </aside>
+</section>
+{% endblock %}

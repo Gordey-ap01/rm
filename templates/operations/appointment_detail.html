@@ -5,14 +5,68 @@
 {% block content %}
 <section class="page-header">
   <div>
-    <h1>{{ appointment.child }}</h1>
+    <h1>{{ appointment_participants_label }}</h1>
     <p>{{ appointment.service }} · {{ appointment.starts_at|date:"d.m.Y H:i" }}-{{ appointment.ends_at|date:"H:i" }}</p>
   </div>
   <div class="header-actions">
     <a class="button-link secondary" href="{% url 'schedule' %}?date={{ schedule_date|date:'Y-m-d' }}">В расписание</a>
-    <a class="button-link secondary" href="{% url 'appointment_edit' appointment.pk %}">Редактировать</a>
-    <a class="button-link secondary" href="{% url 'appointment_move' appointment.pk %}">Перенести</a>
-    <a class="button-link danger-link" href="{% url 'appointment_cancel' appointment.pk %}">Отменить</a>
+  </div>
+</section>
+
+<section class="appointment-brief" aria-label="Сводка занятия">
+  <div class="appointment-brief-head">
+    <div>
+      <span class="eyebrow">{{ appointment.get_session_type_display }} · {{ appointment.service }}</span>
+      <h2>{% if appointment.title %}{{ appointment.title }}{% else %}{{ appointment_participants_label }}{% endif %}</h2>
+      <p>{{ appointment_staff_label }} · {% if appointment.room %}{{ appointment.room }}{% else %}Кабинет не указан{% endif %}</p>
+    </div>
+    <div class="appointment-brief-actions">
+      <a class="button-link secondary small-action" href="{% url 'appointment_edit' appointment.pk %}">
+        <i class="bi bi-pencil-square" aria-hidden="true"></i>
+        Редактировать
+      </a>
+      <a class="button-link secondary small-action" href="{% url 'appointment_move' appointment.pk %}">
+        <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+        Перенести
+      </a>
+      <form method="post" action="{% url 'appointment_reschedule_plan_create' appointment.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="button-link secondary small-action">
+          <i class="bi bi-diagram-3" aria-hidden="true"></i>
+          План переноса
+        </button>
+      </form>
+      <a class="button-link danger-link small-action" href="{% url 'appointment_cancel' appointment.pk %}">
+        <i class="bi bi-x-circle" aria-hidden="true"></i>
+        Отменить
+      </a>
+    </div>
+  </div>
+
+  <div class="appointment-brief-grid">
+    {% for item in appointment_overview_items %}
+      <div class="appointment-brief-item{% if item.tone %} is-{{ item.tone }}{% endif %}">
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="appointment-attention{% if not appointment_attention_items %} is-clear{% endif %}">
+    <h2>Контроль</h2>
+    {% if appointment_attention_items %}
+      <div class="appointment-attention-list">
+        {% for item in appointment_attention_items %}
+          {% if item.href %}<a class="appointment-attention-item is-{{ item.tone }}" href="{{ item.href }}">{% else %}<div class="appointment-attention-item is-{{ item.tone }}">{% endif %}
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.text }}</span>
+          {% if item.href %}</a>{% else %}</div>{% endif %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <p>Критичных действий по занятию сейчас нет.</p>
+    {% endif %}
   </div>
 </section>
 
@@ -20,49 +74,145 @@
   <article class="panel">
     <h2>Занятие</h2>
     <dl class="facts">
-      <div><dt>Специалист</dt><dd>{{ appointment.staff_member }}</dd></div>
+      <div><dt>Специалист</dt><dd>{{ appointment_staff_label }}</dd></div>
       <div><dt>Кабинет</dt><dd>{% if appointment.room %}{{ appointment.room }}{% else %}Не указан{% endif %}</dd></div>
       <div><dt>Статус</dt><dd>{{ appointment.get_status_display }}</dd></div>
-      <div><dt>Посещение</dt><dd>{{ appointment.get_attendance_status_display }}</dd></div>
-      <div><dt>Списание</dt><dd>{{ appointment.get_billing_decision_display }}</dd></div>
-      <div><dt>Счет</dt><dd>{% if appointment.billing_account %}{{ appointment.billing_account }}{% else %}Не выбран{% endif %}</dd></div>
+      <div><dt>Посещение</dt><dd>{{ appointment_attendance_summary_label }}</dd></div>
+      <div><dt>Списание</dt><dd>{{ appointment_billing_summary_label }}</dd></div>
+      <div><dt>Счет</dt><dd>{{ appointment_billing_account_label }}</dd></div>
       <div><dt>Каскад</dt><dd>{% if appointment.program_block %}{{ appointment.program_block }}{% if appointment.sequence_number %} · №{{ appointment.sequence_number }}{% endif %}{% else %}Не выбран{% endif %}</dd></div>
       <div><dt>График специалиста</dt><dd>{% if appointment.staff_availability_override %}<span class="status-pill balance-warning">Вне графика</span>{% else %}По графику{% endif %}</dd></div>
     </dl>
+    {% if participants|length > 1 %}
+      <h3>Получатели занятия</h3>
+      <table class="appointment-detail-table appointment-participants-table">
+        <thead><tr><th>Получатель</th><th>Посещение</th><th>Списание</th><th>Счёт</th><th>Каскад</th><th>№</th></tr></thead>
+        <tbody>
+        {% for participant in participants %}
+          <tr>
+            <td data-label="Получатель">{{ participant.child }}</td>
+            <td data-label="Посещение">{{ participant.get_attendance_status_display }}</td>
+            <td data-label="Списание">{{ participant.get_billing_decision_display }}</td>
+            <td data-label="Счёт">{% if participant.billing_account %}{{ participant.billing_account }}{% else %}Не выбран{% endif %}</td>
+            <td data-label="Каскад">{% if participant.program_block %}{{ participant.program_block }}{% else %}Не выбран{% endif %}</td>
+            <td data-label="№">{% if participant.sequence_number %}{{ participant.sequence_number }}{% else %}—{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <h3>Каскады участников</h3>
+      <div class="participant-billing-list">
+        {% for row in participant_program_rows %}
+          <form method="post" action="{% url 'appointment_participant_program' appointment.pk %}" class="participant-billing-row">
+            {% csrf_token %}
+            {{ row.form.participant_id }}
+            <div>
+              <strong>{{ row.participant.child }}</strong>
+              <small>{% if row.participant.program_block %}{{ row.participant.program_block }}{% else %}Каскад не выбран{% endif %}</small>
+            </div>
+            <label class="field">
+              <span>{{ row.form.program_block.label }}</span>
+              {{ row.form.program_block }}
+              {% if row.form.program_block.errors %}<span class="form-error">{{ row.form.program_block.errors }}</span>{% endif %}
+            </label>
+            <label class="field">
+              <span>{{ row.form.sequence_number.label }}</span>
+              {{ row.form.sequence_number }}
+              {% if row.form.sequence_number.errors %}<span class="form-error">{{ row.form.sequence_number.errors }}</span>{% endif %}
+              {% if row.form.participant_id.errors %}<span class="form-error">{{ row.form.participant_id.errors }}</span>{% endif %}
+            </label>
+            <button type="submit">Сохранить</button>
+          </form>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if staff_assignments|length > 1 %}
+      <h3>Специалисты занятия</h3>
+      <table class="appointment-detail-table appointment-staff-table">
+        <thead><tr><th>Специалист</th><th>Роль</th><th>График</th></tr></thead>
+        <tbody>
+        {% for assignment in staff_assignments %}
+          <tr>
+            <td data-label="Специалист">{{ assignment.staff_member }}</td>
+            <td data-label="Роль">{{ assignment.get_role_display }}</td>
+            <td data-label="График">{% if assignment.override_availability %}<span class="status-pill balance-warning">Вне графика</span>{% else %}По графику{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
     {% if appointment.staff_availability_override_reason %}<p class="note-block">Причина выхода вне графика: {{ appointment.staff_availability_override_reason }}</p>{% endif %}
     {% if appointment.admin_note %}<p class="note-block">{{ appointment.admin_note|linebreaksbr }}</p>{% endif %}
     {% if appointment.specialist_note %}<p class="note-block">Заметка специалиста: {{ appointment.specialist_note|linebreaksbr }}</p>{% endif %}
   </article>
 
-  <article class="panel">
+  <article class="panel" id="billing-decision">
     <h2>Решение по списанию</h2>
-    {% if appointment.billing_account %}
-      <p><a class="button-link secondary small-action" href="{% url 'payment_create_for_account' appointment.billing_account.pk %}">Внести оплату на счёт</a></p>
+    {% if participants|length > 1 %}
+      <div class="participant-billing-list">
+        {% for row in participant_billing_rows %}
+          <form method="post" action="{% url 'appointment_billing' appointment.pk %}" class="participant-billing-row">
+            {% csrf_token %}
+            {{ row.form.participant_id }}
+            <div>
+              <strong>{{ row.participant.child }}</strong>
+              <small>{{ row.participant.get_billing_decision_display }}</small>
+            </div>
+            <label class="field">
+              <span>{{ row.form.billing_decision.label }}</span>
+              {{ row.form.billing_decision }}
+              {% if row.form.billing_decision.errors %}<span class="form-error">{{ row.form.billing_decision.errors }}</span>{% endif %}
+            </label>
+            <label class="field">
+              <span>{{ row.form.billing_account.label }}</span>
+              {{ row.form.billing_account }}
+              {% if row.form.billing_account.errors %}<span class="form-error">{{ row.form.billing_account.errors }}</span>{% endif %}
+            </label>
+            <label class="field">
+              <span>{{ row.form.amount.label }}</span>
+              {{ row.form.amount }}
+              {% if row.form.amount.errors %}<span class="form-error">{{ row.form.amount.errors }}</span>{% endif %}
+            </label>
+            <label class="field participant-billing-reason">
+              <span>{{ row.form.reason.label }}</span>
+              {{ row.form.reason }}
+              {% if row.form.reason.errors %}<span class="form-error">{{ row.form.reason.errors }}</span>{% endif %}
+              {% if row.form.participant_id.errors %}<span class="form-error">{{ row.form.participant_id.errors }}</span>{% endif %}
+            </label>
+            <button type="submit">Сохранить</button>
+          </form>
+        {% endfor %}
+      </div>
+    {% else %}
+      {% if appointment_payment_account %}
+        <p><a class="button-link secondary small-action" href="{% url 'payment_create_for_account' appointment_payment_account.pk %}">Внести оплату на счёт</a></p>
+      {% endif %}
+      <form method="post" action="{% url 'appointment_billing' appointment.pk %}" class="form">
+        {% csrf_token %}
+        {% for field in billing_form %}
+          <label class="field">
+            <span>{{ field.label }}</span>
+            {{ field }}
+            {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+          </label>
+        {% endfor %}
+        <button type="submit">Сохранить решение</button>
+      </form>
     {% endif %}
-    <form method="post" action="{% url 'appointment_billing' appointment.pk %}" class="form">
-      {% csrf_token %}
-      {% for field in billing_form %}
-        <label class="field">
-          <span>{{ field.label }}</span>
-          {{ field }}
-          {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
-        </label>
-      {% endfor %}
-      <button type="submit">Сохранить решение</button>
-    </form>
     <h3>Операции баланса</h3>
-    <table>
-      <thead><tr><th>Дата</th><th>Тип</th><th>Сумма</th><th>Основание</th></tr></thead>
+    <table class="appointment-detail-table appointment-ledger-table">
+      <thead><tr><th>Дата</th><th>Получатель</th><th>Тип</th><th>Сумма</th><th>Основание</th></tr></thead>
       <tbody>
       {% for entry in ledger_entries %}
         <tr>
-          <td>{{ entry.created_at|date:"d.m H:i" }}</td>
-          <td>{{ entry.get_entry_type_display }}</td>
-          <td>{{ entry.amount }}</td>
-          <td>{{ entry.reason }}</td>
+          <td data-label="Дата">{{ entry.created_at|date:"d.m H:i" }}</td>
+          <td data-label="Получатель">{% if entry.appointment_participant %}{{ entry.appointment_participant.child }}{% else %}{{ entry.account.child }}{% endif %}</td>
+          <td data-label="Тип">{{ entry.get_entry_type_display }}</td>
+          <td data-label="Сумма">{{ entry.amount }}</td>
+          <td data-label="Основание">{{ entry.reason }}</td>
         </tr>
       {% empty %}
-        <tr><td colspan="4">Списаний по занятию пока нет.</td></tr>
+        <tr><td colspan="5" data-label="Операции">Списаний по занятию пока нет.</td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -83,26 +233,35 @@
     </form>
 
     <h3>История отправок</h3>
-    <table>
+    <table class="appointment-detail-table appointment-confirmations-table">
       <thead><tr><th>Дата</th><th>Кому</th><th>Email</th><th>Ответ</th><th>Отправка</th><th></th></tr></thead>
       <tbody>
       {% for item in confirmations %}
         <tr>
-          <td>{{ item.created_at|date:"d.m H:i" }}</td>
-          <td>{{ item.get_target_type_display }}</td>
-          <td>{{ item.email }}</td>
-          <td>{{ item.get_status_display }}</td>
-          <td>{{ item.get_delivery_status_display }}</td>
-          <td><a class="button-link secondary small-action" href="{% url 'appointment_confirmation_public' item.token %}">Ссылка</a></td>
+          <td data-label="Дата">{{ item.created_at|date:"d.m H:i" }}</td>
+          <td data-label="Кому">
+            {{ item.get_target_type_display }}
+            {% if item.staff_assignment %}
+              <br><small>{{ item.staff_assignment.staff_member }}</small>
+            {% elif item.participant %}
+              <br><small>{{ item.participant.child }}</small>
+            {% elif item.representative %}
+              <br><small>{{ item.representative }}</small>
+            {% endif %}
+          </td>
+          <td data-label="Email">{{ item.email }}</td>
+          <td data-label="Ответ">{{ item.get_status_display }}</td>
+          <td data-label="Отправка">{{ item.get_delivery_status_display }}</td>
+          <td data-label="Действие"><a class="button-link secondary small-action" href="{% url 'appointment_confirmation_public' item.token %}">Ссылка</a></td>
         </tr>
       {% empty %}
-        <tr><td colspan="6">Письма по занятию еще не отправлялись.</td></tr>
+        <tr><td colspan="6" data-label="История">Письма по занятию еще не отправлялись.</td></tr>
       {% endfor %}
       </tbody>
     </table>
   </article>
 
-  <article class="panel">
+  <article class="panel" id="transfer-slots">
     <h2>Свободные окна для переноса</h2>
     <div class="slot-list">
       {% for slot in suggested_slots %}
@@ -115,22 +274,59 @@
         <p class="empty-state">Подходящих окон на ближайшие дни не найдено.</p>
       {% endfor %}
     </div>
+    {% if not suggested_slots and shift_candidates %}
+      <h3 class="h6 mt-3">Занятые окна для ручного сдвига</h3>
+      <div class="slot-list">
+        {% for candidate in shift_candidates %}
+          <div class="slot-link shift-candidate">
+            <strong>{{ candidate.date|date:"d.m" }} {{ candidate.time }}</strong>
+            <span>{{ candidate.staff.full_name }}</span>
+            <small>{{ candidate.messages|join:", " }}</small>
+            {% for conflict in candidate.conflicts %}
+              <a class="small-action" href="{% url 'appointment_detail' conflict.pk %}">
+                {{ conflict.starts_at|date:"d.m H:i" }} · {{ conflict.child }} · {{ conflict.service }}
+              </a>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
   </article>
 
   <article class="panel">
     <h2>Другие занятия получателя</h2>
-    <table>
+    <table class="appointment-detail-table appointment-related-table">
       <thead><tr><th>Дата</th><th>Услуга</th><th>Специалист</th><th>Статус</th></tr></thead>
       <tbody>
       {% for item in related_child_appointments %}
         <tr>
-          <td><a href="{% url 'appointment_detail' item.pk %}">{{ item.starts_at|date:"d.m H:i" }}</a></td>
-          <td>{{ item.service }}</td>
-          <td>{{ item.staff_member }}</td>
-          <td>{{ item.get_status_display }}</td>
+          <td data-label="Дата"><a href="{% url 'appointment_detail' item.pk %}">{{ item.starts_at|date:"d.m H:i" }}</a></td>
+          <td data-label="Услуга">{{ item.service }}</td>
+          <td data-label="Специалист">{{ item.staff_member }}</td>
+          <td data-label="Статус">{{ item.get_status_display }}</td>
         </tr>
       {% empty %}
-        <tr><td colspan="4">Других занятий рядом нет.</td></tr>
+        <tr><td colspan="4" data-label="Другие занятия">Других занятий рядом нет.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="panel">
+    <h2>История изменений</h2>
+    <table class="appointment-detail-table appointment-audit-table">
+      <thead><tr><th>Дата</th><th>Объект</th><th>Действие</th><th>Кто</th><th>Изменения</th></tr></thead>
+      <tbody>
+      {% for entry in audit_entries %}
+        <tr>
+          <td data-label="Дата">{{ entry.timestamp|date:"d.m H:i" }}</td>
+          <td data-label="Объект">{{ entry.object_repr }}</td>
+          <td data-label="Действие">{{ entry.get_action_display }}</td>
+          <td data-label="Кто">{% if entry.actor %}{{ entry.actor }}{% else %}Система{% endif %}</td>
+          <td data-label="Изменения">{{ entry.changes_str|default:"Деталей нет"|truncatechars:180 }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" data-label="История">История изменений пока пуста.</td></tr>
       {% endfor %}
       </tbody>
     </table>

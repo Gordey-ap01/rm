@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Расчетный лист — {{ payroll_sheet.staff_member.full_name }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Расчетный лист — {{ payroll_sheet.staff_member.full_name }}</h1>
+    <p>{{ payroll_sheet.date_from|date:"d.m.Y" }}-{{ payroll_sheet.date_to|date:"d.m.Y" }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="button-link" href="{{ payroll_sheet_timesheet_url }}">Вернуться в табель</a>
+  </div>
+</section>
+
+<section class="payroll-sheet-overview" aria-label="Сводка расчетного листа">
+  <a class="payroll-sheet-next-action is-{{ payroll_sheet_next_action.tone }}" href="{{ payroll_sheet_next_action.href }}">
+    <span>{{ payroll_sheet_next_action.label }}</span>
+    <strong>{{ payroll_sheet_next_action.title }}</strong>
+    <small>{{ payroll_sheet_next_action.detail }}</small>
+  </a>
+  <div class="payroll-sheet-summary-grid">
+    {% for item in payroll_sheet_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="payroll-sheet-layout">
+  <div class="payroll-sheet-main">
+    <section class="panel payroll-sheet-panel" id="payroll-sheet-lines">
+      <div class="payroll-sheet-panel-head">
+        <div>
+          <h2>Строки начислений</h2>
+          <p>Проверьте дату, услугу, источник финансирования, ставку и сумму перед утверждением.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="grid payroll-sheet-table">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Услуга</th>
+              <th>Источник</th>
+              <th>Занятие</th>
+              <th>Минут</th>
+              <th>Ставка</th>
+              <th>Сумма</th>
+              <th>Примечание</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for line in payroll_sheet.lines.all %}
+              <tr>
+                <td data-label="Дата">{{ line.work_date|date:"d.m.Y" }}</td>
+                <td data-label="Услуга">{{ line.service.name }}</td>
+                <td data-label="Источник">
+                  {% if line.payroll_accrual.funding_source %}
+                    {{ line.payroll_accrual.funding_source.name }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td data-label="Занятие">
+                  {% if line.appointment %}
+                    {{ line.appointment }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td data-label="Минуты">{{ line.duration_minutes }}</td>
+                <td data-label="Ставка">{{ line.payroll_accrual.rate_amount_snapshot }} / {{ line.payroll_accrual.get_rate_type_snapshot_display }}</td>
+                <td data-label="Сумма"><strong>{{ line.amount }}</strong></td>
+                <td data-label="Примечание">{{ line.note|default:"—" }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="8" data-label="Строки">В расчетном листе нет строк.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="payroll-sheet-sidebar">
+    <section class="panel payroll-sheet-control-panel" id="payroll-sheet-approve">
+      <h2>Контроль расчетного листа</h2>
+      <ul class="payroll-sheet-check-list">
+        <li>
+          <strong>Статус</strong>
+          <span>{{ payroll_sheet.get_status_display }}</span>
+        </li>
+        <li>
+          <strong>Период</strong>
+          <span>{{ payroll_sheet.date_from|date:"d.m.Y" }}-{{ payroll_sheet.date_to|date:"d.m.Y" }}</span>
+        </li>
+        <li>
+          <strong>Специалист</strong>
+          <span>{{ payroll_sheet.staff_member.full_name }}</span>
+        </li>
+        <li>
+          <strong>Итого</strong>
+          <span>{{ payroll_sheet.total_amount }} руб.</span>
+        </li>
+        {% if payroll_sheet.approved_at %}
+          <li>
+            <strong>Утвержден</strong>
+            <span>
+              {{ payroll_sheet.approved_at|date:"d.m.Y H:i" }}
+              {% if payroll_sheet.approved_by %}— {{ payroll_sheet.approved_by }}{% endif %}
+            </span>
+          </li>
+        {% endif %}
+      </ul>
+
+      {% if payroll_sheet.status == "draft" %}
+        <form method="post" class="payroll-sheet-actions">
+          {% csrf_token %}
+          <button type="submit" name="action" value="approve">Утвердить расчетный лист</button>
+        </form>
+      {% endif %}
+
+      <a class="button-link" href="{{ payroll_sheet_timesheet_url }}">Открыть табель периода</a>
+    </section>
+  </aside>
+</section>
+{% endblock %}

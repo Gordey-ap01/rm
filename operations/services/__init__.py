@@ -4,6 +4,26 @@
 и могут быть покрыты unit-тестами без поднятия test client.
 """
 
-from . import appointments, billing, notifications, program_wizard, reports, scheduling
+from . import (
+    appointments,
+    billing,
+    import_preview,
+    notifications,
+    payroll,
+    program_wizard,
+    reports,
+    rescheduling_plans,
+    scheduling,
+)
 
-__all__ = ["appointments", "billing", "notifications", "program_wizard", "reports", "scheduling"]
+__all__ = [
+    "appointments",
+    "billing",
+    "import_preview",
+    "notifications",
+    "payroll",
+    "program_wizard",
+    "reports",
+    "rescheduling_plans",
+    "scheduling",
+]

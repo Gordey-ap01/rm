@@ -6,29 +6,87 @@
 <section class="page-header">
   <div>
     <h1>Отменить занятие</h1>
-    <p>{{ appointment.child }} · {{ appointment.service }} · {{ appointment.starts_at|date:"d.m.Y H:i" }}</p>
+    <p>{{ appointment_participants_label }} · {{ appointment.service }} · {{ appointment.starts_at|date:"d.m.Y H:i" }}</p>
   </div>
-  <a class="button-link secondary" href="{% url 'appointment_detail' appointment.pk %}">Назад</a>
+  <div class="page-actions">
+    <a class="button-link secondary" href="{% url 'appointment_detail' appointment.pk %}">Назад</a>
+  </div>
 </section>
 
-<section class="panel form-panel warning-panel">
-  <p>Отмена или неявка не списывает занятие автоматически. После сохранения отдельно примите решение по списанию.</p>
-  <form method="post" class="form-grid">
-    {% csrf_token %}
-    {% if form.non_field_errors %}
-      <div class="form-error form-wide">{{ form.non_field_errors }}</div>
-    {% endif %}
-    {% for field in form %}
-      <label class="field {% if field.name == 'admin_note' %}form-wide{% endif %}">
-        <span>{{ field.label }}</span>
-        {{ field }}
-        {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
-      </label>
+<section class="appointment-cancel-overview" aria-label="Сводка отмены занятия">
+  <a class="appointment-cancel-next-action is-{{ appointment_cancel_next_action.tone }}" href="{{ appointment_cancel_next_action.href }}">
+    <span>{{ appointment_cancel_next_action.label }}</span>
+    <strong>{{ appointment_cancel_next_action.title }}</strong>
+    <small>{{ appointment_cancel_next_action.detail }}</small>
+  </a>
+  <div class="appointment-cancel-summary-grid">
+    {% for item in appointment_cancel_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
     {% endfor %}
-    <div class="form-actions form-wide">
-      <button type="submit">Сохранить отмену</button>
-      <a class="button-link secondary" href="{% url 'appointment_detail' appointment.pk %}">Отмена</a>
-    </div>
-  </form>
+  </div>
+</section>
+
+<section class="appointment-cancel-layout">
+  <div class="appointment-cancel-main">
+    <form method="post" class="panel appointment-cancel-form" id="appointment-cancel-form">
+      {% csrf_token %}
+      <div class="appointment-cancel-form-head">
+        <h2>Параметры отмены</h2>
+        <p>Отмена или неявка не списывает занятие автоматически. Решение по списанию принимается отдельно.</p>
+      </div>
+      {% if form.non_field_errors %}
+        <div class="form-error form-wide">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% if form.is_same_day_cancellation %}
+        <div class="hold-confirm-card appointment-cancel-same-day">
+          <div>
+            <strong>Отмена день-в-день</strong>
+            <p>Сохранение отмены не спишет занятие автоматически. После сохранения решение по списанию останется в карточке занятия.</p>
+          </div>
+        </div>
+      {% endif %}
+      <div class="form-grid">
+        {% for field in form %}
+          <label class="field {% if field.name == 'admin_note' or field.name == 'same_day_billing_ack' %}form-wide{% endif %}">
+            <span>{{ field.label }}</span>
+            {{ field }}
+            {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+          </label>
+        {% endfor %}
+      </div>
+      <div class="appointment-cancel-actions">
+        <button type="submit">Сохранить отмену</button>
+        <a class="button-link secondary" href="{% url 'appointment_detail' appointment.pk %}">Отмена</a>
+      </div>
+    </form>
+  </div>
+
+  <aside class="appointment-cancel-sidebar">
+    <section class="panel appointment-cancel-control-panel">
+      <h2>Контроль отмены</h2>
+      <ul class="appointment-cancel-check-list">
+        <li>
+          <strong>Статус занятия</strong>
+          <span>Будет изменен на выбранный в форме статус: отменено или неявка.</span>
+        </li>
+        <li>
+          <strong>Списание</strong>
+          <span>Автоматического списания нет; решение остается в карточке занятия.</span>
+        </li>
+        <li>
+          <strong>Групповое занятие</strong>
+          <span>Если в занятии несколько получателей, проверьте решения по участникам после сохранения.</span>
+        </li>
+        <li>
+          <strong>Комментарий</strong>
+          <span>Причина и примечание попадут в администраторскую заметку занятия.</span>
+        </li>
+      </ul>
+    </section>
+  </aside>
 </section>
 {% endblock %}

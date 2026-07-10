@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Специалисты{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Специалисты</h1>
+    <p>Профили для расписания, табеля, ставок и мобильного кабинета.</p>
+  </div>
+  <a class="button-link" href="{% url 'staff_member_create' %}">Создать специалиста</a>
+</section>
+
+<section class="directory-overview">
+  <a class="directory-next-action is-{{ staff_next_action.tone }}" href="{{ staff_next_action.href }}">
+    <span>{{ staff_next_action.label }}</span>
+    <strong>{{ staff_next_action.title }}</strong>
+    <small>{{ staff_next_action.detail }}</small>
+  </a>
+  <div class="directory-summary-grid" aria-label="Сводка специалистов">
+    {% for item in staff_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="directory-layout">
+  <div class="directory-main">
+    <section class="panel directory-panel" id="staff-member-list">
+      <div class="directory-panel-head">
+        <div>
+          <h2>Профили специалистов</h2>
+          <p>Статус влияет на расписание, кабинет специалиста и управленческие отчеты.</p>
+        </div>
+      </div>
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>ФИО</th>
+              <th>Специализации</th>
+              <th>Контакты</th>
+              <th>Пользователь</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for staff in staff_members %}
+            <tr{% if staff.is_archived %} class="muted-row"{% elif staff.status != "active" %} class="warning-row"{% endif %}>
+              <td data-label="ФИО">
+                <span class="color-dot" style="background:{{ staff.color }}"></span>
+                <strong>{{ staff.full_name }}</strong>
+              </td>
+              <td data-label="Специализации">{{ staff.specializations|default:"—" }}</td>
+              <td data-label="Контакты">
+                {% if staff.phone %}<div>{{ staff.phone }}</div>{% endif %}
+                {% if staff.email %}<div class="muted">{{ staff.email }}</div>{% endif %}
+                {% if not staff.phone and not staff.email %}<span class="muted">—</span>{% endif %}
+              </td>
+              <td data-label="Пользователь">
+                {% if staff.user %}
+                  <span class="status-pill">{{ staff.user.username }}</span>
+                {% else %}
+                  <span class="status-pill muted-pill">не привязан</span>
+                {% endif %}
+              </td>
+              <td data-label="Статус">
+                {% if staff.is_archived %}
+                  <span class="status-pill muted-pill">архив</span>
+                {% else %}
+                  <span class="status-pill">{{ staff.get_status_display }}</span>
+                {% endif %}
+                {% if staff.can_use_mobile %}
+                  <span class="status-pill muted-pill">мобильный</span>
+                {% else %}
+                  <span class="status-pill danger-pill">кабинет закрыт</span>
+                {% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'staff_member_edit' staff.pk %}">Править</a>
+                {% if not staff.is_archived %}
+                  <a class="small-action" href="{% url 'staff_timesheet' staff.pk %}">Табель</a>
+                  <a class="small-action" href="{% url 'specialist_home' %}?staff_id={{ staff.pk }}">Кабинет</a>
+                  <a class="small-action" href="{% url 'staff_mass_reschedule' staff.pk %}">Перенос</a>
+                  <button class="secondary-button small-action"
+                          x-data
+                          @click="if(confirm('Архивировать специалиста «{{ staff.full_name }}»? История занятий сохранится.')) { $el.closest('td').querySelector('form').submit() }">
+                    В архив
+                  </button>
+                  <form method="post" action="{% url 'staff_member_archive' staff.pk %}" class="d-none">
+                    {% csrf_token %}
+                  </form>
+                {% else %}
+                  <form method="post" action="{% url 'staff_member_restore' staff.pk %}" class="inline-form compact-form">
+                    {% csrf_token %}
+                    <button class="small-action" type="submit">Восстановить</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" data-label="Специалисты"><div class="empty-state">Специалисты еще не заведены.</div></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="directory-sidebar" aria-label="Контроль специалистов">
+    <section class="panel directory-control-panel">
+      <h2>Контроль</h2>
+      <ul class="directory-check-list">
+        <li>
+          <strong>Расписание</strong>
+          <span>Активные специалисты доступны для занятий и массового переноса.</span>
+        </li>
+        <li>
+          <strong>Мобильный кабинет</strong>
+          <span>Для самостоятельной отметки факта нужен пользователь и включенный доступ.</span>
+        </li>
+        <li>
+          <strong>Табель и ставки</strong>
+          <span>Табель опирается на проведенные занятия и правила оплаты специалиста.</span>
+        </li>
+        <li>
+          <strong>Архив</strong>
+          <span>Архивация скрывает специалиста из новых сценариев, но сохраняет историю.</span>
+        </li>
+      </ul>
+    </section>
+  </aside>
+</section>
+{% endblock %}

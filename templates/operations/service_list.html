@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Услуги{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Услуги</h1>
+    <p>Направления занятий для расписания, программ, балансов, грантов и ставок.</p>
+  </div>
+  <a class="button-link" href="{% url 'service_create' %}">Создать услугу</a>
+</section>
+
+<section class="directory-overview">
+  <a class="directory-next-action is-{{ service_next_action.tone }}" href="{{ service_next_action.href }}">
+    <span>{{ service_next_action.label }}</span>
+    <strong>{{ service_next_action.title }}</strong>
+    <small>{{ service_next_action.detail }}</small>
+  </a>
+  <div class="directory-summary-grid" aria-label="Сводка услуг">
+    {% for item in service_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="directory-layout">
+  <div class="directory-main">
+    <section class="panel directory-panel" id="service-list">
+      <div class="directory-panel-head">
+        <div>
+          <h2>Услуги и направления</h2>
+          <p>Длительность и цена используются как значения по умолчанию в занятиях, балансах и отчетах.</p>
+        </div>
+      </div>
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>Услуга</th>
+              <th>Код</th>
+              <th>Категория</th>
+              <th>Длительность</th>
+              <th>Цена</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for service in services %}
+            <tr{% if service.is_archived %} class="muted-row"{% elif not service.is_active %} class="warning-row"{% endif %}>
+              <td data-label="Услуга">
+                <span class="color-dot" style="background:{{ service.color }}"></span>
+                <strong>{{ service.name }}</strong>
+              </td>
+              <td data-label="Код">{{ service.code }}</td>
+              <td data-label="Категория">{{ service.get_category_display }}</td>
+              <td data-label="Длительность">{{ service.default_duration_minutes }} мин</td>
+              <td data-label="Цена">{{ service.default_price }}</td>
+              <td data-label="Статус">
+                {% if service.is_archived %}
+                  <span class="status-pill muted-pill">архив</span>
+                {% elif service.is_active %}
+                  <span class="status-pill">активна</span>
+                {% else %}
+                  <span class="status-pill muted-pill">выключена</span>
+                {% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'service_edit' service.pk %}">Править</a>
+                {% if not service.is_archived %}
+                  <button class="secondary-button small-action"
+                          x-data
+                          @click="if(confirm('Архивировать услугу «{{ service.name }}»? История занятий сохранится.')) { $el.closest('td').querySelector('form').submit() }">
+                    В архив
+                  </button>
+                  <form method="post" action="{% url 'service_archive' service.pk %}" class="d-none">
+                    {% csrf_token %}
+                  </form>
+                {% else %}
+                  <form method="post" action="{% url 'service_restore' service.pk %}" class="inline-form compact-form">
+                    {% csrf_token %}
+                    <button class="small-action" type="submit">Восстановить</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" data-label="Услуги"><div class="empty-state">Услуги еще не заведены.</div></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="directory-sidebar" aria-label="Контроль услуг">
+    <section class="panel directory-control-panel">
+      <h2>Контроль</h2>
+      <ul class="directory-check-list">
+        <li>
+          <strong>Расписание</strong>
+          <span>Длительность услуги подставляется в занятие по умолчанию.</span>
+        </li>
+        <li>
+          <strong>Оплата и гранты</strong>
+          <span>Цена нужна для рублевых балансов, отчетов и будущих сверок.</span>
+        </li>
+        <li>
+          <strong>Ставки специалистов</strong>
+          <span>Зарплатные правила могут зависеть от наименования услуги и длительности.</span>
+        </li>
+        <li>
+          <strong>Архив</strong>
+          <span>Архивация скрывает услугу из новых сценариев, но сохраняет историю занятий.</span>
+        </li>
+      </ul>
+    </section>
+  </aside>
+</section>
+{% endblock %}

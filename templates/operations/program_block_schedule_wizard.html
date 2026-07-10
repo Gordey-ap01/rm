@@ -12,70 +12,101 @@
   <a class="button-link secondary" href="{{ cancel_url }}">Назад</a>
 </section>
 
-<section class="wizard-shell">
-  <article class="panel wizard-summary">
-    <div>
-      <span class="eyebrow">Услуга</span>
-      <strong>{{ block.service }}</strong>
-    </div>
-    <div>
-      <span class="eyebrow">Специалист</span>
-      <strong>{% if block.staff_member %}{{ block.staff_member }}{% else %}выберите в мастере{% endif %}</strong>
-    </div>
-    <div>
-      <span class="eyebrow">План</span>
-      <strong>{{ block.scheduled_count }} / {{ block.planned_sessions }}</strong>
-    </div>
-    <div>
-      <span class="eyebrow">Счёт</span>
-      <strong>{% if block.balance_account %}{{ block.balance_account.current_balance }} {{ block.balance_account.get_unit_display }}{% else %}не выбран{% endif %}</strong>
-    </div>
-    <div>
-      <span class="eyebrow">Режим</span>
-      <strong>автоподбор доступен</strong>
-    </div>
-  </article>
-
-  <article class="panel form-panel">
-    <form method="post" class="form-grid">
+<section class="wizard-layout">
+  <article class="panel form-panel wizard-main">
+    <form method="post" class="wizard-form-stack">
       {% csrf_token %}
       {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
       {% if form.non_field_errors %}
-        <div class="form-error form-wide">{{ form.non_field_errors }}</div>
+        <div class="form-error">{{ form.non_field_errors }}</div>
       {% endif %}
 
-      {% for field in form.visible_fields %}
-        {% if field.name == "weekdays" %}
-          <div class="field form-wide">
-            <span>{{ field.label }}</span>
-            <div class="weekday-picker">{{ field }}</div>
-            {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
-          </div>
-        {% elif field.name == "allow_unpaid_reserve" %}
-          <label class="field form-wide check-field">
-            {{ field }}
-            <span>{{ field.label }}</span>
-            {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
-            {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
-          </label>
-        {% elif field.name == "staff_member" or field.name == "room" %}
-          <label class="field auto-pick-field">
-            <span>{{ field.label }}</span>
-            {{ field }}
-            {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
-            {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
-          </label>
-        {% else %}
+      <div class="wizard-step">
+        <div class="wizard-step-head">
+          <span>01</span>
+          <h2>Период и частота</h2>
+        </div>
+        <div class="form-grid">
           <label class="field">
-            <span>{{ field.label }}</span>
-            {{ field }}
-            {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
-            {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+            <span>{{ form.start_date.label }}</span>
+            {{ form.start_date }}
+            {% if form.start_date.errors %}<span class="form-error">{{ form.start_date.errors }}</span>{% endif %}
           </label>
-        {% endif %}
-      {% endfor %}
+          <label class="field">
+            <span>{{ form.end_date.label }}</span>
+            {{ form.end_date }}
+            {% if form.end_date.errors %}<span class="form-error">{{ form.end_date.errors }}</span>{% endif %}
+          </label>
+          <div class="field form-wide">
+            <span>{{ form.weekdays.label }}</span>
+            <div class="weekday-picker">{{ form.weekdays }}</div>
+            {% if form.weekdays.errors %}<span class="form-error">{{ form.weekdays.errors }}</span>{% endif %}
+          </div>
+        </div>
+      </div>
 
-      <div class="hold-confirm-card form-wide">
+      <div class="wizard-step">
+        <div class="wizard-step-head">
+          <span>02</span>
+          <h2>Окно поиска</h2>
+        </div>
+        <div class="form-grid">
+          <label class="field">
+            <span>{{ form.time_from.label }}</span>
+            {{ form.time_from }}
+            {% if form.time_from.errors %}<span class="form-error">{{ form.time_from.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.time_until.label }}</span>
+            {{ form.time_until }}
+            {% if form.time_until.errors %}<span class="form-error">{{ form.time_until.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.duration_minutes.label }}</span>
+            {{ form.duration_minutes }}
+            {% if form.duration_minutes.errors %}<span class="form-error">{{ form.duration_minutes.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.requested_count.label }}</span>
+            {{ form.requested_count }}
+            {% if form.requested_count.errors %}<span class="form-error">{{ form.requested_count.errors }}</span>{% endif %}
+          </label>
+        </div>
+      </div>
+
+      <div class="wizard-step">
+        <div class="wizard-step-head">
+          <span>03</span>
+          <h2>Ресурсы</h2>
+        </div>
+        <div class="form-grid">
+          <label class="field auto-pick-field">
+            <span>{{ form.staff_member.label }}</span>
+            {{ form.staff_member }}
+            {% if form.staff_member.help_text %}<small class="muted">{{ form.staff_member.help_text }}</small>{% endif %}
+            {% if form.staff_member.errors %}<span class="form-error">{{ form.staff_member.errors }}</span>{% endif %}
+          </label>
+          <label class="field auto-pick-field">
+            <span>{{ form.room.label }}</span>
+            {{ form.room }}
+            {% if form.room.help_text %}<small class="muted">{{ form.room.help_text }}</small>{% endif %}
+            {% if form.room.errors %}<span class="form-error">{{ form.room.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.appointment_status.label }}</span>
+            {{ form.appointment_status }}
+            {% if form.appointment_status.errors %}<span class="form-error">{{ form.appointment_status.errors }}</span>{% endif %}
+          </label>
+          <label class="field check-field">
+            {{ form.allow_unpaid_reserve }}
+            <span>{{ form.allow_unpaid_reserve.label }}</span>
+            {% if form.allow_unpaid_reserve.help_text %}<small class="muted">{{ form.allow_unpaid_reserve.help_text }}</small>{% endif %}
+            {% if form.allow_unpaid_reserve.errors %}<span class="form-error">{{ form.allow_unpaid_reserve.errors }}</span>{% endif %}
+          </label>
+        </div>
+      </div>
+
+      <div class="hold-confirm-card">
         <div>
           <strong>Подбор вне графика специалиста</strong>
           <p>Обычный подбор ищет только рабочие окна. Удерживайте кнопку, если нужно осознанно включить варианты вне графика или в день отгула.</p>
@@ -93,7 +124,7 @@
       </div>
 
       {% if preview %}
-        <div class="wizard-preview form-wide">
+        <div class="wizard-preview">
           <div class="wizard-preview-head">
             <div>
               <h2>Предложенные окна</h2>
@@ -109,8 +140,8 @@
             </div>
           </div>
           {% if preview.slots %}
-            <div class="table-responsive">
-              <table class="table table-sm mb-0">
+            <div class="table-responsive program-wizard-table-wrap">
+              <table class="table table-sm mb-0 program-wizard-table">
                 <thead>
                   <tr>
                     <th>№</th>
@@ -125,19 +156,19 @@
                 <tbody>
                   {% for slot in preview.slots %}
                     <tr>
-                      <td>{{ forloop.counter }}</td>
-                      <td>{{ slot.starts_at|date:"d.m.Y H:i" }}-{{ slot.ends_at|date:"H:i" }}</td>
-                      <td>{{ slot.staff_member }}</td>
-                      <td>{{ slot.room }}</td>
-                      <td>{{ slot.room_occupancy|add:1 }} / {{ slot.room_capacity }}</td>
-                      <td>
+                      <td data-label="№">{{ forloop.counter }}</td>
+                      <td data-label="Дата и время">{{ slot.starts_at|date:"d.m.Y H:i" }}-{{ slot.ends_at|date:"H:i" }}</td>
+                      <td data-label="Специалист">{{ slot.staff_member }}</td>
+                      <td data-label="Кабинет">{{ slot.room }}</td>
+                      <td data-label="Вместимость">{{ slot.room_occupancy|add:1 }} / {{ slot.room_capacity }}</td>
+                      <td data-label="Почему выбран">
                         {% if slot.selection_note %}
                           <span class="status-pill balance-notice">{{ slot.selection_note }}</span>
                         {% else %}
                           <span class="muted">по заданным условиям</span>
                         {% endif %}
                       </td>
-                      <td>
+                      <td data-label="График">
                         {% if slot.availability_warning %}
                           <span class="status-pill balance-warning">{{ slot.availability_warning }}</span>
                         {% else %}
@@ -155,7 +186,7 @@
         </div>
       {% endif %}
 
-      <div class="form-actions form-wide">
+      <div class="form-actions">
         <button type="submit" name="action" value="preview"><i class="bi bi-search"></i> Подобрать окна</button>
         {% if preview and preview.slots %}
           <button type="submit" name="action" value="create"><i class="bi bi-calendar-plus"></i> Создать занятия</button>
@@ -164,6 +195,39 @@
       </div>
     </form>
   </article>
+
+  <aside class="wizard-sidebar" aria-label="Сводка мастера">
+    <article class="panel wizard-summary">
+      <h2>Сводка каскада</h2>
+      <dl>
+        {% for item in wizard_summary_items %}
+          <div>
+            <dt>{{ item.label }}</dt>
+            <dd>
+              <strong>{{ item.value }}</strong>
+              <small>{{ item.hint }}</small>
+            </dd>
+          </div>
+        {% endfor %}
+      </dl>
+    </article>
+
+    <article class="panel wizard-summary">
+      <h2>Контроль</h2>
+      {% if wizard_attention_items %}
+        <div class="appointment-form-alerts">
+          {% for item in wizard_attention_items %}
+            <div class="appointment-attention-item is-{{ item.tone }}">
+              <strong>{{ item.title }}</strong>
+              <span>{{ item.text }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p>Критичных предупреждений сейчас нет.</p>
+      {% endif %}
+    </article>
+  </aside>
 </section>
 {% endblock %}
 

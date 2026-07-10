@@ -15,6 +15,25 @@
   </div>
 </section>
 
+<section class="ops-focus mb-3" aria-label="Фокус дня">
+  <div class="ops-focus-head">
+    <div>
+      <h2>Фокус дня</h2>
+      <p>Самые важные операционные сигналы по расписанию, оплате и согласованиям.</p>
+    </div>
+    <a href="{% url 'work_queue' %}" class="panel-link">Открыть очередь</a>
+  </div>
+  <div class="ops-focus-list">
+    {% for item in dashboard_focus_items %}
+      <a class="ops-focus-item is-{{ item.tone }}" href="{{ item.href }}">
+        <span>{{ item.value }}</span>
+        <strong>{{ item.title }}</strong>
+        <small>{{ item.detail }}</small>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="quick-actions mb-3" aria-label="Быстрые действия">
   <a href="{% url 'appointment_create' %}" class="quick-action primary">
     <i class="bi bi-plus-circle"></i>
@@ -75,7 +94,7 @@
         </div>
         <a href="{% url 'schedule' %}" class="panel-link">Календарь</a>
       </div>
-      <div class="table-responsive">
+      <div class="table-responsive ops-table-wrap">
         <table class="table align-middle mb-0 ops-table">
           <thead>
             <tr><th>Время</th><th>Получатель</th><th>Занятие</th><th>Специалист</th><th>Статус</th></tr>
@@ -83,17 +102,17 @@
           <tbody>
           {% for item in today_appointments %}
             <tr>
-              <td class="fw-semibold">{{ item.starts_at|date:"H:i" }}</td>
-              <td>{{ item.child }}</td>
-              <td>
+              <td class="fw-semibold" data-label="Время">{{ item.starts_at|date:"H:i" }}</td>
+              <td data-label="Получатель">{{ item.child }}</td>
+              <td data-label="Занятие">
                 {{ item.service }}
                 {% if item.room %}<div class="small text-muted">{{ item.room }}</div>{% endif %}
               </td>
-              <td>{{ item.staff_member }}</td>
-              <td><span class="status-pill">{{ item.get_status_display }}</span></td>
+              <td data-label="Специалист">{{ item.staff_member }}</td>
+              <td data-label="Статус"><span class="status-pill">{{ item.get_status_display }}</span></td>
             </tr>
           {% empty %}
-            <tr><td colspan="5" class="text-center text-muted py-4">На сегодня занятий нет.</td></tr>
+            <tr><td colspan="5" class="text-center text-muted py-4" data-label="Сегодня">На сегодня занятий нет.</td></tr>
           {% endfor %}
           </tbody>
         </table>
@@ -114,8 +133,34 @@
         {% for item in tomorrow_appointments|slice:":9" %}
           <a class="timeline-item" href="{% url 'appointment_detail' item.pk %}">
             <span>{{ item.starts_at|date:"H:i" }}</span>
-            <strong>{{ item.child }}</strong>
-            <small>{{ item.service }} · {{ item.staff_member }}</small>
+            {% with participants=item.participants.all staff_assignments=item.staff_assignments.all %}
+              <strong>
+                {% if participants|length > 1 %}
+                  {{ item.title|default:item.service }}
+                {% elif participants %}
+                  {% for participant in participants %}
+                    {% if forloop.first %}{{ participant.child }}{% endif %}
+                  {% endfor %}
+                {% else %}
+                  {{ item.child }}
+                {% endif %}
+              </strong>
+              <small>
+                {% if participants|length > 1 %}{{ participants|length }} получателя · {% endif %}
+                {{ item.service }} ·
+                {% if staff_assignments|length > 1 %}
+                  {% for assignment in staff_assignments %}
+                    {{ assignment.staff_member }}{% if not forloop.last %}, {% endif %}
+                  {% endfor %}
+                {% elif staff_assignments %}
+                  {% for assignment in staff_assignments %}
+                    {% if forloop.first %}{{ assignment.staff_member }}{% endif %}
+                  {% endfor %}
+                {% else %}
+                  {{ item.staff_member }}
+                {% endif %}
+              </small>
+            {% endwith %}
           </a>
         {% empty %}
           <p class="empty-state">На завтра занятий нет.</p>
@@ -156,19 +201,19 @@
         </div>
         <a href="{% url 'balances' %}" class="panel-link">Все балансы</a>
       </div>
-      <div class="table-responsive">
+      <div class="table-responsive ops-table-wrap">
         <table class="table align-middle mb-0 ops-table">
           <thead><tr><th>Получатель</th><th>Источник</th><th>Услуга</th><th class="text-end">Остаток</th></tr></thead>
           <tbody>
           {% for account in low_balances %}
             <tr>
-              <td>{{ account.child }}</td>
-              <td>{{ account.funding_source }}</td>
-              <td>{% if account.service %}{{ account.service }}{% else %}Любые услуги{% endif %}</td>
-              <td class="text-end fw-semibold">{{ account.current_balance }} {{ account.get_unit_display }}</td>
+              <td data-label="Получатель">{{ account.child }}</td>
+              <td data-label="Источник">{{ account.funding_source }}</td>
+              <td data-label="Услуга">{% if account.service %}{{ account.service }}{% else %}Любые услуги{% endif %}</td>
+              <td class="text-end fw-semibold" data-label="Остаток">{{ account.current_balance }} {{ account.get_unit_display }}</td>
             </tr>
           {% empty %}
-            <tr><td colspan="4" class="text-center text-muted py-4">Критичных остатков нет.</td></tr>
+            <tr><td colspan="4" class="text-center text-muted py-4" data-label="Балансы">Критичных остатков нет.</td></tr>
           {% endfor %}
           </tbody>
         </table>

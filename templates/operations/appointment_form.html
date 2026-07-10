@@ -8,7 +8,7 @@
   <div>
     <h1>{{ title }}</h1>
     {% if appointment %}
-      <p>{{ appointment.child }} · {{ appointment.starts_at|date:"d.m.Y H:i" }}</p>
+      <p>{{ appointment_participants_label|default:appointment.child }} · {{ appointment.starts_at|date:"d.m.Y H:i" }}</p>
     {% else %}
       <p>Заполните основные поля, система проверит конфликты получателя, специалиста и кабинета.</p>
     {% endif %}
@@ -16,45 +16,202 @@
   <a class="button-link secondary" href="{% if appointment %}{% url 'appointment_detail' appointment.pk %}{% else %}{% url 'schedule' %}{% endif %}">Назад</a>
 </section>
 
-<section class="panel form-panel">
-  <form method="post" class="form-grid">
-    {% csrf_token %}
-    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
-    {% if form.non_field_errors %}
-      <div class="form-error form-wide">{{ form.non_field_errors }}</div>
-    {% endif %}
-    {% if form.availability_warning %}
-      <div class="hold-confirm-card form-wide">
-        <div>
-          <strong>Специалист не работает в это время</strong>
-          <p>Причина: {{ form.availability_warning }}. Можно предложить специалисту выйти вне графика, если администратор осознанно берёт это в работу.</p>
+<section class="appointment-form-layout">
+  <section class="panel form-panel appointment-form-main">
+    <form method="post" class="appointment-form-stack">
+      {% csrf_token %}
+      {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+      {% if form.non_field_errors %}
+        <div class="form-error">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% if form.room_limit_warning %}
+        <div class="hold-confirm-card">
+          <div>
+            <strong>Кабинет не проходит по правилам</strong>
+            <p>Причина: {{ form.room_limit_warning }}. Можно сохранить занятие как одноразовое разрешение администратора, не меняя постоянные настройки кабинета.</p>
+          </div>
+          <button
+            type="button"
+            class="hold-confirm-button"
+            data-hold-submit="true"
+            data-target-id="id_room_limit_override"
+            data-hold-ms="1300"
+          >
+            <span class="hold-confirm-progress" aria-hidden="true"></span>
+            <span class="hold-confirm-label">Удерживать, чтобы разрешить кабинет один раз</span>
+          </button>
+          <small class="muted">Если это должно стать постоянным правилом, измените настройки кабинета отдельно.</small>
         </div>
-        <button
-          type="button"
-          class="hold-confirm-button"
-          data-hold-submit="true"
-          data-target-id="id_staff_availability_override"
-          data-hold-ms="1300"
-        >
-          <span class="hold-confirm-progress" aria-hidden="true"></span>
-          <span class="hold-confirm-label">Удерживать, чтобы предложить специалисту выйти вне графика</span>
-        </button>
-        <small class="muted">Удерживайте кнопку до заполнения индикатора. Обычная кнопка “Сохранить” оставит занятие заблокированным.</small>
+      {% endif %}
+      {% if form.availability_warning %}
+        <div class="hold-confirm-card">
+          <div>
+            <strong>Специалист не работает в это время</strong>
+            <p>Причина: {{ form.availability_warning }}. Можно предложить специалисту выйти вне графика, если администратор осознанно берёт это в работу.</p>
+          </div>
+          <button
+            type="button"
+            class="hold-confirm-button"
+            data-hold-submit="true"
+            data-target-id="id_staff_availability_override"
+            data-hold-ms="1300"
+          >
+            <span class="hold-confirm-progress" aria-hidden="true"></span>
+            <span class="hold-confirm-label">Удерживать, чтобы предложить специалисту выйти вне графика</span>
+          </button>
+          <small class="muted">Удерживайте кнопку до заполнения индикатора. Обычная кнопка “Сохранить” оставит занятие заблокированным.</small>
+        </div>
+      {% endif %}
+
+      <div class="appointment-form-section">
+        <div class="appointment-form-section-head">
+          <span>01</span>
+          <h2>Формат и время</h2>
+        </div>
+        <div class="form-grid">
+          <label class="field">
+            <span>{{ form.session_type.label }}</span>
+            {{ form.session_type }}
+            {% if form.session_type.errors %}<span class="form-error">{{ form.session_type.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.service.label }}</span>
+            {{ form.service }}
+            {% if form.service.errors %}<span class="form-error">{{ form.service.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.date.label }}</span>
+            {{ form.date }}
+            {% if form.date.errors %}<span class="form-error">{{ form.date.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.time.label }}</span>
+            {{ form.time }}
+            {% if form.time.errors %}<span class="form-error">{{ form.time.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.duration_minutes.label }}</span>
+            {{ form.duration_minutes }}
+            {% if form.duration_minutes.errors %}<span class="form-error">{{ form.duration_minutes.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.room.label }}</span>
+            {{ form.room }}
+            {% if form.room.errors %}<span class="form-error">{{ form.room.errors }}</span>{% endif %}
+          </label>
+        </div>
       </div>
-    {% endif %}
-    {% for field in form.visible_fields %}
-      <label class="field {% if field.name == 'admin_note' %}form-wide{% endif %}">
-        <span>{{ field.label }}</span>
-        {{ field }}
-        {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
-        {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
-      </label>
-    {% endfor %}
-    <div class="form-actions form-wide">
-      <button type="submit">Сохранить</button>
-      <a class="button-link secondary" href="{% if appointment %}{% url 'appointment_detail' appointment.pk %}{% else %}{% url 'schedule' %}{% endif %}">Отмена</a>
-    </div>
-  </form>
+
+      <div class="appointment-form-section">
+        <div class="appointment-form-section-head">
+          <span>02</span>
+          <h2>Участники</h2>
+        </div>
+        <div class="form-grid">
+          <label class="field form-wide">
+            <span>{{ form.participants.label }}</span>
+            {{ form.participants }}
+            {% if form.participants.help_text %}<small class="muted">{{ form.participants.help_text }}</small>{% endif %}
+            {% if form.participants.errors %}<span class="form-error">{{ form.participants.errors }}</span>{% endif %}
+          </label>
+          <label class="field form-wide">
+            <span>{{ form.staff_members.label }}</span>
+            {{ form.staff_members }}
+            {% if form.staff_members.help_text %}<small class="muted">{{ form.staff_members.help_text }}</small>{% endif %}
+            {% if form.staff_members.errors %}<span class="form-error">{{ form.staff_members.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.child.label }}</span>
+            {{ form.child }}
+            {% if form.child.help_text %}<small class="muted">{{ form.child.help_text }}</small>{% endif %}
+            {% if form.child.errors %}<span class="form-error">{{ form.child.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.staff_member.label }}</span>
+            {{ form.staff_member }}
+            {% if form.staff_member.help_text %}<small class="muted">{{ form.staff_member.help_text }}</small>{% endif %}
+            {% if form.staff_member.errors %}<span class="form-error">{{ form.staff_member.errors }}</span>{% endif %}
+          </label>
+        </div>
+      </div>
+
+      <div class="appointment-form-section">
+        <div class="appointment-form-section-head">
+          <span>03</span>
+          <h2>Программа и оплата</h2>
+        </div>
+        <div class="form-grid">
+          <label class="field">
+            <span>{{ form.program_block.label }}</span>
+            {{ form.program_block }}
+            {% if form.program_block.errors %}<span class="form-error">{{ form.program_block.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.billing_account.label }}</span>
+            {{ form.billing_account }}
+            {% if form.billing_account.errors %}<span class="form-error">{{ form.billing_account.errors }}</span>{% endif %}
+          </label>
+        </div>
+      </div>
+
+      <div class="appointment-form-section">
+        <div class="appointment-form-section-head">
+          <span>04</span>
+          <h2>Статус и примечание</h2>
+        </div>
+        <div class="form-grid">
+          <label class="field">
+            <span>{{ form.status.label }}</span>
+            {{ form.status }}
+            {% if form.status.errors %}<span class="form-error">{{ form.status.errors }}</span>{% endif %}
+          </label>
+          <label class="field form-wide">
+            <span>{{ form.admin_note.label }}</span>
+            {{ form.admin_note }}
+            {% if form.admin_note.errors %}<span class="form-error">{{ form.admin_note.errors }}</span>{% endif %}
+          </label>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit">Сохранить</button>
+        <a class="button-link secondary" href="{% if appointment %}{% url 'appointment_detail' appointment.pk %}{% else %}{% url 'schedule' %}{% endif %}">Отмена</a>
+      </div>
+    </form>
+  </section>
+
+  <aside class="appointment-form-sidebar" aria-label="Сводка формы занятия">
+    <article class="panel appointment-form-summary">
+      <h2>Сводка</h2>
+      <dl>
+        {% for item in appointment_form_summary_items %}
+          <div>
+            <dt>{{ item.label }}</dt>
+            <dd>
+              <strong>{{ item.value }}</strong>
+              <small>{{ item.hint }}</small>
+            </dd>
+          </div>
+        {% endfor %}
+      </dl>
+    </article>
+
+    <article class="panel appointment-form-summary">
+      <h2>Контроль</h2>
+      {% if appointment_form_attention_items %}
+        <div class="appointment-form-alerts">
+          {% for item in appointment_form_attention_items %}
+            <div class="appointment-attention-item is-{{ item.tone }}">
+              <strong>{{ item.title }}</strong>
+              <span>{{ item.text }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p>Критичных предупреждений сейчас нет.</p>
+      {% endif %}
+    </article>
+  </aside>
 </section>
 {% endblock %}
 

@@ -11,41 +11,88 @@
   <div class="header-actions">
     <a class="button-link" href="{% url 'recipient_create' %}">Добавить получателя</a>
     <a class="button-link secondary" href="{% url 'representative_create' %}">Добавить представителя</a>
-    <form method="get" class="inline-form search-form">
-      <input type="search" name="q" value="{{ query }}" placeholder="Фамилия, имя, телефон">
-      <button type="submit">Найти</button>
-    </form>
+    <a class="button-link secondary" href="{% url 'recipient_import_preview' %}">Импорт Excel/CSV</a>
   </div>
 </section>
 
-<section class="panel">
-  <table>
-    <thead>
-    <tr>
-      <th>Получатель</th>
-      <th>Статус</th>
-      <th>Представитель</th>
-      <th>Телефон</th>
-      <th>Занятий</th>
-      <th>Счетов</th>
-      <th></th>
-    </tr>
-    </thead>
-    <tbody>
-    {% for recipient in recipients %}
-      <tr>
-        <td><a href="{% url 'recipient_detail' recipient.pk %}">{{ recipient.full_name }}</a></td>
-        <td>{{ recipient.get_status_display }}</td>
-        <td>{% if recipient.primary_parent %}{{ recipient.primary_parent.full_name }}{% else %}—{% endif %}</td>
-        <td>{% if recipient.primary_parent %}{{ recipient.primary_parent.phone }}{% else %}—{% endif %}</td>
-        <td>{{ recipient.appointments_count }}</td>
-        <td>{{ recipient.balance_accounts_count }}</td>
-        <td><a class="button-link secondary small-action" href="{% url 'recipient_detail' recipient.pk %}">Открыть</a></td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="7">Ничего не найдено.</td></tr>
+<section class="directory-overview">
+  <a class="directory-next-action is-{{ recipient_list_next_action.tone }}" href="{{ recipient_list_next_action.href }}">
+    <span>{{ recipient_list_next_action.label }}</span>
+    <strong>{{ recipient_list_next_action.title }}</strong>
+    <small>{{ recipient_list_next_action.detail }}</small>
+  </a>
+  <div class="directory-summary-grid" aria-label="Сводка получателей">
+    {% for item in recipient_list_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
     {% endfor %}
-    </tbody>
-  </table>
+  </div>
+</section>
+
+<section class="directory-layout">
+  <div class="directory-main">
+    <section class="panel directory-panel" id="recipient-list">
+      <div class="directory-panel-head">
+        <div>
+          <h2>Реестр получателей</h2>
+          <p>Поиск работает по ФИО получателя, основному представителю и телефону до ограничения списка.</p>
+        </div>
+        <form method="get" class="inline-form search-form" id="recipient-search">
+          <input type="search" name="q" value="{{ query }}" placeholder="Фамилия, имя, телефон">
+          <button type="submit">Найти</button>
+          {% if query %}<a class="button-link secondary small-action" href="{% url 'recipient_list' %}">Сбросить</a>{% endif %}
+        </form>
+      </div>
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table">
+          <thead>
+          <tr>
+            <th>Получатель</th>
+            <th>Статус</th>
+            <th>Представитель</th>
+            <th>Телефон</th>
+            <th>Занятий</th>
+            <th>Счетов</th>
+            <th></th>
+          </tr>
+          </thead>
+          <tbody>
+          {% for recipient in recipients %}
+            <tr>
+              <td data-label="Получатель"><a href="{% url 'recipient_detail' recipient.pk %}"><strong>{{ recipient.full_name }}</strong></a></td>
+              <td data-label="Статус"><span class="status-pill">{{ recipient.get_status_display }}</span></td>
+              <td data-label="Представитель">{% if recipient.primary_parent %}{{ recipient.primary_parent.full_name }}{% else %}<span class="status-pill muted-pill">не указан</span>{% endif %}</td>
+              <td data-label="Телефон">{% if recipient.primary_parent %}{{ recipient.primary_parent.phone }}{% else %}—{% endif %}</td>
+              <td data-label="Занятий">{{ recipient.appointments_count }}</td>
+              <td data-label="Счетов">{{ recipient.balance_accounts_count }}</td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'recipient_detail' recipient.pk %}">Открыть</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" data-label="Получатели"><div class="empty-state">Ничего не найдено.</div></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="directory-sidebar" aria-label="Контроль получателей">
+    <section class="panel directory-control-panel">
+      <h2>Контроль получателей</h2>
+      <ul class="directory-check-list">
+        {% for item in recipient_list_control_items %}
+          <li>
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.detail }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  </aside>
 </section>
 {% endblock %}

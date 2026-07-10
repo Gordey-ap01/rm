@@ -6,7 +6,21 @@ from auditlog.models import LogEntry
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from operations.models import Child, FundingSource, ParentGuardian, StaffMember
+from operations.models import (
+    Appointment,
+    AppointmentParticipant,
+    AppointmentRescheduleChain,
+    AppointmentRescheduleStepDependency,
+    AppointmentStaffAssignment,
+    Child,
+    FundingSource,
+    GrantRecipientAllocation,
+    LedgerEntry,
+    ParentGuardian,
+    PayrollAccrual,
+    StaffCompensationRule,
+    StaffMember,
+)
 
 
 class AuditLogTests(TestCase):
@@ -51,5 +65,18 @@ class AuditLogTests(TestCase):
     def test_tracked_models_registered(self):
         from auditlog.registry import auditlog
 
-        for model in (Child, StaffMember, FundingSource):
+        for model in (
+            Appointment,
+            AppointmentParticipant,
+            AppointmentRescheduleChain,
+            AppointmentRescheduleStepDependency,
+            AppointmentStaffAssignment,
+            Child,
+            FundingSource,
+            GrantRecipientAllocation,
+            LedgerEntry,
+            PayrollAccrual,
+            StaffCompensationRule,
+            StaffMember,
+        ):
             self.assertIn(model, auditlog._registry)

@@ -103,12 +103,28 @@ def funded_sessions_remaining(block: ProgramBlock) -> int | None:
     if capacity is None:
         return None
 
-    reserved_without_charge = (
-        block.appointments.exclude(status=Appointment.Status.CANCELLED)
-        .exclude(billing_decision=Appointment.BillingDecision.CHARGE)
+    inactive_statuses = [Appointment.Status.CANCELLED, Appointment.Status.RESCHEDULED]
+    reserved_participants_without_charge = (
+        block.appointment_participants.exclude(appointment_status__in=inactive_statuses)
+        .exclude(
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account__isnull=False,
+        )
         .count()
     )
-    return max(capacity - reserved_without_charge, 0)
+    legacy_appointments_without_charge = (
+        block.appointments.filter(participants__isnull=True)
+        .exclude(status__in=inactive_statuses)
+        .exclude(
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account__isnull=False,
+        )
+        .count()
+    )
+    return max(
+        capacity - reserved_participants_without_charge - legacy_appointments_without_charge,
+        0,
+    )
 
 
 def estimate_sessions_for_amount(account: BalanceAccount | None, service, amount: Decimal | None = None) -> int | None:

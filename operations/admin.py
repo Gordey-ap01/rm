@@ -3,21 +3,36 @@ from django.contrib import admin
 from .models import (
     Appointment,
     AppointmentConfirmation,
+    AppointmentParticipant,
+    AppointmentRescheduleChain,
+    AppointmentReschedulePlan,
+    AppointmentRescheduleStep,
+    AppointmentRescheduleStepDependency,
+    AppointmentRoomOverride,
     AppointmentSeries,
+    AppointmentStaffAssignment,
     BalanceAccount,
     Child,
     Consent,
     Document,
+    FundingServiceQuota,
     FundingSource,
+    FundingStaffAllocation,
+    GrantRecipientAllocation,
     LedgerEntry,
     Note,
     ParentGuardian,
     Payment,
+    PayrollAccrual,
+    PayrollSheet,
+    PayrollSheetLine,
     ProgramBlock,
+    RecipientRepresentative,
     Recommendation,
     Room,
     Service,
     StaffAvailability,
+    StaffCompensationRule,
     StaffMember,
     TimeOffRequest,
     TreatmentProgram,
@@ -54,12 +69,70 @@ class ParentGuardianAdmin(admin.ModelAdmin):
     list_select_related = ()
 
 
+class RecipientRepresentativeInline(admin.TabularInline):
+    model = RecipientRepresentative
+    extra = 0
+    fields = (
+        "representative",
+        "relationship_type",
+        "is_primary",
+        "signs_contract",
+        "receives_schedule",
+        "is_payer",
+    )
+    autocomplete_fields = ("representative",)
+
+
 @admin.register(Child)
 class ChildAdmin(admin.ModelAdmin):
-    list_display = ("full_name", "status", "birth_date", "phone", "email", "primary_parent", "archived_at")
-    search_fields = ("last_name", "first_name", "middle_name", "phone", "email", "primary_parent__last_name", "primary_parent__phone")
+    list_display = (
+        "full_name",
+        "status",
+        "birth_date",
+        "phone",
+        "email",
+        "primary_parent",
+        "archived_at",
+    )
+    search_fields = (
+        "last_name",
+        "first_name",
+        "middle_name",
+        "phone",
+        "email",
+        "primary_parent__last_name",
+        "primary_parent__phone",
+    )
     list_filter = ("status", SoftDeletedFilter)
     autocomplete_fields = ("primary_parent",)
+    inlines = (RecipientRepresentativeInline,)
+
+
+@admin.register(RecipientRepresentative)
+class RecipientRepresentativeAdmin(admin.ModelAdmin):
+    list_display = (
+        "child",
+        "representative",
+        "relationship_type",
+        "is_primary",
+        "signs_contract",
+        "receives_schedule",
+        "is_payer",
+    )
+    search_fields = (
+        "child__last_name",
+        "child__first_name",
+        "representative__last_name",
+        "representative__phone",
+    )
+    list_filter = (
+        "relationship_type",
+        "is_primary",
+        "signs_contract",
+        "receives_schedule",
+        "is_payer",
+    )
+    autocomplete_fields = ("child", "representative")
 
 
 @admin.register(StaffMember)
@@ -71,16 +144,42 @@ class StaffMemberAdmin(admin.ModelAdmin):
 
 @admin.register(Service)
 class ServiceAdmin(admin.ModelAdmin):
-    list_display = ("name", "code", "category", "default_duration_minutes", "default_price", "is_active", "archived_at")
+    list_display = (
+        "name",
+        "code",
+        "category",
+        "default_duration_minutes",
+        "default_price",
+        "is_active",
+        "archived_at",
+    )
     search_fields = ("name", "code")
     list_filter = ("category", "is_active", SoftDeletedFilter)
 
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ("name", "room_type", "capacity", "is_active", "archived_at")
+    list_display = (
+        "name",
+        "room_type",
+        "capacity",
+        "limit_staff_count",
+        "max_staff_count",
+        "limit_recipient_count",
+        "max_recipient_count",
+        "allow_group_sessions",
+        "is_active",
+        "archived_at",
+    )
     search_fields = ("name",)
-    list_filter = ("room_type", "is_active", SoftDeletedFilter)
+    list_filter = (
+        "room_type",
+        "is_active",
+        "limit_staff_count",
+        "limit_recipient_count",
+        "allow_group_sessions",
+        SoftDeletedFilter,
+    )
 
 
 @admin.register(FundingSource)
@@ -88,6 +187,69 @@ class FundingSourceAdmin(admin.ModelAdmin):
     list_display = ("name", "source_type", "starts_on", "ends_on", "transfer_policy", "archived_at")
     search_fields = ("name",)
     list_filter = ("source_type", "transfer_policy", SoftDeletedFilter)
+
+
+class FundingStaffAllocationInline(admin.TabularInline):
+    model = FundingStaffAllocation
+    extra = 0
+    fields = (
+        "funding_source",
+        "service",
+        "staff_member",
+        "allocated_sessions",
+        "session_pay_amount",
+        "starts_on",
+        "ends_on",
+        "note",
+    )
+    autocomplete_fields = ("funding_source", "service", "staff_member")
+
+
+@admin.register(FundingServiceQuota)
+class FundingServiceQuotaAdmin(admin.ModelAdmin):
+    list_display = ("funding_source", "service", "planned_sessions", "starts_on", "ends_on")
+    search_fields = ("funding_source__name", "service__name", "note")
+    list_filter = ("funding_source", "service")
+    autocomplete_fields = ("funding_source", "service")
+    inlines = (FundingStaffAllocationInline,)
+
+
+@admin.register(FundingStaffAllocation)
+class FundingStaffAllocationAdmin(admin.ModelAdmin):
+    list_display = (
+        "funding_source",
+        "service",
+        "staff_member",
+        "allocated_sessions",
+        "session_pay_amount",
+        "starts_on",
+        "ends_on",
+    )
+    search_fields = ("funding_source__name", "service__name", "staff_member__full_name", "note")
+    list_filter = ("funding_source", "service", "staff_member")
+    autocomplete_fields = ("service_quota", "funding_source", "service", "staff_member")
+
+
+@admin.register(GrantRecipientAllocation)
+class GrantRecipientAllocationAdmin(admin.ModelAdmin):
+    list_display = (
+        "funding_source",
+        "child",
+        "service",
+        "allocated_sessions",
+        "balance_account",
+        "valid_from",
+        "valid_until",
+    )
+    search_fields = (
+        "funding_source__name",
+        "child__last_name",
+        "child__first_name",
+        "service__name",
+        "note",
+    )
+    list_filter = ("funding_source", "service")
+    autocomplete_fields = ("funding_source", "child", "service", "balance_account")
 
 
 class LedgerEntryInline(admin.TabularInline):
@@ -106,9 +268,30 @@ class PaymentInline(admin.TabularInline):
 
 @admin.register(BalanceAccount)
 class BalanceAccountAdmin(admin.ModelAdmin):
-    list_display = ("child", "funding_source", "unit", "service_scope", "service", "status", "current_balance", "warning_level", "archived_at")
-    search_fields = ("child__last_name", "child__first_name", "funding_source__name", "service__name")
-    list_filter = ("unit", "service_scope", "status", "funding_source__source_type", SoftDeletedFilter)
+    list_display = (
+        "child",
+        "funding_source",
+        "unit",
+        "service_scope",
+        "service",
+        "status",
+        "current_balance",
+        "warning_level",
+        "archived_at",
+    )
+    search_fields = (
+        "child__last_name",
+        "child__first_name",
+        "funding_source__name",
+        "service__name",
+    )
+    list_filter = (
+        "unit",
+        "service_scope",
+        "status",
+        "funding_source__source_type",
+        SoftDeletedFilter,
+    )
     autocomplete_fields = ("child", "funding_source", "service")
     inlines = (LedgerEntryInline, PaymentInline)
 
@@ -116,7 +299,16 @@ class BalanceAccountAdmin(admin.ModelAdmin):
 class ProgramBlockInline(admin.TabularInline):
     model = ProgramBlock
     extra = 0
-    fields = ("number", "title", "service", "staff_member", "planned_sessions", "balance_account", "status", "color")
+    fields = (
+        "number",
+        "title",
+        "service",
+        "staff_member",
+        "planned_sessions",
+        "balance_account",
+        "status",
+        "color",
+    )
     autocomplete_fields = ("service", "staff_member", "balance_account")
 
 
@@ -131,18 +323,77 @@ class TreatmentProgramAdmin(admin.ModelAdmin):
 
 @admin.register(ProgramBlock)
 class ProgramBlockAdmin(admin.ModelAdmin):
-    list_display = ("program", "number", "title", "service", "staff_member", "planned_sessions", "scheduled_count", "paid_count", "status")
-    search_fields = ("title", "program__title", "program__child__last_name", "program__child__first_name")
+    list_display = (
+        "program",
+        "number",
+        "title",
+        "service",
+        "staff_member",
+        "planned_sessions",
+        "scheduled_count",
+        "paid_count",
+        "status",
+    )
+    search_fields = (
+        "title",
+        "program__title",
+        "program__child__last_name",
+        "program__child__first_name",
+    )
     list_filter = ("status", "service", "staff_member")
     autocomplete_fields = ("program", "service", "staff_member", "balance_account")
 
 
 @admin.register(AppointmentSeries)
 class AppointmentSeriesAdmin(admin.ModelAdmin):
-    list_display = ("title", "child", "service", "staff_member", "program_block", "start_date", "end_date", "status")
-    search_fields = ("title", "child__last_name", "child__first_name", "service__name", "staff_member__full_name")
+    list_display = (
+        "title",
+        "child",
+        "service",
+        "staff_member",
+        "program_block",
+        "start_date",
+        "end_date",
+        "status",
+    )
+    search_fields = (
+        "title",
+        "child__last_name",
+        "child__first_name",
+        "service__name",
+        "staff_member__full_name",
+    )
     list_filter = ("status", "service", "staff_member")
     autocomplete_fields = ("child", "service", "staff_member", "room", "program_block")
+
+
+class AppointmentParticipantInline(admin.TabularInline):
+    model = AppointmentParticipant
+    extra = 0
+    fields = (
+        "child",
+        "attendance_status",
+        "billing_decision",
+        "billing_account",
+        "program_block",
+        "sequence_number",
+    )
+    autocomplete_fields = ("child", "billing_account", "program_block")
+
+
+class AppointmentStaffAssignmentInline(admin.TabularInline):
+    model = AppointmentStaffAssignment
+    extra = 0
+    fields = ("staff_member", "role", "override_availability", "override_reason")
+    autocomplete_fields = ("staff_member",)
+
+
+class AppointmentRoomOverrideInline(admin.TabularInline):
+    model = AppointmentRoomOverride
+    extra = 0
+    fields = ("override_type", "reason", "created_by", "created_at")
+    readonly_fields = ("created_at",)
+    autocomplete_fields = ("created_by",)
 
 
 @admin.register(Appointment)
@@ -150,6 +401,7 @@ class AppointmentAdmin(admin.ModelAdmin):
     list_display = (
         "starts_at",
         "ends_at",
+        "session_type",
         "child",
         "staff_member",
         "service",
@@ -160,18 +412,256 @@ class AppointmentAdmin(admin.ModelAdmin):
         "status",
         "billing_decision",
     )
-    search_fields = ("child__last_name", "child__first_name", "staff_member__full_name", "service__name")
-    list_filter = ("status", "attendance_status", "billing_decision", "staff_availability_override", "service", "staff_member")
-    autocomplete_fields = ("child", "staff_member", "service", "room", "billing_account", "source_appointment", "series", "program_block")
+    search_fields = (
+        "child__last_name",
+        "child__first_name",
+        "staff_member__full_name",
+        "service__name",
+    )
+    list_filter = (
+        "session_type",
+        "status",
+        "attendance_status",
+        "billing_decision",
+        "staff_availability_override",
+        "service",
+        "staff_member",
+    )
+    autocomplete_fields = (
+        "child",
+        "staff_member",
+        "service",
+        "room",
+        "billing_account",
+        "source_appointment",
+        "series",
+        "program_block",
+    )
     date_hierarchy = "starts_at"
+    inlines = (
+        AppointmentParticipantInline,
+        AppointmentStaffAssignmentInline,
+        AppointmentRoomOverrideInline,
+    )
 
 
 @admin.register(AppointmentConfirmation)
 class AppointmentConfirmationAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "appointment", "target_type", "email", "status", "delivery_status", "sent_at")
-    search_fields = ("email", "appointment__child__last_name", "appointment__child__first_name", "subject", "message")
+    list_display = (
+        "created_at",
+        "appointment",
+        "target_type",
+        "email",
+        "status",
+        "delivery_status",
+        "sent_at",
+    )
+    search_fields = (
+        "email",
+        "appointment__child__last_name",
+        "appointment__child__first_name",
+        "subject",
+        "message",
+    )
     list_filter = ("target_type", "status", "delivery_status")
-    autocomplete_fields = ("appointment", "representative", "sent_by")
+    autocomplete_fields = (
+        "appointment",
+        "reschedule_step",
+        "participant",
+        "representative",
+        "sent_by",
+        "staff_assignment",
+    )
+
+
+@admin.register(AppointmentParticipant)
+class AppointmentParticipantAdmin(admin.ModelAdmin):
+    list_display = (
+        "appointment",
+        "child",
+        "attendance_status",
+        "billing_decision",
+        "billing_account",
+    )
+    search_fields = ("appointment__child__last_name", "child__last_name", "child__first_name")
+    list_filter = ("attendance_status", "billing_decision", "appointment_status")
+    autocomplete_fields = (
+        "appointment",
+        "child",
+        "billing_account",
+        "program_block",
+        "source_participant",
+    )
+
+
+@admin.register(AppointmentStaffAssignment)
+class AppointmentStaffAssignmentAdmin(admin.ModelAdmin):
+    list_display = (
+        "appointment",
+        "staff_member",
+        "role",
+        "override_availability",
+        "appointment_status",
+    )
+    search_fields = ("appointment__child__last_name", "staff_member__full_name")
+    list_filter = ("role", "override_availability", "appointment_status")
+    autocomplete_fields = ("appointment", "staff_member")
+
+
+@admin.register(AppointmentRoomOverride)
+class AppointmentRoomOverrideAdmin(admin.ModelAdmin):
+    list_display = ("appointment", "override_type", "reason", "created_by", "created_at")
+    search_fields = ("appointment__child__last_name", "reason")
+    list_filter = ("override_type",)
+    autocomplete_fields = ("appointment", "created_by")
+
+
+class AppointmentRescheduleStepInline(admin.TabularInline):
+    model = AppointmentRescheduleStep
+    extra = 0
+    fields = (
+        "position",
+        "chain",
+        "chain_position",
+        "chain_required",
+        "action_type",
+        "status",
+        "confirmation_status",
+        "source_appointment",
+        "proposed_starts_at",
+        "proposed_ends_at",
+        "proposed_primary_staff",
+        "proposed_room",
+    )
+    autocomplete_fields = (
+        "chain",
+        "source_appointment",
+        "blocking_appointment",
+        "created_appointment",
+        "proposed_primary_staff",
+        "proposed_room",
+    )
+
+
+@admin.register(AppointmentReschedulePlan)
+class AppointmentReschedulePlanAdmin(admin.ModelAdmin):
+    list_display = (
+        "created_at",
+        "plan_type",
+        "status",
+        "root_appointment",
+        "staff_member",
+        "created_by",
+    )
+    search_fields = (
+        "root_appointment__child__last_name",
+        "root_appointment__child__first_name",
+        "staff_member__full_name",
+        "reason",
+    )
+    list_filter = ("status", "plan_type")
+    autocomplete_fields = (
+        "root_appointment",
+        "staff_member",
+        "created_by",
+        "applied_by",
+        "cancelled_by",
+    )
+    inlines = (AppointmentRescheduleStepInline,)
+
+
+class AppointmentRescheduleStepDependencyInline(admin.TabularInline):
+    model = AppointmentRescheduleStepDependency
+    extra = 0
+    fk_name = "chain"
+    fields = (
+        "predecessor_step",
+        "successor_step",
+        "relation_type",
+        "reason",
+    )
+    autocomplete_fields = ("predecessor_step", "successor_step")
+
+
+@admin.register(AppointmentRescheduleChain)
+class AppointmentRescheduleChainAdmin(admin.ModelAdmin):
+    list_display = (
+        "plan",
+        "title",
+        "status",
+        "apply_policy",
+        "created_by",
+        "applied_at",
+    )
+    search_fields = (
+        "title",
+        "plan__reason",
+        "plan__root_appointment__child__last_name",
+        "admin_note",
+    )
+    list_filter = ("status", "apply_policy")
+    autocomplete_fields = ("plan", "created_by", "applied_by")
+    inlines = (AppointmentRescheduleStepDependencyInline,)
+
+
+@admin.register(AppointmentRescheduleStep)
+class AppointmentRescheduleStepAdmin(admin.ModelAdmin):
+    list_display = (
+        "plan",
+        "chain",
+        "position",
+        "chain_position",
+        "action_type",
+        "status",
+        "confirmation_status",
+        "source_appointment",
+        "proposed_starts_at",
+        "proposed_primary_staff",
+    )
+    search_fields = (
+        "source_appointment__child__last_name",
+        "source_appointment__child__first_name",
+        "proposed_primary_staff__full_name",
+    )
+    list_filter = (
+        "status",
+        "confirmation_status",
+        "action_type",
+        "chain_required",
+        "requires_staff_override",
+        "requires_room_override",
+    )
+    autocomplete_fields = (
+        "plan",
+        "chain",
+        "source_appointment",
+        "blocking_appointment",
+        "created_appointment",
+        "proposed_primary_staff",
+        "proposed_room",
+    )
+
+
+@admin.register(AppointmentRescheduleStepDependency)
+class AppointmentRescheduleStepDependencyAdmin(admin.ModelAdmin):
+    list_display = (
+        "chain",
+        "predecessor_step",
+        "successor_step",
+        "relation_type",
+    )
+    search_fields = (
+        "chain__title",
+        "chain__plan__reason",
+        "reason",
+    )
+    list_filter = ("relation_type",)
+    autocomplete_fields = (
+        "plan",
+        "chain",
+        "predecessor_step",
+        "successor_step",
+    )
 
 
 @admin.register(StaffAvailability)
@@ -180,6 +670,25 @@ class StaffAvailabilityAdmin(admin.ModelAdmin):
     search_fields = ("staff_member__full_name", "note")
     list_filter = ("weekday", "is_active")
     autocomplete_fields = ("staff_member",)
+
+
+@admin.register(StaffCompensationRule)
+class StaffCompensationRuleAdmin(admin.ModelAdmin):
+    list_display = (
+        "staff_member",
+        "service",
+        "funding_source",
+        "rate_type",
+        "amount",
+        "min_duration_minutes",
+        "max_duration_minutes",
+        "starts_on",
+        "ends_on",
+        "is_active",
+    )
+    search_fields = ("staff_member__full_name", "service__name", "funding_source__name", "note")
+    list_filter = ("rate_type", "is_active", "service", "funding_source")
+    autocomplete_fields = ("staff_member", "service", "funding_source")
 
 
 @admin.register(TimeOffRequest)
@@ -192,16 +701,39 @@ class TimeOffRequestAdmin(admin.ModelAdmin):
 
 @admin.register(LedgerEntry)
 class LedgerEntryAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "account", "entry_type", "amount", "appointment", "created_by")
+    list_display = (
+        "created_at",
+        "account",
+        "entry_type",
+        "amount",
+        "appointment",
+        "appointment_participant",
+        "price_snapshot",
+        "created_by",
+    )
     search_fields = ("account__child__last_name", "account__funding_source__name", "reason")
     list_filter = ("entry_type", "account__unit")
-    autocomplete_fields = ("account", "appointment", "created_by")
+    autocomplete_fields = ("account", "appointment", "appointment_participant", "created_by")
 
 
 @admin.register(Recommendation)
 class RecommendationAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "child", "staff_member", "category", "title", "due_on", "is_acknowledged")
-    search_fields = ("title", "body", "child__last_name", "child__first_name", "staff_member__full_name")
+    list_display = (
+        "created_at",
+        "child",
+        "staff_member",
+        "category",
+        "title",
+        "due_on",
+        "is_acknowledged",
+    )
+    search_fields = (
+        "title",
+        "body",
+        "child__last_name",
+        "child__first_name",
+        "staff_member__full_name",
+    )
     list_filter = ("category", "is_acknowledged")
     autocomplete_fields = ("child", "staff_member", "appointment", "acknowledged_by")
     date_hierarchy = "created_at"
@@ -209,7 +741,15 @@ class RecommendationAdmin(admin.ModelAdmin):
 
 @admin.register(Document)
 class DocumentAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "child", "category", "title", "issued_on", "expires_on", "uploaded_by")
+    list_display = (
+        "created_at",
+        "child",
+        "category",
+        "title",
+        "issued_on",
+        "expires_on",
+        "uploaded_by",
+    )
     search_fields = ("title", "child__last_name", "child__first_name", "note")
     list_filter = ("category",)
     autocomplete_fields = ("child", "uploaded_by")
@@ -228,15 +768,85 @@ class ConsentAdmin(admin.ModelAdmin):
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
     list_display = ("paid_at", "balance_account", "amount", "method", "reference", "created_by")
-    search_fields = ("reference", "comment", "balance_account__child__last_name", "balance_account__funding_source__name")
+    search_fields = (
+        "reference",
+        "comment",
+        "balance_account__child__last_name",
+        "balance_account__funding_source__name",
+    )
     list_filter = ("method",)
     autocomplete_fields = ("balance_account", "created_by")
     date_hierarchy = "paid_at"
 
 
+class PayrollSheetLineInline(admin.TabularInline):
+    model = PayrollSheetLine
+    extra = 0
+    fields = ("payroll_accrual", "work_date", "service", "duration_minutes", "amount", "note")
+    readonly_fields = ("work_date", "service", "duration_minutes", "amount")
+    autocomplete_fields = ("payroll_accrual",)
+
+
+@admin.register(PayrollAccrual)
+class PayrollAccrualAdmin(admin.ModelAdmin):
+    list_display = (
+        "work_date",
+        "staff_member",
+        "service",
+        "funding_source",
+        "amount",
+        "status",
+        "appointment",
+    )
+    search_fields = (
+        "staff_member__full_name",
+        "service__name",
+        "funding_source__name",
+        "note",
+        "dedupe_key",
+    )
+    list_filter = ("status", "service", "funding_source", "rate_type_snapshot")
+    autocomplete_fields = (
+        "staff_assignment",
+        "appointment",
+        "appointment_participant",
+        "ledger_entry",
+        "staff_member",
+        "service",
+        "funding_source",
+        "pay_rule",
+        "created_by",
+        "approved_by",
+    )
+    date_hierarchy = "work_date"
+
+
+@admin.register(PayrollSheet)
+class PayrollSheetAdmin(admin.ModelAdmin):
+    list_display = ("staff_member", "date_from", "date_to", "status", "total_amount", "approved_at")
+    search_fields = ("staff_member__full_name", "note")
+    list_filter = ("status",)
+    autocomplete_fields = ("staff_member", "created_by", "approved_by")
+    inlines = (PayrollSheetLineInline,)
+
+
+@admin.register(PayrollSheetLine)
+class PayrollSheetLineAdmin(admin.ModelAdmin):
+    list_display = ("payroll_sheet", "work_date", "service", "duration_minutes", "amount")
+    search_fields = ("payroll_sheet__staff_member__full_name", "service__name", "note")
+    list_filter = ("service",)
+    autocomplete_fields = ("payroll_sheet", "payroll_accrual", "appointment", "service")
+
+
 @admin.register(Note)
 class NoteAdmin(admin.ModelAdmin):
     list_display = ("created_at", "title", "child", "parent", "staff_member", "priority", "author")
-    search_fields = ("title", "text", "child__last_name", "parent__last_name", "staff_member__full_name")
+    search_fields = (
+        "title",
+        "text",
+        "child__last_name",
+        "parent__last_name",
+        "staff_member__full_name",
+    )
     list_filter = ("priority",)
     autocomplete_fields = ("child", "parent", "staff_member", "appointment", "author")

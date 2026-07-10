@@ -1,34 +1,98 @@
 {% extends "base.html" %}
+
 {% block title %}Документы{% endblock %}
+
 {% block content %}
 <section class="page-header">
   <div>
     <h1>Документы</h1>
-    <p>{% if child_id %}Документы получателя{% else %}Все документы{% endif %}</p>
+    <p>{% if child_id %}Документы выбранного получателя{% else %}Все документы получателей{% endif %}</p>
   </div>
   <div class="header-actions">
-    <a class="button-link" href="{% url 'document_create' %}">+ Загрузить документ</a>
+    <a class="button-link" href="{{ document_create_url }}">+ Загрузить документ</a>
     {% if child_id %}<a class="button-link secondary" href="{% url 'document_list' %}">Все документы</a>{% endif %}
   </div>
 </section>
-<section class="panel">
-  <table>
-    <thead><tr><th>Получатель</th><th>Категория</th><th>Название</th><th>Файл</th><th>Выдан</th><th>Действует до</th><th></th></tr></thead>
-    <tbody>
-    {% for d in documents %}
-      <tr>
-        <td><a href="{% url 'child_detail' pk=d.child_id %}">{{ d.child }}</a></td>
-        <td>{{ d.get_category_display }}</td>
-        <td>{{ d.title }}</td>
-        <td>{% if d.file %}<a href="{{ d.file.url }}" target="_blank">открыть</a>{% else %}—{% endif %}</td>
-        <td>{% if d.issued_on %}{{ d.issued_on|date:"d.m.Y" }}{% else %}—{% endif %}</td>
-        <td>{% if d.expires_on %}{{ d.expires_on|date:"d.m.Y" }}{% else %}—{% endif %}</td>
-        <td>{% if d.is_expired %}<span class="status-pill" style="border-color:var(--danger);color:var(--danger)">просрочен</span>{% elif d.expires_soon %}<span class="status-pill" style="border-color:var(--warn);color:var(--warn)">скоро</span>{% endif %}</td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="7"><p class="empty-state">Документов нет.</p></td></tr>
+
+<section class="document-overview" aria-label="Сводка документов">
+  <a class="document-next-action is-{{ document_next_action.tone }}" href="{{ document_next_action.href }}">
+    <span>{{ document_next_action.label }}</span>
+    <strong>{{ document_next_action.title }}</strong>
+    <small>{{ document_next_action.detail }}</small>
+  </a>
+  <div class="document-summary-grid">
+    {% for item in document_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
     {% endfor %}
-    </tbody>
-  </table>
+  </div>
+</section>
+
+<section class="document-layout">
+  <article class="panel document-panel" id="document-list">
+    <div class="document-panel-head">
+      <h2>Реестр документов</h2>
+      <p>Договоры, ИПР, согласия, медицинские заключения и другие файлы получателей.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table class="document-table">
+        <thead>
+          <tr>
+            <th>Получатель</th>
+            <th>Категория</th>
+            <th>Название</th>
+            <th>Файл</th>
+            <th>Выдан</th>
+            <th>Действует до</th>
+            <th>Статус</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in documents %}
+            <tr>
+              <td data-label="Получатель"><a href="{% url 'child_detail' pk=d.child_id %}">{{ d.child }}</a></td>
+              <td data-label="Категория">{{ d.get_category_display }}</td>
+              <td data-label="Название">
+                <strong>{{ d.title }}</strong>
+                {% if d.note %}<small>{{ d.note|truncatechars:80 }}</small>{% endif %}
+              </td>
+              <td data-label="Файл">{% if d.file %}<a href="{{ d.file.url }}" target="_blank">открыть</a>{% else %}—{% endif %}</td>
+              <td data-label="Выдан">{% if d.issued_on %}{{ d.issued_on|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+              <td data-label="Действует до">{% if d.expires_on %}{{ d.expires_on|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+              <td data-label="Статус">
+                {% if d.is_expired %}
+                  <span class="status-pill balance-critical">Просрочен</span>
+                {% elif d.expires_soon %}
+                  <span class="status-pill balance-warning">Скоро</span>
+                {% else %}
+                  <span class="status-pill balance-ok">Ок</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" data-label="Документы"><p class="empty-state">Документов нет.</p></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <aside class="document-sidebar" aria-label="Контроль документов">
+    <article class="panel document-control-panel">
+      <h2>Контроль документов</h2>
+      <ul class="document-check-list">
+        {% for item in document_control_items %}
+          <li class="is-{{ item.tone }}">
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.text }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+  </aside>
 </section>
 {% endblock %}

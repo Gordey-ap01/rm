@@ -8,7 +8,7 @@ from typing import Any
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import QuerySet, Sum
+from django.db.models import Q, QuerySet, Sum
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -123,7 +123,9 @@ class ParentGuardian(TimeStampedModel, SoftDeleteMixin):
 
     @property
     def full_name(self) -> str:
-        return " ".join(part for part in [self.last_name, self.first_name, self.middle_name] if part)
+        return " ".join(
+            part for part in [self.last_name, self.first_name, self.middle_name] if part
+        )
 
 
 class Child(TimeStampedModel, SoftDeleteMixin):
@@ -139,7 +141,9 @@ class Child(TimeStampedModel, SoftDeleteMixin):
     birth_date = models.DateField("дата рождения", null=True, blank=True)
     phone = models.CharField("телефон получателя", max_length=40, blank=True)
     email = models.EmailField("email получателя", blank=True)
-    status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.ACTIVE)
+    status = models.CharField(
+        "статус", max_length=30, choices=Status.choices, default=Status.ACTIVE
+    )
     primary_parent = models.ForeignKey(
         ParentGuardian,
         verbose_name="основной представитель",
@@ -162,7 +166,91 @@ class Child(TimeStampedModel, SoftDeleteMixin):
 
     @property
     def full_name(self) -> str:
-        return " ".join(part for part in [self.last_name, self.first_name, self.middle_name] if part)
+        return " ".join(
+            part for part in [self.last_name, self.first_name, self.middle_name] if part
+        )
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        super().save(*args, **kwargs)
+        self._sync_primary_representative_link()
+
+    def _sync_primary_representative_link(self) -> None:
+        if not self.pk or not self.primary_parent_id:
+            return
+        RecipientRepresentative.objects.filter(child=self).exclude(
+            representative_id=self.primary_parent_id
+        ).filter(Q(is_primary=True) | Q(signs_contract=True)).update(
+            is_primary=False,
+            signs_contract=False,
+        )
+        RecipientRepresentative.objects.update_or_create(
+            child=self,
+            representative_id=self.primary_parent_id,
+            defaults={
+                "relationship_type": self.primary_parent.relationship_type,
+                "is_primary": True,
+                "signs_contract": True,
+                "receives_schedule": True,
+            },
+        )
+
+
+class RecipientRepresentative(TimeStampedModel):
+    child = models.ForeignKey(
+        Child,
+        verbose_name="получатель",
+        on_delete=models.CASCADE,
+        related_name="representative_links",
+    )
+    representative = models.ForeignKey(
+        ParentGuardian,
+        verbose_name="представитель",
+        on_delete=models.CASCADE,
+        related_name="recipient_links",
+    )
+    relationship_type = models.CharField(
+        "тип связи",
+        max_length=30,
+        choices=ParentGuardian.RelationshipType.choices,
+        default=ParentGuardian.RelationshipType.MOTHER,
+    )
+    is_primary = models.BooleanField("основной представитель", default=False)
+    signs_contract = models.BooleanField("подписывает договор", default=False)
+    receives_schedule = models.BooleanField("получает расписание", default=True)
+    is_payer = models.BooleanField("плательщик", default=False)
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "представитель получателя"
+        verbose_name_plural = "представители получателей"
+        ordering = [
+            "child__last_name",
+            "child__first_name",
+            "-is_primary",
+            "representative__last_name",
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["child", "representative"], name="unique_recipient_representative"
+            ),
+            models.UniqueConstraint(
+                fields=["child"],
+                condition=Q(is_primary=True),
+                name="unique_primary_representative_per_child",
+            ),
+            models.UniqueConstraint(
+                fields=["child"],
+                condition=Q(signs_contract=True),
+                name="unique_contract_signer_per_child",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["child", "receives_schedule"]),
+            models.Index(fields=["representative", "receives_schedule"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.child} — {self.representative}"
 
 
 class StaffMember(TimeStampedModel, SoftDeleteMixin):
@@ -184,7 +272,9 @@ class StaffMember(TimeStampedModel, SoftDeleteMixin):
     specializations = models.CharField("специализации", max_length=255, blank=True)
     phone = models.CharField("телефон", max_length=40, blank=True)
     email = models.EmailField("email", blank=True)
-    status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.ACTIVE)
+    status = models.CharField(
+        "статус", max_length=30, choices=Status.choices, default=Status.ACTIVE
+    )
     color = models.CharField("цвет", max_length=20, default="#2563eb")
     can_use_mobile = models.BooleanField("доступ к мобильному экрану", default=True)
 
@@ -209,9 +299,15 @@ class Service(TimeStampedModel, SoftDeleteMixin):
 
     name = models.CharField("название", max_length=160)
     code = models.CharField("код", max_length=40, unique=True)
-    category = models.CharField("категория", max_length=40, choices=Category.choices, default=Category.OTHER)
-    default_duration_minutes = models.PositiveIntegerField("длительность по умолчанию, мин", default=30)
-    default_price = models.DecimalField("цена по умолчанию", max_digits=10, decimal_places=2, default=0)
+    category = models.CharField(
+        "категория", max_length=40, choices=Category.choices, default=Category.OTHER
+    )
+    default_duration_minutes = models.PositiveIntegerField(
+        "длительность по умолчанию, мин", default=30
+    )
+    default_price = models.DecimalField(
+        "цена по умолчанию", max_digits=10, decimal_places=2, default=0
+    )
     is_active = models.BooleanField("активна", default=True)
     color = models.CharField("цвет", max_length=20, default="#16a34a")
 
@@ -234,8 +330,17 @@ class Room(TimeStampedModel, SoftDeleteMixin):
         OTHER = "other", "Другое"
 
     name = models.CharField("название", max_length=160)
-    room_type = models.CharField("тип", max_length=40, choices=RoomType.choices, default=RoomType.CABINET)
+    room_type = models.CharField(
+        "тип", max_length=40, choices=RoomType.choices, default=RoomType.CABINET
+    )
     capacity = models.PositiveIntegerField("вместимость", default=1)
+    limit_staff_count = models.BooleanField("ограничивать число специалистов", default=True)
+    max_staff_count = models.PositiveIntegerField("максимум специалистов одновременно", default=1)
+    limit_recipient_count = models.BooleanField("ограничивать число получателей", default=True)
+    max_recipient_count = models.PositiveIntegerField(
+        "максимум получателей одновременно", default=1
+    )
+    allow_group_sessions = models.BooleanField("разрешены групповые занятия", default=False)
     is_active = models.BooleanField("активно", default=True)
     color = models.CharField("цвет", max_length=20, default="#f97316")
 
@@ -246,6 +351,14 @@ class Room(TimeStampedModel, SoftDeleteMixin):
 
     def __str__(self) -> str:
         return self.name
+
+    @property
+    def effective_max_staff_count(self) -> int:
+        return self.max_staff_count or 1
+
+    @property
+    def effective_max_recipient_count(self) -> int:
+        return self.max_recipient_count or 1
 
 
 class FundingSource(TimeStampedModel, SoftDeleteMixin):
@@ -284,6 +397,243 @@ class FundingSource(TimeStampedModel, SoftDeleteMixin):
         return self.name
 
 
+class StaffCompensationRule(TimeStampedModel):
+    class RateType(models.TextChoices):
+        PER_SESSION = "per_session", "За занятие"
+        HOURLY = "hourly", "За час"
+
+    staff_member = models.ForeignKey(
+        StaffMember,
+        verbose_name="специалист",
+        on_delete=models.CASCADE,
+        related_name="compensation_rules",
+    )
+    service = models.ForeignKey(
+        Service,
+        verbose_name="услуга",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="compensation_rules",
+        help_text="Оставьте пустым, если ставка действует на все услуги специалиста.",
+    )
+    funding_source = models.ForeignKey(
+        FundingSource,
+        verbose_name="источник финансирования",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="compensation_rules",
+        help_text="Оставьте пустым для общей ставки; ставка по источнику финансирования приоритетнее.",
+    )
+    rate_type = models.CharField(
+        "тип ставки", max_length=30, choices=RateType.choices, default=RateType.PER_SESSION
+    )
+    amount = models.DecimalField("сумма", max_digits=12, decimal_places=2)
+    min_duration_minutes = models.PositiveIntegerField(
+        "мин. длительность, мин",
+        null=True,
+        blank=True,
+        help_text="Оставьте пустым, если нижней границы по длительности нет.",
+    )
+    max_duration_minutes = models.PositiveIntegerField(
+        "макс. длительность, мин",
+        null=True,
+        blank=True,
+        help_text="Оставьте пустым, если верхней границы по длительности нет.",
+    )
+    starts_on = models.DateField("действует с", null=True, blank=True)
+    ends_on = models.DateField("действует по", null=True, blank=True)
+    is_active = models.BooleanField("активна", default=True)
+    note = models.TextField("примечание", blank=True)
+
+    class Meta:
+        verbose_name = "правило начисления специалиста"
+        verbose_name_plural = "правила начисления специалистов"
+        ordering = [
+            "staff_member__full_name",
+            "service__name",
+            "funding_source__name",
+            "-starts_on",
+            "-created_at",
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(amount__gte=0), name="staff_comp_amount_non_negative"
+            ),
+            models.CheckConstraint(
+                condition=Q(starts_on__isnull=True)
+                | Q(ends_on__isnull=True)
+                | Q(ends_on__gte=models.F("starts_on")),
+                name="staff_comp_dates_order",
+            ),
+            models.CheckConstraint(
+                condition=Q(min_duration_minutes__isnull=True) | Q(min_duration_minutes__gte=1),
+                name="staff_comp_min_duration_positive",
+            ),
+            models.CheckConstraint(
+                condition=Q(max_duration_minutes__isnull=True) | Q(max_duration_minutes__gte=1),
+                name="staff_comp_max_duration_positive",
+            ),
+            models.CheckConstraint(
+                condition=Q(min_duration_minutes__isnull=True)
+                | Q(max_duration_minutes__isnull=True)
+                | Q(max_duration_minutes__gte=models.F("min_duration_minutes")),
+                name="staff_comp_duration_range_order",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["staff_member", "is_active", "starts_on", "ends_on"]),
+            models.Index(fields=["staff_member", "service", "funding_source", "is_active"]),
+        ]
+
+    def clean(self) -> None:
+        if self.starts_on and self.ends_on and self.ends_on < self.starts_on:
+            raise ValidationError({"ends_on": "Дата окончания не может быть раньше даты начала."})
+        if (
+            self.min_duration_minutes
+            and self.max_duration_minutes
+            and self.max_duration_minutes < self.min_duration_minutes
+        ):
+            raise ValidationError(
+                {
+                    "max_duration_minutes": "Максимальная длительность не может быть меньше минимальной."
+                }
+            )
+
+    def __str__(self) -> str:
+        parts = [self.staff_member.full_name]
+        if self.service_id:
+            parts.append(self.service.name)
+        if self.funding_source_id:
+            parts.append(self.funding_source.name)
+        duration = ""
+        if self.min_duration_minutes or self.max_duration_minutes:
+            start = self.min_duration_minutes or "..."
+            end = self.max_duration_minutes or "..."
+            duration = f", {start}-{end} мин"
+        return " / ".join(parts) + f": {self.amount} ({self.get_rate_type_display()}{duration})"
+
+
+class FundingServiceQuota(TimeStampedModel):
+    funding_source = models.ForeignKey(
+        FundingSource,
+        verbose_name="источник финансирования",
+        on_delete=models.CASCADE,
+        related_name="service_quotas",
+    )
+    service = models.ForeignKey(
+        Service,
+        verbose_name="услуга",
+        on_delete=models.CASCADE,
+        related_name="funding_quotas",
+    )
+    planned_sessions = models.PositiveIntegerField("план занятий", default=0)
+    starts_on = models.DateField("действует с", null=True, blank=True)
+    ends_on = models.DateField("действует по", null=True, blank=True)
+    note = models.TextField("примечание", blank=True)
+
+    class Meta:
+        verbose_name = "квота финансирования по услуге"
+        verbose_name_plural = "квоты финансирования по услугам"
+        ordering = ["funding_source__name", "service__name", "starts_on"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(starts_on__isnull=True)
+                | Q(ends_on__isnull=True)
+                | Q(ends_on__gte=models.F("starts_on")),
+                name="funding_service_quota_dates_order",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["funding_source", "service", "starts_on", "ends_on"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.funding_source} / {self.service}: {self.planned_sessions}"
+
+
+class FundingStaffAllocation(TimeStampedModel):
+    service_quota = models.ForeignKey(
+        FundingServiceQuota,
+        verbose_name="квота услуги",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="staff_allocations",
+        help_text="Можно оставить пустым, если распределение задаётся сразу как специалист + услуга + количество.",
+    )
+    funding_source = models.ForeignKey(
+        FundingSource,
+        verbose_name="источник финансирования",
+        on_delete=models.CASCADE,
+        related_name="staff_allocations",
+    )
+    service = models.ForeignKey(
+        Service,
+        verbose_name="услуга",
+        on_delete=models.CASCADE,
+        related_name="staff_funding_allocations",
+    )
+    staff_member = models.ForeignKey(
+        StaffMember,
+        verbose_name="специалист",
+        on_delete=models.CASCADE,
+        related_name="funding_allocations",
+    )
+    allocated_sessions = models.PositiveIntegerField("выделено занятий", default=0)
+    session_pay_amount = models.DecimalField(
+        "стоимость занятия специалисту",
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    starts_on = models.DateField("действует с", null=True, blank=True)
+    ends_on = models.DateField("действует по", null=True, blank=True)
+    note = models.TextField("примечание", blank=True)
+
+    class Meta:
+        verbose_name = "распределение квоты по специалисту"
+        verbose_name_plural = "распределения квот по специалистам"
+        ordering = ["funding_source__name", "service__name", "staff_member__full_name", "starts_on"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(session_pay_amount__isnull=True) | Q(session_pay_amount__gte=0),
+                name="funding_staff_alloc_pay_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=Q(starts_on__isnull=True)
+                | Q(ends_on__isnull=True)
+                | Q(ends_on__gte=models.F("starts_on")),
+                name="funding_staff_alloc_dates_order",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["funding_source", "service", "staff_member"]),
+            models.Index(fields=["service_quota", "staff_member"]),
+        ]
+
+    def clean(self) -> None:
+        if self.service_quota_id:
+            if self.service_quota.funding_source_id != self.funding_source_id:
+                raise ValidationError(
+                    {"funding_source": "Источник должен совпадать с квотой услуги."}
+                )
+            if self.service_quota.service_id != self.service_id:
+                raise ValidationError({"service": "Услуга должна совпадать с квотой услуги."})
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.service_quota_id:
+            self.funding_source_id = self.service_quota.funding_source_id
+            self.service_id = self.service_quota.service_id
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.funding_source} / {self.service} / {self.staff_member}: {self.allocated_sessions}"
+
+
 class BalanceAccount(TimeStampedModel, SoftDeleteMixin):
     class Unit(models.TextChoices):
         SESSIONS = "sessions", "Занятия"
@@ -299,7 +649,9 @@ class BalanceAccount(TimeStampedModel, SoftDeleteMixin):
         EXHAUSTED = "exhausted", "Исчерпан"
         EXPIRED = "expired", "Истек"
 
-    child = models.ForeignKey(Child, verbose_name="получатель", on_delete=models.CASCADE, related_name="balance_accounts")
+    child = models.ForeignKey(
+        Child, verbose_name="получатель", on_delete=models.CASCADE, related_name="balance_accounts"
+    )
     funding_source = models.ForeignKey(
         FundingSource,
         verbose_name="источник финансирования",
@@ -321,10 +673,14 @@ class BalanceAccount(TimeStampedModel, SoftDeleteMixin):
         blank=True,
         related_name="balance_accounts",
     )
-    initial_amount = models.DecimalField("начальный остаток", max_digits=12, decimal_places=2, default=0)
+    initial_amount = models.DecimalField(
+        "начальный остаток", max_digits=12, decimal_places=2, default=0
+    )
     valid_from = models.DateField("действует с", null=True, blank=True)
     valid_until = models.DateField("действует до", null=True, blank=True)
-    status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.ACTIVE)
+    status = models.CharField(
+        "статус", max_length=30, choices=Status.choices, default=Status.ACTIVE
+    )
     color = models.CharField("цветовая метка", max_length=20, default="#f59e0b")
     notes = models.TextField("примечания", blank=True)
 
@@ -339,9 +695,13 @@ class BalanceAccount(TimeStampedModel, SoftDeleteMixin):
 
     def clean(self) -> None:
         if self.service_scope == self.ServiceScope.SPECIFIC_SERVICE and not self.service_id:
-            raise ValidationError({"service": "Для счета по конкретной услуге нужно выбрать услугу."})
+            raise ValidationError(
+                {"service": "Для счета по конкретной услуге нужно выбрать услугу."}
+            )
         if self.service_scope == self.ServiceScope.ANY and self.service_id:
-            raise ValidationError({"service": "Для счета на любые услуги поле услуги должно быть пустым."})
+            raise ValidationError(
+                {"service": "Для счета на любые услуги поле услуги должно быть пустым."}
+            )
 
     @property
     def current_balance(self) -> Decimal:
@@ -389,6 +749,85 @@ class BalanceAccount(TimeStampedModel, SoftDeleteMixin):
         }.get(self.warning_level, "ок")
 
 
+class GrantRecipientAllocation(TimeStampedModel):
+    funding_source = models.ForeignKey(
+        FundingSource,
+        verbose_name="источник финансирования",
+        on_delete=models.CASCADE,
+        related_name="recipient_allocations",
+    )
+    child = models.ForeignKey(
+        Child,
+        verbose_name="получатель",
+        on_delete=models.CASCADE,
+        related_name="grant_allocations",
+    )
+    service = models.ForeignKey(
+        Service,
+        verbose_name="услуга",
+        on_delete=models.CASCADE,
+        related_name="grant_recipient_allocations",
+    )
+    allocated_sessions = models.PositiveIntegerField("выделено занятий", default=0)
+    balance_account = models.ForeignKey(
+        BalanceAccount,
+        verbose_name="счет баланса",
+        on_delete=models.PROTECT,
+        related_name="grant_recipient_allocations",
+    )
+    valid_from = models.DateField("действует с", null=True, blank=True)
+    valid_until = models.DateField("действует до", null=True, blank=True)
+    note = models.TextField("примечание", blank=True)
+
+    class Meta:
+        verbose_name = "грантовое выделение получателю"
+        verbose_name_plural = "грантовые выделения получателям"
+        ordering = ["funding_source__name", "service__name", "child__last_name", "valid_from"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(valid_from__isnull=True)
+                | Q(valid_until__isnull=True)
+                | Q(valid_until__gte=models.F("valid_from")),
+                name="grant_recipient_alloc_dates_order",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["funding_source", "service", "valid_from", "valid_until"]),
+            models.Index(fields=["child", "service"]),
+            models.Index(fields=["balance_account"]),
+        ]
+
+    def clean(self) -> None:
+        if self.valid_from and self.valid_until and self.valid_until < self.valid_from:
+            raise ValidationError(
+                {"valid_until": "Дата окончания не может быть раньше даты начала."}
+            )
+        if self.balance_account_id:
+            if self.balance_account.child_id != self.child_id:
+                raise ValidationError({"balance_account": "Счет должен принадлежать получателю."})
+            if self.balance_account.funding_source_id != self.funding_source_id:
+                raise ValidationError(
+                    {
+                        "balance_account": "Счет должен относиться к тому же источнику финансирования."
+                    }
+                )
+            if self.balance_account.unit != BalanceAccount.Unit.SESSIONS:
+                raise ValidationError(
+                    {"balance_account": "Грантовое выделение занятий требует счет в занятиях."}
+                )
+            if not self.balance_account.can_pay_for(self.service):
+                raise ValidationError({"balance_account": "Счет не подходит для услуги."})
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return (
+            f"{self.funding_source} / {self.child} / {self.service}: " f"{self.allocated_sessions}"
+        )
+
+
 class TreatmentProgram(TimeStampedModel):
     class Status(models.TextChoices):
         DRAFT = "draft", "Черновик"
@@ -397,7 +836,12 @@ class TreatmentProgram(TimeStampedModel):
         COMPLETED = "completed", "Завершена"
         CANCELLED = "cancelled", "Отменена"
 
-    child = models.ForeignKey(Child, verbose_name="получатель", on_delete=models.CASCADE, related_name="treatment_programs")
+    child = models.ForeignKey(
+        Child,
+        verbose_name="получатель",
+        on_delete=models.CASCADE,
+        related_name="treatment_programs",
+    )
     title = models.CharField("название", max_length=200)
     consultation = models.ForeignKey(
         "Appointment",
@@ -430,11 +874,15 @@ class ProgramBlock(TimeStampedModel):
         COMPLETED = "completed", "Завершён"
         CANCELLED = "cancelled", "Отменён"
 
-    program = models.ForeignKey(TreatmentProgram, verbose_name="программа", on_delete=models.CASCADE, related_name="blocks")
+    program = models.ForeignKey(
+        TreatmentProgram, verbose_name="программа", on_delete=models.CASCADE, related_name="blocks"
+    )
     number = models.PositiveIntegerField("номер блока", default=1)
     title = models.CharField("название блока", max_length=200)
     service = models.ForeignKey(Service, verbose_name="услуга", on_delete=models.PROTECT)
-    staff_member = models.ForeignKey(StaffMember, verbose_name="специалист", on_delete=models.PROTECT, null=True, blank=True)
+    staff_member = models.ForeignKey(
+        StaffMember, verbose_name="специалист", on_delete=models.PROTECT, null=True, blank=True
+    )
     planned_sessions = models.PositiveIntegerField("план занятий", default=1)
     balance_account = models.ForeignKey(
         BalanceAccount,
@@ -444,7 +892,9 @@ class ProgramBlock(TimeStampedModel):
         blank=True,
         related_name="program_blocks",
     )
-    status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.PLANNED)
+    status = models.CharField(
+        "статус", max_length=30, choices=Status.choices, default=Status.PLANNED
+    )
     color = models.CharField("цвет", max_length=20, default="#b71b55")
     notes = models.TextField("примечания", blank=True)
 
@@ -453,7 +903,9 @@ class ProgramBlock(TimeStampedModel):
         verbose_name_plural = "блоки программ"
         ordering = ["program", "number"]
         constraints = [
-            models.UniqueConstraint(fields=["program", "number"], name="unique_program_block_number"),
+            models.UniqueConstraint(
+                fields=["program", "number"], name="unique_program_block_number"
+            ),
         ]
 
     def __str__(self) -> str:
@@ -461,11 +913,16 @@ class ProgramBlock(TimeStampedModel):
 
     @property
     def scheduled_count(self) -> int:
-        return self.appointments.exclude(status=Appointment.Status.CANCELLED).count()
+        return self.appointment_participants.exclude(
+            appointment_status__in=[Appointment.Status.CANCELLED, Appointment.Status.RESCHEDULED]
+        ).count()
 
     @property
     def paid_count(self) -> int:
-        return self.appointments.filter(billing_decision=Appointment.BillingDecision.CHARGE).count()
+        return self.appointment_participants.filter(
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account__isnull=False,
+        ).count()
 
 
 class AppointmentSeries(TimeStampedModel):
@@ -475,10 +932,19 @@ class AppointmentSeries(TimeStampedModel):
         COMPLETED = "completed", "Завершена"
         CANCELLED = "cancelled", "Отменена"
 
-    child = models.ForeignKey(Child, verbose_name="получатель", on_delete=models.CASCADE, related_name="appointment_series")
+    child = models.ForeignKey(
+        Child,
+        verbose_name="получатель",
+        on_delete=models.CASCADE,
+        related_name="appointment_series",
+    )
     service = models.ForeignKey(Service, verbose_name="услуга", on_delete=models.PROTECT)
-    staff_member = models.ForeignKey(StaffMember, verbose_name="специалист", on_delete=models.PROTECT)
-    room = models.ForeignKey(Room, verbose_name="помещение", on_delete=models.PROTECT, null=True, blank=True)
+    staff_member = models.ForeignKey(
+        StaffMember, verbose_name="специалист", on_delete=models.PROTECT
+    )
+    room = models.ForeignKey(
+        Room, verbose_name="помещение", on_delete=models.PROTECT, null=True, blank=True
+    )
     program_block = models.ForeignKey(
         ProgramBlock,
         verbose_name="блок программы",
@@ -560,18 +1026,21 @@ class AppointmentSeries(TimeStampedModel):
                     .count()
                     + 1
                 )
-            Appointment.objects.create(
-                child=self.child,
-                staff_member=self.staff_member,
-                service=self.service,
-                room=self.room,
-                starts_at=starts_at,
-                ends_at=ends_at,
-                status=Appointment.Status.CONFIRMED,
-                series=self,
-                program_block=self.program_block,
-                sequence_number=sequence_number,
-            )
+            try:
+                Appointment.objects.create(
+                    child=self.child,
+                    staff_member=self.staff_member,
+                    service=self.service,
+                    room=self.room,
+                    starts_at=starts_at,
+                    ends_at=ends_at,
+                    status=Appointment.Status.CONFIRMED,
+                    series=self,
+                    program_block=self.program_block,
+                    sequence_number=sequence_number,
+                )
+            except ValidationError:
+                continue
             created += 1
         return created
 
@@ -598,13 +1067,42 @@ class Appointment(TimeStampedModel):
         CHARGE = "charge", "Списать"
         DO_NOT_CHARGE = "do_not_charge", "Не списывать"
 
-    child = models.ForeignKey(Child, verbose_name="получатель", on_delete=models.CASCADE, related_name="appointments")
-    staff_member = models.ForeignKey(StaffMember, verbose_name="специалист", on_delete=models.PROTECT, related_name="appointments")
-    service = models.ForeignKey(Service, verbose_name="услуга", on_delete=models.PROTECT, related_name="appointments")
-    room = models.ForeignKey(Room, verbose_name="помещение", on_delete=models.PROTECT, null=True, blank=True, related_name="appointments")
+    class SessionType(models.TextChoices):
+        INDIVIDUAL = "individual", "Индивидуальное"
+        GROUP = "group", "Групповое"
+
+    child = models.ForeignKey(
+        Child, verbose_name="получатель", on_delete=models.CASCADE, related_name="appointments"
+    )
+    staff_member = models.ForeignKey(
+        StaffMember,
+        verbose_name="специалист",
+        on_delete=models.PROTECT,
+        related_name="appointments",
+    )
+    service = models.ForeignKey(
+        Service, verbose_name="услуга", on_delete=models.PROTECT, related_name="appointments"
+    )
+    room = models.ForeignKey(
+        Room,
+        verbose_name="помещение",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="appointments",
+    )
     starts_at = models.DateTimeField("начало")
     ends_at = models.DateTimeField("окончание")
-    status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.CONFIRMED)
+    session_type = models.CharField(
+        "тип занятия",
+        max_length=20,
+        choices=SessionType.choices,
+        default=SessionType.INDIVIDUAL,
+    )
+    title = models.CharField("название группового занятия", max_length=200, blank=True)
+    status = models.CharField(
+        "статус", max_length=30, choices=Status.choices, default=Status.CONFIRMED
+    )
     attendance_status = models.CharField(
         "посещение",
         max_length=30,
@@ -650,8 +1148,12 @@ class Appointment(TimeStampedModel):
         related_name="appointments",
     )
     sequence_number = models.PositiveIntegerField("номер в блоке", null=True, blank=True)
-    staff_availability_override = models.BooleanField("назначено вне графика специалиста", default=False)
-    staff_availability_override_reason = models.TextField("причина назначения вне графика", blank=True)
+    staff_availability_override = models.BooleanField(
+        "назначено вне графика специалиста", default=False
+    )
+    staff_availability_override_reason = models.TextField(
+        "причина назначения вне графика", blank=True
+    )
     admin_note = models.TextField("заметка администратора", blank=True)
     specialist_note = models.TextField("заметка специалиста", blank=True)
     specialist_marked_at = models.DateTimeField("специалист отметил", null=True, blank=True)
@@ -661,9 +1163,24 @@ class Appointment(TimeStampedModel):
         verbose_name_plural = "занятия"
         ordering = ["starts_at"]
 
+    def participant_label(self) -> str:
+        if self.pk:
+            names = [
+                participant.child.full_name
+                for participant in self.participants.select_related("child").order_by(
+                    "starts_at_snapshot", "child__last_name", "child__first_name"
+                )
+            ]
+            if names:
+                return ", ".join(names)
+        if self.child_id:
+            return self.child.full_name
+        return "Без получателя"
+
     def __str__(self) -> str:
         local_start = timezone.localtime(self.starts_at)
-        return f"{local_start:%d.%m.%Y %H:%M} - {self.child} / {self.service}"
+        subject = self.title.strip() if self.title else self.participant_label()
+        return f"{local_start:%d.%m.%Y %H:%M} - {subject} / {self.service}"
 
     def clean(self) -> None:
         if self.starts_at and self.ends_at and self.ends_at <= self.starts_at:
@@ -673,59 +1190,120 @@ class Appointment(TimeStampedModel):
             self._validate_staff_availability()
         if self.billing_account_id:
             if self.billing_account.child_id != self.child_id:
-                raise ValidationError({"billing_account": "Счет должен принадлежать этому получателю."})
+                raise ValidationError(
+                    {"billing_account": "Счет должен принадлежать этому получателю."}
+                )
             if not self.billing_account.can_pay_for(self.service):
                 raise ValidationError({"billing_account": "Счет не подходит для этой услуги."})
         if self.program_block_id:
             if self.program_block.program.child_id != self.child_id:
-                raise ValidationError({"program_block": "Блок программы должен принадлежать этому получателю."})
+                raise ValidationError(
+                    {"program_block": "Блок программы должен принадлежать этому получателю."}
+                )
             if self.program_block.service_id != self.service_id:
-                raise ValidationError({"program_block": "Блок программы должен соответствовать услуге занятия."})
+                raise ValidationError(
+                    {"program_block": "Блок программы должен соответствовать услуге занятия."}
+                )
         if self.billing_decision == self.BillingDecision.CHARGE and not self.billing_account_id:
             raise ValidationError({"billing_account": "Для списания нужно выбрать счет баланса."})
 
-    def save(self, *args: object, validate_schedule: bool = True, **kwargs: object) -> None:
+    def save(
+        self,
+        *args: object,
+        validate_schedule: bool = True,
+        sync_legacy: bool = True,
+        **kwargs: object,
+    ) -> None:
         if not self.pk and self.program_block_id and not self.sequence_number:
             self.sequence_number = (
                 Appointment.objects.filter(program_block_id=self.program_block_id)
-                .exclude(status=Appointment.Status.CANCELLED)
+                .exclude(status__in=[Appointment.Status.CANCELLED, Appointment.Status.RESCHEDULED])
                 .count()
                 + 1
             )
         if validate_schedule:
             self.full_clean(exclude={"specialist_note"} if not self.pk else None)
         super().save(*args, **kwargs)
+        if sync_legacy:
+            self._sync_legacy_participant_and_staff_assignment()
 
     def _validate_no_overlap(self) -> None:
         """Кросс-БД проверка отсутствия пересечений.
 
         На PostgreSQL дополнительно работает DB-уровневый EXCLUDE constraint
-        (см. миграцию ``0004_pg_only_constraints``), но Python-проверка
+        (см. миграции ``0004_pg_only_constraints`` и ``0011_appointment_session_type_appointment_title_and_more``),
+        но Python-проверка
         покрывает оба бэкенда и даёт внятные сообщения об ошибках в формах.
         """
-        qs = Appointment.objects.filter(
+        base_qs = Appointment.objects.filter(
             status__in=ACTIVE_APPOINTMENT_STATUSES,
             starts_at__lt=self.ends_at,
             ends_at__gt=self.starts_at,
         )
         if self.pk:
-            qs = qs.exclude(pk=self.pk)
+            base_qs = base_qs.exclude(pk=self.pk)
         messages: list[str] = []
-        if self.child_id and qs.filter(child_id=self.child_id).exists():
-            other = qs.filter(child_id=self.child_id).first()
+        if self.child_id:
+            participant_qs = AppointmentParticipant.objects.filter(
+                appointment_status__in=ACTIVE_APPOINTMENT_STATUSES,
+                child_id=self.child_id,
+                starts_at_snapshot__lt=self.ends_at,
+                ends_at_snapshot__gt=self.starts_at,
+            ).select_related("appointment")
+            if self.pk:
+                participant_qs = participant_qs.exclude(appointment_id=self.pk)
+            other_participant = participant_qs.first()
+            other = (
+                other_participant.appointment
+                if other_participant
+                else base_qs.filter(child_id=self.child_id).first()
+            )
+            has_conflict = other_participant is not None or other is not None
+        else:
+            other = None
+            has_conflict = False
+        if has_conflict:
             when = timezone.localtime(other.starts_at).strftime("%d.%m %H:%M") if other else ""
             messages.append(
-                f"у получателя уже есть занятие в это время ({when})" if when
+                f"у получателя уже есть занятие в это время ({when})"
+                if when
                 else "у получателя уже есть занятие в это время"
             )
-        if self.staff_member_id and qs.filter(staff_member_id=self.staff_member_id).exists():
+
+        if self.staff_member_id:
+            staff_qs = AppointmentStaffAssignment.objects.filter(
+                appointment_status__in=ACTIVE_APPOINTMENT_STATUSES,
+                staff_member_id=self.staff_member_id,
+                starts_at_snapshot__lt=self.ends_at,
+                ends_at_snapshot__gt=self.starts_at,
+            )
+            if self.pk:
+                staff_qs = staff_qs.exclude(appointment_id=self.pk)
+            has_staff_conflict = (
+                staff_qs.exists() or base_qs.filter(staff_member_id=self.staff_member_id).exists()
+            )
+        else:
+            has_staff_conflict = False
+        if has_staff_conflict:
             messages.append("специалист уже занят в это время")
-        if self.room_id:
-            room_capacity = max(getattr(self.room, "capacity", 1) or 1, 1)
-            if qs.filter(room_id=self.room_id).count() >= room_capacity:
-                messages.append("кабинет уже занят в это время")
+
+        if self.room_id and not getattr(self, "_skip_room_limit_validation", False):
+            staff_count, recipient_count = self._room_usage_counts(base_qs)
+            if (
+                self.room.limit_staff_count
+                and staff_count + 1 > self.room.effective_max_staff_count
+            ):
+                messages.append("кабинет уже занят по лимиту специалистов")
+            if (
+                self.room.limit_recipient_count
+                and recipient_count + 1 > self.room.effective_max_recipient_count
+            ):
+                messages.append("кабинет уже занят по лимиту получателей")
         if messages:
             raise ValidationError("Конфликт расписания: " + ", ".join(messages) + ".")
+
+    def _room_usage_counts(self, base_qs: QuerySet[Appointment]) -> tuple[int, int]:
+        return room_usage_counts(base_qs.filter(room_id=self.room_id))
 
     def _validate_staff_availability(self) -> None:
         if not self.staff_member_id or not self.starts_at or not self.ends_at:
@@ -735,7 +1313,9 @@ class Appointment(TimeStampedModel):
         local_end = timezone.localtime(self.ends_at)
         day = local_start.date()
         if local_end.date() != day:
-            raise ValidationError("Недоступность специалиста: занятие должно помещаться в один день.")
+            raise ValidationError(
+                "Недоступность специалиста: занятие должно помещаться в один день."
+            )
         if self.staff_availability_override:
             return
 
@@ -761,12 +1341,795 @@ class Appointment(TimeStampedModel):
                 return
             raise ValidationError("Недоступность специалиста: время вне базового окна 09:00-18:00.")
 
-        if not any(window.starts_at <= start_time and end_time <= window.ends_at for window in windows):
+        if not any(
+            window.starts_at <= start_time and end_time <= window.ends_at for window in windows
+        ):
             raise ValidationError("Недоступность специалиста: время вне рабочего графика.")
 
     @property
     def duration_minutes(self) -> int:
         return int((self.ends_at - self.starts_at).total_seconds() // 60)
+
+    @property
+    def primary_participant(self) -> AppointmentParticipant | None:
+        return self.participants.order_by("pk").first()
+
+    @property
+    def primary_staff_assignment(self) -> AppointmentStaffAssignment | None:
+        return self.staff_assignments.order_by("pk").first()
+
+    def _sync_legacy_participant_and_staff_assignment(self) -> None:
+        if not self.pk:
+            return
+        now = timezone.now()
+        participants_qs = self.participants.all()
+        has_participants = participants_qs.exists()
+        should_sync_legacy_child = self.child_id and (
+            not has_participants or participants_qs.filter(child_id=self.child_id).exists()
+        )
+        if should_sync_legacy_child:
+            participant_defaults = {
+                "starts_at_snapshot": self.starts_at,
+                "ends_at_snapshot": self.ends_at,
+                "appointment_status": self.status,
+            }
+            if not has_participants:
+                participant_defaults.update(
+                    {
+                        "attendance_status": self.attendance_status,
+                        "billing_decision": self.billing_decision,
+                        "billing_account_id": self.billing_account_id,
+                        "program_block_id": self.program_block_id,
+                        "sequence_number": self.sequence_number,
+                        "admin_note": self.admin_note,
+                        "specialist_note": self.specialist_note,
+                        "marked_by_staff_at": self.specialist_marked_at,
+                    }
+                )
+            AppointmentParticipant.objects.update_or_create(
+                appointment=self,
+                child_id=self.child_id,
+                defaults=participant_defaults,
+            )
+        if has_participants:
+            participant_updates = {
+                "starts_at_snapshot": self.starts_at,
+                "ends_at_snapshot": self.ends_at,
+                "appointment_status": self.status,
+                "updated_at": now,
+            }
+            if should_sync_legacy_child:
+                participants_qs = participants_qs.exclude(child_id=self.child_id)
+            participants_qs.update(**participant_updates)
+
+        assignments_qs = self.staff_assignments.all()
+        has_assignments = assignments_qs.exists()
+        should_sync_legacy_staff = self.staff_member_id and (
+            not has_assignments
+            or assignments_qs.filter(staff_member_id=self.staff_member_id).exists()
+        )
+        if should_sync_legacy_staff:
+            assignment_defaults = {
+                "starts_at_snapshot": self.starts_at,
+                "ends_at_snapshot": self.ends_at,
+                "appointment_status": self.status,
+            }
+            if not has_assignments:
+                assignment_defaults.update(
+                    {
+                        "role": AppointmentStaffAssignment.Role.PRIMARY,
+                        "override_availability": self.staff_availability_override,
+                        "override_reason": self.staff_availability_override_reason,
+                    }
+                )
+            AppointmentStaffAssignment.objects.update_or_create(
+                appointment=self,
+                staff_member_id=self.staff_member_id,
+                defaults=assignment_defaults,
+            )
+        if has_assignments:
+            assignment_updates = {
+                "starts_at_snapshot": self.starts_at,
+                "ends_at_snapshot": self.ends_at,
+                "appointment_status": self.status,
+                "updated_at": now,
+            }
+            if should_sync_legacy_staff:
+                assignments_qs = assignments_qs.exclude(staff_member_id=self.staff_member_id)
+            assignments_qs.update(**assignment_updates)
+
+
+class AppointmentParticipant(TimeStampedModel):
+    appointment = models.ForeignKey(
+        Appointment,
+        verbose_name="занятие",
+        on_delete=models.CASCADE,
+        related_name="participants",
+    )
+    child = models.ForeignKey(
+        Child,
+        verbose_name="получатель",
+        on_delete=models.CASCADE,
+        related_name="appointment_participations",
+    )
+    attendance_status = models.CharField(
+        "посещение",
+        max_length=30,
+        choices=Appointment.AttendanceStatus.choices,
+        default=Appointment.AttendanceStatus.UNKNOWN,
+    )
+    billing_decision = models.CharField(
+        "решение по списанию",
+        max_length=30,
+        choices=Appointment.BillingDecision.choices,
+        default=Appointment.BillingDecision.UNDECIDED,
+    )
+    billing_account = models.ForeignKey(
+        BalanceAccount,
+        verbose_name="счет списания",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="appointment_participants",
+    )
+    price_snapshot = models.DecimalField(
+        "цена на момент занятия",
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    program_block = models.ForeignKey(
+        ProgramBlock,
+        verbose_name="блок программы",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="appointment_participants",
+    )
+    sequence_number = models.PositiveIntegerField("номер в блоке", null=True, blank=True)
+    source_participant = models.ForeignKey(
+        "self",
+        verbose_name="исходный участник",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="rescheduled_to",
+    )
+    admin_note = models.TextField("заметка администратора", blank=True)
+    specialist_note = models.TextField("заметка специалиста", blank=True)
+    marked_by_staff_at = models.DateTimeField("специалист отметил", null=True, blank=True)
+    starts_at_snapshot = models.DateTimeField("начало")
+    ends_at_snapshot = models.DateTimeField("окончание")
+    appointment_status = models.CharField(
+        "статус занятия",
+        max_length=30,
+        choices=Appointment.Status.choices,
+        default=Appointment.Status.CONFIRMED,
+    )
+
+    class Meta:
+        verbose_name = "участник занятия"
+        verbose_name_plural = "участники занятий"
+        ordering = ["starts_at_snapshot", "child__last_name", "child__first_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["appointment", "child"], name="unique_appointment_participant_child"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["child", "starts_at_snapshot", "ends_at_snapshot"]),
+            models.Index(fields=["appointment", "appointment_status"]),
+            models.Index(fields=["program_block", "sequence_number"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.appointment} / {self.child}"
+
+    def clean(self) -> None:
+        if (
+            self.ends_at_snapshot
+            and self.starts_at_snapshot
+            and self.ends_at_snapshot <= self.starts_at_snapshot
+        ):
+            raise ValidationError({"ends_at_snapshot": "Окончание должно быть позже начала."})
+        if self.billing_account_id:
+            if self.billing_account.child_id != self.child_id:
+                raise ValidationError(
+                    {"billing_account": "Счет должен принадлежать этому получателю."}
+                )
+            if self.appointment_id and not self.billing_account.can_pay_for(
+                self.appointment.service
+            ):
+                raise ValidationError({"billing_account": "Счет не подходит для услуги занятия."})
+        if self.billing_decision == Appointment.BillingDecision.CHARGE and not self.billing_account_id:
+            raise ValidationError({"billing_account": "Для списания нужно выбрать счет баланса."})
+        if self.program_block_id and self.program_block.program.child_id != self.child_id:
+            raise ValidationError(
+                {"program_block": "Блок программы должен принадлежать этому получателю."}
+            )
+        if (
+            self.program_block_id
+            and self.appointment_id
+            and self.program_block.service_id != self.appointment.service_id
+        ):
+            raise ValidationError(
+                {"program_block": "Блок программы должен соответствовать услуге занятия."}
+            )
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.program_block_id and not self.sequence_number:
+            qs = AppointmentParticipant.objects.filter(program_block_id=self.program_block_id)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            self.sequence_number = (
+                qs.exclude(
+                    appointment_status__in=[
+                        Appointment.Status.CANCELLED,
+                        Appointment.Status.RESCHEDULED,
+                    ]
+                ).count()
+                + 1
+            )
+        if not self.program_block_id:
+            self.sequence_number = None
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class AppointmentStaffAssignment(TimeStampedModel):
+    class Role(models.TextChoices):
+        PRIMARY = "primary", "Основной"
+        ASSISTANT = "assistant", "Ассистент"
+        SUBSTITUTE = "substitute", "Замена"
+        OBSERVER = "observer", "Наблюдатель"
+
+    appointment = models.ForeignKey(
+        Appointment,
+        verbose_name="занятие",
+        on_delete=models.CASCADE,
+        related_name="staff_assignments",
+    )
+    staff_member = models.ForeignKey(
+        StaffMember,
+        verbose_name="специалист",
+        on_delete=models.PROTECT,
+        related_name="appointment_assignments",
+    )
+    role = models.CharField("роль", max_length=30, choices=Role.choices, default=Role.PRIMARY)
+    starts_at_snapshot = models.DateTimeField("начало")
+    ends_at_snapshot = models.DateTimeField("окончание")
+    appointment_status = models.CharField(
+        "статус занятия",
+        max_length=30,
+        choices=Appointment.Status.choices,
+        default=Appointment.Status.CONFIRMED,
+    )
+    override_availability = models.BooleanField("назначено вне графика", default=False)
+    override_reason = models.TextField("причина назначения вне графика", blank=True)
+
+    class Meta:
+        verbose_name = "назначение специалиста"
+        verbose_name_plural = "назначения специалистов"
+        ordering = ["starts_at_snapshot", "staff_member__full_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["appointment", "staff_member"], name="unique_appointment_staff_assignment"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["staff_member", "starts_at_snapshot", "ends_at_snapshot"]),
+            models.Index(fields=["appointment", "appointment_status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.appointment} / {self.staff_member}"
+
+    def clean(self) -> None:
+        if (
+            self.ends_at_snapshot
+            and self.starts_at_snapshot
+            and self.ends_at_snapshot <= self.starts_at_snapshot
+        ):
+            raise ValidationError({"ends_at_snapshot": "Окончание должно быть позже начала."})
+
+
+def room_usage_counts(appointment_qs: QuerySet[Appointment]) -> tuple[int, int]:
+    """Count room usage across snapshot rows plus legacy fallback appointments."""
+    appointment_ids = list(appointment_qs.values_list("id", flat=True))
+    if not appointment_ids:
+        return 0, 0
+
+    staff_rows = list(
+        AppointmentStaffAssignment.objects.filter(
+            appointment_id__in=appointment_ids,
+            appointment_status__in=ACTIVE_APPOINTMENT_STATUSES,
+        )
+        .values_list("appointment_id", "staff_member_id")
+        .distinct()
+    )
+    participant_rows = list(
+        AppointmentParticipant.objects.filter(
+            appointment_id__in=appointment_ids,
+            appointment_status__in=ACTIVE_APPOINTMENT_STATUSES,
+        )
+        .values_list("appointment_id", "child_id")
+        .distinct()
+    )
+
+    appointments_with_staff_snapshots = {appointment_id for appointment_id, _ in staff_rows}
+    appointments_with_participant_snapshots = {
+        appointment_id for appointment_id, _ in participant_rows
+    }
+    legacy_staff_count = appointment_qs.exclude(id__in=appointments_with_staff_snapshots).count()
+    legacy_recipient_count = appointment_qs.exclude(
+        id__in=appointments_with_participant_snapshots
+    ).count()
+    return len(staff_rows) + legacy_staff_count, len(participant_rows) + legacy_recipient_count
+
+
+class AppointmentRoomOverride(TimeStampedModel):
+    class OverrideType(models.TextChoices):
+        STAFF_LIMIT = "staff_limit", "Лимит специалистов"
+        RECIPIENT_LIMIT = "recipient_limit", "Лимит получателей"
+        EXCLUSIVE_ROOM = "exclusive_room", "Эксклюзивный кабинет"
+        ROOM_INACTIVE = "room_inactive", "Неактивный кабинет"
+        OTHER = "other", "Другое"
+
+    appointment = models.ForeignKey(
+        Appointment,
+        verbose_name="занятие",
+        on_delete=models.CASCADE,
+        related_name="room_overrides",
+    )
+    override_type = models.CharField("тип разрешения", max_length=30, choices=OverrideType.choices)
+    reason = models.TextField("причина")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="создал",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_room_overrides",
+    )
+
+    class Meta:
+        verbose_name = "разрешение кабинета"
+        verbose_name_plural = "разрешения кабинетов"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.appointment}: {self.get_override_type_display()}"
+
+    def clean(self) -> None:
+        if not self.reason.strip():
+            raise ValidationError({"reason": "Для одноразового разрешения нужна причина."})
+
+
+class AppointmentReschedulePlan(TimeStampedModel):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Черновик"
+        READY = "ready", "Готов к проверке"
+        NEEDS_RECHECK = "needs_recheck", "Нужна перепроверка"
+        APPLIED = "applied", "Применен"
+        CANCELLED = "cancelled", "Отменен"
+
+    class PlanType(models.TextChoices):
+        SINGLE_MOVE = "single_move", "Перенос занятия"
+        CASCADE_SHIFT = "cascade_shift", "Каскадный сдвиг"
+        STAFF_ABSENCE = "staff_absence", "Отсутствие специалиста"
+        MANUAL = "manual", "Ручной план"
+
+    status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.DRAFT)
+    plan_type = models.CharField(
+        "тип плана", max_length=30, choices=PlanType.choices, default=PlanType.SINGLE_MOVE
+    )
+    root_appointment = models.ForeignKey(
+        Appointment,
+        verbose_name="исходное занятие",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="reschedule_plans",
+    )
+    staff_member = models.ForeignKey(
+        StaffMember,
+        verbose_name="специалист",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="reschedule_plans",
+    )
+    date_from = models.DateField("дата начала", null=True, blank=True)
+    date_to = models.DateField("дата окончания", null=True, blank=True)
+    reason = models.TextField("причина", blank=True)
+    validation_summary = models.JSONField("сводка проверки", default=dict, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="создал",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_reschedule_plans",
+    )
+    applied_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="применил",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="applied_reschedule_plans",
+    )
+    applied_at = models.DateTimeField("применено", null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="отменил",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cancelled_reschedule_plans",
+    )
+    cancelled_at = models.DateTimeField("отменено", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "план переноса расписания"
+        verbose_name_plural = "планы переноса расписания"
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(date_from__isnull=True)
+                    | Q(date_to__isnull=True)
+                    | Q(date_to__gte=models.F("date_from"))
+                ),
+                name="reschedule_plan_dates_order",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~Q(plan_type__in=["single_move", "cascade_shift"])
+                    | Q(root_appointment__isnull=False)
+                ),
+                name="reschedule_plan_root_required",
+            ),
+            models.CheckConstraint(
+                condition=(~Q(plan_type="staff_absence") | Q(staff_member__isnull=False)),
+                name="reschedule_plan_staff_required",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["root_appointment", "status"]),
+            models.Index(fields=["staff_member", "date_from", "date_to"]),
+        ]
+
+    def __str__(self) -> str:
+        if self.root_appointment_id:
+            return f"{self.get_plan_type_display()}: {self.root_appointment}"
+        if self.staff_member_id:
+            return f"{self.get_plan_type_display()}: {self.staff_member}"
+        return self.get_plan_type_display()
+
+    def clean(self) -> None:
+        if self.date_from and self.date_to and self.date_to < self.date_from:
+            raise ValidationError({"date_to": "Дата окончания не может быть раньше даты начала."})
+        if self.plan_type in {
+            self.PlanType.SINGLE_MOVE,
+            self.PlanType.CASCADE_SHIFT,
+        } and not self.root_appointment_id:
+            raise ValidationError(
+                {"root_appointment": "Для плана переноса нужно исходное занятие."}
+            )
+        if self.plan_type == self.PlanType.STAFF_ABSENCE and not self.staff_member_id:
+            raise ValidationError(
+                {"staff_member": "Для плана отсутствия нужен специалист."}
+            )
+
+
+class AppointmentRescheduleChain(TimeStampedModel):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Черновик"
+        READY = "ready", "Готова"
+        STALE = "stale", "Устарела"
+        APPLYING = "applying", "Применяется"
+        APPLIED = "applied", "Применена"
+        FAILED = "failed", "Ошибка"
+        CANCELLED = "cancelled", "Отменена"
+
+    class ApplyPolicy(models.TextChoices):
+        ATOMIC_ALL_OR_NOTHING = "atomic_all_or_nothing", "Атомарно все или ничего"
+
+    plan = models.ForeignKey(
+        AppointmentReschedulePlan,
+        verbose_name="план",
+        on_delete=models.CASCADE,
+        related_name="chains",
+    )
+    title = models.CharField("название", max_length=200, blank=True)
+    status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.DRAFT)
+    apply_policy = models.CharField(
+        "правило применения",
+        max_length=40,
+        choices=ApplyPolicy.choices,
+        default=ApplyPolicy.ATOMIC_ALL_OR_NOTHING,
+    )
+    validation_summary = models.JSONField("сводка проверки", default=dict, blank=True)
+    admin_note = models.TextField("заметка администратора", blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="создал",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_reschedule_chains",
+    )
+    applied_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="применил",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="applied_reschedule_chains",
+    )
+    applied_at = models.DateTimeField("применено", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "цепочка переноса расписания"
+        verbose_name_plural = "цепочки переноса расписания"
+        ordering = ["plan", "created_at"]
+        indexes = [
+            models.Index(fields=["plan", "status"]),
+            models.Index(fields=["status", "updated_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return self.title or f"{self.plan} / цепочка {self.pk or ''}".strip()
+
+
+class AppointmentRescheduleStep(TimeStampedModel):
+    class ActionType(models.TextChoices):
+        MOVE = "move", "Перенести"
+        CANCEL = "cancel", "Отменить"
+        KEEP = "keep", "Оставить"
+        REVIEW_CONFLICT = "review_conflict", "Разобрать конфликт"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Ожидает решения"
+        VALID = "valid", "Проверен"
+        STALE = "stale", "Устарел"
+        APPLIED = "applied", "Применен"
+        SKIPPED = "skipped", "Пропущен"
+        FAILED = "failed", "Ошибка"
+
+    class ConfirmationStatus(models.TextChoices):
+        NOT_REQUESTED = "not_requested", "Не запрошено"
+        WAITING = "waiting", "Ожидает ответов"
+        APPROVED = "approved", "Согласовано"
+        DECLINED = "declined", "Есть отказ"
+
+    plan = models.ForeignKey(
+        AppointmentReschedulePlan,
+        verbose_name="план",
+        on_delete=models.CASCADE,
+        related_name="steps",
+    )
+    chain = models.ForeignKey(
+        AppointmentRescheduleChain,
+        verbose_name="цепочка",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="steps",
+    )
+    position = models.PositiveIntegerField("порядок")
+    chain_position = models.PositiveIntegerField("порядок в цепочке", null=True, blank=True)
+    chain_required = models.BooleanField("обязателен в цепочке", default=False)
+    action_type = models.CharField(
+        "действие", max_length=30, choices=ActionType.choices, default=ActionType.MOVE
+    )
+    status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.PENDING)
+    source_appointment = models.ForeignKey(
+        Appointment,
+        verbose_name="исходное занятие",
+        on_delete=models.PROTECT,
+        related_name="reschedule_steps",
+    )
+    blocking_appointment = models.ForeignKey(
+        Appointment,
+        verbose_name="конфликтующее занятие",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="blocking_reschedule_steps",
+    )
+    created_appointment = models.ForeignKey(
+        Appointment,
+        verbose_name="созданное занятие",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_by_reschedule_steps",
+    )
+    proposed_starts_at = models.DateTimeField("предложенное начало", null=True, blank=True)
+    proposed_ends_at = models.DateTimeField("предложенное окончание", null=True, blank=True)
+    proposed_room = models.ForeignKey(
+        Room,
+        verbose_name="предложенный кабинет",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reschedule_steps",
+    )
+    proposed_primary_staff = models.ForeignKey(
+        StaffMember,
+        verbose_name="предложенный основной специалист",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reschedule_steps",
+    )
+    staff_snapshot = models.JSONField("снимок специалистов", default=list, blank=True)
+    participant_snapshot = models.JSONField("снимок участников", default=list, blank=True)
+    conflict_snapshot = models.JSONField("снимок конфликтов", default=dict, blank=True)
+    validation_messages = models.JSONField("сообщения проверки", default=list, blank=True)
+    confirmation_status = models.CharField(
+        "статус согласования",
+        max_length=30,
+        choices=ConfirmationStatus.choices,
+        default=ConfirmationStatus.NOT_REQUESTED,
+    )
+    confirmation_summary = models.JSONField("сводка согласования", default=dict, blank=True)
+    requires_staff_override = models.BooleanField("требует разрешение выхода вне графика", default=False)
+    requires_room_override = models.BooleanField("требует разрешение кабинета", default=False)
+    admin_note = models.TextField("заметка администратора", blank=True)
+
+    class Meta:
+        verbose_name = "шаг плана переноса"
+        verbose_name_plural = "шаги плана переноса"
+        ordering = ["plan", "position"]
+        constraints = [
+            models.UniqueConstraint(fields=["plan", "position"], name="unique_reschedule_step_position"),
+            models.UniqueConstraint(
+                fields=["chain", "chain_position"],
+                condition=Q(chain__isnull=False),
+                name="unique_reschedule_step_chain_position",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(proposed_starts_at__isnull=True)
+                    | Q(proposed_ends_at__isnull=True)
+                    | Q(proposed_ends_at__gt=models.F("proposed_starts_at"))
+                ),
+                name="reschedule_step_time_order",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["source_appointment", "status"]),
+            models.Index(fields=["confirmation_status", "status"]),
+            models.Index(fields=["proposed_starts_at", "proposed_ends_at"]),
+            models.Index(fields=["chain", "chain_position"]),
+            models.Index(fields=["chain", "status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.plan} / {self.position}. {self.get_action_type_display()}"
+
+    def clean(self) -> None:
+        if (
+            self.proposed_starts_at
+            and self.proposed_ends_at
+            and self.proposed_ends_at <= self.proposed_starts_at
+        ):
+            raise ValidationError(
+                {"proposed_ends_at": "Предложенное окончание должно быть позже начала."}
+            )
+        if self.action_type == self.ActionType.MOVE:
+            missing_fields = []
+            if not self.proposed_starts_at:
+                missing_fields.append("proposed_starts_at")
+            if not self.proposed_ends_at:
+                missing_fields.append("proposed_ends_at")
+            if not self.proposed_primary_staff_id:
+                missing_fields.append("proposed_primary_staff")
+            if missing_fields:
+                raise ValidationError(
+                    {
+                        field: "Для шага переноса нужно заполнить это поле."
+                        for field in missing_fields
+                    }
+                )
+
+
+class AppointmentRescheduleStepDependency(TimeStampedModel):
+    class RelationType(models.TextChoices):
+        FREES_TARGET_SLOT = "frees_target_slot", "Освобождает целевое окно"
+        MUST_APPLY_BEFORE = "must_apply_before", "Должен примениться раньше"
+
+    plan = models.ForeignKey(
+        AppointmentReschedulePlan,
+        verbose_name="план",
+        on_delete=models.CASCADE,
+        related_name="step_dependencies",
+    )
+    chain = models.ForeignKey(
+        AppointmentRescheduleChain,
+        verbose_name="цепочка",
+        on_delete=models.CASCADE,
+        related_name="dependencies",
+    )
+    predecessor_step = models.ForeignKey(
+        AppointmentRescheduleStep,
+        verbose_name="предшествующий шаг",
+        on_delete=models.CASCADE,
+        related_name="unlocks_successors",
+    )
+    successor_step = models.ForeignKey(
+        AppointmentRescheduleStep,
+        verbose_name="следующий шаг",
+        on_delete=models.CASCADE,
+        related_name="dependency_edges",
+    )
+    relation_type = models.CharField(
+        "тип зависимости",
+        max_length=40,
+        choices=RelationType.choices,
+        default=RelationType.FREES_TARGET_SLOT,
+    )
+    reason = models.TextField("причина", blank=True)
+    snapshot = models.JSONField("снимок", default=dict, blank=True)
+
+    class Meta:
+        verbose_name = "зависимость шага переноса"
+        verbose_name_plural = "зависимости шагов переноса"
+        ordering = ["chain", "predecessor_step__position", "successor_step__position"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["chain", "predecessor_step", "successor_step", "relation_type"],
+                name="unique_reschedule_step_dependency",
+            ),
+            models.CheckConstraint(
+                condition=~Q(predecessor_step=models.F("successor_step")),
+                name="reschedule_dependency_not_self",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["chain", "successor_step"]),
+            models.Index(fields=["chain", "predecessor_step"]),
+            models.Index(fields=["relation_type", "chain"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.predecessor_step_id} -> {self.successor_step_id}"
+
+    def clean(self) -> None:
+        errors = {}
+        if self.chain_id and self.plan_id and self.chain.plan_id != self.plan_id:
+            errors["chain"] = "Цепочка должна принадлежать тому же плану."
+        if (
+            self.plan_id
+            and self.predecessor_step_id
+            and self.predecessor_step.plan_id != self.plan_id
+        ):
+            errors["predecessor_step"] = "Предшествующий шаг должен принадлежать тому же плану."
+        if self.plan_id and self.successor_step_id and self.successor_step.plan_id != self.plan_id:
+            errors["successor_step"] = "Следующий шаг должен принадлежать тому же плану."
+        if (
+            self.chain_id
+            and self.predecessor_step_id
+            and self.predecessor_step.chain_id
+            and self.predecessor_step.chain_id != self.chain_id
+        ):
+            errors["predecessor_step"] = "Предшествующий шаг должен относиться к этой цепочке."
+        if (
+            self.chain_id
+            and self.successor_step_id
+            and self.successor_step.chain_id
+            and self.successor_step.chain_id != self.chain_id
+        ):
+            errors["successor_step"] = "Следующий шаг должен относиться к этой цепочке."
+        if self.predecessor_step_id and self.predecessor_step_id == self.successor_step_id:
+            errors["successor_step"] = "Шаг не может зависеть от самого себя."
+        if errors:
+            raise ValidationError(errors)
 
 
 class LedgerEntry(TimeStampedModel):
@@ -792,6 +2155,21 @@ class LedgerEntry(TimeStampedModel):
         blank=True,
         related_name="ledger_entries",
     )
+    appointment_participant = models.ForeignKey(
+        AppointmentParticipant,
+        verbose_name="участник занятия",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ledger_entries",
+    )
+    price_snapshot = models.DecimalField(
+        "цена на момент списания",
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="создал",
@@ -814,8 +2192,258 @@ class LedgerEntry(TimeStampedModel):
             raise ValidationError({"amount": "Пополнение должно быть положительным."})
         if self.entry_type == self.EntryType.DEBIT and self.amount > 0:
             raise ValidationError({"amount": "Списание должно быть отрицательным."})
-        if self.appointment_id and self.appointment.child_id != self.account.child_id:
+        if (
+            self.appointment_id
+            and not self.appointment_participant_id
+            and self.appointment.child_id != self.account.child_id
+        ):
             raise ValidationError({"appointment": "Занятие должно относиться к получателю счета."})
+        if (
+            self.appointment_participant_id
+            and self.appointment_participant.child_id != self.account.child_id
+        ):
+            raise ValidationError(
+                {
+                    "appointment_participant": "Участник занятия должен относиться к получателю счета."
+                }
+            )
+        if (
+            self.appointment_id
+            and self.appointment_participant_id
+            and self.appointment_participant.appointment_id != self.appointment_id
+        ):
+            raise ValidationError(
+                {"appointment_participant": "Участник должен относиться к выбранному занятию."}
+            )
+
+
+class PayrollAccrual(TimeStampedModel):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Черновик"
+        APPROVED = "approved", "Утверждено"
+        PAID = "paid", "Выплачено"
+        CANCELLED = "cancelled", "Отменено"
+
+    dedupe_key = models.CharField("ключ идемпотентности", max_length=160, unique=True)
+    staff_assignment = models.ForeignKey(
+        AppointmentStaffAssignment,
+        verbose_name="назначение специалиста",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payroll_accruals",
+    )
+    appointment = models.ForeignKey(
+        Appointment,
+        verbose_name="занятие",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payroll_accruals",
+    )
+    appointment_participant = models.ForeignKey(
+        AppointmentParticipant,
+        verbose_name="участник занятия",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payroll_accruals",
+    )
+    ledger_entry = models.ForeignKey(
+        LedgerEntry,
+        verbose_name="проводка списания",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payroll_accruals",
+    )
+    staff_member = models.ForeignKey(
+        StaffMember,
+        verbose_name="специалист",
+        on_delete=models.PROTECT,
+        related_name="payroll_accruals",
+    )
+    service = models.ForeignKey(
+        Service,
+        verbose_name="услуга",
+        on_delete=models.PROTECT,
+        related_name="payroll_accruals",
+    )
+    funding_source = models.ForeignKey(
+        FundingSource,
+        verbose_name="источник финансирования",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payroll_accruals",
+    )
+    pay_rule = models.ForeignKey(
+        StaffCompensationRule,
+        verbose_name="правило начисления",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payroll_accruals",
+    )
+    work_date = models.DateField("дата занятия")
+    starts_at_snapshot = models.DateTimeField("начало")
+    ends_at_snapshot = models.DateTimeField("окончание")
+    duration_minutes = models.PositiveIntegerField("длительность, мин")
+    rate_type_snapshot = models.CharField(
+        "тип ставки", max_length=30, choices=StaffCompensationRule.RateType.choices
+    )
+    rate_amount_snapshot = models.DecimalField("ставка", max_digits=12, decimal_places=2)
+    amount = models.DecimalField("сумма начисления", max_digits=12, decimal_places=2)
+    status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.DRAFT)
+    note = models.TextField("примечание", blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="создал",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_payroll_accruals",
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="утвердил",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_payroll_accruals",
+    )
+    approved_at = models.DateTimeField("утверждено", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "начисление специалисту"
+        verbose_name_plural = "начисления специалистам"
+        ordering = ["-work_date", "staff_member__full_name", "service__name"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(amount__gte=0), name="payroll_accrual_amount_non_negative"
+            ),
+            models.CheckConstraint(
+                condition=Q(rate_amount_snapshot__gte=0), name="payroll_accrual_rate_non_negative"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["staff_member", "work_date", "status"]),
+            models.Index(fields=["appointment", "staff_assignment"]),
+            models.Index(fields=["funding_source", "service", "work_date"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.work_date:%d.%m.%Y} / {self.staff_member} / {self.amount}"
+
+
+class PayrollSheet(TimeStampedModel):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Черновик"
+        APPROVED = "approved", "Утвержден"
+        SENT = "sent", "Отправлен"
+        PAID = "paid", "Выплачен"
+        CANCELLED = "cancelled", "Отменен"
+
+    staff_member = models.ForeignKey(
+        StaffMember,
+        verbose_name="специалист",
+        on_delete=models.PROTECT,
+        related_name="payroll_sheets",
+    )
+    date_from = models.DateField("дата начала")
+    date_to = models.DateField("дата окончания")
+    status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.DRAFT)
+    total_amount = models.DecimalField("итого", max_digits=12, decimal_places=2, default=0)
+    note = models.TextField("примечание", blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="создал",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_payroll_sheets",
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="утвердил",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_payroll_sheets",
+    )
+    approved_at = models.DateTimeField("утверждено", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "расчетный лист"
+        verbose_name_plural = "расчетные листы"
+        ordering = ["-date_to", "staff_member__full_name"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(date_to__gte=models.F("date_from")), name="payroll_sheet_dates_order"
+            ),
+            models.CheckConstraint(
+                condition=Q(total_amount__gte=0), name="payroll_sheet_total_non_negative"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["staff_member", "date_from", "date_to", "status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.staff_member}: {self.date_from:%d.%m.%Y}-{self.date_to:%d.%m.%Y}"
+
+
+class PayrollSheetLine(TimeStampedModel):
+    payroll_sheet = models.ForeignKey(
+        PayrollSheet,
+        verbose_name="расчетный лист",
+        on_delete=models.CASCADE,
+        related_name="lines",
+    )
+    payroll_accrual = models.ForeignKey(
+        PayrollAccrual,
+        verbose_name="начисление",
+        on_delete=models.PROTECT,
+        related_name="sheet_lines",
+    )
+    appointment = models.ForeignKey(
+        Appointment,
+        verbose_name="занятие",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payroll_sheet_lines",
+    )
+    service = models.ForeignKey(
+        Service,
+        verbose_name="услуга",
+        on_delete=models.PROTECT,
+        related_name="payroll_sheet_lines",
+    )
+    work_date = models.DateField("дата занятия")
+    duration_minutes = models.PositiveIntegerField("длительность, мин")
+    amount = models.DecimalField("сумма", max_digits=12, decimal_places=2)
+    note = models.TextField("примечание", blank=True)
+
+    class Meta:
+        verbose_name = "строка расчетного листа"
+        verbose_name_plural = "строки расчетных листов"
+        ordering = ["work_date", "service__name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["payroll_sheet", "payroll_accrual"], name="unique_payroll_sheet_accrual"
+            ),
+            models.CheckConstraint(
+                condition=Q(amount__gte=0), name="payroll_sheet_line_amount_non_negative"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["payroll_sheet", "work_date"]),
+            models.Index(fields=["payroll_accrual"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.payroll_sheet} / {self.work_date:%d.%m.%Y} / {self.amount}"
 
 
 class Note(TimeStampedModel):
@@ -841,12 +2469,24 @@ class Note(TimeStampedModel):
         null=True,
         blank=True,
     )
-    staff_member = models.ForeignKey(StaffMember, verbose_name="специалист", on_delete=models.SET_NULL, null=True, blank=True)
-    appointment = models.ForeignKey(Appointment, verbose_name="занятие", on_delete=models.SET_NULL, null=True, blank=True)
+    staff_member = models.ForeignKey(
+        StaffMember, verbose_name="специалист", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    appointment = models.ForeignKey(
+        Appointment, verbose_name="занятие", on_delete=models.SET_NULL, null=True, blank=True
+    )
     title = models.CharField("заголовок", max_length=200)
     text = models.TextField("текст")
-    priority = models.CharField("приоритет", max_length=20, choices=Priority.choices, default=Priority.MEDIUM)
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name="автор", on_delete=models.SET_NULL, null=True, blank=True)
+    priority = models.CharField(
+        "приоритет", max_length=20, choices=Priority.choices, default=Priority.MEDIUM
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="автор",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         verbose_name = "заметка"
@@ -879,6 +2519,14 @@ class AppointmentConfirmation(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name="confirmations",
     )
+    reschedule_step = models.ForeignKey(
+        AppointmentRescheduleStep,
+        verbose_name="шаг плана переноса",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="confirmations",
+    )
     target_type = models.CharField("кому отправлено", max_length=30, choices=TargetType.choices)
     representative = models.ForeignKey(
         ParentGuardian,
@@ -888,11 +2536,29 @@ class AppointmentConfirmation(TimeStampedModel):
         blank=True,
         related_name="appointment_confirmations",
     )
+    participant = models.ForeignKey(
+        AppointmentParticipant,
+        verbose_name="участник занятия",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="confirmations",
+    )
+    staff_assignment = models.ForeignKey(
+        AppointmentStaffAssignment,
+        verbose_name="назначение специалиста",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="confirmations",
+    )
     email = models.EmailField("email")
     token = models.UUIDField("токен подтверждения", default=uuid.uuid4, unique=True, editable=False)
     subject = models.CharField("тема письма", max_length=200)
     message = models.TextField("текст письма")
-    status = models.CharField("статус ответа", max_length=30, choices=Status.choices, default=Status.PENDING)
+    status = models.CharField(
+        "статус ответа", max_length=30, choices=Status.choices, default=Status.PENDING
+    )
     delivery_status = models.CharField(
         "статус отправки",
         max_length=30,
@@ -916,6 +2582,9 @@ class AppointmentConfirmation(TimeStampedModel):
         verbose_name = "подтверждение занятия"
         verbose_name_plural = "подтверждения занятий"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["reschedule_step", "status", "delivery_status"]),
+        ]
 
     def __str__(self) -> str:
         return f"{self.appointment} -> {self.email}"
@@ -980,7 +2649,9 @@ class TimeOffRequest(TimeStampedModel):
     starts_on = models.DateField("дата начала")
     ends_on = models.DateField("дата окончания")
     reason = models.TextField("причина/комментарий", blank=True)
-    status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.PENDING)
+    status = models.CharField(
+        "статус", max_length=30, choices=Status.choices, default=Status.PENDING
+    )
     admin_note = models.TextField("комментарий администратора", blank=True)
     decided_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -1069,7 +2740,9 @@ class Recommendation(TimeStampedModel):
         self.is_acknowledged = True
         self.acknowledged_at = timezone.now()
         self.acknowledged_by = actor
-        self.save(update_fields=["is_acknowledged", "acknowledged_at", "acknowledged_by", "updated_at"])
+        self.save(
+            update_fields=["is_acknowledged", "acknowledged_at", "acknowledged_by", "updated_at"]
+        )
 
 
 def document_upload_path(instance: Document, filename: str) -> str:
@@ -1125,7 +2798,11 @@ class Document(TimeStampedModel):
     def expires_soon(self) -> bool:
         if self.expires_on is None:
             return False
-        return timezone.localdate() <= self.expires_on <= timezone.localdate() + timezone.timedelta(days=30)
+        return (
+            timezone.localdate()
+            <= self.expires_on
+            <= timezone.localdate() + timezone.timedelta(days=30)
+        )
 
 
 class Consent(TimeStampedModel):
@@ -1162,7 +2839,9 @@ class Consent(TimeStampedModel):
 
     def clean(self) -> None:
         if self.expires_on and self.signed_on and self.expires_on < self.signed_on:
-            raise ValidationError({"expires_on": "Срок действия не может быть раньше даты подписания."})
+            raise ValidationError(
+                {"expires_on": "Срок действия не может быть раньше даты подписания."}
+            )
 
     @property
     def is_valid(self) -> bool:
@@ -1220,7 +2899,12 @@ class Discount(TimeStampedModel):
         Child, verbose_name="получатель", on_delete=models.CASCADE, related_name="discounts"
     )
     service = models.ForeignKey(
-        Service, verbose_name="услуга", on_delete=models.CASCADE, null=True, blank=True, related_name="discounts"
+        Service,
+        verbose_name="услуга",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="discounts",
     )
     percentage = models.DecimalField("процент скидки", max_digits=5, decimal_places=2)
     valid_from = models.DateField("действует с", null=True, blank=True)

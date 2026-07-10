@@ -31,8 +31,14 @@
           {% if user.is_staff %}
           <li class="nav-item"><a class="nav-link" href="{% url 'work_queue' %}"><i class="bi bi-list-check"></i> Очередь</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'schedule' %}"><i class="bi bi-calendar-week"></i> Расписание</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'reschedule_plan_list' %}"><i class="bi bi-diagram-3"></i> Планы</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'service_list' %}"><i class="bi bi-clipboard2-pulse"></i> Услуги</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'room_list' %}"><i class="bi bi-door-open"></i> Кабинеты</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'staff_member_list' %}"><i class="bi bi-person-workspace"></i> Специалисты</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'recipient_list' %}"><i class="bi bi-people"></i> Получатели</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'balances' %}"><i class="bi bi-wallet2"></i> Балансы</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'funding_source_list' %}"><i class="bi bi-cash-stack"></i> Источники</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'staff_compensation_rule_list' %}"><i class="bi bi-currency-exchange"></i> Ставки</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'document_list' %}"><i class="bi bi-file-earmark-text"></i> Документы</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'consent_list' %}"><i class="bi bi-file-earmark-check"></i> Согласия</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'grant_report' %}"><i class="bi bi-graph-up-arrow"></i> Гранты</a></li>

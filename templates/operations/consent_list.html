@@ -1,32 +1,97 @@
 {% extends "base.html" %}
+
 {% block title %}Согласия{% endblock %}
+
 {% block content %}
 <section class="page-header">
   <div>
     <h1>Согласия представителей</h1>
-    <p>{% if child_id %}Согласия получателя{% else %}Все согласия{% endif %}</p>
+    <p>{% if child_id %}Согласия выбранного получателя{% else %}Все согласия получателей{% endif %}</p>
   </div>
   <div class="header-actions">
-    <a class="button-link" href="{% url 'consent_create' %}">+ Зафиксировать согласие</a>
+    <a class="button-link" href="{{ consent_create_url }}">+ Зафиксировать согласие</a>
     {% if child_id %}<a class="button-link secondary" href="{% url 'consent_list' %}">Все согласия</a>{% endif %}
   </div>
 </section>
-<section class="panel">
-  <table>
-    <thead><tr><th>Получатель</th><th>Тип</th><th>Подписано</th><th>Действует до</th><th></th></tr></thead>
-    <tbody>
-    {% for c in consents %}
-      <tr>
-        <td><a href="{% url 'child_detail' pk=c.child_id %}">{{ c.child }}</a></td>
-        <td>{{ c.get_consent_type_display }}</td>
-        <td>{{ c.signed_on|date:"d.m.Y" }}</td>
-        <td>{% if c.expires_on %}{{ c.expires_on|date:"d.m.Y" }}{% else %}—{% endif %}</td>
-        <td>{% if c.is_valid %}<span class="status-pill" style="border-color:var(--ok);color:var(--ok)">активно</span>{% else %}<span class="status-pill" style="border-color:var(--danger);color:var(--danger)">истекло</span>{% endif %}</td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="5"><p class="empty-state">Согласий нет.</p></td></tr>
+
+<section class="consent-overview" aria-label="Сводка согласий">
+  <a class="consent-next-action is-{{ consent_next_action.tone }}" href="{{ consent_next_action.href }}">
+    <span>{{ consent_next_action.label }}</span>
+    <strong>{{ consent_next_action.title }}</strong>
+    <small>{{ consent_next_action.detail }}</small>
+  </a>
+  <div class="consent-summary-grid">
+    {% for item in consent_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
     {% endfor %}
-    </tbody>
-  </table>
+  </div>
+</section>
+
+<section class="consent-layout">
+  <article class="panel consent-panel" id="consent-list">
+    <div class="consent-panel-head">
+      <h2>Реестр согласий</h2>
+      <p>Согласия на персональные данные, фото/видео, внешних специалистов и другие разрешения.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table class="consent-table">
+        <thead>
+          <tr>
+            <th>Получатель</th>
+            <th>Тип</th>
+            <th>Подписано</th>
+            <th>Действует до</th>
+            <th>Документ</th>
+            <th>Статус</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in consents %}
+            <tr>
+              <td data-label="Получатель"><a href="{% url 'child_detail' pk=c.child_id %}">{{ c.child }}</a></td>
+              <td data-label="Тип">{{ c.get_consent_type_display }}</td>
+              <td data-label="Подписано">{% if c.signed_on %}{{ c.signed_on|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+              <td data-label="Действует до">{% if c.expires_on %}{{ c.expires_on|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+              <td data-label="Документ">
+                {% if c.document %}
+                  {{ c.document.title }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td data-label="Статус">
+                {% if c.is_valid %}
+                  <span class="status-pill balance-ok">Активно</span>
+                {% else %}
+                  <span class="status-pill balance-critical">Истекло</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" data-label="Согласия"><p class="empty-state">Согласий нет.</p></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <aside class="consent-sidebar" aria-label="Контроль согласий">
+    <article class="panel consent-control-panel">
+      <h2>Контроль согласий</h2>
+      <ul class="consent-check-list">
+        {% for item in consent_control_items %}
+          <li class="is-{{ item.tone }}">
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.text }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+  </aside>
 </section>
 {% endblock %}

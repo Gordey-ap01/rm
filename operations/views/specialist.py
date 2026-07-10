@@ -3,18 +3,38 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import timedelta
+from dataclasses import dataclass
+from datetime import datetime, time, timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
 from operations.forms import StaffAvailabilityForm, TimeOffRequestForm
-from operations.models import Appointment, StaffAvailability, StaffMember, TimeOffRequest
+from operations.models import (
+    Appointment,
+    AppointmentParticipant,
+    AppointmentStaffAssignment,
+    StaffAvailability,
+    StaffMember,
+    TimeOffRequest,
+)
+
+
+@dataclass(frozen=True)
+class LegacyStaffAssignmentDisplay:
+    appointment: Appointment
+    staff_member: StaffMember
+    starts_at_snapshot: datetime
+    ends_at_snapshot: datetime
+    role: str = AppointmentStaffAssignment.Role.PRIMARY
+
+    def get_role_display(self) -> str:
+        return AppointmentStaffAssignment.Role.PRIMARY.label
 
 
 def specialist_action_staff(request):
@@ -30,10 +50,191 @@ def specialist_home_redirect(request, staff):
     return url
 
 
+def has_mobile_access(request, staff) -> bool:
+    return request.user.is_staff or bool(staff and staff.can_use_mobile)
+
+
+def deny_mobile_access():
+    return HttpResponseForbidden("Доступ к мобильному кабинету специалиста отключен.")
+
+
+def aggregate_participant_attendance(participants) -> str:
+    statuses = [participant.attendance_status for participant in participants]
+    if not statuses:
+        return Appointment.AttendanceStatus.UNKNOWN
+    if Appointment.AttendanceStatus.ATTENDED in statuses:
+        return Appointment.AttendanceStatus.ATTENDED
+    if Appointment.AttendanceStatus.UNKNOWN in statuses:
+        return Appointment.AttendanceStatus.UNKNOWN
+    if all(status == Appointment.AttendanceStatus.EXCUSED for status in statuses):
+        return Appointment.AttendanceStatus.EXCUSED
+    return Appointment.AttendanceStatus.MISSED
+
+
+def participants_for_marking(appointment: Appointment) -> list[AppointmentParticipant]:
+    participants = list(appointment.participants.select_related("child"))
+    if participants or not appointment.child_id:
+        return participants
+    participant, _ = AppointmentParticipant.objects.update_or_create(
+        appointment=appointment,
+        child_id=appointment.child_id,
+        defaults={
+            "attendance_status": appointment.attendance_status,
+            "billing_decision": appointment.billing_decision,
+            "billing_account_id": appointment.billing_account_id,
+            "program_block_id": appointment.program_block_id,
+            "sequence_number": appointment.sequence_number,
+            "admin_note": appointment.admin_note,
+            "specialist_note": appointment.specialist_note,
+            "marked_by_staff_at": appointment.specialist_marked_at,
+            "starts_at_snapshot": appointment.starts_at,
+            "ends_at_snapshot": appointment.ends_at,
+            "appointment_status": appointment.status,
+        },
+    )
+    return [participant]
+
+
+def ensure_staff_assignment_for_marking(appointment: Appointment) -> None:
+    if appointment.staff_assignments.exists() or not appointment.staff_member_id:
+        return
+    AppointmentStaffAssignment.objects.update_or_create(
+        appointment=appointment,
+        staff_member_id=appointment.staff_member_id,
+        defaults={
+            "role": AppointmentStaffAssignment.Role.PRIMARY,
+            "starts_at_snapshot": appointment.starts_at,
+            "ends_at_snapshot": appointment.ends_at,
+            "appointment_status": appointment.status,
+        },
+    )
+
+
+def specialist_week_summary_items(
+    *,
+    schedule_assignments: list[AppointmentStaffAssignment | LegacyStaffAssignmentDisplay],
+    today,
+    marked_count: int,
+    pending_time_off_count: int,
+) -> list[dict[str, str]]:
+    today_count = sum(
+        1
+        for assignment in schedule_assignments
+        if timezone.localtime(assignment.starts_at_snapshot).date() == today
+    )
+    group_count = sum(
+        1
+        for assignment in schedule_assignments
+        if assignment.appointment.session_type == Appointment.SessionType.GROUP
+    )
+    return [
+        {
+            "label": "Сегодня",
+            "value": str(today_count),
+            "hint": "занятий в текущем дне",
+        },
+        {
+            "label": "Неделя",
+            "value": str(len(schedule_assignments)),
+            "hint": "назначений специалиста",
+        },
+        {
+            "label": "Отмечено",
+            "value": str(marked_count),
+            "hint": "занятий с фактом посещения",
+        },
+        {
+            "label": "Группы",
+            "value": str(group_count),
+            "hint": "групповых занятий",
+        },
+        {
+            "label": "Заявки",
+            "value": str(pending_time_off_count),
+            "hint": "ожидают решения администратора",
+        },
+    ]
+
+
+def _assignment_needs_marking(
+    assignment: AppointmentStaffAssignment | LegacyStaffAssignmentDisplay,
+    *,
+    now,
+) -> bool:
+    appointment = assignment.appointment
+    if assignment.ends_at_snapshot >= now:
+        return False
+    if appointment.status not in [Appointment.Status.CONFIRMED, Appointment.Status.PROPOSED]:
+        return False
+    participants = list(appointment.participants.all())
+    if participants:
+        return any(
+            participant.attendance_status == Appointment.AttendanceStatus.UNKNOWN
+            for participant in participants
+        )
+    return appointment.attendance_status == Appointment.AttendanceStatus.UNKNOWN
+
+
+def specialist_next_action(
+    *,
+    schedule_assignments: list[AppointmentStaffAssignment | LegacyStaffAssignmentDisplay],
+    today,
+    now,
+) -> dict[str, str]:
+    for assignment in schedule_assignments:
+        if _assignment_needs_marking(assignment, now=now):
+            appointment = assignment.appointment
+            return {
+                "tone": "warning",
+                "label": "Следующее действие",
+                "title": "Отметить прошедшее занятие",
+                "detail": (
+                    f"{timezone.localtime(assignment.starts_at_snapshot):%d.%m %H:%M} · "
+                    f"{appointment.service}"
+                ),
+                "href": f"#appointment-{appointment.pk}",
+            }
+
+    for assignment in schedule_assignments:
+        if timezone.localtime(assignment.starts_at_snapshot).date() == today:
+            appointment = assignment.appointment
+            return {
+                "tone": "info",
+                "label": "Следующее действие",
+                "title": "Ближайшее занятие сегодня",
+                "detail": f"{timezone.localtime(assignment.starts_at_snapshot):%H:%M} · {appointment.service}",
+                "href": f"#appointment-{appointment.pk}",
+            }
+
+    for assignment in schedule_assignments:
+        if assignment.starts_at_snapshot >= now:
+            appointment = assignment.appointment
+            return {
+                "tone": "info",
+                "label": "Следующее действие",
+                "title": "Следующее занятие в расписании",
+                "detail": (
+                    f"{timezone.localtime(assignment.starts_at_snapshot):%d.%m %H:%M} · "
+                    f"{appointment.service}"
+                ),
+                "href": f"#appointment-{appointment.pk}",
+            }
+
+    return {
+        "tone": "success",
+        "label": "Следующее действие",
+        "title": "Критичных задач нет",
+        "detail": "Можно проверить график или отправить заявку на отгул.",
+        "href": "#staff-availability",
+    }
+
+
 @login_required
 def specialist_home(request):
     staff = getattr(request.user, "staff_profile", None)
-    staff_members = StaffMember.objects.filter(status=StaffMember.Status.ACTIVE).order_by("full_name")
+    staff_members = StaffMember.objects.filter(status=StaffMember.Status.ACTIVE).order_by(
+        "full_name"
+    )
     if request.user.is_staff:
         if request.GET.get("staff_id"):
             staff = get_object_or_404(StaffMember, pk=request.GET["staff_id"])
@@ -42,17 +243,60 @@ def specialist_home(request):
     if not staff:
         messages.error(request, "У пользователя нет профиля специалиста.")
         return redirect("dashboard")
+    if not has_mobile_access(request, staff):
+        return deny_mobile_access()
 
     today = timezone.localdate()
     week_end = today + timedelta(days=7)
-    appointments = (
-        Appointment.objects.filter(staff_member=staff, starts_at__date__gte=today, starts_at__date__lt=week_end)
-        .select_related("child", "service", "room")
-        .order_by("starts_at")
+    tz = timezone.get_current_timezone()
+    week_start_dt = timezone.make_aware(datetime.combine(today, time.min), tz)
+    week_end_dt = timezone.make_aware(datetime.combine(week_end, time.min), tz)
+    assignments = list(
+        AppointmentStaffAssignment.objects.filter(
+            staff_member=staff,
+            starts_at_snapshot__gte=week_start_dt,
+            starts_at_snapshot__lt=week_end_dt,
+        )
+        .select_related(
+            "appointment",
+            "appointment__child",
+            "appointment__service",
+            "appointment__room",
+            "staff_member",
+        )
+        .prefetch_related(
+            "appointment__participants__child", "appointment__staff_assignments__staff_member"
+        )
+        .order_by("starts_at_snapshot")
     )
+    legacy_assignments = [
+        LegacyStaffAssignmentDisplay(
+            appointment=appointment,
+            staff_member=staff,
+            starts_at_snapshot=appointment.starts_at,
+            ends_at_snapshot=appointment.ends_at,
+        )
+        for appointment in Appointment.objects.filter(
+            staff_member=staff,
+            starts_at__gte=week_start_dt,
+            starts_at__lt=week_end_dt,
+        )
+        .exclude(staff_assignments__staff_member=staff)
+        .select_related("child", "service", "room", "staff_member")
+        .prefetch_related("participants__child", "staff_assignments__staff_member")
+        .distinct()
+    ]
+    schedule_assignments = sorted(
+        [*assignments, *legacy_assignments],
+        key=lambda assignment: (assignment.starts_at_snapshot, assignment.appointment.pk),
+    )
+    appointments = [assignment.appointment for assignment in schedule_assignments]
     appointments_by_day = defaultdict(list)
-    for appointment in appointments:
-        appointments_by_day[timezone.localtime(appointment.starts_at).date()].append(appointment)
+    assignments_by_day = defaultdict(list)
+    for assignment in schedule_assignments:
+        day = timezone.localtime(assignment.starts_at_snapshot).date()
+        appointments_by_day[day].append(assignment.appointment)
+        assignments_by_day[day].append(assignment)
 
     day_names = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
     week_days = [
@@ -60,12 +304,26 @@ def specialist_home(request):
             "date": today + timedelta(days=offset),
             "label": day_names[(today + timedelta(days=offset)).weekday()],
             "appointments": appointments_by_day.get(today + timedelta(days=offset), []),
+            "assignments": assignments_by_day.get(today + timedelta(days=offset), []),
         }
         for offset in range(7)
     ]
-    summary = appointments.filter(Q(status=Appointment.Status.COMPLETED) | Q(attendance_status=Appointment.AttendanceStatus.ATTENDED)).count()
+    summary = sum(
+        1
+        for assignment in schedule_assignments
+        if assignment.appointment.status == Appointment.Status.COMPLETED
+        or any(
+            participant.attendance_status == Appointment.AttendanceStatus.ATTENDED
+            for participant in assignment.appointment.participants.all()
+        )
+    )
     availability_windows = staff.availability_windows.order_by("weekday", "starts_at")
     time_off_requests = staff.time_off_requests.order_by("-created_at")[:10]
+    pending_time_off_count = sum(
+        1
+        for item in time_off_requests
+        if item.status == TimeOffRequest.Status.PENDING
+    )
     return render(
         request,
         "operations/specialist_home.html",
@@ -75,6 +333,17 @@ def specialist_home(request):
             "staff_members": staff_members,
             "week_days": week_days,
             "summary": summary,
+            "specialist_summary_items": specialist_week_summary_items(
+                schedule_assignments=schedule_assignments,
+                today=today,
+                marked_count=summary,
+                pending_time_off_count=pending_time_off_count,
+            ),
+            "specialist_next_action": specialist_next_action(
+                schedule_assignments=schedule_assignments,
+                today=today,
+                now=timezone.now(),
+            ),
             "today": today,
             "week_end": week_end,
             "availability_windows": availability_windows,
@@ -89,7 +358,17 @@ def specialist_home(request):
 def mark_appointment(request, pk: int):
     appointment = get_object_or_404(Appointment, pk=pk)
     staff = getattr(request.user, "staff_profile", None)
-    if not request.user.is_staff and appointment.staff_member != staff:
+    if request.user.is_staff and request.POST.get("staff_id"):
+        staff = get_object_or_404(StaffMember, pk=request.POST["staff_id"])
+    if not has_mobile_access(request, staff):
+        return deny_mobile_access()
+    is_assigned = bool(staff) and (
+        appointment.staff_member_id == staff.pk
+        or AppointmentStaffAssignment.objects.filter(
+            appointment=appointment, staff_member=staff
+        ).exists()
+    )
+    if not request.user.is_staff and not is_assigned:
         messages.error(request, "Нет доступа к этому занятию.")
         return redirect("specialist_home")
 
@@ -97,18 +376,70 @@ def mark_appointment(request, pk: int):
         action = request.POST.get("action")
         note = request.POST.get("specialist_note", "").strip()
         if action == "completed":
-            appointment.status = Appointment.Status.COMPLETED
-            appointment.attendance_status = Appointment.AttendanceStatus.ATTENDED
-            appointment.specialist_marked_at = timezone.now()
+            appointment_status = Appointment.Status.COMPLETED
+            fallback_attendance = Appointment.AttendanceStatus.ATTENDED
         elif action == "not_completed":
-            appointment.status = Appointment.Status.NO_SHOW
-            appointment.attendance_status = Appointment.AttendanceStatus.MISSED
-            appointment.specialist_marked_at = timezone.now()
+            appointment_status = Appointment.Status.NO_SHOW
+            fallback_attendance = Appointment.AttendanceStatus.MISSED
+        else:
+            messages.error(request, "Неизвестное действие отметки.")
+            return redirect(specialist_home_redirect(request, staff))
+
+        now = timezone.now()
+        participants = participants_for_marking(appointment)
+        ensure_staff_assignment_for_marking(appointment)
+        valid_attendance_statuses = set(Appointment.AttendanceStatus.values)
+        posted_statuses = {
+            participant.pk: request.POST[f"participant_status_{participant.pk}"]
+            for participant in participants
+            if request.POST.get(f"participant_status_{participant.pk}") in valid_attendance_statuses
+        }
+
+        for participant in participants:
+            participant.appointment_status = appointment_status
+            participant.starts_at_snapshot = appointment.starts_at
+            participant.ends_at_snapshot = appointment.ends_at
+            update_fields = [
+                "appointment_status",
+                "starts_at_snapshot",
+                "ends_at_snapshot",
+                "updated_at",
+            ]
+            if not posted_statuses or participant.pk in posted_statuses:
+                participant.attendance_status = posted_statuses.get(
+                    participant.pk, fallback_attendance
+                )
+                participant.marked_by_staff_at = now
+                update_fields.extend(["attendance_status", "marked_by_staff_at"])
+                if note:
+                    participant.specialist_note = note
+                    update_fields.append("specialist_note")
+            participant.updated_at = now
+            participant.save(update_fields=update_fields)
+
+        attendance_status = (
+            aggregate_participant_attendance(participants) if participants else fallback_attendance
+        )
+        appointment_updates = {
+            "status": appointment_status,
+            "attendance_status": attendance_status,
+            "specialist_marked_at": now,
+            "updated_at": now,
+        }
         if note:
-            appointment.specialist_note = note
-        appointment.save(update_fields=["status", "attendance_status", "specialist_marked_at", "specialist_note", "updated_at"])
-        messages.success(request, "Отметка специалиста сохранена. Решение по списанию остается за администратором.")
-    return redirect("specialist_home")
+            appointment_updates["specialist_note"] = note
+        Appointment.objects.filter(pk=appointment.pk).update(**appointment_updates)
+        AppointmentStaffAssignment.objects.filter(appointment=appointment).update(
+            appointment_status=appointment_status,
+            starts_at_snapshot=appointment.starts_at,
+            ends_at_snapshot=appointment.ends_at,
+            updated_at=now,
+        )
+        messages.success(
+            request,
+            "Отметка специалиста сохранена. Решение по списанию остается за администратором.",
+        )
+    return redirect(specialist_home_redirect(request, staff))
 
 
 @login_required
@@ -117,6 +448,8 @@ def staff_availability_create(request):
     if not staff:
         messages.error(request, "У пользователя нет профиля специалиста.")
         return redirect("specialist_home")
+    if not has_mobile_access(request, staff):
+        return deny_mobile_access()
 
     if request.method == "POST":
         form = StaffAvailabilityForm(request.POST)
@@ -132,11 +465,15 @@ def staff_availability_create(request):
 
 @login_required
 def staff_availability_toggle(request, pk: int):
-    availability = get_object_or_404(StaffAvailability.objects.select_related("staff_member"), pk=pk)
+    availability = get_object_or_404(
+        StaffAvailability.objects.select_related("staff_member"), pk=pk
+    )
     staff = getattr(request.user, "staff_profile", None)
     if not request.user.is_staff and availability.staff_member != staff:
         messages.error(request, "Нет доступа к этому графику.")
         return redirect("specialist_home")
+    if not has_mobile_access(request, availability.staff_member):
+        return deny_mobile_access()
     if request.method == "POST":
         availability.is_active = not availability.is_active
         availability.save(update_fields=["is_active", "updated_at"])
@@ -150,6 +487,8 @@ def time_off_request_create(request):
     if not staff:
         messages.error(request, "У пользователя нет профиля специалиста.")
         return redirect("specialist_home")
+    if not has_mobile_access(request, staff):
+        return deny_mobile_access()
 
     if request.method == "POST":
         form = TimeOffRequestForm(request.POST)
@@ -177,5 +516,7 @@ def time_off_request_decide(request, pk: int):
         time_off.admin_note = request.POST.get("admin_note", "").strip()
         time_off.decided_by = request.user
         time_off.decided_at = timezone.now()
-        time_off.save(update_fields=["status", "admin_note", "decided_by", "decided_at", "updated_at"])
+        time_off.save(
+            update_fields=["status", "admin_note", "decided_by", "decided_at", "updated_at"]
+        )
     return redirect("work_queue")

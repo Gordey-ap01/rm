@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Источники финансирования{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Источники финансирования</h1>
+    <p>Гранты, фонды, спонсоры, сертификаты и личные средства.</p>
+  </div>
+  <a class="button-link" href="{% url 'funding_source_create' %}">Создать источник</a>
+</section>
+
+<section class="directory-overview">
+  <a class="directory-next-action is-{{ funding_next_action.tone }}" href="{{ funding_next_action.href }}">
+    <span>{{ funding_next_action.label }}</span>
+    <strong>{{ funding_next_action.title }}</strong>
+    <small>{{ funding_next_action.detail }}</small>
+  </a>
+  <div class="directory-summary-grid" aria-label="Сводка источников финансирования">
+    {% for item in funding_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="directory-layout">
+  <div class="directory-main">
+    <section class="panel directory-panel" id="funding-source-list">
+      <div class="directory-panel-head">
+        <div>
+          <h2>Источники и правила средств</h2>
+          <p>Источник определяет происхождение средств, период проекта и возможность переноса между услугами или получателями.</p>
+        </div>
+      </div>
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>Название</th>
+              <th>Тип</th>
+              <th>Период</th>
+              <th>Передача средств</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for source in sources %}
+            <tr{% if source.is_archived %} class="muted-row"{% endif %}>
+              <td data-label="Название">
+                <strong>{{ source.name }}</strong>
+                {% if source.notes %}<div class="muted">{{ source.notes|truncatechars:90 }}</div>{% endif %}
+              </td>
+              <td data-label="Тип">{{ source.get_source_type_display }}</td>
+              <td data-label="Период">
+                {% if source.starts_on or source.ends_on %}
+                  {{ source.starts_on|date:"d.m.Y"|default:"—" }}-{{ source.ends_on|date:"d.m.Y"|default:"—" }}
+                {% else %}
+                  <span class="status-pill muted-pill">без срока</span>
+                {% endif %}
+              </td>
+              <td data-label="Передача средств">{{ source.get_transfer_policy_display }}</td>
+              <td data-label="Статус">
+                {% if source.is_archived %}
+                  <span class="status-pill muted-pill">архив</span>
+                {% else %}
+                  <span class="status-pill">активен</span>
+                {% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'funding_source_edit' source.pk %}">Править</a>
+                {% if not source.is_archived %}
+                  <a class="small-action" href="{% url 'grant_report' %}?funding={{ source.pk }}">Отчет</a>
+                  <button class="secondary-button small-action"
+                          x-data
+                          @click="if(confirm('Архивировать источник «{{ source.name }}»? История счетов и проводок сохранится.')) { $el.closest('td').querySelector('form').submit() }">
+                    В архив
+                  </button>
+                  <form method="post" action="{% url 'funding_source_archive' source.pk %}" class="d-none">
+                    {% csrf_token %}
+                  </form>
+                {% else %}
+                  <form method="post" action="{% url 'funding_source_restore' source.pk %}" class="inline-form compact-form">
+                    {% csrf_token %}
+                    <button class="small-action" type="submit">Восстановить</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" data-label="Источники"><div class="empty-state">Источники финансирования еще не созданы.</div></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="directory-sidebar" aria-label="Контроль источников финансирования">
+    <section class="panel directory-control-panel">
+      <h2>Контроль</h2>
+      <ul class="directory-check-list">
+        <li>
+          <strong>Счета баланса</strong>
+          <span>Каждый счет получателя привязан к источнику финансирования.</span>
+        </li>
+        <li>
+          <strong>Гранты и фонды</strong>
+          <span>Для проектных средств нужен период, квоты услуг и распределения специалистов.</span>
+        </li>
+        <li>
+          <strong>Перенос средств</strong>
+          <span>Политика источника определяет, можно ли переносить средства между услугами или получателями.</span>
+        </li>
+        <li>
+          <strong>Архив</strong>
+          <span>Архив скрывает источник из новых операций, но сохраняет счета, проводки и отчеты.</span>
+        </li>
+      </ul>
+    </section>
+  </aside>
+</section>
+{% endblock %}

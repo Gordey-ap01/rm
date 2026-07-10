@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import ROUND_FLOOR, Decimal, InvalidOperation
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import ValidationError
@@ -12,10 +14,446 @@ from operations.forms import (
     ProgramFundsTransferForm,
     TreatmentProgramForm,
 )
-from operations.models import Child, ProgramBlock, TreatmentProgram
+from operations.models import BalanceAccount, Child, ProgramBlock, TreatmentProgram
 from operations.services import billing as billing_svc, program_wizard
 
 from ._common import is_admin_user
+
+
+def _form_value(form, field_name: str):
+    value = form[field_name].value()
+    if value in (None, ""):
+        return None
+    return value
+
+
+def _form_choice_label(form, field_name: str, fallback: str) -> str:
+    value = _form_value(form, field_name)
+    if value is None:
+        return fallback
+    choices = {str(key): str(label) for key, label in form.fields[field_name].choices}
+    return choices.get(str(value), fallback)
+
+
+def _form_model_label(form, field_name: str, fallback: str) -> str:
+    value = _form_value(form, field_name)
+    if value is None:
+        return fallback
+    queryset = getattr(form.fields[field_name], "queryset", None)
+    if queryset is None:
+        return str(value)
+    obj = queryset.filter(pk=value).first()
+    return str(obj) if obj else fallback
+
+
+def _wizard_bool_value(form, field_name: str) -> bool:
+    value = _form_value(form, field_name)
+    if isinstance(value, bool):
+        return value
+    return str(value).lower() in {"1", "on", "true", "yes"}
+
+
+def program_block_wizard_summary_items(block: ProgramBlock, form, preview=None) -> list[dict]:
+    planned_remaining = max(block.planned_sessions - block.scheduled_count, 0)
+    funded_remaining = (
+        preview.funded_remaining if preview else program_wizard.funded_sessions_remaining(block)
+    )
+    funded_label = "не ограничено"
+    if funded_remaining is not None:
+        funded_label = str(funded_remaining)
+    requested = _form_value(form, "requested_count") or planned_remaining or 1
+    return [
+        {
+            "label": "Каскад",
+            "value": f"{block.number}. {block.title}",
+            "hint": str(block.program.child),
+        },
+        {
+            "label": "План",
+            "value": f"{block.scheduled_count} / {block.planned_sessions}",
+            "hint": f"осталось по плану: {planned_remaining}",
+        },
+        {
+            "label": "Подбор",
+            "value": f"запрошено: {requested}",
+            "hint": f"доступно по оплате: {funded_label}",
+        },
+        {
+            "label": "Специалист и кабинет",
+            "value": _form_model_label(form, "staff_member", "автоподбор специалиста"),
+            "hint": _form_model_label(form, "room", "автоподбор кабинета"),
+        },
+        {
+            "label": "Создавать как",
+            "value": _form_choice_label(form, "appointment_status", "Предложено / на согласование"),
+            "hint": "бронь сверх оплаты включена"
+            if _wizard_bool_value(form, "allow_unpaid_reserve")
+            else "в пределах доступной оплаты",
+        },
+    ]
+
+
+def program_block_wizard_attention_items(block: ProgramBlock, form, preview=None) -> list[dict]:
+    items = []
+    funded_remaining = (
+        preview.funded_remaining if preview else program_wizard.funded_sessions_remaining(block)
+    )
+    if not block.balance_account_id:
+        items.append(
+            {
+                "tone": "info",
+                "title": "Счет оплаты не выбран",
+                "text": "Мастер подберет окна, но не сможет ограничить количество по доступной оплате.",
+            }
+        )
+    elif funded_remaining == 0 and not _wizard_bool_value(form, "allow_unpaid_reserve"):
+        items.append(
+            {
+                "tone": "warning",
+                "title": "Нет доступной оплаты",
+                "text": "Включите осознанную бронь сверх оплаты или пополните счет каскада.",
+            }
+        )
+    if _wizard_bool_value(form, "allow_unpaid_reserve"):
+        items.append(
+            {
+                "tone": "warning",
+                "title": "Включена бронь сверх оплаты",
+                "text": "Созданные занятия могут потребовать отдельного решения администратора по оплате.",
+            }
+        )
+    if _wizard_bool_value(form, "allow_outside_availability"):
+        items.append(
+            {
+                "tone": "warning",
+                "title": "Разрешен подбор вне графика",
+                "text": "Проверьте согласование со специалистом перед созданием занятий.",
+            }
+        )
+    if preview and preview.limited_by_balance:
+        items.append(
+            {
+                "tone": "warning",
+                "title": "Количество ограничено оплатой",
+                "text": f"Можно создать {preview.allowed_count} из {preview.requested_count}.",
+            }
+        )
+    if preview and preview.missing_count:
+        items.append(
+            {
+                "tone": "info",
+                "title": "Не хватило свободных окон",
+                "text": f"Не найдено окон: {preview.missing_count}. Расширьте период или время поиска.",
+            }
+        )
+    if form.non_field_errors():
+        items.append(
+            {
+                "tone": "danger",
+                "title": "Мастер не готов к созданию",
+                "text": "Проверьте параметры подбора и ошибки формы.",
+            }
+        )
+    return items
+
+
+def program_block_wizard_context(block: ProgramBlock, form, preview, cancel_url: str) -> dict:
+    return {
+        "block": block,
+        "form": form,
+        "preview": preview,
+        "cancel_url": cancel_url,
+        "wizard_summary_items": program_block_wizard_summary_items(block, form, preview),
+        "wizard_attention_items": program_block_wizard_attention_items(block, form, preview),
+    }
+
+
+def _transfer_form_account(form, field_name: str, fallback=None):
+    value = _form_value(form, field_name)
+    if value is None:
+        return fallback
+    queryset = getattr(form.fields[field_name], "queryset", None)
+    if queryset is None:
+        return fallback
+    return queryset.filter(pk=value).first() or fallback
+
+
+def _transfer_amount_value(form) -> Decimal | None:
+    value = _form_value(form, "amount")
+    if value is None:
+        return None
+    try:
+        amount = Decimal(str(value).replace(",", "."))
+    except (InvalidOperation, ValueError):
+        return None
+    return amount if amount > 0 else None
+
+
+def _transfer_balance_label(account: BalanceAccount | None) -> str:
+    if account is None:
+        return "не выбран"
+    return f"{account.current_balance} {account.get_unit_display()}"
+
+
+def _transfer_estimated_sessions(
+    block: ProgramBlock,
+    target_account: BalanceAccount | None,
+    amount: Decimal | None,
+) -> int | None:
+    if target_account is None or amount is None:
+        return None
+    if target_account.unit == BalanceAccount.Unit.SESSIONS:
+        return int(amount.to_integral_value(rounding=ROUND_FLOOR))
+    price = block.service.default_price
+    if not price or price <= 0:
+        return None
+    return int((amount / price).to_integral_value(rounding=ROUND_FLOOR))
+
+
+def program_block_transfer_summary_items(block: ProgramBlock, form) -> list[dict[str, str]]:
+    source_account = _transfer_form_account(form, "from_account")
+    target_account = _transfer_form_account(form, "to_account", block.balance_account)
+    amount = _transfer_amount_value(form)
+    estimated = _transfer_estimated_sessions(block, target_account, amount)
+
+    source_after = source_account.current_balance - amount if source_account and amount else None
+    target_after = target_account.current_balance + amount if target_account and amount else None
+    estimated_hint = (
+        f"примерно занятий после переноса: {estimated}"
+        if estimated is not None
+        else "количество занятий будет рассчитано после выбора суммы"
+    )
+    return [
+        {
+            "label": "Каскад",
+            "value": f"{block.number}. {block.title}",
+            "hint": str(block.program.child),
+        },
+        {
+            "label": "Услуга",
+            "value": str(block.service),
+            "hint": str(block.staff_member) if block.staff_member else "специалист не выбран",
+        },
+        {
+            "label": "Счет каскада",
+            "value": str(target_account) if target_account else "не выбран",
+            "hint": f"сейчас: {_transfer_balance_label(target_account)}",
+        },
+        {
+            "label": "Откуда переносим",
+            "value": str(source_account) if source_account else "выберите счет",
+            "hint": (
+                f"после переноса: {source_after} {source_account.get_unit_display()}"
+                if source_after is not None
+                else "исходный счет и остаток"
+            ),
+        },
+        {
+            "label": "Куда придет",
+            "value": str(target_account) if target_account else "выберите счет",
+            "hint": (
+                f"после переноса: {target_after} {target_account.get_unit_display()}"
+                if target_after is not None
+                else "целевой счет каскада"
+            ),
+        },
+        {
+            "label": "Объем переноса",
+            "value": str(amount) if amount is not None else "не указан",
+            "hint": estimated_hint,
+        },
+    ]
+
+
+def program_block_transfer_control_items(block: ProgramBlock, form) -> list[dict[str, str]]:
+    source_account = _transfer_form_account(form, "from_account")
+    target_account = _transfer_form_account(form, "to_account", block.balance_account)
+    amount = _transfer_amount_value(form)
+    items = [
+        {
+            "tone": "info",
+            "title": "Ledger сохранит две операции",
+            "text": "С исходного счета будет создан debit, на целевой счет - credit с одним основанием.",
+        }
+    ]
+    if form.errors:
+        items.append(
+            {
+                "tone": "danger",
+                "title": "Есть ошибки формы",
+                "text": "Проверьте исходный счет, целевой счет, сумму и основание переноса.",
+            }
+        )
+    if not block.balance_account_id:
+        items.append(
+            {
+                "tone": "warning",
+                "title": "У каскада нет текущего счета",
+                "text": "После успешного переноса выбранный целевой счет будет привязан к каскаду.",
+            }
+        )
+    if not form.fields["from_account"].queryset.exists():
+        items.append(
+            {
+                "tone": "warning",
+                "title": "Нет доступного исходного счета",
+                "text": "Для переноса нужен другой активный счет этого получателя с теми же единицами.",
+            }
+        )
+    if source_account and target_account and source_account.unit != target_account.unit:
+        items.append(
+            {
+                "tone": "danger",
+                "title": "Разные единицы счетов",
+                "text": "Перенос возможен только между счетами в занятиях или только между счетами в рублях.",
+            }
+        )
+    if source_account and amount and amount > source_account.current_balance:
+        items.append(
+            {
+                "tone": "warning",
+                "title": "Сумма больше доступного остатка",
+                "text": "Уменьшите сумму или сначала пополните исходный счет.",
+            }
+        )
+    if target_account and target_account.unit == BalanceAccount.Unit.MONEY:
+        items.append(
+            {
+                "tone": "info",
+                "title": "Рубли пересчитываются в занятия",
+                "text": "Оценка количества занятий строится от текущей цены услуги каскада.",
+            }
+        )
+    return items
+
+
+def program_block_transfer_next_action(block: ProgramBlock, form) -> dict[str, str]:
+    source_account = _transfer_form_account(form, "from_account")
+    target_account = _transfer_form_account(form, "to_account", block.balance_account)
+    amount = _transfer_amount_value(form)
+    if form.errors:
+        return {
+            "tone": "danger",
+            "label": "Следующий шаг",
+            "title": "Исправить ошибки",
+            "detail": "Форма не готова к переносу средств.",
+            "href": "#transfer-form",
+        }
+    if not source_account:
+        return {
+            "tone": "warning",
+            "label": "Следующий шаг",
+            "title": "Выбрать исходный счет",
+            "detail": "Нужен активный счет получателя, с которого можно списать средства.",
+            "href": "#transfer-form",
+        }
+    if not target_account:
+        return {
+            "tone": "warning",
+            "label": "Следующий шаг",
+            "title": "Выбрать счет каскада",
+            "detail": "Без целевого счета перенос не сможет привязать средства к каскаду.",
+            "href": "#transfer-form",
+        }
+    if amount is None:
+        return {
+            "tone": "info",
+            "label": "Следующий шаг",
+            "title": "Указать объем переноса",
+            "detail": "Введите количество занятий или сумму в единицах выбранных счетов.",
+            "href": "#transfer-form",
+        }
+    if amount > source_account.current_balance:
+        return {
+            "tone": "warning",
+            "label": "Следующий шаг",
+            "title": "Проверить остаток",
+            "detail": "Сумма переноса больше доступного остатка исходного счета.",
+            "href": "#transfer-form",
+        }
+    return {
+        "tone": "success",
+        "label": "Следующий шаг",
+        "title": "Проверить и перенести",
+        "detail": "После отправки будут созданы ledger-операции списания и пополнения.",
+        "href": "#transfer-form",
+    }
+
+
+def program_block_transfer_context(block: ProgramBlock, form, cancel_url: str) -> dict:
+    return {
+        "block": block,
+        "form": form,
+        "cancel_url": cancel_url,
+        "transfer_summary_items": program_block_transfer_summary_items(block, form),
+        "transfer_control_items": program_block_transfer_control_items(block, form),
+        "transfer_next_action": program_block_transfer_next_action(block, form),
+    }
+
+
+def _program_control_items(child: Child | None = None) -> list[dict[str, str]]:
+    recipient_detail = (
+        f"Программа будет создана для получателя: {child.full_name}."
+        if child
+        else "Выберите получателя, для которого собирается программа занятий."
+    )
+    return [
+        {
+            "title": "Получатель",
+            "detail": recipient_detail,
+        },
+        {
+            "title": "Каскады и серии",
+            "detail": (
+                "После создания программы добавьте блоки: каждый блок задает услугу, план занятий, "
+                "счет и дальнейшую нумерацию серии."
+            ),
+        },
+        {
+            "title": "Период программы",
+            "detail": (
+                "Даты помогают руководителю видеть рамки программы; расписание занятий создается отдельно "
+                "через каскады."
+            ),
+        },
+        {
+            "title": "Консультация",
+            "detail": "Связь с консультацией нужна как основание программы, если она уже была проведена.",
+        },
+    ]
+
+
+def _program_block_control_items(program: TreatmentProgram, next_number: int) -> list[dict[str, str]]:
+    return [
+        {
+            "title": "Номер каскада",
+            "detail": (
+                f"Следующий номер для этой программы: {next_number}. "
+                "Номер используется в карточке получателя, расписании и отчетах."
+            ),
+        },
+        {
+            "title": "Услуга и специалист",
+            "detail": (
+                "Услуга определяет допустимые счета и будущие занятия; специалист может быть задан сразу "
+                "или выбран позднее в мастере расписания."
+            ),
+        },
+        {
+            "title": "План и счет",
+            "detail": (
+                "План занятий задает объем каскада, а счет ограничивает создание занятий доступной оплатой "
+                "или грантовой квотой получателя."
+            ),
+        },
+        {
+            "title": "Дальше расписание",
+            "detail": (
+                f"После сохранения блок появится в карточке {program.child}; затем можно открыть мастер "
+                "подбора окон или перенос средств между счетами."
+            ),
+        },
+    ]
 
 
 @login_required
@@ -39,6 +477,12 @@ def program_create(request, child_id: int | None = None):
             "form": form,
             "title": "Создать программу занятий",
             "subtitle": child.full_name if child else "",
+            "form_panel_title": "Параметры программы",
+            "form_intro": (
+                "Программа объединяет каскады занятий для одного получателя и служит рамкой для планирования."
+            ),
+            "control_title": "Контроль программы",
+            "object_form_control_items": _program_control_items(child),
             "cancel_url": cancel_url,
         },
     )
@@ -65,6 +509,13 @@ def program_block_create(request, program_id: int):
             "form": form,
             "title": "Добавить блок программы",
             "subtitle": str(program),
+            "form_panel_title": "Параметры каскада",
+            "form_intro": (
+                "Каскад задает услугу, план занятий, специалиста и счет, от которого мастер расписания "
+                "проверяет доступную оплату."
+            ),
+            "control_title": "Контроль каскада",
+            "object_form_control_items": _program_block_control_items(program, next_number),
             "cancel_url": reverse("recipient_detail", args=[program.child_id]),
         },
     )
@@ -147,12 +598,12 @@ def program_block_schedule_wizard(request, block_id: int):
     return render(
         request,
         "operations/program_block_schedule_wizard.html",
-        {
-            "block": block,
-            "form": form,
-            "preview": preview,
-            "cancel_url": reverse("recipient_detail", args=[block.program.child_id]),
-        },
+        program_block_wizard_context(
+            block,
+            form,
+            preview,
+            reverse("recipient_detail", args=[block.program.child_id]),
+        ),
     )
 
 
@@ -188,9 +639,9 @@ def program_block_transfer_funds(request, block_id: int):
     return render(
         request,
         "operations/program_block_transfer_funds.html",
-        {
-            "block": block,
-            "form": form,
-            "cancel_url": reverse("recipient_detail", args=[block.program.child_id]),
-        },
+        program_block_transfer_context(
+            block,
+            form,
+            reverse("recipient_detail", args=[block.program.child_id]),
+        ),
     )

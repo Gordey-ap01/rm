@@ -3,50 +3,117 @@
 {% block title %}Счета баланса{% endblock %}
 
 {% block content %}
-<section class="page-header d-flex justify-content-between align-items-end mb-3">
+<section class="page-header">
   <div>
-    <h1 class="h3 mb-1">Счета баланса</h1>
-    <p class="text-muted small mb-0">Остатки считаются из начального остатка и операций ledger.</p>
+    <h1>Счета баланса</h1>
+    <p>Остатки считаются из начального остатка и операций ledger.</p>
   </div>
-  <div class="header-actions">
-    <a class="btn btn-primary btn-sm" href="{% url 'balance_account_create' %}">+ Добавить счёт</a>
+  <div class="page-actions">
+    <a class="button-link" href="{% url 'balance_account_create' %}">Добавить счет</a>
   </div>
 </section>
 
-<section class="panel bg-white border rounded p-3 shadow-sm">
-  <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead class="table-light">
-      <tr><th>Получатель</th><th>Источник</th><th>Тип</th><th>Услуга</th><th class="text-end">Остаток</th><th>Риск</th><th>Статус</th><th class="text-end"></th></tr>
-      </thead>
-      <tbody>
-      {% for account in accounts %}
-        <tr>
-          <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ account.child.color }}"></span> {{ account.child }}</td>
-          <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ account.color }}"></span> {{ account.funding_source }}</td>
-          <td>{{ account.get_unit_display }}</td>
-          <td>{% if account.service %}{{ account.service }}{% else %}<span class="text-muted">Любые</span>{% endif %}</td>
-          <td class="text-end fw-semibold">{{ account.current_balance }}</td>
-          <td><span class="status-pill balance-{{ account.warning_level }}">{{ account.warning_label }}</span></td>
-          <td><span class="status-pill">{{ account.get_status_display }}</span></td>
-          <td class="text-end text-nowrap">
-            <a class="btn btn-outline-secondary btn-sm" href="{% url 'balance_account_edit' account.pk %}">Править</a>
-            <a class="btn btn-outline-primary btn-sm" href="{% url 'payment_create_for_account' account.pk %}">Пополнить</a>
-            <button class="btn btn-outline-danger btn-sm"
-                    x-data
-                    @click="if(confirm('Удалить счёт «{{ account }}»? Это действие необратимо.')) { $el.closest('td').querySelector('form').submit() }">
-              Удалить
-            </button>
-            <form method="post" action="{% url 'balance_account_delete' account.pk %}" class="d-none">
-              {% csrf_token %}
-            </form>
-          </td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="8" class="text-center py-4 text-muted">Счетов пока нет.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
+<section class="balance-overview" aria-label="Сводка счетов баланса">
+  <a class="balance-next-action is-{{ balance_next_action.tone }}" href="{{ balance_next_action.href }}">
+    <span>{{ balance_next_action.label }}</span>
+    <strong>{{ balance_next_action.title }}</strong>
+    <small>{{ balance_next_action.detail }}</small>
+  </a>
+  <div class="balance-summary-grid">
+    {% for item in balance_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
   </div>
+</section>
+
+<section class="balance-layout">
+  <div class="balance-main">
+    <section class="panel balance-panel" id="balance-list">
+      <div class="balance-panel-head">
+        <h2>Список счетов</h2>
+        <p>Проверяйте низкие остатки до записи занятий и перед формированием программ.</p>
+      </div>
+      <div class="table-wrap balance-table-wrap">
+        <table class="grid balance-table">
+          <thead>
+            <tr>
+              <th>Получатель</th>
+              <th>Источник</th>
+              <th>Тип</th>
+              <th>Услуга</th>
+              <th>Остаток</th>
+              <th>Риск</th>
+              <th>Статус</th>
+              <th class="table-actions">Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for account in accounts %}
+              <tr>
+                <td data-label="Получатель">
+                  <span class="color-dot" style="background:{{ account.child.color }}"></span>
+                  {{ account.child }}
+                </td>
+                <td data-label="Источник">
+                  <span class="color-dot" style="background:{{ account.color }}"></span>
+                  {{ account.funding_source }}
+                </td>
+                <td data-label="Тип">{{ account.get_unit_display }}</td>
+                <td data-label="Услуга">{% if account.service %}{{ account.service }}{% else %}<span class="muted">Любые</span>{% endif %}</td>
+                <td data-label="Остаток"><strong>{{ account.current_balance }}</strong></td>
+                <td data-label="Риск"><span class="status-pill balance-{{ account.warning_level }}">{{ account.warning_label }}</span></td>
+                <td data-label="Статус"><span class="status-pill">{{ account.get_status_display }}</span></td>
+                <td class="table-actions" data-label="Действия">
+                  <a class="small-action" href="{% url 'balance_account_edit' account.pk %}">Править</a>
+                  <a class="small-action" href="{% url 'payment_create_for_account' account.pk %}">Пополнить</a>
+                  <button class="small-action danger-action"
+                          type="button"
+                          x-data
+                          @click="if(confirm('Удалить счёт «{{ account }}»? Это действие необратимо.')) { $el.closest('td').querySelector('form').submit() }">
+                    Удалить
+                  </button>
+                  <form method="post" action="{% url 'balance_account_delete' account.pk %}" hidden>
+                    {% csrf_token %}
+                  </form>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="8" class="empty-state" data-label="Счета">Счетов пока нет.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="balance-sidebar">
+    <section class="panel balance-control-panel">
+      <h2>Контроль балансов</h2>
+      <ul class="balance-check-list">
+        <li>
+          <strong>Занятия и рубли</strong>
+          <span>Счета могут хранить остаток в занятиях или деньгах; единица задается в самом счете.</span>
+        </li>
+        <li>
+          <strong>Источник</strong>
+          <span>Личные оплаты, гранты, фонды и спонсоры проходят через источник финансирования.</span>
+        </li>
+        <li>
+          <strong>Риск</strong>
+          <span>Метки остатка помогают заранее увидеть исчерпанные и близкие к нулю счета.</span>
+        </li>
+        <li>
+          <strong>Удаление</strong>
+          <span>Счет нельзя удалить, если он привязан к активным занятиям или платежам.</span>
+        </li>
+      </ul>
+    </section>
+  </aside>
 </section>
 {% endblock %}

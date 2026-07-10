@@ -3,35 +3,63 @@
 {% block title %}Подтверждение занятия{% endblock %}
 
 {% block content %}
-<section class="auth-panel public-confirmation">
-  <div class="auth-copy">
-    <h1>Подтверждение занятия</h1>
-    <p>{{ confirmation.appointment.child }} · {{ confirmation.appointment.service }}</p>
-  </div>
+<section class="public-confirmation-shell">
+  <article class="auth-panel public-confirmation">
+    <div class="auth-copy">
+      <span class="eyebrow">Согласование занятия</span>
+      <h1>{{ child_names }}</h1>
+      <p>{{ confirmation.appointment.service }} · {{ confirmation_target_label }}</p>
+    </div>
 
-  <dl class="facts">
-    <div><dt>Дата</dt><dd>{{ confirmation.appointment.starts_at|date:"d.m.Y H:i" }}-{{ confirmation.appointment.ends_at|date:"H:i" }}</dd></div>
-    <div><dt>Специалист</dt><dd>{{ confirmation.appointment.staff_member }}</dd></div>
-    <div><dt>Кабинет</dt><dd>{% if confirmation.appointment.room %}{{ confirmation.appointment.room }}{% else %}Не указан{% endif %}</dd></div>
-    <div><dt>Статус ответа</dt><dd>{{ confirmation.get_status_display }}</dd></div>
-  </dl>
+    <a class="public-confirmation-next is-{{ confirmation_next_action.tone }}" href="{{ confirmation_next_action.href }}">
+      <span>{{ confirmation_next_action.label }}</span>
+      <strong>{{ confirmation_next_action.title }}</strong>
+      <small>{{ confirmation_next_action.detail }}</small>
+    </a>
 
-  {% if submitted %}
-    <p class="note-block">Ответ сохранен. Администратор увидит его в системе.</p>
-  {% elif confirmation.status != "pending" %}
-    <p class="note-block">Ответ уже был отправлен: {{ confirmation.get_status_display }}.</p>
-  {% else %}
-    <form method="post" class="form confirmation-actions">
-      {% csrf_token %}
-      <label class="field">
-        <span>{{ form.response_note.label }}</span>
-        {{ form.response_note }}
-      </label>
-      <div class="form-actions">
-        <button type="submit" name="action" value="confirm">Подтвердить</button>
-        <button class="danger-link" type="submit" name="action" value="decline">Отклонить</button>
+    <div class="public-confirmation-summary">
+      {% for item in confirmation_summary_items %}
+        <div>
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+          <small>{{ item.hint }}</small>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div id="confirmation-result">
+      {% if submitted %}
+        <p class="note-block">Ответ сохранен. Администратор увидит его в системе.</p>
+      {% elif confirmation.status != "pending" %}
+        <p class="note-block">Ответ уже был отправлен: {{ confirmation.get_status_display }}.</p>
+      {% else %}
+        <form method="post" class="form confirmation-actions" id="confirmation-form">
+          {% csrf_token %}
+          <label class="field">
+            <span>{{ form.response_note.label }}</span>
+            {{ form.response_note }}
+          </label>
+          <div class="form-actions">
+            <button type="submit" name="action" value="confirm">Подтвердить</button>
+            <button class="danger-link" type="submit" name="action" value="decline">Отклонить</button>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  </article>
+
+  <aside class="public-confirmation-sidebar" aria-label="Контроль согласования">
+    <article class="panel public-confirmation-control">
+      <h2>Контроль согласования</h2>
+      <div class="public-confirmation-checks">
+        {% for item in confirmation_control_items %}
+          <div class="is-{{ item.tone }}">
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.text }}</span>
+          </div>
+        {% endfor %}
       </div>
-    </form>
-  {% endif %}
+    </article>
+  </aside>
 </section>
 {% endblock %}
