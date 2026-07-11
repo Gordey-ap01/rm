@@ -24,7 +24,7 @@ Update 2026-07-12: `apply_chain(chain)` and registry-level chain UX/metrics are 
 - стек/deploy: docs/decisions/ADR-001-django-postgresql-local-first.md и docs/PRODUCTION_DEPLOYMENT.md
 - первичные требования интервью: docs/interviews/interview-director-2026-06-23.md
 
-Если доступен Graphify и есть graphify-out/graph.json, сначала используй graphify query как индекс проекта. Code graph обновлен локально, но semantic extraction документации может быть pending без LLM API key, поэтому граф не считать источником правды против свежих docs/current-state.md, docs/07-updated-domain-model-after-interview.md и кода.
+Если доступен Graphify и есть graphify-out/graph.json, сначала используй graphify query как индекс проекта. Graphify semantic extraction был обновлен 2026-07-12 через Gemini после установки недостающего Python-пакета `openai`; граф снова видит свежие `apply_chain()`, `revalidate_chain()` и `create_chain_for_steps()`. При расхождениях свежие docs/current-state.md, docs/07-updated-domain-model-after-interview.md и код остаются источником правды.
 
 Критические правила:
 - Не править БД, финансы, расписание или статусы без сверки с актуальной доменной моделью.
