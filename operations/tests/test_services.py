@@ -6,6 +6,7 @@ import zipfile
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 from io import BytesIO
+from unittest import mock
 
 from django.contrib.auth.models import User
 from django.core import mail
@@ -1398,6 +1399,114 @@ class ReschedulingPlanServiceTests(_FixturesMixin, TestCase):
         )
         self.assertEqual(second.status, AppointmentRescheduleStep.Status.VALID)
         self.assertIn("confirmation_blocked", [issue["code"] for issue in chain.validation_summary["issues"]])
+
+    def test_apply_chain_applies_steps_atomically(self):
+        plan, chain, first, second, first_source, second_source = self._reschedule_chain_fixture()
+        plan_svc.revalidate_chain(chain)
+
+        result = plan_svc.apply_chain(chain, actor=self.user)
+
+        chain.refresh_from_db()
+        plan.refresh_from_db()
+        first.refresh_from_db()
+        second.refresh_from_db()
+        first_source.refresh_from_db()
+        second_source.refresh_from_db()
+        self.assertEqual(len(result.applied_steps), 2)
+        self.assertEqual(chain.status, AppointmentRescheduleChain.Status.APPLIED)
+        self.assertEqual(chain.applied_by, self.user)
+        self.assertEqual(chain.validation_summary["applied"], 2)
+        self.assertEqual(first.status, AppointmentRescheduleStep.Status.APPLIED)
+        self.assertEqual(second.status, AppointmentRescheduleStep.Status.APPLIED)
+        self.assertEqual(first_source.status, Appointment.Status.RESCHEDULED)
+        self.assertEqual(second_source.status, Appointment.Status.RESCHEDULED)
+        self.assertEqual(plan.status, AppointmentReschedulePlan.Status.APPLIED)
+        self.assertEqual(plan.applied_by, self.user)
+        first_new = first.created_appointment
+        second_new = second.created_appointment
+        self.assertEqual(first_new.source_appointment, first_source)
+        self.assertEqual(second_new.source_appointment, second_source)
+        self.assertEqual(first_new.starts_at, first.proposed_starts_at)
+        self.assertEqual(second_new.starts_at, second.proposed_starts_at)
+        self.assertFalse(LedgerEntry.objects.filter(appointment__in=[first_new, second_new]).exists())
+
+    def test_apply_chain_requires_ready_chain(self):
+        _, chain, first, second, first_source, second_source = self._reschedule_chain_fixture()
+
+        with self.assertRaisesMessage(ValidationError, "ready"):
+            plan_svc.apply_chain(chain, actor=self.user)
+
+        chain.refresh_from_db()
+        first.refresh_from_db()
+        second.refresh_from_db()
+        first_source.refresh_from_db()
+        second_source.refresh_from_db()
+        self.assertEqual(chain.status, AppointmentRescheduleChain.Status.DRAFT)
+        self.assertEqual(first.status, AppointmentRescheduleStep.Status.VALID)
+        self.assertEqual(second.status, AppointmentRescheduleStep.Status.VALID)
+        self.assertEqual(first_source.status, Appointment.Status.CONFIRMED)
+        self.assertEqual(second_source.status, Appointment.Status.CONFIRMED)
+        self.assertFalse(Appointment.objects.filter(source_appointment__in=[first_source, second_source]).exists())
+
+    def test_apply_chain_persists_stale_revalidation_without_failed_status(self):
+        _, chain, first, second, first_source, second_source = self._reschedule_chain_fixture()
+        plan_svc.revalidate_chain(chain)
+        appt_svc.create_appointment(
+            child=self.child,
+            staff_member=self.staff_a,
+            service=self.service_log,
+            starts_at=first.proposed_starts_at,
+            ends_at=first.proposed_ends_at,
+            room=self.room1,
+            billing_account=self.account,
+        )
+
+        with self.assertRaisesMessage(ValidationError, "not ready"):
+            plan_svc.apply_chain(chain, actor=self.user)
+
+        chain.refresh_from_db()
+        first.refresh_from_db()
+        second.refresh_from_db()
+        first_source.refresh_from_db()
+        second_source.refresh_from_db()
+        self.assertEqual(chain.status, AppointmentRescheduleChain.Status.STALE)
+        self.assertNotIn("apply_error", chain.validation_summary)
+        self.assertEqual(first.status, AppointmentRescheduleStep.Status.STALE)
+        self.assertEqual(second.status, AppointmentRescheduleStep.Status.VALID)
+        self.assertEqual(first_source.status, Appointment.Status.CONFIRMED)
+        self.assertEqual(second_source.status, Appointment.Status.CONFIRMED)
+        self.assertFalse(Appointment.objects.filter(source_appointment__in=[first_source, second_source]).exists())
+
+    def test_apply_chain_rolls_back_when_later_step_fails(self):
+        _, chain, first, second, first_source, second_source = self._reschedule_chain_fixture()
+        plan_svc.revalidate_chain(chain)
+        original_apply_step = plan_svc.apply_step
+        calls = []
+
+        def fail_on_second_step(step, *args, **kwargs):
+            if calls:
+                raise ValidationError("second step failed")
+            calls.append(step.pk)
+            return original_apply_step(step, *args, **kwargs)
+
+        with (
+            mock.patch.object(plan_svc, "apply_step", side_effect=fail_on_second_step),
+            self.assertRaisesMessage(ValidationError, "second step failed"),
+        ):
+            plan_svc.apply_chain(chain, actor=self.user)
+
+        chain.refresh_from_db()
+        first.refresh_from_db()
+        second.refresh_from_db()
+        first_source.refresh_from_db()
+        second_source.refresh_from_db()
+        self.assertEqual(chain.status, AppointmentRescheduleChain.Status.FAILED)
+        self.assertIn("second step failed", chain.validation_summary["apply_error"])
+        self.assertEqual(first.status, AppointmentRescheduleStep.Status.VALID)
+        self.assertEqual(second.status, AppointmentRescheduleStep.Status.VALID)
+        self.assertEqual(first_source.status, Appointment.Status.CONFIRMED)
+        self.assertEqual(second_source.status, Appointment.Status.CONFIRMED)
+        self.assertFalse(Appointment.objects.filter(source_appointment__in=[first_source, second_source]).exists())
 
     def test_revalidate_marks_step_stale_when_window_becomes_busy(self):
         appointment = self._appointment()

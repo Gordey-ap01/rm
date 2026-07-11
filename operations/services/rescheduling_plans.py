@@ -54,6 +54,12 @@ class ChainValidationResult:
 
 
 @dataclass(frozen=True)
+class ChainApplyResult:
+    chain: AppointmentRescheduleChain
+    applied_steps: list[AppointmentRescheduleStep] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class StepConfirmationResult:
     step: AppointmentRescheduleStep
     created: list[AppointmentConfirmation] = field(default_factory=list)
@@ -1326,6 +1332,124 @@ def revalidate_chain(chain: AppointmentRescheduleChain) -> ChainValidationResult
         blocked_steps=len(blocked_step_ids),
         dependency_count=len(dependencies),
     )
+
+
+@transaction.atomic
+def _mark_chain_apply_failed(chain_pk: int, messages: list[str]) -> None:
+    chain = AppointmentRescheduleChain.objects.select_for_update().get(pk=chain_pk)
+    if chain.status in {
+        AppointmentRescheduleChain.Status.APPLIED,
+        AppointmentRescheduleChain.Status.CANCELLED,
+    }:
+        return
+    summary = dict(chain.validation_summary or {})
+    summary["apply_error"] = messages
+    summary["failed_at"] = timezone.now().isoformat()
+    chain.status = AppointmentRescheduleChain.Status.FAILED
+    chain.validation_summary = summary
+    chain.save(update_fields=["status", "validation_summary", "updated_at"])
+
+
+def apply_chain(
+    chain: AppointmentRescheduleChain,
+    *,
+    actor: Any = None,
+) -> ChainApplyResult:
+    chain_pk = chain.pk
+    mark_failed = False
+    persist_revalidation = False
+    try:
+        with transaction.atomic():
+            chain = (
+                AppointmentRescheduleChain.objects.select_for_update()
+                .select_related("plan")
+                .get(pk=chain_pk)
+            )
+            if chain.status != AppointmentRescheduleChain.Status.READY:
+                raise ValidationError("Chain must be ready before applying.")
+
+            validation = revalidate_chain(chain)
+            chain = validation.chain
+            if chain.status != AppointmentRescheduleChain.Status.READY:
+                persist_revalidation = True
+                raise ValidationError("Chain is not ready after revalidation.")
+
+            steps = list(
+                AppointmentRescheduleStep.objects.select_for_update()
+                .select_related(
+                    "source_appointment",
+                    "proposed_primary_staff",
+                    "proposed_room",
+                )
+                .filter(chain=chain)
+                .order_by("chain_position", "position", "pk")
+            )
+            dependencies = list(
+                AppointmentRescheduleStepDependency.objects.select_for_update()
+                .filter(chain=chain)
+                .order_by(
+                    "predecessor_step__chain_position",
+                    "successor_step__chain_position",
+                    "pk",
+                )
+            )
+            step_ids = {step.pk for step in steps}
+            ordered_step_ids = _topological_step_ids(
+                step_ids,
+                [(dep.predecessor_step_id, dep.successor_step_id) for dep in dependencies],
+                position_by_step_id={
+                    step.pk: step.chain_position or step.position for step in steps
+                },
+            )
+            if len(ordered_step_ids) != len(steps):
+                raise ValidationError("Chain apply order is incomplete.")
+
+            list(
+                Appointment.objects.select_for_update()
+                .filter(pk__in=[step.source_appointment_id for step in steps])
+                .order_by("pk")
+            )
+
+            chain.status = AppointmentRescheduleChain.Status.APPLYING
+            chain.save(update_fields=["status", "updated_at"])
+            mark_failed = True
+
+            step_by_id = {step.pk: step for step in steps}
+            applied_steps: list[AppointmentRescheduleStep] = []
+            for step_id in ordered_step_ids:
+                applied_steps.append(apply_step(step_by_id[step_id], actor=actor))
+
+            applied_at = timezone.now()
+            summary = dict(chain.validation_summary or {})
+            summary["applied"] = len(applied_steps)
+            summary["applied_step_ids"] = [step.pk for step in applied_steps]
+            summary["applied_at"] = applied_at.isoformat()
+            chain.status = AppointmentRescheduleChain.Status.APPLIED
+            chain.applied_by = actor if getattr(actor, "is_authenticated", False) else None
+            chain.applied_at = applied_at
+            chain.validation_summary = summary
+            chain.save(
+                update_fields=[
+                    "status",
+                    "applied_by",
+                    "applied_at",
+                    "validation_summary",
+                    "updated_at",
+                ]
+            )
+            _finish_plan_if_all_steps_terminal(chain.plan, actor=actor)
+            return ChainApplyResult(chain=chain, applied_steps=applied_steps)
+    except ValidationError as exc:
+        if mark_failed:
+            _mark_chain_apply_failed(chain_pk, exc.messages)
+        elif persist_revalidation:
+            revalidate_chain(AppointmentRescheduleChain(pk=chain_pk))
+        raise
+    except Exception as exc:
+        if mark_failed:
+            _mark_chain_apply_failed(chain_pk, [str(exc) or exc.__class__.__name__])
+        raise
+
 
 @transaction.atomic
 def mark_review_conflict_step_resolved(

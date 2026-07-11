@@ -5,11 +5,11 @@
 Статус: контракт принят как направление. Срез 1 "Схема и read-only цепочка"
 реализован 2026-07-02 через миграцию `operations.0021_reschedule_chains`.
 Срез 2 "Построение цепочки без применения" реализован 2026-07-10 через сервис
-`create_chain_for_steps()` и read-only блок цепочек в detail плана. Revalidate chain,
-atomic apply chain и расширенный UX цепочек еще не реализованы.
+`create_chain_for_steps()` и read-only блок цепочек в detail плана. Revalidate chain
+и atomic apply chain реализованы; расширенный UX цепочек еще не реализован.
 
 
-Status update 2026-07-11: Slice 3 "revalidate chain" is implemented. `revalidate_chain(chain)` checks chain structure/dependencies, treats predecessor source appointments as freed slots for `frees_target_slot`, refreshes step confirmations, and moves the chain to `ready` or `stale` without applying schedule changes. Atomic `apply_chain()` and richer chain UX remain future slices.
+Status update 2026-07-12: Slice 4 "atomic apply chain" is implemented. `revalidate_chain(chain)` prepares a chain for application, and `apply_chain(chain)` applies ready chains atomically through the existing `apply_step()` path. Richer chain UX and manager-facing metrics remain future slices.
 
 ## Зачем нужен документ
 
@@ -58,10 +58,7 @@ Status update 2026-07-11: Slice 3 "revalidate chain" is implemented. `revalidate
 
 Не сделано:
 
-- Нет atomic all-or-nothing применения нескольких шагов.
-- `revalidate_chain()` is implemented; remaining gap is atomic `apply_chain()`.
-- Нет кнопки и сервиса `apply_chain()`.
-- Нет готовности chain `ready` после повторной проверки.
+- `revalidate_chain()` and atomic `apply_chain()` are implemented; remaining gap is richer chain UX/metrics.
 - Нет UX-метрик цепочек в реестре и dashboard руководителя.
 
 ## Термины
@@ -262,11 +259,13 @@ Acceptance criteria:
 Implementation fact 2026-07-11:
 
 - Added dependency-aware `revalidate_chain(chain)` in `operations/services/rescheduling_plans.py`.
-- Added POST action `revalidate_chain` and a detail-page button; no `apply_chain` action exists yet.
+- Added POST action `revalidate_chain` and a detail-page button. Slice 4 later added POST action `apply_chain` and a ready-only detail-page button.
 - Added focused service/view tests for ready chain, busy external target slot, and declined confirmations.
 - Verification: focused chain tests passed (`40 passed`), `test_services.py` + `test_views.py` passed (`306 passed`), Ruff passed, `manage.py check` passed, `makemigrations --check --dry-run` reported `No changes detected`, and full `pytest -q` passed (`402 passed`, 1 existing django-tasks warning).
 
 ### Срез 4. Atomic apply chain
+
+Status: completed 2026-07-12.
 
 Acceptance criteria:
 
@@ -275,6 +274,16 @@ Acceptance criteria:
 - альтернативы примененных исходных занятий закрываются `skipped`;
 - ledger/payroll/списания остаются неизменными;
 - Browser QA проверяет detail chain на desktop/mobile.
+
+Implementation fact 2026-07-12:
+
+- Added `apply_chain(chain, *, actor=None)` in `operations/services/rescheduling_plans.py`.
+- The service locks the chain, revalidates readiness, applies ordered steps inside one transaction, and records a separate failed-chain state only after rollback.
+- The implementation reuses existing `apply_step()` semantics, so ledger/payroll writes remain unchanged and no DB migration was added.
+- Added POST action `apply_chain` and a ready-only detail-page button in `templates/operations/reschedule_plan_detail.html`.
+- Added service tests for successful chain apply, not-ready guard, and rollback when a later step fails; added view test for applying a ready chain.
+- Added a stale-revalidation regression test: if a ready chain becomes stale during the final apply-time recheck, the stale state is persisted without marking the chain `failed`.
+- Verification: focused service/view tests passed (`45 passed`), all service/view tests passed (`311 passed`), Ruff passed, `manage.py check` passed, `makemigrations --check --dry-run` reported `No changes detected`, and full `pytest -q` passed (`407 passed`, 1 existing django-tasks warning).
 
 ### Срез 5. UX руководителя и администратора
 

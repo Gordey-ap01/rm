@@ -365,6 +365,18 @@ def appointment_reschedule_plan_detail(request, pk: int):
                     ),
                 )
             return redirect("appointment_reschedule_plan_detail", pk=plan.pk)
+        if action == "apply_chain":
+            chain = get_object_or_404(plan.chains.all(), pk=request.POST.get("chain_id"))
+            try:
+                result = plan_svc.apply_chain(chain, actor=request.user)
+            except ValidationError as exc:
+                messages.error(request, "; ".join(exc.messages))
+            else:
+                messages.success(
+                    request,
+                    f"Chain applied: {len(result.applied_steps)} steps.",
+                )
+            return redirect("appointment_reschedule_plan_detail", pk=plan.pk)
         if action == "apply_step":
             step = get_object_or_404(plan.steps.all(), pk=request.POST.get("step_id"))
             allow_room_override = request.POST.get("allow_room_override") == "1"

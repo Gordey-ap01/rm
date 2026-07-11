@@ -133,7 +133,7 @@ Browser QA - это проверка живого интерфейса в бра
 ## Ближайшие задачи
 
 - Обновить semantic-часть Graphify, когда будет доступен LLM API key или локальный backend для docs/papers/images; code-only граф уже обновляется локально командой `graphify update . --no-cluster`.
-- Continue the next domain vertical slice after checking `docs/10-reschedule-chain-dependencies-contract.md`: chain/dependency schema, chain building, and `revalidate_chain` are implemented; atomic `apply_chain()` is still not implemented.
+- Continue the next domain vertical slice after checking `docs/10-reschedule-chain-dependencies-contract.md`: chain/dependency schema, chain building, `revalidate_chain`, and atomic `apply_chain()` are implemented. Next safe slice is chain UX/metrics for administrator and manager views.
 - Не начинать новые миграции без явного владельца БД и сверки с `docs/07-updated-domain-model-after-interview.md`, `docs/08-parallel-agent-execution-plan.md` и `docs/09-cascade-reschedule-domain-slice.md`.
 
 ## Постоянные риски
@@ -143,4 +143,4 @@ Browser QA - это проверка живого интерфейса в бра
 - Старые legacy-поля `Appointment.child`, `Appointment.staff_member`, `Appointment.billing_account` нельзя удалять до полного backfill и переключения отчетов.
 - Граф Graphify полезен как индекс, но устаревший граф не должен считаться источником правды против свежих документов и кода.
 
-- Graphify update 2026-07-11 after `revalidate_chain`: `graphify update . --no-cluster` re-extracted 134/134 code files, but refused to overwrite `graphify-out/graph.json` because the new graph is smaller than the existing one (`3844` vs `3867` nodes). Do not use `--force` without a separate decision; fresh docs/code remain source of truth.
+- Graphify query after the 2026-07-12 restart reached stale/general scheduling nodes rather than the fresh `apply_chain` contract. A later `graphify update . --no-cluster` re-extracted 134/134 code files but refused to overwrite the larger existing graph (`3852` vs `3867` nodes). Do not use `--force` without a separate decision; fresh docs/code remain source of truth until Graphify is safely refreshed.
