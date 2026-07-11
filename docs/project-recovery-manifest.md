@@ -133,7 +133,7 @@ Browser QA - это проверка живого интерфейса в бра
 ## Ближайшие задачи
 
 - Обновить semantic-часть Graphify, когда будет доступен LLM API key или локальный backend для docs/papers/images; code-only граф уже обновляется локально командой `graphify update . --no-cluster`.
-- Continue the next domain vertical slice after checking `docs/10-reschedule-chain-dependencies-contract.md`: chain/dependency schema, chain building, `revalidate_chain`, and atomic `apply_chain()` are implemented. Next safe slice is chain UX/metrics for administrator and manager views.
+- Continue the next domain vertical slice after checking `docs/10-reschedule-chain-dependencies-contract.md`: chain/dependency schema, chain building, `revalidate_chain`, atomic `apply_chain()`, and registry-level chain UX/metrics are implemented. Next safe slice is Browser QA when available, then decide whether a separate manager chain dashboard is needed.
 - Не начинать новые миграции без явного владельца БД и сверки с `docs/07-updated-domain-model-after-interview.md`, `docs/08-parallel-agent-execution-plan.md` и `docs/09-cascade-reschedule-domain-slice.md`.
 
 ## Постоянные риски

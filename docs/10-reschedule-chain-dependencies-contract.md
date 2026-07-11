@@ -287,6 +287,8 @@ Implementation fact 2026-07-12:
 
 ### Срез 5. UX руководителя и администратора
 
+Status: partially completed 2026-07-12.
+
 Acceptance criteria:
 
 - реестр показывает отдельный маркер "Цепочка";
@@ -295,6 +297,14 @@ Acceptance criteria:
   chain `ready`;
 - руководитель видит количество готовых/устаревших/проваленных цепочек в
   периодных метриках.
+
+Implementation fact 2026-07-12:
+
+- Added chain counts, ready/stale/failed chain filters, and registry chips to `/reschedule-plans/`.
+- Added period metric cards for created and applied chains.
+- Added focused view coverage for chain summary metrics and `focus=chain_ready`.
+- Verification: `ReschedulePlanViewTests` passed (`20 passed`), all service/view tests passed (`312 passed`), `manage.py check` passed, `makemigrations --check --dry-run` reported `No changes detected`, and full `pytest -q` passed (`408 passed`, 1 existing django-tasks warning).
+- Remaining: Browser QA was not run because the browser tool was not available in this session; a separate manager dashboard should be decided after reviewing real operator usage of the registry metrics.
 
 ## Риски
 

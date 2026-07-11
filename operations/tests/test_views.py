@@ -15,6 +15,7 @@ from operations.models import (
     Appointment,
     AppointmentConfirmation,
     AppointmentParticipant,
+    AppointmentRescheduleChain,
     AppointmentReschedulePlan,
     AppointmentRescheduleStep,
     AppointmentRoomOverride,
@@ -4500,6 +4501,24 @@ class ReschedulePlanViewTests(NewViewsTestBase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Можно применять: 1")
+        self.assertContains(response, reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+
+    def test_reschedule_plan_list_shows_chain_focus_metrics(self):
+        plan, chain = self._reschedule_chain_fixture()
+        plan_svc.revalidate_chain(chain)
+
+        response = self.client.get(reverse("reschedule_plan_list"), {"focus": "chain_ready"})
+
+        self.assertEqual(response.status_code, 200)
+        chain.refresh_from_db()
+        self.assertEqual(chain.status, AppointmentRescheduleChain.Status.READY)
+        summary_values = {item["label"]: item["value"] for item in response.context["summary_items"]}
+        metric_values = {item["label"]: item["value"] for item in response.context["metric_items"]}
+        self.assertEqual(summary_values["Цепочки"], 1)
+        self.assertEqual(summary_values["Готовые цепочки"], 1)
+        self.assertEqual(metric_values["Цепочек"], 1)
+        self.assertContains(response, 'value="chain_ready" selected')
+        self.assertContains(response, "Цепочка готова: 1")
         self.assertContains(response, reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
 
     def test_reschedule_plan_detail_renders_steps(self):

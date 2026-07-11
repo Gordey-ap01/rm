@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from operations.models import (
     Appointment,
+    AppointmentRescheduleChain,
     AppointmentReschedulePlan,
     AppointmentRescheduleStep,
 )
@@ -45,9 +46,19 @@ def _reschedule_metric_items(since) -> list[dict]:
     created_plans = _apply_since_filter(
         AppointmentReschedulePlan.objects.all(), since, "created_at"
     )
+    created_chains = _apply_since_filter(
+        AppointmentRescheduleChain.objects.all(), since, "created_at"
+    )
     applied_plans = _apply_since_filter(
         AppointmentReschedulePlan.objects.filter(
             status=AppointmentReschedulePlan.Status.APPLIED
+        ),
+        since,
+        "applied_at",
+    )
+    applied_chains = _apply_since_filter(
+        AppointmentRescheduleChain.objects.filter(
+            status=AppointmentRescheduleChain.Status.APPLIED
         ),
         since,
         "applied_at",
@@ -98,6 +109,16 @@ def _reschedule_metric_items(since) -> list[dict]:
             "value": review_plans.count(),
             "hint": "планы с конфликтами",
         },
+        {
+            "label": "Цепочек",
+            "value": created_chains.count(),
+            "hint": "зависимые переносы",
+        },
+        {
+            "label": "Применено цепочек",
+            "value": applied_chains.count(),
+            "hint": "атомарно закрыты",
+        },
     ]
 
 
@@ -131,6 +152,7 @@ def reschedule_plan_list(request):
     confirmation_status = AppointmentRescheduleStep.ConfirmationStatus
     step_status = AppointmentRescheduleStep.Status
     action_type = AppointmentRescheduleStep.ActionType
+    chain_status = AppointmentRescheduleChain.Status
     open_step_statuses = [
         step_status.PENDING,
         step_status.VALID,
@@ -188,6 +210,22 @@ def reschedule_plan_list(request):
             ),
             distinct=True,
         ),
+        chain_count=Count("chains", distinct=True),
+        ready_chain_count=Count(
+            "chains",
+            filter=Q(chains__status=chain_status.READY),
+            distinct=True,
+        ),
+        stale_chain_count=Count(
+            "chains",
+            filter=Q(chains__status=chain_status.STALE),
+            distinct=True,
+        ),
+        failed_chain_count=Count(
+            "chains",
+            filter=Q(chains__status=chain_status.FAILED),
+            distinct=True,
+        ),
     )
     if status == "active":
         plans = plans.exclude(
@@ -223,6 +261,12 @@ def reschedule_plan_list(request):
                 confirmation_status.APPROVED,
             ],
         )
+    elif focus == "chain_ready":
+        plans = plans.filter(chains__status=chain_status.READY)
+    elif focus == "chain_stale":
+        plans = plans.filter(chains__status=chain_status.STALE)
+    elif focus == "chain_failed":
+        plans = plans.filter(chains__status=chain_status.FAILED)
 
     active_plans = AppointmentReschedulePlan.objects.exclude(
         status__in=[
@@ -284,6 +328,18 @@ def reschedule_plan_list(request):
             .count(),
             "hint": "есть валидный шаг без блокирующих ответов",
         },
+        {
+            "label": "Цепочки",
+            "value": active_plans.filter(chains__isnull=False).distinct().count(),
+            "hint": "планы с зависимыми переносами",
+        },
+        {
+            "label": "Готовые цепочки",
+            "value": active_plans.filter(chains__status=chain_status.READY)
+            .distinct()
+            .count(),
+            "hint": "можно применить атомарно",
+        },
     ]
     focus_choices = [
         ("", "Все"),
@@ -293,6 +349,9 @@ def reschedule_plan_list(request):
         ("waiting", "Ждут ответы"),
         ("declined", "Есть отказ"),
         ("ready_to_apply", "Можно применять"),
+        ("chain_ready", "Цепочки готовы"),
+        ("chain_stale", "Цепочки устарели"),
+        ("chain_failed", "Ошибки цепочек"),
     ]
     return render(
         request,

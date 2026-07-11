@@ -142,7 +142,18 @@
                 {% if plan.ready_step_count %}
                   <span class="status-pill">Можно применять: {{ plan.ready_step_count }}</span>
                 {% endif %}
-                {% if not plan.failed_step_count and not plan.manual_review_step_count and not plan.stale_step_count and not plan.ready_step_count %}
+                {% if plan.failed_chain_count %}
+                  <span class="status-pill muted-pill">Ошибка цепочки: {{ plan.failed_chain_count }}</span>
+                {% endif %}
+                {% if plan.stale_chain_count %}
+                  <span class="status-pill muted-pill">Цепочка устарела: {{ plan.stale_chain_count }}</span>
+                {% endif %}
+                {% if plan.ready_chain_count %}
+                  <span class="status-pill">Цепочка готова: {{ plan.ready_chain_count }}</span>
+                {% elif plan.chain_count %}
+                  <span class="status-pill muted-pill">Цепочка: {{ plan.chain_count }}</span>
+                {% endif %}
+                {% if not plan.failed_step_count and not plan.manual_review_step_count and not plan.stale_step_count and not plan.ready_step_count and not plan.chain_count %}
                   <span class="muted">Нет действий</span>
                 {% endif %}
               </div>
