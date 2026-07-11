@@ -8,6 +8,9 @@
 `create_chain_for_steps()` и read-only блок цепочек в detail плана. Revalidate chain,
 atomic apply chain и расширенный UX цепочек еще не реализованы.
 
+
+Status update 2026-07-11: Slice 3 "revalidate chain" is implemented. `revalidate_chain(chain)` checks chain structure/dependencies, treats predecessor source appointments as freed slots for `frees_target_slot`, refreshes step confirmations, and moves the chain to `ready` or `stale` without applying schedule changes. Atomic `apply_chain()` and richer chain UX remain future slices.
+
 ## Зачем нужен документ
 
 Текущие `AppointmentRescheduleStep` уже позволяют хранить варианты переноса,
@@ -56,7 +59,7 @@ atomic apply chain и расширенный UX цепочек еще не ре�
 Не сделано:
 
 - Нет atomic all-or-nothing применения нескольких шагов.
-- Нет `revalidate_chain()`.
+- `revalidate_chain()` is implemented; remaining gap is atomic `apply_chain()`.
 - Нет кнопки и сервиса `apply_chain()`.
 - Нет готовности chain `ready` после повторной проверки.
 - Нет UX-метрик цепочек в реестре и dashboard руководителя.
@@ -246,12 +249,22 @@ Acceptance criteria:
 
 ### Срез 3. Перепроверка chain
 
+Status: completed 2026-07-11.
+
+
 Acceptance criteria:
 
 - `revalidate_chain(chain)` проверяет все шаги и dependencies;
 - при новом конфликте chain становится `stale`;
 - согласования `waiting/declined` блокируют готовность chain;
 - тесты покрывают занятую буферную ячейку и отказ согласования.
+
+Implementation fact 2026-07-11:
+
+- Added dependency-aware `revalidate_chain(chain)` in `operations/services/rescheduling_plans.py`.
+- Added POST action `revalidate_chain` and a detail-page button; no `apply_chain` action exists yet.
+- Added focused service/view tests for ready chain, busy external target slot, and declined confirmations.
+- Verification: focused chain tests passed (`40 passed`), `test_services.py` + `test_views.py` passed (`306 passed`), Ruff passed, `manage.py check` passed, `makemigrations --check --dry-run` reported `No changes detected`, and full `pytest -q` passed (`402 passed`, 1 existing django-tasks warning).
 
 ### Срез 4. Atomic apply chain
 

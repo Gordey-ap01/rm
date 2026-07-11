@@ -910,6 +910,62 @@ class ReschedulingPlanServiceTests(_FixturesMixin, TestCase):
             billing_account=self.account,
         )
 
+    def _reschedule_chain_fixture(self):
+        first_source = appt_svc.create_appointment(
+            child=self.child,
+            staff_member=self.staff_a,
+            service=self.service_log,
+            starts_at=_local(self.day, time(11, 0)),
+            ends_at=_local(self.day, time(11, 30)),
+            room=self.room1,
+            billing_account=self.account,
+        )
+        second_source = self._appointment()
+        plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.READY,
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            reason="Chain fixture",
+            created_by=self.user,
+        )
+        first = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            source_appointment=first_source,
+            proposed_starts_at=_local(self.day, time(12, 0)),
+            proposed_ends_at=_local(self.day, time(12, 30)),
+            proposed_room=self.room1,
+            proposed_primary_staff=self.staff_a,
+        )
+        second = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=2,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            source_appointment=second_source,
+            proposed_starts_at=_local(self.day, time(11, 0)),
+            proposed_ends_at=_local(self.day, time(11, 30)),
+            proposed_room=self.room1,
+            proposed_primary_staff=self.staff_a,
+        )
+        chain_result = plan_svc.create_chain_for_steps(
+            plan,
+            step_ids=[first.pk, second.pk],
+            dependencies=[
+                {
+                    "predecessor_step_id": first.pk,
+                    "successor_step_id": second.pk,
+                    "reason": "first step frees second target slot",
+                }
+            ],
+            title="Buffer chain",
+            actor=self.user,
+        )
+        first.refresh_from_db()
+        second.refresh_from_db()
+        return plan, chain_result.chain, first, second, first_source, second_source
+
     def test_create_plan_persists_valid_steps_without_changing_appointment(self):
         appointment = self._appointment()
 
@@ -1257,6 +1313,91 @@ class ReschedulingPlanServiceTests(_FixturesMixin, TestCase):
         second.refresh_from_db()
         self.assertIsNone(first.chain_id)
         self.assertIsNone(second.chain_id)
+
+    def test_revalidate_chain_marks_ready_without_applying(self):
+        plan, chain, first, second, first_source, second_source = self._reschedule_chain_fixture()
+
+        result = plan_svc.revalidate_chain(chain)
+
+        chain.refresh_from_db()
+        first.refresh_from_db()
+        second.refresh_from_db()
+        first_source.refresh_from_db()
+        second_source.refresh_from_db()
+        self.assertEqual(result.ready_steps, 2)
+        self.assertEqual(result.stale_steps, 0)
+        self.assertEqual(result.blocked_steps, 0)
+        self.assertEqual(chain.status, AppointmentRescheduleChain.Status.READY)
+        self.assertEqual(chain.validation_summary["structural"], "ok")
+        self.assertEqual(chain.validation_summary["topological_step_ids"], [first.pk, second.pk])
+        self.assertEqual(first.status, AppointmentRescheduleStep.Status.VALID)
+        self.assertEqual(second.status, AppointmentRescheduleStep.Status.VALID)
+        self.assertEqual(first_source.status, Appointment.Status.CONFIRMED)
+        self.assertEqual(second_source.status, Appointment.Status.CONFIRMED)
+        self.assertFalse(Appointment.objects.filter(source_appointment__in=[first_source, second_source]).exists())
+        self.assertEqual(plan.status, AppointmentReschedulePlan.Status.READY)
+
+    def test_revalidate_chain_marks_stale_when_target_window_becomes_busy(self):
+        _, chain, first, second, *_ = self._reschedule_chain_fixture()
+        blocker_parent = ParentGuardian.objects.create(
+            last_name="Blocker",
+            first_name="Parent",
+            phone="+7 900 000-77-02",
+        )
+        blocker_child = Child.objects.create(
+            last_name="Blocker",
+            first_name="Child",
+            primary_parent=blocker_parent,
+        )
+        Appointment.objects.create(
+            child=blocker_child,
+            staff_member=first.proposed_primary_staff,
+            service=self.service_log,
+            starts_at=first.proposed_starts_at,
+            ends_at=first.proposed_ends_at,
+            room=first.proposed_room,
+        )
+
+        result = plan_svc.revalidate_chain(chain)
+
+        chain.refresh_from_db()
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(result.ready_steps, 1)
+        self.assertEqual(result.stale_steps, 1)
+        self.assertEqual(result.blocked_steps, 0)
+        self.assertEqual(chain.status, AppointmentRescheduleChain.Status.STALE)
+        self.assertEqual(first.status, AppointmentRescheduleStep.Status.STALE)
+        self.assertEqual(second.status, AppointmentRescheduleStep.Status.VALID)
+        self.assertTrue(first.validation_messages)
+
+    def test_revalidate_chain_blocks_declined_confirmation(self):
+        _, chain, first, second, *_ = self._reschedule_chain_fixture()
+        AppointmentConfirmation.objects.create(
+            appointment=first.source_appointment,
+            reschedule_step=first,
+            target_type=AppointmentConfirmation.TargetType.REPRESENTATIVE,
+            email="declined@example.local",
+            subject="Chain confirmation",
+            message="Please confirm",
+            status=AppointmentConfirmation.Status.DECLINED,
+        )
+
+        result = plan_svc.revalidate_chain(chain)
+
+        chain.refresh_from_db()
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(result.ready_steps, 1)
+        self.assertEqual(result.stale_steps, 0)
+        self.assertEqual(result.blocked_steps, 1)
+        self.assertEqual(chain.status, AppointmentRescheduleChain.Status.STALE)
+        self.assertEqual(
+            first.confirmation_status,
+            AppointmentRescheduleStep.ConfirmationStatus.DECLINED,
+        )
+        self.assertEqual(second.status, AppointmentRescheduleStep.Status.VALID)
+        self.assertIn("confirmation_blocked", [issue["code"] for issue in chain.validation_summary["issues"]])
 
     def test_revalidate_marks_step_stale_when_window_becomes_busy(self):
         appointment = self._appointment()

@@ -71,6 +71,12 @@
             Структура: {{ chain.validation_summary.structural|default:"не проверена" }}.
           </p>
         {% endif %}
+        <form method="post" class="stacked-actions">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="revalidate_chain">
+          <input type="hidden" name="chain_id" value="{{ chain.pk }}">
+          <button type="submit" class="button-link secondary small-action">&#1055;&#1077;&#1088;&#1077;&#1087;&#1088;&#1086;&#1074;&#1077;&#1088;&#1080;&#1090;&#1100; &#1094;&#1077;&#1087;&#1086;&#1095;&#1082;&#1091;</button>
+        </form>
       </div>
       <table class="appointment-detail-table reschedule-chain-table">
         <thead>

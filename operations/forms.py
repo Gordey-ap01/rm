@@ -50,17 +50,20 @@ GROUP_BILLING_PARTICIPANT_REQUIRED = (
 
 
 def appointment_group_conflicts(
-    starts_at, ends_at, children, staff_members, room=None, exclude_pk=None
+    starts_at, ends_at, children, staff_members, room=None, exclude_pk=None, exclude_pks=None
 ):
     children = list(children or [])
     staff_members = list(staff_members or [])
+    excluded_ids = {int(pk) for pk in (exclude_pks or []) if pk}
+    if exclude_pk:
+        excluded_ids.add(int(exclude_pk))
     qs = Appointment.objects.filter(
         status__in=ACTIVE_APPOINTMENT_STATUSES,
         starts_at__lt=ends_at,
         ends_at__gt=starts_at,
     )
-    if exclude_pk:
-        qs = qs.exclude(pk=exclude_pk)
+    if excluded_ids:
+        qs = qs.exclude(pk__in=excluded_ids)
 
     conflicts = {}
     if children:
@@ -70,8 +73,8 @@ def appointment_group_conflicts(
             starts_at_snapshot__lt=ends_at,
             ends_at_snapshot__gt=starts_at,
         ).select_related("appointment")
-        if exclude_pk:
-            participant_qs = participant_qs.exclude(appointment_id=exclude_pk)
+        if excluded_ids:
+            participant_qs = participant_qs.exclude(appointment_id__in=excluded_ids)
         appointment_ids = list(participant_qs.values_list("appointment_id", flat=True))
         conflicts["child"] = Appointment.objects.filter(pk__in=appointment_ids) | qs.filter(
             child__in=children
@@ -83,8 +86,8 @@ def appointment_group_conflicts(
             starts_at_snapshot__lt=ends_at,
             ends_at_snapshot__gt=starts_at,
         ).select_related("appointment")
-        if exclude_pk:
-            assignment_qs = assignment_qs.exclude(appointment_id=exclude_pk)
+        if excluded_ids:
+            assignment_qs = assignment_qs.exclude(appointment_id__in=excluded_ids)
         appointment_ids = list(assignment_qs.values_list("appointment_id", flat=True))
         conflicts["staff"] = Appointment.objects.filter(pk__in=appointment_ids) | qs.filter(
             staff_member__in=staff_members

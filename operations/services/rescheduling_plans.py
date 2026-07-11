@@ -45,6 +45,15 @@ class PlanValidationResult:
 
 
 @dataclass(frozen=True)
+class ChainValidationResult:
+    chain: AppointmentRescheduleChain
+    ready_steps: int
+    stale_steps: int
+    blocked_steps: int
+    dependency_count: int
+
+
+@dataclass(frozen=True)
 class StepConfirmationResult:
     step: AppointmentRescheduleStep
     created: list[AppointmentConfirmation] = field(default_factory=list)
@@ -491,16 +500,21 @@ def _step_messages(
     ends_at,
     selected_staff: StaffMember,
     room,
+    *,
+    exclude_appointment_ids: set[int] | None = None,
 ) -> tuple[list[str], dict[str, Any]]:
     children = _appointment_children(appointment)
     staff_members = _appointment_staff_for_move(appointment, selected_staff)
+    excluded_ids = {appointment.pk}
+    if exclude_appointment_ids:
+        excluded_ids.update(exclude_appointment_ids)
     conflicts = appointment_group_conflicts(
         starts_at,
         ends_at,
         children,
         staff_members,
         room,
-        exclude_pk=appointment.pk,
+        exclude_pks=excluded_ids,
     )
     messages = conflict_messages(conflicts)
     for staff in staff_members:
@@ -963,6 +977,44 @@ def create_confirmations_for_step(
     return StepConfirmationResult(step=step, created=created, existing=existing)
 
 
+def _refresh_move_step_validation(
+    step: AppointmentRescheduleStep,
+    *,
+    exclude_appointment_ids: set[int] | None = None,
+) -> list[str]:
+    messages, conflicts = _step_messages(
+        step.source_appointment,
+        step.proposed_starts_at,
+        step.proposed_ends_at,
+        step.proposed_primary_staff,
+        step.proposed_room,
+        exclude_appointment_ids=exclude_appointment_ids,
+    )
+    step.validation_messages = messages
+    step.conflict_snapshot = _conflict_snapshot(conflicts)
+    step.requires_staff_override = any(":" in message for message in messages)
+    room_conflicts = conflicts.get("room")
+    step.requires_room_override = bool(
+        conflicts.get("room_over_limit") or (room_conflicts and room_conflicts.exists())
+    )
+    step.status = (
+        AppointmentRescheduleStep.Status.STALE
+        if messages
+        else AppointmentRescheduleStep.Status.VALID
+    )
+    step.save(
+        update_fields=[
+            "status",
+            "validation_messages",
+            "conflict_snapshot",
+            "requires_staff_override",
+            "requires_room_override",
+            "updated_at",
+        ]
+    )
+    return messages
+
+
 @transaction.atomic
 def revalidate_plan(plan: AppointmentReschedulePlan) -> PlanValidationResult:
     plan = AppointmentReschedulePlan.objects.select_for_update().get(pk=plan.pk)
@@ -1028,6 +1080,252 @@ def revalidate_plan(plan: AppointmentReschedulePlan) -> PlanValidationResult:
     plan.save(update_fields=["status", "validation_summary", "updated_at"])
     return PlanValidationResult(plan=plan, valid_steps=valid_steps, stale_steps=stale_steps, pending_steps=pending_steps)
 
+
+@transaction.atomic
+def revalidate_chain(chain: AppointmentRescheduleChain) -> ChainValidationResult:
+    chain = (
+        AppointmentRescheduleChain.objects.select_for_update()
+        .select_related("plan")
+        .get(pk=chain.pk)
+    )
+    if chain.status in {
+        AppointmentRescheduleChain.Status.APPLYING,
+        AppointmentRescheduleChain.Status.APPLIED,
+        AppointmentRescheduleChain.Status.CANCELLED,
+    }:
+        raise ValidationError("Completed chains cannot be revalidated.")
+
+    steps = list(
+        AppointmentRescheduleStep.objects.select_for_update()
+        .select_related(
+            "source_appointment",
+            "proposed_primary_staff",
+            "proposed_room",
+        )
+        .filter(chain=chain)
+        .order_by("chain_position", "position", "pk")
+    )
+    dependencies = list(
+        AppointmentRescheduleStepDependency.objects.select_for_update()
+        .select_related("predecessor_step", "successor_step")
+        .filter(chain=chain)
+        .order_by("predecessor_step__chain_position", "successor_step__chain_position", "pk")
+    )
+
+    issues: list[dict[str, Any]] = []
+    step_ids = {step.pk for step in steps}
+    blocked_step_ids: set[int] = set()
+    stale_step_ids: set[int] = set()
+    invalid_step_ids: set[int] = set()
+    edge_keys: set[tuple[int, int, str]] = set()
+    dependency_edges: list[tuple[int, int]] = []
+    connected_step_ids: set[int] = set()
+    freed_source_ids_by_successor: dict[int, set[int]] = {step.pk: set() for step in steps}
+
+    if chain.plan.status in TERMINAL_PLAN_STATUSES:
+        issues.append(
+            {
+                "code": "terminal_plan",
+                "message": "Plan is completed or cancelled.",
+            }
+        )
+    if len(steps) < 2:
+        issues.append(
+            {
+                "code": "not_enough_steps",
+                "message": "Chain requires at least two steps.",
+            }
+        )
+    if not dependencies:
+        issues.append(
+            {
+                "code": "missing_dependencies",
+                "message": "Chain requires at least one dependency.",
+            }
+        )
+
+    source_ids = [step.source_appointment_id for step in steps]
+    if len(source_ids) != len(set(source_ids)):
+        issues.append(
+            {
+                "code": "duplicate_source_appointment",
+                "message": "Chain has several steps for one source appointment.",
+            }
+        )
+
+    step_by_id = {step.pk: step for step in steps}
+    for step in steps:
+        if step.plan_id != chain.plan_id:
+            invalid_step_ids.add(step.pk)
+            issues.append(
+                {
+                    "code": "step_plan_mismatch",
+                    "step_id": step.pk,
+                    "message": "Step does not belong to the chain plan.",
+                }
+            )
+        if step.action_type != AppointmentRescheduleStep.ActionType.MOVE:
+            invalid_step_ids.add(step.pk)
+            issues.append(
+                {
+                    "code": "step_not_move",
+                    "step_id": step.pk,
+                    "message": "Chain can only revalidate move steps.",
+                }
+            )
+        if step.status in TERMINAL_STEP_STATUSES:
+            invalid_step_ids.add(step.pk)
+            issues.append(
+                {
+                    "code": "terminal_step",
+                    "step_id": step.pk,
+                    "message": "Step is already applied or skipped.",
+                }
+            )
+        missing_fields = []
+        if not step.proposed_starts_at:
+            missing_fields.append("proposed_starts_at")
+        if not step.proposed_ends_at:
+            missing_fields.append("proposed_ends_at")
+        if not step.proposed_primary_staff_id:
+            missing_fields.append("proposed_primary_staff")
+        if missing_fields:
+            invalid_step_ids.add(step.pk)
+            issues.append(
+                {
+                    "code": "missing_proposed_fields",
+                    "step_id": step.pk,
+                    "fields": missing_fields,
+                    "message": "Step has incomplete target slot data.",
+                }
+            )
+
+    for dependency in dependencies:
+        predecessor_id = dependency.predecessor_step_id
+        successor_id = dependency.successor_step_id
+        edge_key = (predecessor_id, successor_id, dependency.relation_type)
+        if dependency.plan_id != chain.plan_id:
+            issues.append(
+                {
+                    "code": "dependency_plan_mismatch",
+                    "dependency_id": dependency.pk,
+                    "message": "Dependency does not belong to the chain plan.",
+                }
+            )
+        if predecessor_id == successor_id:
+            issues.append(
+                {
+                    "code": "self_dependency",
+                    "dependency_id": dependency.pk,
+                    "message": "Step cannot depend on itself.",
+                }
+            )
+        if predecessor_id not in step_ids or successor_id not in step_ids:
+            issues.append(
+                {
+                    "code": "dependency_step_outside_chain",
+                    "dependency_id": dependency.pk,
+                    "message": "Dependency points to a step outside this chain.",
+                }
+            )
+            continue
+        if edge_key in edge_keys:
+            issues.append(
+                {
+                    "code": "duplicate_dependency",
+                    "dependency_id": dependency.pk,
+                    "message": "Dependency is duplicated.",
+                }
+            )
+        edge_keys.add(edge_key)
+        dependency_edges.append((predecessor_id, successor_id))
+        connected_step_ids.update([predecessor_id, successor_id])
+        if dependency.relation_type == AppointmentRescheduleStepDependency.RelationType.FREES_TARGET_SLOT:
+            freed_source_ids_by_successor[successor_id].add(
+                step_by_id[predecessor_id].source_appointment_id
+            )
+
+    ordered_step_ids: list[int] = []
+    if step_ids and dependency_edges:
+        if connected_step_ids != step_ids:
+            issues.append(
+                {
+                    "code": "disconnected_steps",
+                    "message": "Every chain step must participate in at least one dependency.",
+                }
+            )
+        try:
+            ordered_step_ids = _topological_step_ids(
+                step_ids,
+                dependency_edges,
+                position_by_step_id={
+                    step.pk: step.chain_position or step.position for step in steps
+                },
+            )
+        except ValidationError as exc:
+            issues.append(
+                {
+                    "code": "dependency_cycle",
+                    "message": "; ".join(exc.messages),
+                }
+            )
+
+    for step in steps:
+        if step.pk in invalid_step_ids:
+            blocked_step_ids.add(step.pk)
+            continue
+        step = _update_step_confirmation_state(step)
+        if step.confirmation_status in {
+            AppointmentRescheduleStep.ConfirmationStatus.WAITING,
+            AppointmentRescheduleStep.ConfirmationStatus.DECLINED,
+        }:
+            blocked_step_ids.add(step.pk)
+            issues.append(
+                {
+                    "code": "confirmation_blocked",
+                    "step_id": step.pk,
+                    "confirmation_status": step.confirmation_status,
+                    "message": "Step is blocked by confirmations.",
+                }
+            )
+        messages = _refresh_move_step_validation(
+            step,
+            exclude_appointment_ids=freed_source_ids_by_successor.get(step.pk, set()),
+        )
+        if messages:
+            stale_step_ids.add(step.pk)
+
+    ready_step_ids = {
+        step.pk
+        for step in steps
+        if step.pk not in stale_step_ids
+        and step.pk not in blocked_step_ids
+        and step.pk not in invalid_step_ids
+    }
+    chain.status = (
+        AppointmentRescheduleChain.Status.READY
+        if not issues and len(ready_step_ids) == len(steps) and steps
+        else AppointmentRescheduleChain.Status.STALE
+    )
+    chain.validation_summary = {
+        "structural": "ok" if not issues else "blocked",
+        "steps": len(steps),
+        "dependencies": len(dependencies),
+        "topological_step_ids": ordered_step_ids,
+        "ready": len(ready_step_ids),
+        "stale": len(stale_step_ids),
+        "blocked": len(blocked_step_ids),
+        "issues": issues,
+        "checked_at": timezone.now().isoformat(),
+    }
+    chain.save(update_fields=["status", "validation_summary", "updated_at"])
+    return ChainValidationResult(
+        chain=chain,
+        ready_steps=len(ready_step_ids),
+        stale_steps=len(stale_step_ids),
+        blocked_steps=len(blocked_step_ids),
+        dependency_count=len(dependencies),
+    )
 
 @transaction.atomic
 def mark_review_conflict_step_resolved(
