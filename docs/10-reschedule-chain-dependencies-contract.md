@@ -9,7 +9,7 @@
 и atomic apply chain реализованы; расширенный UX цепочек еще не реализован.
 
 
-Status update 2026-07-12: Slice 4 "atomic apply chain" is implemented. `revalidate_chain(chain)` prepares a chain for application, and `apply_chain(chain)` applies ready chains atomically through the existing `apply_step()` path. Richer chain UX and manager-facing metrics remain future slices.
+Status update 2026-07-12: Slice 4 "atomic apply chain" is implemented. `revalidate_chain(chain)` prepares a chain for application, and `apply_chain(chain)` applies ready chains atomically through the existing `apply_step()` path. Registry-level chain UX/metrics are implemented and Browser-QA verified; a separate manager dashboard remains a product decision.
 
 ## Зачем нужен документ
 
@@ -58,8 +58,8 @@ Status update 2026-07-12: Slice 4 "atomic apply chain" is implemented. `revalida
 
 Не сделано:
 
-- `revalidate_chain()` and atomic `apply_chain()` are implemented; remaining gap is richer chain UX/metrics.
-- Нет UX-метрик цепочек в реестре и dashboard руководителя.
+- `revalidate_chain()`, atomic `apply_chain()`, and registry-level chain UX/metrics are implemented; remaining gap is deciding whether a separate manager dashboard is needed.
+- UX-метрики цепочек в реестре реализованы; отдельный dashboard руководителя пока не выделен.
 
 ## Термины
 
@@ -287,7 +287,7 @@ Implementation fact 2026-07-12:
 
 ### Срез 5. UX руководителя и администратора
 
-Status: partially completed 2026-07-12.
+Status: registry-level UX completed and Browser-QA verified 2026-07-12; separate manager dashboard remains a product decision.
 
 Acceptance criteria:
 
@@ -304,7 +304,8 @@ Implementation fact 2026-07-12:
 - Added period metric cards for created and applied chains.
 - Added focused view coverage for chain summary metrics and `focus=chain_ready`.
 - Verification: `ReschedulePlanViewTests` passed (`20 passed`), all service/view tests passed (`312 passed`), `manage.py check` passed, `makemigrations --check --dry-run` reported `No changes detected`, and full `pytest -q` passed (`408 passed`, 1 existing django-tasks warning).
-- Remaining: Browser QA was not run because the browser tool was not available in this session; a separate manager dashboard should be decided after reviewing real operator usage of the registry metrics.
+- Browser QA 2026-07-12 passed through bundled Playwright + system Chrome on `rehab_center.settings_test` with synthetic `browserqa_chain_metrics` data. Checked `/reschedule-plans/?focus=chain_ready&metrics_period=7` on desktop 1365x900 and mobile 390x844: chain-ready filter selected, 16 metric cards visible, registry row present, control chips show ready step count `2` and ready chain count `1`, no horizontal overflow, no console/page errors.
+- Remaining: decide whether a separate manager dashboard adds value beyond the registry-level metrics after reviewing real operator usage.
 
 ## Риски
 
