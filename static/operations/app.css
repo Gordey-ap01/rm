@@ -1354,6 +1354,21 @@ th {
   background: var(--warn-soft);
 }
 
+.task-card.status-ready {
+  border-left-color: #1267f2;
+  background: rgba(18, 103, 242, .08);
+}
+
+.task-card.status-stale {
+  border-left-color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.task-card.status-failed {
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
+}
+
 .mini-form {
   display: inline-flex;
 }
@@ -4990,6 +5005,10 @@ code {
 
 .ops-metric:nth-child(6) {
   border-top: 4px solid var(--brand-lime);
+}
+
+.ops-metric:nth-child(7) {
+  border-top: 4px solid var(--accent);
 }
 
 .ops-metric.needs-action:hover {

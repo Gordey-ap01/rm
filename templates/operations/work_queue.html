@@ -199,6 +199,38 @@
     </div>
   </article>
 
+  <article class="panel" id="queue-reschedule-chains">
+    <h2>Цепочки переносов</h2>
+    <div class="task-list">
+      {% for chain in reschedule_chains %}
+        <div class="task-card status-{{ chain.status }}">
+          <div>
+            <strong>{{ chain.title|default:"Цепочка переноса" }}</strong>
+            <p>
+              {{ chain.plan.get_plan_type_display }} · {{ chain.get_status_display }} ·
+              шагов: {{ chain.step_count }} · зависимостей: {{ chain.dependency_count }}
+            </p>
+            <p class="muted">
+              {% if chain.plan.root_appointment %}
+                {{ chain.plan.root_appointment.child }} · {{ chain.plan.root_appointment.service }}
+              {% elif chain.plan.staff_member %}
+                {{ chain.plan.staff_member }}
+              {% else %}
+                Ручной план
+              {% endif %}
+              · обновлено {{ chain.updated_at|date:"d.m H:i" }}
+            </p>
+          </div>
+          <div class="task-actions">
+            <a class="button-link secondary small-action" href="{% url 'appointment_reschedule_plan_detail' chain.plan.pk %}">Открыть план</a>
+          </div>
+        </div>
+      {% empty %}
+        <p class="empty-state">Активных цепочек переноса нет.</p>
+      {% endfor %}
+    </div>
+  </article>
+
   <article class="panel" id="queue-confirmations">
     <h2>Email-согласования</h2>
     <div class="task-list">

@@ -1,4 +1,4 @@
-Update 2026-07-12: `apply_chain(chain)` and registry-level chain UX/metrics are implemented, tested, and Browser-QA verified; next safe step is deciding whether a separate manager chain dashboard is still needed or continuing with the next non-DB vertical slice.
+Update 2026-07-12: `apply_chain(chain)`, registry-level chain UX/metrics, and dashboard/work queue chain signals are implemented, tested, and Browser-QA verified; next safe step is deciding whether a separate manager chain dashboard is still needed or continuing with the next non-DB vertical slice.
 
 # Промпт для следующего чата по проекту "Радость моя"
 

@@ -15,6 +15,8 @@ from operations.models import (
     ACTION_REQUIRED_BILLING_STATUSES,
     Appointment,
     AppointmentConfirmation,
+    AppointmentRescheduleChain,
+    AppointmentReschedulePlan,
     AppointmentStaffAssignment,
     BalanceAccount,
     TimeOffRequest,
@@ -92,6 +94,51 @@ def needs_transfer_queryset():
     )
 
 
+def reschedule_plan_focus_url(focus: str) -> str:
+    return f"{reverse('reschedule_plan_list')}?focus={focus}"
+
+
+def reschedule_chain_attention_queryset():
+    return (
+        AppointmentRescheduleChain.objects.select_related(
+            "plan",
+            "plan__root_appointment",
+            "plan__root_appointment__child",
+            "plan__root_appointment__service",
+            "plan__staff_member",
+            "created_by",
+        )
+        .annotate(
+            step_count=Count("steps", distinct=True),
+            dependency_count=Count("dependencies", distinct=True),
+        )
+        .filter(
+            status__in=[
+                AppointmentRescheduleChain.Status.READY,
+                AppointmentRescheduleChain.Status.STALE,
+                AppointmentRescheduleChain.Status.FAILED,
+            ]
+        )
+        .exclude(
+            plan__status__in=[
+                AppointmentReschedulePlan.Status.APPLIED,
+                AppointmentReschedulePlan.Status.CANCELLED,
+            ]
+        )
+        .order_by("status", "-updated_at", "-pk")
+    )
+
+
+def reschedule_chain_attention_counts(queryset=None) -> dict[str, int]:
+    if queryset is None:
+        queryset = reschedule_chain_attention_queryset()
+    return {
+        "ready": queryset.filter(status=AppointmentRescheduleChain.Status.READY).count(),
+        "stale": queryset.filter(status=AppointmentRescheduleChain.Status.STALE).count(),
+        "failed": queryset.filter(status=AppointmentRescheduleChain.Status.FAILED).count(),
+    }
+
+
 def low_balance_accounts():
     return [
         account
@@ -143,6 +190,9 @@ def dashboard_focus_items(
     confirmation_tasks: int,
     time_off_requests: int,
     low_balance_count: int,
+    ready_chain_count: int,
+    stale_chain_count: int,
+    failed_chain_count: int,
 ):
     queue_url = reverse("work_queue")
     items = []
@@ -174,6 +224,36 @@ def dashboard_focus_items(
                 "title": "Перенести отмены",
                 "detail": "Отмененные занятия еще не связаны с новым временем.",
                 "href": queue_url,
+            }
+        )
+    if failed_chain_count:
+        items.append(
+            {
+                "tone": "danger",
+                "value": failed_chain_count,
+                "title": "Ошибки цепочек переноса",
+                "detail": "Атомарные переносы не применились или требуют ручной проверки перед повтором.",
+                "href": reschedule_plan_focus_url("chain_failed"),
+            }
+        )
+    if stale_chain_count:
+        items.append(
+            {
+                "tone": "warning",
+                "value": stale_chain_count,
+                "title": "Проверить цепочки",
+                "detail": "Расписание изменилось после подготовки цепочки; нужна перепроверка.",
+                "href": reschedule_plan_focus_url("chain_stale"),
+            }
+        )
+    if ready_chain_count:
+        items.append(
+            {
+                "tone": "info",
+                "value": ready_chain_count,
+                "title": "Применить цепочки",
+                "detail": "Есть готовые атомарные переносы без свободных окон.",
+                "href": reschedule_plan_focus_url("chain_ready"),
             }
         )
     if confirmation_tasks:
@@ -227,7 +307,19 @@ def work_queue_summary_items(
     low_balance_count: int,
     confirmation_count: int,
     time_off_count: int,
+    ready_chain_count: int,
+    stale_chain_count: int,
+    failed_chain_count: int,
 ):
+    chain_attention_count = ready_chain_count + stale_chain_count + failed_chain_count
+    chain_tone = "success"
+    if failed_chain_count:
+        chain_tone = "danger"
+    elif stale_chain_count:
+        chain_tone = "warning"
+    elif ready_chain_count:
+        chain_tone = "info"
+
     return [
         {
             "label": "Решения по списанию",
@@ -249,6 +341,13 @@ def work_queue_summary_items(
             "href": "#queue-transfer",
             "tone": "danger" if needs_transfer_count else "success",
             "detail": "Отмененные занятия без нового времени.",
+        },
+        {
+            "label": "Цепочки переносов",
+            "value": chain_attention_count,
+            "href": "#queue-reschedule-chains",
+            "tone": chain_tone,
+            "detail": "Готовые, устаревшие или проблемные атомарные переносы.",
         },
         {
             "label": "Низкие балансы",
@@ -311,12 +410,15 @@ def dashboard(request):
         | Q(status=AppointmentConfirmation.Status.PENDING)
     ).count()
     time_off_requests = TimeOffRequest.objects.filter(status=TimeOffRequest.Status.PENDING).count()
+    chain_counts = reschedule_chain_attention_counts()
+    chain_attention_count = chain_counts["ready"] + chain_counts["stale"] + chain_counts["failed"]
     priority_total = (
         unresolved_billing
         + awaiting_transfer
         + overdue_attendance
         + confirmation_tasks
         + time_off_requests
+        + chain_attention_count
     )
     today_appointments = (
         Appointment.objects.filter(starts_at__date=today)
@@ -347,6 +449,9 @@ def dashboard(request):
         confirmation_tasks=confirmation_tasks,
         time_off_requests=time_off_requests,
         low_balance_count=len(low_balances),
+        ready_chain_count=chain_counts["ready"],
+        stale_chain_count=chain_counts["stale"],
+        failed_chain_count=chain_counts["failed"],
     )
     return render(
         request,
@@ -360,6 +465,10 @@ def dashboard(request):
             "overdue_attendance": overdue_attendance,
             "confirmation_tasks": confirmation_tasks,
             "time_off_requests": time_off_requests,
+            "ready_chain_count": chain_counts["ready"],
+            "stale_chain_count": chain_counts["stale"],
+            "failed_chain_count": chain_counts["failed"],
+            "chain_attention_count": chain_attention_count,
             "priority_total": priority_total,
             "staff_load": staff_load,
             "low_balances": low_balances,
@@ -409,6 +518,9 @@ def work_queue(request):
         .select_related("staff_member")
         .order_by("starts_on", "staff_member__full_name")[:40]
     )
+    reschedule_chains_queryset = reschedule_chain_attention_queryset()
+    chain_counts = reschedule_chain_attention_counts(reschedule_chains_queryset)
+    reschedule_chains = list(reschedule_chains_queryset[:40])
     low_balances = low_balance_accounts()
     queue_summary = work_queue_summary_items(
         needs_billing_count=len(needs_billing),
@@ -417,6 +529,9 @@ def work_queue(request):
         low_balance_count=len(low_balances),
         confirmation_count=len(confirmation_tasks),
         time_off_count=len(time_off_requests),
+        ready_chain_count=chain_counts["ready"],
+        stale_chain_count=chain_counts["stale"],
+        failed_chain_count=chain_counts["failed"],
     )
     return render(
         request,
@@ -428,6 +543,10 @@ def work_queue(request):
             "low_balances": low_balances,
             "confirmation_tasks": confirmation_tasks,
             "time_off_requests": time_off_requests,
+            "reschedule_chains": reschedule_chains,
+            "ready_chain_count": chain_counts["ready"],
+            "stale_chain_count": chain_counts["stale"],
+            "failed_chain_count": chain_counts["failed"],
             "queue_summary_items": queue_summary,
             "queue_next_action": work_queue_next_action(queue_summary),
         },

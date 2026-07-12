@@ -4521,6 +4521,32 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertContains(response, "Цепочка готова: 1")
         self.assertContains(response, reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
 
+    def test_dashboard_surfaces_ready_reschedule_chains(self):
+        _plan, chain = self._reschedule_chain_fixture()
+        plan_svc.revalidate_chain(chain)
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["ready_chain_count"], 1)
+        self.assertEqual(response.context["chain_attention_count"], 1)
+        self.assertContains(response, "Применить цепочки")
+        self.assertContains(response, "?focus=chain_ready")
+        self.assertContains(response, reverse("reschedule_plan_list"))
+
+    def test_work_queue_surfaces_ready_reschedule_chains(self):
+        plan, chain = self._reschedule_chain_fixture()
+        plan_svc.revalidate_chain(chain)
+
+        response = self.client.get(reverse("work_queue"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(chain, list(response.context["reschedule_chains"]))
+        self.assertContains(response, "#queue-reschedule-chains")
+        self.assertContains(response, 'id="queue-reschedule-chains"')
+        self.assertContains(response, "Открыть план")
+        self.assertContains(response, reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+
     def test_reschedule_plan_detail_renders_steps(self):
         appointment = self._appointment()
         self.client.post(reverse("appointment_reschedule_plan_create", args=[appointment.pk]))

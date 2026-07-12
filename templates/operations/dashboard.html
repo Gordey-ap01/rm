@@ -74,6 +74,10 @@
     <span class="ops-metric-value">{{ awaiting_transfer }}</span>
     <span>ожидают переноса</span>
   </a>
+  <a class="ops-metric needs-action" href="{% url 'reschedule_plan_list' %}?focus=chain_ready">
+    <span class="ops-metric-value">{{ ready_chain_count }}</span>
+    <span>готовых цепочек переноса</span>
+  </a>
   <a class="ops-metric needs-action" href="{% url 'work_queue' %}">
     <span class="ops-metric-value">{{ confirmation_tasks }}</span>
     <span>email-согласований</span>
