@@ -4848,6 +4848,10 @@ class ReschedulePlanViewTests(NewViewsTestBase):
 
         chain.refresh_from_db()
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.redirect_chain[-1][0],
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#chain-{chain.pk}',
+        )
         self.assertEqual(chain.status, chain.Status.READY)
         self.assertEqual(chain.validation_summary["ready"], 2)
         self.assertContains(response, "Цепочка перепроверена")
@@ -4867,6 +4871,10 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         chain.refresh_from_db()
         plan.refresh_from_db()
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.redirect_chain[-1][0],
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#chain-{chain.pk}',
+        )
         self.assertEqual(chain.status, chain.Status.APPLIED)
         self.assertEqual(plan.status, AppointmentReschedulePlan.Status.APPLIED)
         self.assertContains(response, "Цепочка применена")

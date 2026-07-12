@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import ValidationError
 from django.db.models import Case, Count, IntegerField, Prefetch, Q, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from operations.models import (
@@ -157,6 +158,13 @@ def _localized_messages(error: ValidationError) -> str:
     return "; ".join(
         CHAIN_ACTION_ERROR_MESSAGES.get(message, message) for message in error.messages
     )
+
+
+def _plan_detail_url(plan_pk: int, *, chain_pk: int | None = None) -> str:
+    url = reverse("appointment_reschedule_plan_detail", args=[plan_pk])
+    if chain_pk:
+        return f"{url}#chain-{chain_pk}"
+    return url
 
 
 def _chain_issue_rows(chain: AppointmentRescheduleChain) -> list[dict]:
@@ -552,7 +560,7 @@ def appointment_reschedule_plan_detail(request, pk: int):
                         f"заблокировано {result.blocked_steps}."
                     ),
                 )
-            return redirect("appointment_reschedule_plan_detail", pk=plan.pk)
+            return redirect(_plan_detail_url(plan.pk, chain_pk=chain.pk))
         if action == "apply_chain":
             chain = get_object_or_404(plan.chains.all(), pk=request.POST.get("chain_id"))
             try:
@@ -564,7 +572,7 @@ def appointment_reschedule_plan_detail(request, pk: int):
                     request,
                     f"Цепочка применена: шагов {len(result.applied_steps)}.",
                 )
-            return redirect("appointment_reschedule_plan_detail", pk=plan.pk)
+            return redirect(_plan_detail_url(plan.pk, chain_pk=chain.pk))
         if action == "apply_step":
             step = get_object_or_404(plan.steps.all(), pk=request.POST.get("step_id"))
             allow_room_override = request.POST.get("allow_room_override") == "1"
