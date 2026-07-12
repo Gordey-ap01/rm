@@ -492,15 +492,61 @@ def reschedule_plan_list(request):
         )
         .order_by("attention_priority", "-updated_at", "-pk")
     )
+    step_attention_queryset = (
+        AppointmentRescheduleStep.objects.filter(
+            Q(status=step_status.FAILED)
+            | Q(action_type=action_type.REVIEW_CONFLICT, status__in=open_step_statuses)
+            | Q(status=step_status.STALE)
+            | Q(confirmation_status=confirmation_status.DECLINED)
+            | Q(confirmation_status=confirmation_status.WAITING)
+            | (
+                Q(status=step_status.VALID)
+                & Q(
+                    confirmation_status__in=[
+                        confirmation_status.NOT_REQUESTED,
+                        confirmation_status.APPROVED,
+                    ]
+                )
+            )
+        )
+        .annotate(
+            attention_priority=Case(
+                When(status=step_status.FAILED, then=Value(0)),
+                When(
+                    action_type=action_type.REVIEW_CONFLICT,
+                    status__in=open_step_statuses,
+                    then=Value(1),
+                ),
+                When(status=step_status.STALE, then=Value(2)),
+                When(confirmation_status=confirmation_status.DECLINED, then=Value(3)),
+                When(confirmation_status=confirmation_status.WAITING, then=Value(4)),
+                When(
+                    status=step_status.VALID,
+                    confirmation_status__in=[
+                        confirmation_status.NOT_REQUESTED,
+                        confirmation_status.APPROVED,
+                    ],
+                    then=Value(5),
+                ),
+                default=Value(9),
+                output_field=IntegerField(),
+            )
+        )
+        .order_by("attention_priority", "position", "pk")
+    )
     plan_rows = list(
         plans.order_by("-created_at", "-pk")
         .prefetch_related(
-            Prefetch("chains", queryset=chain_attention_queryset, to_attr="attention_chains")
+            Prefetch("chains", queryset=chain_attention_queryset, to_attr="attention_chains"),
+            Prefetch("steps", queryset=step_attention_queryset, to_attr="attention_steps"),
         )[:100]
     )
     for plan in plan_rows:
         plan.primary_attention_chain = (
             plan.attention_chains[0] if plan.attention_chains else None
+        )
+        plan.primary_attention_step = (
+            plan.attention_steps[0] if plan.attention_steps else None
         )
 
     return render(

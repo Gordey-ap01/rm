@@ -369,12 +369,19 @@
       });
     }
 
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", scrollToRescheduleAnchor, { once: true });
-    } else {
+    function scheduleRescheduleAnchorScroll() {
       scrollToRescheduleAnchor();
+      window.setTimeout(scrollToRescheduleAnchor, 80);
+      window.setTimeout(scrollToRescheduleAnchor, 180);
     }
-    window.addEventListener("hashchange", scrollToRescheduleAnchor);
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", scheduleRescheduleAnchorScroll, { once: true });
+    } else {
+      scheduleRescheduleAnchorScroll();
+    }
+    window.addEventListener("load", scheduleRescheduleAnchorScroll, { once: true });
+    window.addEventListener("hashchange", scheduleRescheduleAnchorScroll);
   })();
 </script>
 {% endblock %}

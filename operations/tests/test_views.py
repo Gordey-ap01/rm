@@ -4566,6 +4566,66 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#chain-{ready_chain.pk}',
         )
 
+    def test_reschedule_plan_list_links_to_priority_step_anchor(self):
+        source = self._appointment()
+        plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.READY,
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            reason="Step attention fixture",
+            created_by=self.admin,
+        )
+        ready_step = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            source_appointment=source,
+            proposed_starts_at=_local_dt(timezone.localdate() + timedelta(days=5), time(12, 0)),
+            proposed_ends_at=_local_dt(timezone.localdate() + timedelta(days=5), time(12, 30)),
+            proposed_room=self.room,
+            proposed_primary_staff=self.staff,
+        )
+        stale_step = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=2,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.STALE,
+            source_appointment=source,
+            proposed_starts_at=_local_dt(timezone.localdate() + timedelta(days=5), time(13, 0)),
+            proposed_ends_at=_local_dt(timezone.localdate() + timedelta(days=5), time(13, 30)),
+            proposed_room=self.room,
+            proposed_primary_staff=self.staff,
+            validation_messages=["slot changed"],
+        )
+        failed_step = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=3,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.FAILED,
+            source_appointment=source,
+            proposed_starts_at=_local_dt(timezone.localdate() + timedelta(days=5), time(14, 0)),
+            proposed_ends_at=_local_dt(timezone.localdate() + timedelta(days=5), time(14, 30)),
+            proposed_room=self.room,
+            proposed_primary_staff=self.staff,
+        )
+
+        response = self.client.get(reverse("reschedule_plan_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Открыть шаг")
+        self.assertContains(
+            response,
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#step-{failed_step.pk}',
+        )
+        self.assertNotContains(
+            response,
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#step-{stale_step.pk}',
+        )
+        self.assertNotContains(
+            response,
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#step-{ready_step.pk}',
+        )
+
     def test_reschedule_plan_list_filters_chain_attention_focuses(self):
         ready_plan, _ready_chain = self._chain_with_status(
             AppointmentRescheduleChain.Status.READY,

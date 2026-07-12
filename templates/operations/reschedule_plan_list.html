@@ -183,6 +183,8 @@
             <td class="table-actions" data-label="Действия">
               {% if plan.primary_attention_chain %}
                 <a class="small-action" href="{% url 'appointment_reschedule_plan_detail' plan.pk %}#chain-{{ plan.primary_attention_chain.pk }}">Открыть цепочку</a>
+              {% elif plan.primary_attention_step %}
+                <a class="small-action" href="{% url 'appointment_reschedule_plan_detail' plan.pk %}#step-{{ plan.primary_attention_step.pk }}">Открыть шаг</a>
               {% else %}
                 <a class="small-action" href="{% url 'appointment_reschedule_plan_detail' plan.pk %}">Открыть</a>
               {% endif %}
