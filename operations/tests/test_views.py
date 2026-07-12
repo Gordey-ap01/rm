@@ -4299,8 +4299,8 @@ class AppointmentDetailAndMoveTests(NewViewsTestBase):
 
 
 class ReschedulePlanViewTests(NewViewsTestBase):
-    def _appointment(self):
-        starts_at = _local_dt(timezone.localdate() + timedelta(days=5), time(10, 0))
+    def _appointment(self, *, days=5):
+        starts_at = _local_dt(timezone.localdate() + timedelta(days=days), time(10, 0))
         return Appointment.objects.create(
             child=self.child,
             service=self.service,
@@ -4311,9 +4311,9 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             billing_account=self.account,
         )
 
-    def _reschedule_chain_fixture(self):
-        first_source = self._appointment()
-        second_start = _local_dt(timezone.localdate() + timedelta(days=5), time(11, 0))
+    def _reschedule_chain_fixture(self, *, days=5):
+        first_source = self._appointment(days=days)
+        second_start = _local_dt(timezone.localdate() + timedelta(days=days), time(11, 0))
         second_source = Appointment.objects.create(
             child=self.child,
             service=self.service,
@@ -4335,8 +4335,8 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             action_type=AppointmentRescheduleStep.ActionType.MOVE,
             status=AppointmentRescheduleStep.Status.VALID,
             source_appointment=second_source,
-            proposed_starts_at=_local_dt(timezone.localdate() + timedelta(days=5), time(12, 0)),
-            proposed_ends_at=_local_dt(timezone.localdate() + timedelta(days=5), time(12, 30)),
+            proposed_starts_at=_local_dt(timezone.localdate() + timedelta(days=days), time(12, 0)),
+            proposed_ends_at=_local_dt(timezone.localdate() + timedelta(days=days), time(12, 30)),
             proposed_room=self.room,
             proposed_primary_staff=self.staff,
         )
@@ -4365,6 +4365,13 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             actor=self.admin,
         )
         return plan, chain_result.chain
+
+    def _chain_with_status(self, status, title, *, days=5):
+        plan, chain = self._reschedule_chain_fixture(days=days)
+        chain.title = title
+        chain.status = status
+        chain.save(update_fields=["title", "status", "updated_at"])
+        return plan, chain
 
     def test_appointment_detail_can_create_reschedule_plan(self):
         appointment = self._appointment()
@@ -4521,6 +4528,36 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertContains(response, "Цепочка готова: 1")
         self.assertContains(response, reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
 
+    def test_reschedule_plan_list_filters_chain_attention_focuses(self):
+        ready_plan, _ready_chain = self._chain_with_status(
+            AppointmentRescheduleChain.Status.READY,
+            "Ready chain",
+            days=5,
+        )
+        stale_plan, _stale_chain = self._chain_with_status(
+            AppointmentRescheduleChain.Status.STALE,
+            "Stale chain",
+            days=8,
+        )
+        failed_plan, _failed_chain = self._chain_with_status(
+            AppointmentRescheduleChain.Status.FAILED,
+            "Failed chain",
+            days=11,
+        )
+
+        cases = [
+            ("chain_ready", ready_plan),
+            ("chain_stale", stale_plan),
+            ("chain_failed", failed_plan),
+        ]
+        for focus, expected_plan in cases:
+            with self.subTest(focus=focus):
+                response = self.client.get(reverse("reschedule_plan_list"), {"focus": focus})
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(list(response.context["plans"]), [expected_plan])
+                self.assertContains(response, f'value="{focus}" selected')
+
     def test_dashboard_surfaces_ready_reschedule_chains(self):
         _plan, chain = self._reschedule_chain_fixture()
         plan_svc.revalidate_chain(chain)
@@ -4546,6 +4583,53 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertContains(response, 'id="queue-reschedule-chains"')
         self.assertContains(response, "Открыть план")
         self.assertContains(response, reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+
+    def test_dashboard_orders_chain_attention_by_operational_priority(self):
+        self._chain_with_status(AppointmentRescheduleChain.Status.READY, "Ready chain", days=5)
+        self._chain_with_status(AppointmentRescheduleChain.Status.STALE, "Stale chain", days=8)
+        self._chain_with_status(AppointmentRescheduleChain.Status.FAILED, "Failed chain", days=11)
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        chain_items = [
+            item
+            for item in response.context["dashboard_focus_items"]
+            if "chain_" in item["href"]
+        ]
+        self.assertEqual(
+            [item["href"].split("focus=")[1] for item in chain_items],
+            ["chain_failed", "chain_stale", "chain_ready"],
+        )
+        self.assertEqual(response.context["failed_chain_count"], 1)
+        self.assertEqual(response.context["stale_chain_count"], 1)
+        self.assertEqual(response.context["ready_chain_count"], 1)
+        self.assertEqual(response.context["chain_attention_count"], 3)
+
+    def test_work_queue_orders_chain_attention_by_operational_priority(self):
+        self._chain_with_status(AppointmentRescheduleChain.Status.READY, "Ready chain", days=5)
+        self._chain_with_status(AppointmentRescheduleChain.Status.STALE, "Stale chain", days=8)
+        self._chain_with_status(AppointmentRescheduleChain.Status.FAILED, "Failed chain", days=11)
+
+        response = self.client.get(reverse("work_queue"))
+
+        self.assertEqual(response.status_code, 200)
+        chains = list(response.context["reschedule_chains"])
+        self.assertEqual(
+            [chain.status for chain in chains[:3]],
+            [
+                AppointmentRescheduleChain.Status.FAILED,
+                AppointmentRescheduleChain.Status.STALE,
+                AppointmentRescheduleChain.Status.READY,
+            ],
+        )
+        chain_summary = next(
+            item
+            for item in response.context["queue_summary_items"]
+            if item["href"] == "#queue-reschedule-chains"
+        )
+        self.assertEqual(chain_summary["value"], 3)
+        self.assertEqual(chain_summary["tone"], "danger")
 
     def test_reschedule_plan_detail_renders_steps(self):
         appointment = self._appointment()

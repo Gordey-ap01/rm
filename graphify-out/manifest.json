@@ -170,9 +170,9 @@
     "semantic_hash": "683569e802955afebbba78aae5916fc9"
   },
   "operations/tests/test_views.py": {
-    "mtime": 1783808226.685278,
-    "ast_hash": "cad517e526704d7152abca7a47f6905f",
-    "semantic_hash": "cad517e526704d7152abca7a47f6905f"
+    "mtime": 1783837419.9494956,
+    "ast_hash": "981fe1d37a5158322624b7f6126c73a1",
+    "semantic_hash": ""
   },
   "operations/urls.py": {
     "mtime": 1782848740.2621553,
@@ -210,9 +210,9 @@
     "semantic_hash": "2521302cb2028fd14d785298ce216f6a"
   },
   "operations/views/dashboard.py": {
-    "mtime": 1782624926.1320214,
-    "ast_hash": "143b93dd7ad71bf2b3e7dc49919548e5",
-    "semantic_hash": "143b93dd7ad71bf2b3e7dc49919548e5"
+    "mtime": 1783836836.0074298,
+    "ast_hash": "b12a7a5eb6492eaf90e633190164e8dc",
+    "semantic_hash": ""
   },
   "operations/views/documents.py": {
     "mtime": 1782649170.102142,
@@ -515,8 +515,8 @@
     "semantic_hash": "929b035a1aeaf7a9482b03a04df8a13e"
   },
   "templates/base.html": {
-    "mtime": 1782848782.837582,
-    "ast_hash": "307bb47407eb5341c5cf20fc9fbabf33",
+    "mtime": 1783811866.5415545,
+    "ast_hash": "a94e9752b344564d88d99caefe6b9fa1",
     "semantic_hash": ""
   },
   "templates/operations/appointment_cancel.html": {
@@ -560,8 +560,8 @@
     "semantic_hash": ""
   },
   "templates/operations/dashboard.html": {
-    "mtime": 1782775582.8049796,
-    "ast_hash": "1bd6f3cf635e7253290249e5e0233b06",
+    "mtime": 1783813904.7668662,
+    "ast_hash": "90534d75dfcb0f45f0e42815df8d46b5",
     "semantic_hash": ""
   },
   "templates/operations/document_form.html": {
@@ -645,8 +645,8 @@
     "semantic_hash": ""
   },
   "templates/operations/work_queue.html": {
-    "mtime": 1782826936.0078669,
-    "ast_hash": "91baae0f1681917ff0f79266996f5959",
+    "mtime": 1783813920.3574097,
+    "ast_hash": "623a1543c4fe48a8107d22de44a0ab6c",
     "semantic_hash": ""
   },
   "templates/registration/csrf_failure.html": {
@@ -805,23 +805,23 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1782944437.5595784,
-    "ast_hash": "b2c1c398c437063a7a270abca915ef92",
+    "mtime": 1783837286.4123266,
+    "ast_hash": "03c5ce229880b7a0f822ad4ac3e25375",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
-    "mtime": 1782189216.3474033,
-    "ast_hash": "8af432a18cf644ebbe5e1c977d9046b7",
+    "mtime": 1783646746.748273,
+    "ast_hash": "f3e0c196040615b1ddc2b6c0e11ebf2a",
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1782944507.920408,
-    "ast_hash": "b5552fd26292f53f9865f2f269ba9907",
+    "mtime": 1783837061.0778105,
+    "ast_hash": "8a212ec3599b88cc84111afec59ae99f",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1782944481.894674,
-    "ast_hash": "7747e02e9c4b251dfa5b1303af5edade",
+    "mtime": 1783837297.3856478,
+    "ast_hash": "763e1ffceed7ac264b1e3eac780a27e4",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -885,8 +885,8 @@
     "semantic_hash": ""
   },
   "templates/operations/reschedule_plan_detail.html": {
-    "mtime": 1782914694.5143416,
-    "ast_hash": "94ea53c87db7a13aabc9166d02d0485e",
+    "mtime": 1783806685.586021,
+    "ast_hash": "1c5f83ef3140af6330723e56ded78a01",
     "semantic_hash": ""
   },
   "operations/migrations/0019_appointmentconfirmation_reschedule_step_and_more.py": {
@@ -900,8 +900,8 @@
     "semantic_hash": "116ca5af33dca8b0e62a85c69a663c66"
   },
   "templates/operations/reschedule_plan_list.html": {
-    "mtime": 1782941317.5636132,
-    "ast_hash": "5dd6dabfa02652bb9c69e0d3877d6c1f",
+    "mtime": 1783808208.0755658,
+    "ast_hash": "d9a1ffea79c14b9528841b47840599d9",
     "semantic_hash": ""
   },
   "operations/migrations/0021_reschedule_chains.py": {
@@ -910,8 +910,8 @@
     "semantic_hash": "7dc288ba3638614cab561004365f88d4"
   },
   "docs/10-reschedule-chain-dependencies-contract.md": {
-    "mtime": 1782944416.927591,
-    "ast_hash": "08262f43e513c05e24e11a576452d9ca",
+    "mtime": 1783812680.41327,
+    "ast_hash": "98f48158058322dfcbf0e9d13e17aa01",
     "semantic_hash": ""
   }
 }

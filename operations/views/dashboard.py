@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Count, Q
+from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -98,6 +98,16 @@ def reschedule_plan_focus_url(focus: str) -> str:
     return f"{reverse('reschedule_plan_list')}?focus={focus}"
 
 
+def reschedule_chain_attention_priority():
+    return Case(
+        When(status=AppointmentRescheduleChain.Status.FAILED, then=Value(0)),
+        When(status=AppointmentRescheduleChain.Status.STALE, then=Value(1)),
+        When(status=AppointmentRescheduleChain.Status.READY, then=Value(2)),
+        default=Value(9),
+        output_field=IntegerField(),
+    )
+
+
 def reschedule_chain_attention_queryset():
     return (
         AppointmentRescheduleChain.objects.select_related(
@@ -109,6 +119,7 @@ def reschedule_chain_attention_queryset():
             "created_by",
         )
         .annotate(
+            attention_priority=reschedule_chain_attention_priority(),
             step_count=Count("steps", distinct=True),
             dependency_count=Count("dependencies", distinct=True),
         )
@@ -125,7 +136,7 @@ def reschedule_chain_attention_queryset():
                 AppointmentReschedulePlan.Status.CANCELLED,
             ]
         )
-        .order_by("status", "-updated_at", "-pk")
+        .order_by("attention_priority", "-updated_at", "-pk")
     )
 
 
