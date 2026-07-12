@@ -4631,6 +4631,27 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertEqual(chain_summary["value"], 3)
         self.assertEqual(chain_summary["tone"], "danger")
 
+    def test_work_queue_labels_chain_next_actions(self):
+        self._chain_with_status(AppointmentRescheduleChain.Status.READY, "Ready chain", days=5)
+        self._chain_with_status(AppointmentRescheduleChain.Status.STALE, "Stale chain", days=8)
+        self._chain_with_status(AppointmentRescheduleChain.Status.FAILED, "Failed chain", days=11)
+
+        response = self.client.get(reverse("work_queue"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "Следующее действие: открыть план, разобрать ошибку цепочки и повторить после исправления.",
+        )
+        self.assertContains(
+            response,
+            "Следующее действие: перепроверить цепочку в плане перед применением.",
+        )
+        self.assertContains(
+            response,
+            "Следующее действие: открыть план и применить цепочку после финальной проверки.",
+        )
+
     def test_reschedule_plan_detail_renders_steps(self):
         appointment = self._appointment()
         self.client.post(reverse("appointment_reschedule_plan_create", args=[appointment.pk]))

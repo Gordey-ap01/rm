@@ -1,4 +1,4 @@
-Update 2026-07-12: `apply_chain(chain)`, registry-level chain UX/metrics, dashboard/work queue chain signals, and chain attention ordering (`failed` -> `stale` -> `ready`) are implemented and tested; visible dashboard/work queue layout was Browser-QA verified in the previous slice. A separate manager chain dashboard is deferred until real usage shows a concrete gap; next safe step is the next non-DB operations slice.
+Update 2026-07-12: `apply_chain(chain)`, registry-level chain UX/metrics, dashboard/work queue chain signals, chain attention ordering (`failed` -> `stale` -> `ready`), and work queue next-action guidance per chain status are implemented and tested; work queue chain guidance passed desktop/mobile Browser QA. A separate manager chain dashboard is deferred until real usage shows a concrete gap; next safe step is the next non-DB operations slice.
 
 # Промпт для следующего чата по проекту "Радость моя"
 

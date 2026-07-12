@@ -220,6 +220,13 @@
               {% endif %}
               · обновлено {{ chain.updated_at|date:"d.m H:i" }}
             </p>
+            {% if chain.status == "failed" %}
+              <p class="muted">Следующее действие: открыть план, разобрать ошибку цепочки и повторить после исправления.</p>
+            {% elif chain.status == "stale" %}
+              <p class="muted">Следующее действие: перепроверить цепочку в плане перед применением.</p>
+            {% elif chain.status == "ready" %}
+              <p class="muted">Следующее действие: открыть план и применить цепочку после финальной проверки.</p>
+            {% endif %}
           </div>
           <div class="task-actions">
             <a class="button-link secondary small-action" href="{% url 'appointment_reschedule_plan_detail' chain.plan.pk %}">Открыть план</a>
