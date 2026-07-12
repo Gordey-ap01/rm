@@ -166,10 +166,17 @@ def _localized_messages(error: ValidationError) -> str:
     )
 
 
-def _plan_detail_url(plan_pk: int, *, chain_pk: int | None = None) -> str:
+def _plan_detail_url(
+    plan_pk: int,
+    *,
+    chain_pk: int | None = None,
+    step_pk: int | None = None,
+) -> str:
     url = reverse("appointment_reschedule_plan_detail", args=[plan_pk])
     if chain_pk:
         return f"{url}#chain-{chain_pk}"
+    if step_pk:
+        return f"{url}#step-{step_pk}"
     return url
 
 
@@ -603,7 +610,7 @@ def appointment_reschedule_plan_detail(request, pk: int):
                     messages.success(request, "Согласованный шаг переноса применен.")
                 else:
                     messages.success(request, "Шаг переноса применен без согласований.")
-            return redirect("appointment_reschedule_plan_detail", pk=plan.pk)
+            return redirect(_plan_detail_url(plan.pk, step_pk=step.pk))
         if action == "mark_review_conflict_resolved":
             step = get_object_or_404(plan.steps.all(), pk=request.POST.get("step_id"))
             try:
@@ -612,7 +619,7 @@ def appointment_reschedule_plan_detail(request, pk: int):
                 messages.error(request, "; ".join(exc.messages))
             else:
                 messages.success(request, "Ручной конфликт отмечен разобранным.")
-            return redirect("appointment_reschedule_plan_detail", pk=plan.pk)
+            return redirect(_plan_detail_url(plan.pk, step_pk=step.pk))
         if action == "send_step_confirmations":
             step = get_object_or_404(plan.steps.all(), pk=request.POST.get("step_id"))
             try:
@@ -631,7 +638,7 @@ def appointment_reschedule_plan_detail(request, pk: int):
                     messages.info(request, "Согласования по этому шагу уже были созданы.")
                 else:
                     messages.warning(request, "Для этого шага нет адресатов с email.")
-            return redirect("appointment_reschedule_plan_detail", pk=plan.pk)
+            return redirect(_plan_detail_url(plan.pk, step_pk=step.pk))
 
     chains = list(
         plan.chains.prefetch_related(

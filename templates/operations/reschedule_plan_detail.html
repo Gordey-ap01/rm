@@ -201,7 +201,7 @@
     </thead>
     <tbody>
       {% for step in steps %}
-        <tr>
+        <tr id="step-{{ step.pk }}" class="reschedule-step-anchor">
           <td data-label="№">{{ step.position }}</td>
           <td data-label="Действие">{{ step.get_action_type_display }}</td>
           <td data-label="Статус">{{ step.get_status_display }}</td>
@@ -340,4 +340,41 @@
     </tbody>
   </table>
 </section>
+<script>
+  (function () {
+    function rescheduleAnchorId() {
+      if (!window.location.hash) {
+        return "";
+      }
+      try {
+        return decodeURIComponent(window.location.hash.slice(1));
+      } catch (error) {
+        return window.location.hash.slice(1);
+      }
+    }
+
+    function scrollToRescheduleAnchor() {
+      var anchorId = rescheduleAnchorId();
+      if (!(anchorId.indexOf("step-") === 0 || anchorId.indexOf("chain-") === 0)) {
+        return;
+      }
+      var target = document.getElementById(anchorId);
+      if (!target) {
+        return;
+      }
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(function () {
+          target.scrollIntoView({ block: "start" });
+        });
+      });
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", scrollToRescheduleAnchor, { once: true });
+    } else {
+      scrollToRescheduleAnchor();
+    }
+    window.addEventListener("hashchange", scrollToRescheduleAnchor);
+  })();
+</script>
 {% endblock %}

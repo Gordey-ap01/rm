@@ -4699,10 +4699,12 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         plan = AppointmentReschedulePlan.objects.get(root_appointment=appointment)
 
         response = self.client.get(reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+        step = plan.steps.order_by("position").first()
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "План переноса")
         self.assertContains(response, "reschedule-plan-table")
+        self.assertContains(response, f'id="step-{step.pk}"')
         self.assertContains(response, 'data-label="Команда"')
         self.assertContains(response, "Перепроверить план")
 
@@ -4939,6 +4941,10 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             follow=True,
         )
 
+        self.assertEqual(
+            blocked.redirect_chain[-1][0],
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#step-{step.pk}',
+        )
         self.assertContains(blocked, "Сначала перенесите или отмените занятие")
         step.refresh_from_db()
         self.assertEqual(step.status, AppointmentRescheduleStep.Status.PENDING)
@@ -4952,6 +4958,10 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             follow=True,
         )
 
+        self.assertEqual(
+            response.redirect_chain[-1][0],
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#step-{step.pk}',
+        )
         self.assertContains(response, "Ручной конфликт отмечен разобранным.")
         step.refresh_from_db()
         plan.refresh_from_db()
@@ -4973,7 +4983,10 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             {"action": "apply_step", "step_id": step.pk},
         )
 
-        self.assertRedirects(response, reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+        self.assertEqual(
+            response.url,
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#step-{step.pk}',
+        )
         appointment.refresh_from_db()
         step.refresh_from_db()
         self.assertEqual(appointment.status, Appointment.Status.RESCHEDULED)
@@ -5018,6 +5031,10 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             follow=True,
         )
 
+        self.assertEqual(
+            response.redirect_chain[-1][0],
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#step-{step.pk}',
+        )
         self.assertContains(response, "Пропущен")
         step.refresh_from_db()
         alternative.refresh_from_db()
@@ -5071,6 +5088,10 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             follow=True,
         )
 
+        self.assertEqual(
+            blocked.redirect_chain[-1][0],
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#step-{step.pk}',
+        )
         self.assertContains(blocked, "override кабинета")
         appointment.refresh_from_db()
         self.assertEqual(appointment.status, Appointment.Status.CONFIRMED)
@@ -5081,6 +5102,10 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             follow=True,
         )
 
+        self.assertEqual(
+            response.redirect_chain[-1][0],
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#step-{step.pk}',
+        )
         self.assertContains(response, "Шаг переноса применен с одноразовым разрешением кабинета.")
         step.refresh_from_db()
         self.assertEqual(step.status, AppointmentRescheduleStep.Status.APPLIED)
@@ -5106,7 +5131,10 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             {"action": "send_step_confirmations", "step_id": step.pk},
         )
 
-        self.assertRedirects(response, reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+        self.assertEqual(
+            response.url,
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#step-{step.pk}',
+        )
         confirmations = AppointmentConfirmation.objects.filter(reschedule_step=step)
         self.assertEqual(confirmations.count(), 2)
         self.assertTrue(
@@ -5159,6 +5187,10 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             follow=True,
         )
 
+        self.assertEqual(
+            response.redirect_chain[-1][0],
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#step-{step.pk}',
+        )
         self.assertContains(response, "Согласованный шаг переноса применен.")
         appointment.refresh_from_db()
         step.refresh_from_db()

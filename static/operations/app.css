@@ -598,7 +598,8 @@ button:disabled {
   font-size: 14px;
 }
 
-.reschedule-chain-anchor {
+.reschedule-chain-anchor,
+.reschedule-step-anchor {
   scroll-margin-top: 96px;
 }
 
