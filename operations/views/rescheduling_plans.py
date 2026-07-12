@@ -57,6 +57,12 @@ CHAIN_ACTION_ERROR_MESSAGES = {
     "Chain apply order is incomplete.": "Порядок применения цепочки неполный.",
 }
 
+TERMINAL_CHAIN_STATUSES = {
+    AppointmentRescheduleChain.Status.APPLYING,
+    AppointmentRescheduleChain.Status.APPLIED,
+    AppointmentRescheduleChain.Status.CANCELLED,
+}
+
 
 def _metrics_period(raw_period: str) -> tuple[str, str, object | None]:
     labels = dict(METRICS_PERIOD_CHOICES)
@@ -655,6 +661,7 @@ def appointment_reschedule_plan_detail(request, pk: int):
         )
         chain.issue_rows = _chain_issue_rows(chain)
         chain.stale_step_rows = _chain_stale_step_rows(chain)
+        chain.can_revalidate = chain.status not in TERMINAL_CHAIN_STATUSES
 
     return render(
         request,

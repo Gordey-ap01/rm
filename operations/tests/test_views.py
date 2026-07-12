@@ -4858,6 +4858,27 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertContains(response, 'name="action" value="revalidate_chain"')
         self.assertContains(response, 'name="action" value="apply_chain"')
 
+    def test_reschedule_plan_detail_hides_revalidate_for_terminal_chains(self):
+        cases = [
+            (AppointmentRescheduleChain.Status.APPLYING, 5),
+            (AppointmentRescheduleChain.Status.APPLIED, 6),
+            (AppointmentRescheduleChain.Status.CANCELLED, 7),
+        ]
+        for status, days in cases:
+            with self.subTest(status=status):
+                plan, chain = self._reschedule_chain_fixture(days=days)
+                chain.status = status
+                chain.save(update_fields=["status", "updated_at"])
+
+                response = self.client.get(
+                    reverse("appointment_reschedule_plan_detail", args=[plan.pk])
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertFalse(response.context["chains"][0].can_revalidate)
+                self.assertContains(response, "Повторная проверка недоступна")
+                self.assertNotContains(response, 'name="action" value="revalidate_chain"')
+
     def test_reschedule_plan_detail_can_apply_ready_chain(self):
         plan, chain = self._reschedule_chain_fixture()
         plan_svc.revalidate_chain(chain)
@@ -4878,6 +4899,8 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertEqual(chain.status, chain.Status.APPLIED)
         self.assertEqual(plan.status, AppointmentReschedulePlan.Status.APPLIED)
         self.assertContains(response, "Цепочка применена")
+        self.assertContains(response, "Повторная проверка недоступна")
+        self.assertNotContains(response, 'name="action" value="revalidate_chain"')
 
     def test_staff_absence_plan_detail_renders_manual_review_actions(self):
         appointment = self._appointment()

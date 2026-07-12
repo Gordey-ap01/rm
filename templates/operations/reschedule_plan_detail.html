@@ -93,12 +93,16 @@
             {% endfor %}
           </div>
         {% endif %}
-        <form method="post" class="stacked-actions">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="revalidate_chain">
-          <input type="hidden" name="chain_id" value="{{ chain.pk }}">
-          <button type="submit" class="button-link secondary small-action">Перепроверить цепочку</button>
-        </form>
+        {% if chain.can_revalidate %}
+          <form method="post" class="stacked-actions">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="revalidate_chain">
+            <input type="hidden" name="chain_id" value="{{ chain.pk }}">
+            <button type="submit" class="button-link secondary small-action">Перепроверить цепочку</button>
+          </form>
+        {% else %}
+          <p class="muted">Повторная проверка недоступна для текущего статуса цепочки.</p>
+        {% endif %}
         {% if chain.status == "ready" %}
           <form method="post" class="stacked-actions">
             {% csrf_token %}
