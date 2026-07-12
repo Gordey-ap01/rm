@@ -25,6 +25,37 @@ METRICS_PERIOD_CHOICES = (
     ("all", "Все время"),
 )
 
+CHAIN_ISSUE_LABELS = {
+    "terminal_plan": "План уже завершен или отменен",
+    "not_enough_steps": "В цепочке меньше двух шагов",
+    "missing_dependencies": "Не заданы зависимости шагов",
+    "duplicate_source_appointment": "Есть альтернативы одного исходного занятия",
+    "step_plan_mismatch": "Шаг относится к другому плану",
+    "step_not_move": "В цепочке есть шаг не переноса",
+    "terminal_step": "Шаг уже применен или пропущен",
+    "missing_proposed_fields": "Не заполнено новое окно шага",
+    "dependency_plan_mismatch": "Зависимость относится к другому плану",
+    "self_dependency": "Шаг зависит от самого себя",
+    "dependency_step_outside_chain": "Зависимость указывает вне цепочки",
+    "duplicate_dependency": "Зависимость указана повторно",
+    "disconnected_steps": "Не все шаги связаны зависимостями",
+    "dependency_cycle": "В зависимостях есть цикл",
+    "confirmation_blocked": "Согласование блокирует шаг",
+}
+
+CONFIRMATION_STATUS_HINTS = {
+    AppointmentRescheduleStep.ConfirmationStatus.WAITING: "ждет ответа",
+    AppointmentRescheduleStep.ConfirmationStatus.DECLINED: "есть отказ",
+    AppointmentRescheduleStep.ConfirmationStatus.APPROVED: "согласовано",
+    AppointmentRescheduleStep.ConfirmationStatus.NOT_REQUESTED: "не запрошено",
+}
+
+CHAIN_ACTION_ERROR_MESSAGES = {
+    "Chain must be ready before applying.": "Цепочка должна быть готова перед применением.",
+    "Chain is not ready after revalidation.": "Цепочка устарела после финальной проверки.",
+    "Chain apply order is incomplete.": "Порядок применения цепочки неполный.",
+}
+
 
 def _metrics_period(raw_period: str) -> tuple[str, str, object | None]:
     labels = dict(METRICS_PERIOD_CHOICES)
@@ -120,6 +151,74 @@ def _reschedule_metric_items(since) -> list[dict]:
             "hint": "атомарно закрыты",
         },
     ]
+
+
+def _localized_messages(error: ValidationError) -> str:
+    return "; ".join(
+        CHAIN_ACTION_ERROR_MESSAGES.get(message, message) for message in error.messages
+    )
+
+
+def _chain_issue_rows(chain: AppointmentRescheduleChain) -> list[dict]:
+    summary = chain.validation_summary or {}
+    steps_by_id = {step.pk: step for step in getattr(chain, "ordered_steps", [])}
+    rows: list[dict] = []
+
+    apply_errors = summary.get("apply_error") or []
+    if isinstance(apply_errors, str):
+        apply_errors = [apply_errors]
+    for message in apply_errors:
+        rows.append(
+            {
+                "tone": "danger",
+                "label": "Ошибка применения",
+                "title": "Ошибка применения цепочки",
+                "detail": str(message),
+            }
+        )
+
+    for issue in summary.get("issues", []):
+        if not isinstance(issue, dict):
+            continue
+        code = issue.get("code", "")
+        step = steps_by_id.get(issue.get("step_id"))
+        detail_parts = []
+        if step:
+            detail_parts.append(f"шаг {step.chain_position or step.position}")
+        if issue.get("confirmation_status"):
+            status = CONFIRMATION_STATUS_HINTS.get(issue["confirmation_status"])
+            if status:
+                detail_parts.append(f"статус: {status}")
+        if issue.get("fields"):
+            detail_parts.append("поля: " + ", ".join(issue["fields"]))
+        if not detail_parts and issue.get("message") and code not in CHAIN_ISSUE_LABELS:
+            detail_parts.append(str(issue["message"]))
+        rows.append(
+            {
+                "tone": "danger" if code in {"terminal_plan", "dependency_cycle"} else "warning",
+                "label": code or "проверка",
+                "title": CHAIN_ISSUE_LABELS.get(code, "Проверьте цепочку"),
+                "detail": " · ".join(detail_parts) or "откройте шаги и зависимости цепочки",
+            }
+        )
+    return rows
+
+
+def _chain_stale_step_rows(chain: AppointmentRescheduleChain) -> list[dict]:
+    rows: list[dict] = []
+    for step in getattr(chain, "ordered_steps", []):
+        messages = step.validation_messages or []
+        if not messages:
+            continue
+        rows.append(
+            {
+                "tone": "warning",
+                "label": f"Шаг {step.chain_position or step.position}",
+                "title": "Проверка расписания устарела",
+                "detail": "; ".join(messages),
+            }
+        )
+    return rows
 
 
 @login_required
@@ -413,14 +512,14 @@ def appointment_reschedule_plan_detail(request, pk: int):
             try:
                 result = plan_svc.revalidate_chain(chain)
             except ValidationError as exc:
-                messages.error(request, "; ".join(exc.messages))
+                messages.error(request, _localized_messages(exc))
             else:
                 messages.success(
                     request,
                     (
-                        "Chain revalidated: "
-                        f"ready {result.ready_steps}, stale {result.stale_steps}, "
-                        f"blocked {result.blocked_steps}."
+                        "Цепочка перепроверена: "
+                        f"готово {result.ready_steps}, устарело {result.stale_steps}, "
+                        f"заблокировано {result.blocked_steps}."
                     ),
                 )
             return redirect("appointment_reschedule_plan_detail", pk=plan.pk)
@@ -429,11 +528,11 @@ def appointment_reschedule_plan_detail(request, pk: int):
             try:
                 result = plan_svc.apply_chain(chain, actor=request.user)
             except ValidationError as exc:
-                messages.error(request, "; ".join(exc.messages))
+                messages.error(request, _localized_messages(exc))
             else:
                 messages.success(
                     request,
-                    f"Chain applied: {len(result.applied_steps)} steps.",
+                    f"Цепочка применена: шагов {len(result.applied_steps)}.",
                 )
             return redirect("appointment_reschedule_plan_detail", pk=plan.pk)
         if action == "apply_step":
@@ -516,6 +615,8 @@ def appointment_reschedule_plan_detail(request, pk: int):
                 "successor_step__chain_position",
             )
         )
+        chain.issue_rows = _chain_issue_rows(chain)
+        chain.stale_step_rows = _chain_stale_step_rows(chain)
 
     return render(
         request,

@@ -55,8 +55,8 @@
   <section class="panel">
     <h2>Цепочки переноса</h2>
     <p class="muted">
-      Цепочка показывает зависимый порядок шагов. Этот блок ничего не применяет:
-      атомарное применение будет отдельным срезом после повторной проверки.
+      Цепочка показывает зависимый порядок шагов. Перед применением система повторно проверяет
+      расписание, кабинет, специалистов и согласования по каждому шагу.
     </p>
     {% for chain in chains %}
       <div class="appointment-attention">
@@ -71,11 +71,33 @@
             Структура: {{ chain.validation_summary.structural|default:"не проверена" }}.
           </p>
         {% endif %}
+        {% if chain.issue_rows %}
+          <div class="appointment-attention-list" aria-label="Что мешает применить цепочку">
+            {% for issue in chain.issue_rows %}
+              <div class="appointment-attention-item is-{{ issue.tone }}">
+                <span>{{ issue.label }}</span>
+                <strong>{{ issue.title }}</strong>
+                <span>{{ issue.detail }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% if chain.stale_step_rows %}
+          <div class="appointment-attention-list" aria-label="Устаревшие проверки по шагам">
+            {% for stale_step in chain.stale_step_rows %}
+              <div class="appointment-attention-item is-{{ stale_step.tone }}">
+                <span>{{ stale_step.label }}</span>
+                <strong>{{ stale_step.title }}</strong>
+                <span>{{ stale_step.detail }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
         <form method="post" class="stacked-actions">
           {% csrf_token %}
           <input type="hidden" name="action" value="revalidate_chain">
           <input type="hidden" name="chain_id" value="{{ chain.pk }}">
-          <button type="submit" class="button-link secondary small-action">&#1055;&#1077;&#1088;&#1077;&#1087;&#1088;&#1086;&#1074;&#1077;&#1088;&#1080;&#1090;&#1100; &#1094;&#1077;&#1087;&#1086;&#1095;&#1082;&#1091;</button>
+          <button type="submit" class="button-link secondary small-action">Перепроверить цепочку</button>
         </form>
         {% if chain.status == "ready" %}
           <form method="post" class="stacked-actions">
@@ -84,7 +106,7 @@
             <input type="hidden" name="chain_id" value="{{ chain.pk }}">
             <button type="submit"
                     class="button-link secondary small-action"
-                    onclick="return confirm('Apply this chain atomically?')">&#1055;&#1088;&#1080;&#1084;&#1077;&#1085;&#1080;&#1090;&#1100; &#1094;&#1077;&#1087;&#1086;&#1095;&#1082;&#1091;</button>
+                    onclick="return confirm('Применить всю цепочку атомарно? Если один шаг не пройдет проверку, расписание не изменится.')">Применить цепочку</button>
           </form>
         {% endif %}
       </div>

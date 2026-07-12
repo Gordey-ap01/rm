@@ -4731,6 +4731,69 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertContains(response, "Атомарно все или ничего")
         self.assertNotContains(response, "Применить цепочку")
 
+    def test_reschedule_plan_detail_explains_stale_chain_step_checks(self):
+        plan, chain = self._reschedule_chain_fixture()
+        first = chain.steps.order_by("chain_position").first()
+        blocker_parent = ParentGuardian.objects.create(
+            last_name="Blocker",
+            first_name="Parent",
+            phone="+7 900 000-77-03",
+        )
+        blocker_child = Child.objects.create(
+            last_name="Blocker",
+            first_name="Child",
+            primary_parent=blocker_parent,
+        )
+        Appointment.objects.create(
+            child=blocker_child,
+            staff_member=first.proposed_primary_staff,
+            service=self.service2,
+            starts_at=first.proposed_starts_at,
+            ends_at=first.proposed_ends_at,
+            room=first.proposed_room,
+        )
+        plan_svc.revalidate_chain(chain)
+        first.refresh_from_db()
+
+        response = self.client.get(reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Проверка расписания устарела")
+        self.assertContains(response, "Шаг 1")
+        self.assertContains(response, first.validation_messages[0])
+
+    def test_reschedule_plan_detail_explains_confirmation_blocked_chain(self):
+        plan, chain = self._reschedule_chain_fixture()
+        first = chain.steps.order_by("chain_position").first()
+        AppointmentConfirmation.objects.create(
+            appointment=first.source_appointment,
+            reschedule_step=first,
+            target_type=AppointmentConfirmation.TargetType.REPRESENTATIVE,
+            email="declined-detail@example.local",
+            subject="Подтверждение переноса",
+            message="Подтвердите перенос",
+            status=AppointmentConfirmation.Status.DECLINED,
+        )
+        plan_svc.revalidate_chain(chain)
+
+        response = self.client.get(reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Согласование блокирует шаг")
+        self.assertContains(response, "статус: есть отказ")
+
+    def test_reschedule_plan_detail_explains_failed_chain_apply_error(self):
+        plan, chain = self._reschedule_chain_fixture()
+        chain.status = AppointmentRescheduleChain.Status.FAILED
+        chain.validation_summary = {"apply_error": ["second step failed"]}
+        chain.save(update_fields=["status", "validation_summary", "updated_at"])
+
+        response = self.client.get(reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ошибка применения цепочки")
+        self.assertContains(response, "second step failed")
+
     def test_reschedule_plan_detail_can_revalidate_chain(self):
         plan, chain = self._reschedule_chain_fixture()
 
@@ -4744,7 +4807,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(chain.status, chain.Status.READY)
         self.assertEqual(chain.validation_summary["ready"], 2)
-        self.assertContains(response, "Chain revalidated")
+        self.assertContains(response, "Цепочка перепроверена")
         self.assertContains(response, 'name="action" value="revalidate_chain"')
         self.assertContains(response, 'name="action" value="apply_chain"')
 
@@ -4763,7 +4826,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(chain.status, chain.Status.APPLIED)
         self.assertEqual(plan.status, AppointmentReschedulePlan.Status.APPLIED)
-        self.assertContains(response, "Chain applied")
+        self.assertContains(response, "Цепочка применена")
 
     def test_staff_absence_plan_detail_renders_manual_review_actions(self):
         appointment = self._appointment()
