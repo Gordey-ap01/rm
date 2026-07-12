@@ -229,7 +229,7 @@
             {% endif %}
           </div>
           <div class="task-actions">
-            <a class="button-link secondary small-action" href="{% url 'appointment_reschedule_plan_detail' chain.plan.pk %}">Открыть план</a>
+            <a class="button-link secondary small-action" href="{% url 'appointment_reschedule_plan_detail' chain.plan.pk %}#chain-{{ chain.pk }}">Открыть цепочку</a>
           </div>
         </div>
       {% empty %}

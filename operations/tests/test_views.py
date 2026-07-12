@@ -4581,8 +4581,11 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertIn(chain, list(response.context["reschedule_chains"]))
         self.assertContains(response, "#queue-reschedule-chains")
         self.assertContains(response, 'id="queue-reschedule-chains"')
-        self.assertContains(response, "Открыть план")
-        self.assertContains(response, reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+        self.assertContains(response, "Открыть цепочку")
+        self.assertContains(
+            response,
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#chain-{chain.pk}',
+        )
 
     def test_dashboard_orders_chain_attention_by_operational_priority(self):
         self._chain_with_status(AppointmentRescheduleChain.Status.READY, "Ready chain", days=5)
@@ -4705,7 +4708,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             proposed_room=self.room,
             proposed_primary_staff=self.staff,
         )
-        plan_svc.create_chain_for_steps(
+        chain_result = plan_svc.create_chain_for_steps(
             plan,
             step_ids=[first.pk, second.pk],
             dependencies=[
@@ -4718,6 +4721,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             title="Буферная цепочка",
             actor=self.admin,
         )
+        chain = chain_result.chain
 
         response = self.client.get(reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
 
@@ -4726,6 +4730,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertContains(response, "Буферная цепочка")
         self.assertContains(response, "reschedule-chain-table")
         self.assertContains(response, "reschedule-chain-dependency-table")
+        self.assertContains(response, f'id="chain-{chain.pk}"')
         self.assertContains(response, 'data-label="Порядок"')
         self.assertContains(response, 'data-label="Предшественник"')
         self.assertContains(response, "Атомарно все или ничего")

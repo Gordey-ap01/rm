@@ -598,6 +598,10 @@ button:disabled {
   font-size: 14px;
 }
 
+.reschedule-chain-anchor {
+  scroll-margin-top: 96px;
+}
+
 .appointment-attention-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

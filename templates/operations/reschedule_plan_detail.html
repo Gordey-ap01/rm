@@ -59,7 +59,7 @@
       расписание, кабинет, специалистов и согласования по каждому шагу.
     </p>
     {% for chain in chains %}
-      <div class="appointment-attention">
+      <div class="appointment-attention reschedule-chain-anchor" id="chain-{{ chain.pk }}">
         <h3>{{ chain.title|default:"Цепочка" }} · {{ chain.get_status_display }}</h3>
         <p>
           Правило: {{ chain.get_apply_policy_display }}.
