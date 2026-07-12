@@ -4526,7 +4526,45 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertEqual(metric_values["Цепочек"], 1)
         self.assertContains(response, 'value="chain_ready" selected')
         self.assertContains(response, "Цепочка готова: 1")
-        self.assertContains(response, reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+        self.assertContains(response, "Открыть цепочку")
+        self.assertContains(
+            response,
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#chain-{chain.pk}',
+        )
+
+    def test_reschedule_plan_list_links_to_priority_chain_anchor(self):
+        plan, ready_chain = self._chain_with_status(
+            AppointmentRescheduleChain.Status.READY,
+            "Ready chain",
+            days=5,
+        )
+        stale_chain = AppointmentRescheduleChain.objects.create(
+            plan=plan,
+            title="Stale chain",
+            status=AppointmentRescheduleChain.Status.STALE,
+        )
+        failed_chain = AppointmentRescheduleChain.objects.create(
+            plan=plan,
+            title="Failed chain",
+            status=AppointmentRescheduleChain.Status.FAILED,
+        )
+
+        response = self.client.get(reverse("reschedule_plan_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Открыть цепочку")
+        self.assertContains(
+            response,
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#chain-{failed_chain.pk}',
+        )
+        self.assertNotContains(
+            response,
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#chain-{stale_chain.pk}',
+        )
+        self.assertNotContains(
+            response,
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#chain-{ready_chain.pk}',
+        )
 
     def test_reschedule_plan_list_filters_chain_attention_focuses(self):
         ready_plan, _ready_chain = self._chain_with_status(

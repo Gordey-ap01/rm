@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import ValidationError
-from django.db.models import Count, Q
+from django.db.models import Case, Count, IntegerField, Prefetch, Q, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -452,11 +452,41 @@ def reschedule_plan_list(request):
         ("chain_stale", "Цепочки устарели"),
         ("chain_failed", "Ошибки цепочек"),
     ]
+    chain_attention_queryset = (
+        AppointmentRescheduleChain.objects.filter(
+            status__in=[
+                chain_status.FAILED,
+                chain_status.STALE,
+                chain_status.READY,
+            ]
+        )
+        .annotate(
+            attention_priority=Case(
+                When(status=chain_status.FAILED, then=Value(0)),
+                When(status=chain_status.STALE, then=Value(1)),
+                When(status=chain_status.READY, then=Value(2)),
+                default=Value(9),
+                output_field=IntegerField(),
+            )
+        )
+        .order_by("attention_priority", "-updated_at", "-pk")
+    )
+    plan_rows = list(
+        plans.order_by("-created_at", "-pk")
+        .prefetch_related(
+            Prefetch("chains", queryset=chain_attention_queryset, to_attr="attention_chains")
+        )[:100]
+    )
+    for plan in plan_rows:
+        plan.primary_attention_chain = (
+            plan.attention_chains[0] if plan.attention_chains else None
+        )
+
     return render(
         request,
         "operations/reschedule_plan_list.html",
         {
-            "plans": plans.order_by("-created_at", "-pk")[:100],
+            "plans": plan_rows,
             "current_status": status,
             "current_confirmation": confirmation,
             "current_focus": focus,
