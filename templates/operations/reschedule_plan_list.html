@@ -118,14 +118,18 @@
               <div class="muted">{{ plan.get_plan_type_display }}</div>
             </td>
             <td data-label="Согласования">
-              {% if plan.declined_step_count %}
-                <span class="status-pill muted-pill">Есть отказ: {{ plan.declined_step_count }}</span>
-              {% elif plan.waiting_step_count %}
-                <span class="status-pill muted-pill">Ждет ответов: {{ plan.waiting_step_count }}</span>
-              {% elif plan.approved_step_count %}
-                <span class="status-pill">Согласовано: {{ plan.approved_step_count }}</span>
+              {% if plan.is_terminal %}
+                <span class="muted">Архив согласований</span>
               {% else %}
-                <span class="status-pill muted-pill">Не запрошено</span>
+                {% if plan.declined_step_count %}
+                  <span class="status-pill muted-pill">Есть отказ: {{ plan.declined_step_count }}</span>
+                {% elif plan.waiting_step_count %}
+                  <span class="status-pill muted-pill">Ждет ответов: {{ plan.waiting_step_count }}</span>
+                {% elif plan.approved_step_count %}
+                  <span class="status-pill">Согласовано: {{ plan.approved_step_count }}</span>
+                {% else %}
+                  <span class="status-pill muted-pill">Не запрошено</span>
+                {% endif %}
               {% endif %}
             </td>
             <td data-label="Контроль">

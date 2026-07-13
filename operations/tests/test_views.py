@@ -4841,6 +4841,9 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         )
         chain_plan.status = AppointmentReschedulePlan.Status.APPLIED
         chain_plan.save(update_fields=["status", "updated_at"])
+        chain_plan.steps.update(
+            confirmation_status=AppointmentRescheduleStep.ConfirmationStatus.WAITING
+        )
         source = self._appointment(days=9)
         step_plan = AppointmentReschedulePlan.objects.create(
             status=AppointmentReschedulePlan.Status.APPLIED,
@@ -4853,6 +4856,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             position=1,
             action_type=AppointmentRescheduleStep.ActionType.MOVE,
             status=AppointmentRescheduleStep.Status.FAILED,
+            confirmation_status=AppointmentRescheduleStep.ConfirmationStatus.DECLINED,
             source_appointment=source,
             proposed_starts_at=_local_dt(timezone.localdate() + timedelta(days=9), time(12, 0)),
             proposed_ends_at=_local_dt(timezone.localdate() + timedelta(days=9), time(12, 30)),
@@ -4873,6 +4877,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
                 self.assertTrue(plan.is_terminal)
                 self.assertIsNone(plan.primary_attention_chain)
                 self.assertIsNone(plan.primary_attention_step)
+        self.assertContains(response, "Архив согласований", count=2)
         self.assertContains(response, "План завершен", count=2)
         self.assertContains(
             response,
@@ -4884,6 +4889,8 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         )
         self.assertNotContains(response, "Открыть цепочку")
         self.assertNotContains(response, "Открыть шаг")
+        self.assertNotContains(response, "Ждет ответов:")
+        self.assertNotContains(response, "Есть отказ:")
         self.assertNotContains(
             response,
             f'{reverse("appointment_reschedule_plan_detail", args=[chain_plan.pk])}#chain-{chain.pk}',
