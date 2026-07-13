@@ -239,7 +239,12 @@
             {% endif %}
           </td>
           <td data-label="Согласования">
-            <div><strong>{{ step.get_confirmation_status_display }}</strong></div>
+            {% if not can_mutate_plan %}
+              <div><strong>Архив согласований</strong></div>
+              <div class="muted">Последний статус: {{ step.get_confirmation_status_display }}</div>
+            {% else %}
+              <div><strong>{{ step.get_confirmation_status_display }}</strong></div>
+            {% endif %}
             {% if step.confirmations.all %}
               {% if step.confirmation_summary.total %}
                 <div class="muted">

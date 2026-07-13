@@ -5172,6 +5172,9 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         chain.save(update_fields=["status", "validation_summary", "updated_at"])
         plan.status = AppointmentReschedulePlan.Status.CANCELLED
         plan.save(update_fields=["status", "updated_at"])
+        plan.steps.update(
+            confirmation_status=AppointmentRescheduleStep.ConfirmationStatus.WAITING
+        )
 
         response = self.client.get(reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
 
@@ -5180,6 +5183,8 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertFalse(response.context["chains"][0].can_revalidate)
         self.assertFalse(response.context["chains"][0].can_apply)
         self.assertContains(response, "План завершен или отменен.")
+        self.assertContains(response, "Архив согласований", count=2)
+        self.assertContains(response, "Последний статус:", count=2)
         self.assertContains(response, "Повторная проверка плана недоступна")
         self.assertNotContains(response, 'name="action" value="revalidate"')
         self.assertNotContains(response, 'name="action" value="revalidate_chain"')
