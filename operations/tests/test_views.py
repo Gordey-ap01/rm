@@ -720,6 +720,91 @@ class WorkQueueViewTests(NewViewsTestBase):
         )
         self.assertNotContains(response, f'{reverse("appointment_detail", args=[appointment.pk])}">Открыть занятие')
 
+    def test_reschedule_step_confirmation_ignores_terminal_plan_in_queue(self):
+        day = timezone.localdate() + timedelta(days=5)
+        start = _local_dt(day, time(10, 0))
+        active_appointment = Appointment.objects.create(
+            child=self.child,
+            service=self.service,
+            staff_member=self.staff,
+            room=self.room,
+            starts_at=start,
+            ends_at=start + timedelta(minutes=30),
+            billing_account=self.account,
+        )
+        terminal_appointment = Appointment.objects.create(
+            child=self.child,
+            service=self.service,
+            staff_member=self.staff,
+            room=self.room,
+            starts_at=start + timedelta(hours=1),
+            ends_at=start + timedelta(hours=1, minutes=30),
+            billing_account=self.account,
+        )
+        active_plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.READY,
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            reason="Active confirmation queue step fixture",
+            created_by=self.admin,
+        )
+        terminal_plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.CANCELLED,
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            reason="Terminal confirmation queue step fixture",
+            created_by=self.admin,
+        )
+        active_step = AppointmentRescheduleStep.objects.create(
+            plan=active_plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            confirmation_status=AppointmentRescheduleStep.ConfirmationStatus.WAITING,
+            source_appointment=active_appointment,
+            proposed_starts_at=start + timedelta(hours=2),
+            proposed_ends_at=start + timedelta(hours=2, minutes=30),
+            proposed_room=self.room,
+            proposed_primary_staff=self.staff,
+        )
+        terminal_step = AppointmentRescheduleStep.objects.create(
+            plan=terminal_plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            confirmation_status=AppointmentRescheduleStep.ConfirmationStatus.WAITING,
+            source_appointment=terminal_appointment,
+            proposed_starts_at=start + timedelta(hours=3),
+            proposed_ends_at=start + timedelta(hours=3, minutes=30),
+            proposed_room=self.room,
+            proposed_primary_staff=self.staff,
+        )
+        active_confirmation = AppointmentConfirmation.objects.create(
+            appointment=active_appointment,
+            reschedule_step=active_step,
+            target_type=AppointmentConfirmation.TargetType.REPRESENTATIVE,
+            email="active-step-confirmation@example.local",
+            subject="Согласуйте перенос",
+            message="Проверьте новое время.",
+        )
+        terminal_confirmation = AppointmentConfirmation.objects.create(
+            appointment=terminal_appointment,
+            reschedule_step=terminal_step,
+            target_type=AppointmentConfirmation.TargetType.REPRESENTATIVE,
+            email="terminal-step-confirmation@example.local",
+            subject="Согласуйте перенос",
+            message="Проверьте новое время.",
+        )
+
+        response = self.client.get(reverse("work_queue"))
+        dashboard_response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(dashboard_response.status_code, 200)
+        self.assertIn(active_confirmation, list(response.context["confirmation_tasks"]))
+        self.assertNotIn(terminal_confirmation, list(response.context["confirmation_tasks"]))
+        self.assertEqual(dashboard_response.context["confirmation_tasks"], 1)
+        self.assertContains(response, "active-step-confirmation@example.local")
+        self.assertNotContains(response, "terminal-step-confirmation@example.local")
+
     def test_low_balance_task_links_to_recipient_payment_and_account(self):
         low_balance_child = Child.objects.create(last_name="Низкий", first_name="Баланс")
         account = BalanceAccount.objects.create(

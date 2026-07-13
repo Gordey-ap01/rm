@@ -99,6 +99,27 @@ def reschedule_plan_focus_url(focus: str) -> str:
     return f"{reverse('reschedule_plan_list')}?focus={focus}"
 
 
+TERMINAL_RESCHEDULE_PLAN_STATUSES = [
+    AppointmentReschedulePlan.Status.APPLIED,
+    AppointmentReschedulePlan.Status.CANCELLED,
+]
+
+
+def confirmation_attention_filter() -> Q:
+    return (
+        Q(status=AppointmentConfirmation.Status.DECLINED)
+        | Q(delivery_status=AppointmentConfirmation.DeliveryStatus.FAILED)
+        | Q(status=AppointmentConfirmation.Status.PENDING)
+    )
+
+
+def confirmation_attention_queryset():
+    return AppointmentConfirmation.objects.filter(confirmation_attention_filter()).filter(
+        Q(reschedule_step__isnull=True)
+        | ~Q(reschedule_step__plan__status__in=TERMINAL_RESCHEDULE_PLAN_STATUSES)
+    )
+
+
 def reschedule_chain_attention_priority():
     return Case(
         When(status=AppointmentRescheduleChain.Status.FAILED, then=Value(0)),
@@ -588,11 +609,7 @@ def dashboard(request):
     unresolved_billing = needs_billing_queryset().count()
     awaiting_transfer = needs_transfer_queryset().count()
     overdue_attendance = needs_attendance_queryset().count()
-    confirmation_tasks = AppointmentConfirmation.objects.filter(
-        Q(status=AppointmentConfirmation.Status.DECLINED)
-        | Q(delivery_status=AppointmentConfirmation.DeliveryStatus.FAILED)
-        | Q(status=AppointmentConfirmation.Status.PENDING)
-    ).count()
+    confirmation_tasks = confirmation_attention_queryset().count()
     time_off_requests = TimeOffRequest.objects.filter(status=TimeOffRequest.Status.PENDING).count()
     chain_counts = reschedule_chain_attention_counts()
     chain_attention_count = chain_counts["ready"] + chain_counts["stale"] + chain_counts["failed"]
@@ -692,11 +709,7 @@ def work_queue(request):
     for appointment in needs_transfer:
         appointment.attendance_summary_label = attendance_summary_label(appointment)
     confirmation_tasks = (
-        AppointmentConfirmation.objects.filter(
-            Q(status=AppointmentConfirmation.Status.DECLINED)
-            | Q(delivery_status=AppointmentConfirmation.DeliveryStatus.FAILED)
-            | Q(status=AppointmentConfirmation.Status.PENDING)
-        )
+        confirmation_attention_queryset()
         .select_related(
             "appointment",
             "appointment__child",

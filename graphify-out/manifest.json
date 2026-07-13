@@ -170,8 +170,8 @@
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
-    "mtime": 1783943032.9515224,
-    "ast_hash": "e1ef860b91ae7c2293d5d1f31ef3086e",
+    "mtime": 1783943713.5690904,
+    "ast_hash": "b4d1d61cd0540844ae78bf9156831820",
     "semantic_hash": ""
   },
   "operations/urls.py": {
@@ -210,8 +210,8 @@
     "semantic_hash": "2521302cb2028fd14d785298ce216f6a"
   },
   "operations/views/dashboard.py": {
-    "mtime": 1783910486.7156446,
-    "ast_hash": "c54253488255a7a10ccf343ab2c9b81a",
+    "mtime": 1783943636.341405,
+    "ast_hash": "6c6f6685cd9061ca9d07123df457aa5b",
     "semantic_hash": ""
   },
   "operations/views/documents.py": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1783943446.6638958,
-    "ast_hash": "769dca84859b6d94d581f11954dc311d",
+    "mtime": 1783944146.1018238,
+    "ast_hash": "bc487ad71d22126ed5bd2ac0f89f11af",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1783943446.666655,
-    "ast_hash": "1b9641dbc29f37d841b1eb8807f140b9",
+    "mtime": 1783944146.1058269,
+    "ast_hash": "920c6795d198ec3b0448978910dcf194",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1783943446.6654947,
-    "ast_hash": "025c07edc47e84b6a019eadd21a4ce8e",
+    "mtime": 1783944146.1028244,
+    "ast_hash": "e419454909e8b5ac071a3ce8cefe06a9",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
