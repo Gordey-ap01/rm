@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1783911211.6435037,
-    "ast_hash": "ea0b4d23ea00b4a4f4d52ba0fbfbcac6",
+    "mtime": 1783927557.0337443,
+    "ast_hash": "99c8f7edb489cc7223a556ac1bfcb8a4",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1783911267.4118397,
-    "ast_hash": "dac2db4aef974cc5bdf1ec4ecebe0fd8",
+    "mtime": 1783927615.2210293,
+    "ast_hash": "e432f124a1e13c8bf9f3d90203151a76",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1783911229.0669138,
-    "ast_hash": "7c3a935bb2e0a0da076a3464cdf734a0",
+    "mtime": 1783927573.2731235,
+    "ast_hash": "b920ee0373a2166475b771e322f5540f",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {

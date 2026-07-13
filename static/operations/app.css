@@ -599,8 +599,32 @@ button:disabled {
 }
 
 .reschedule-chain-anchor,
-.reschedule-step-anchor {
+.reschedule-step-anchor,
+article.panel[id^="queue-"] {
   scroll-margin-top: 96px;
+}
+
+.reschedule-chain-anchor:target,
+article.panel[id^="queue-"]:target {
+  outline: 2px solid rgba(18, 103, 242, .42);
+  box-shadow: 0 0 0 5px rgba(18, 103, 242, .1), var(--shadow-md);
+  background: var(--surface-strong);
+}
+
+.reschedule-step-anchor:target td {
+  background: rgba(18, 103, 242, .08);
+}
+
+.reschedule-step-anchor:target td:first-child {
+  box-shadow: inset 4px 0 0 var(--brand-blue);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .reschedule-chain-anchor,
+  .reschedule-step-anchor td,
+  article.panel[id^="queue-"] {
+    transition: background-color .2s ease, box-shadow .2s ease, outline-color .2s ease;
+  }
 }
 
 .appointment-attention-list {
