@@ -210,8 +210,8 @@
     "semantic_hash": "2521302cb2028fd14d785298ce216f6a"
   },
   "operations/views/dashboard.py": {
-    "mtime": 1783943636.341405,
-    "ast_hash": "6c6f6685cd9061ca9d07123df457aa5b",
+    "mtime": 1783973456.748455,
+    "ast_hash": "e0af1da02b87f4f34e9bb11bb2aea475",
     "semantic_hash": ""
   },
   "operations/views/documents.py": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1783945201.4922457,
-    "ast_hash": "df5e76e410f6f10e88698e85910b1560",
+    "mtime": 1783945245.015723,
+    "ast_hash": "d21205ffd5bbd65c6eedee11d759c953",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -820,8 +820,8 @@
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1783945201.4932463,
-    "ast_hash": "548fa95ce6c0082aec804ebda47ece1a",
+    "mtime": 1783945245.01673,
+    "ast_hash": "f00a77503425eec43752dd595d469825",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -875,8 +875,8 @@
     "semantic_hash": ""
   },
   "operations/views/rescheduling_plans.py": {
-    "mtime": 1783944481.8242834,
-    "ast_hash": "0fb3bc413f328ad7287892dab4ab9e39",
+    "mtime": 1783973456.7495089,
+    "ast_hash": "1188a0327bbb18e128afe0b93a61f5b5",
     "semantic_hash": ""
   },
   "docs/09-cascade-reschedule-domain-slice.md": {

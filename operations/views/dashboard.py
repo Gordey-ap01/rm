@@ -16,12 +16,12 @@ from operations.models import (
     Appointment,
     AppointmentConfirmation,
     AppointmentRescheduleChain,
-    AppointmentReschedulePlan,
     AppointmentRescheduleStep,
     AppointmentStaffAssignment,
     BalanceAccount,
     TimeOffRequest,
 )
+from operations.services import rescheduling_plans as plan_svc
 
 from ._common import is_admin_user
 
@@ -99,10 +99,7 @@ def reschedule_plan_focus_url(focus: str) -> str:
     return f"{reverse('reschedule_plan_list')}?focus={focus}"
 
 
-TERMINAL_RESCHEDULE_PLAN_STATUSES = [
-    AppointmentReschedulePlan.Status.APPLIED,
-    AppointmentReschedulePlan.Status.CANCELLED,
-]
+TERMINAL_RESCHEDULE_PLAN_STATUSES = plan_svc.TERMINAL_PLAN_STATUSES
 
 
 def confirmation_attention_filter() -> Q:
@@ -153,10 +150,7 @@ def reschedule_chain_attention_queryset():
             ]
         )
         .exclude(
-            plan__status__in=[
-                AppointmentReschedulePlan.Status.APPLIED,
-                AppointmentReschedulePlan.Status.CANCELLED,
-            ]
+            plan__status__in=TERMINAL_RESCHEDULE_PLAN_STATUSES
         )
         .order_by("attention_priority", "-updated_at", "-pk")
     )
@@ -253,10 +247,7 @@ def reschedule_step_attention_queryset():
         )
         .filter(reschedule_step_attention_filter(), chain__isnull=True)
         .exclude(
-            plan__status__in=[
-                AppointmentReschedulePlan.Status.APPLIED,
-                AppointmentReschedulePlan.Status.CANCELLED,
-            ]
+            plan__status__in=TERMINAL_RESCHEDULE_PLAN_STATUSES
         )
         .annotate(attention_priority=reschedule_step_attention_priority())
         .order_by("attention_priority", "-plan__created_at", "position", "pk")

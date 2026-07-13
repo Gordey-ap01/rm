@@ -63,10 +63,7 @@ TERMINAL_CHAIN_STATUSES = {
     AppointmentRescheduleChain.Status.CANCELLED,
 }
 
-TERMINAL_PLAN_STATUSES = {
-    AppointmentReschedulePlan.Status.APPLIED,
-    AppointmentReschedulePlan.Status.CANCELLED,
-}
+TERMINAL_PLAN_STATUSES = plan_svc.TERMINAL_PLAN_STATUSES
 
 ATTENTION_FOCUS_VALUES = {
     "manual_review",
@@ -365,12 +362,7 @@ def reschedule_plan_list(request):
         ),
     )
     if status == "active":
-        plans = plans.exclude(
-            status__in=[
-                AppointmentReschedulePlan.Status.APPLIED,
-                AppointmentReschedulePlan.Status.CANCELLED,
-            ]
-        )
+        plans = plans.exclude(status__in=TERMINAL_PLAN_STATUSES)
     elif status in AppointmentReschedulePlan.Status.values:
         plans = plans.filter(status=status)
 
@@ -408,12 +400,7 @@ def reschedule_plan_list(request):
     elif focus == "chain_failed":
         plans = plans.filter(chains__status=chain_status.FAILED)
 
-    active_plans = AppointmentReschedulePlan.objects.exclude(
-        status__in=[
-            AppointmentReschedulePlan.Status.APPLIED,
-            AppointmentReschedulePlan.Status.CANCELLED,
-        ]
-    )
+    active_plans = AppointmentReschedulePlan.objects.exclude(status__in=TERMINAL_PLAN_STATUSES)
     summary_items = [
         {
             "label": "Активные",

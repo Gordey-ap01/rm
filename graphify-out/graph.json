@@ -10792,7 +10792,7 @@
       "label": "confirmation_attention_filter()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L108",
+      "source_location": "L105",
       "_origin": "ast"
     },
     {
@@ -10800,7 +10800,7 @@
       "label": "Q",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L108",
+      "source_location": "L105",
       "_origin": "ast"
     },
     {
@@ -10808,7 +10808,7 @@
       "label": "confirmation_attention_queryset()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L116",
+      "source_location": "L113",
       "_origin": "ast"
     },
     {
@@ -10816,7 +10816,7 @@
       "label": "reschedule_chain_attention_priority()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L123",
+      "source_location": "L120",
       "_origin": "ast"
     },
     {
@@ -10824,7 +10824,7 @@
       "label": "reschedule_chain_attention_queryset()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L133",
+      "source_location": "L130",
       "_origin": "ast"
     },
     {
@@ -10832,7 +10832,7 @@
       "label": "reschedule_chain_attention_counts()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L165",
+      "source_location": "L159",
       "_origin": "ast"
     },
     {
@@ -10840,7 +10840,7 @@
       "label": "reschedule_step_open_statuses()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L175",
+      "source_location": "L169",
       "_origin": "ast"
     },
     {
@@ -10848,7 +10848,7 @@
       "label": "reschedule_step_attention_filter()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L185",
+      "source_location": "L179",
       "_origin": "ast"
     },
     {
@@ -10856,7 +10856,7 @@
       "label": "reschedule_step_attention_priority()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L208",
+      "source_location": "L202",
       "_origin": "ast"
     },
     {
@@ -10864,7 +10864,7 @@
       "label": "reschedule_step_attention_queryset()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L236",
+      "source_location": "L230",
       "_origin": "ast"
     },
     {
@@ -10872,7 +10872,7 @@
       "label": "reschedule_step_attention_counts()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L266",
+      "source_location": "L257",
       "_origin": "ast"
     },
     {
@@ -10880,7 +10880,7 @@
       "label": "reschedule_step_attention_tone()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L293",
+      "source_location": "L284",
       "_origin": "ast"
     },
     {
@@ -10888,7 +10888,7 @@
       "label": "low_balance_accounts()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L310",
+      "source_location": "L301",
       "_origin": "ast"
     },
     {
@@ -10896,7 +10896,7 @@
       "label": "quick_billing_account()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L318",
+      "source_location": "L309",
       "_origin": "ast"
     },
     {
@@ -10904,7 +10904,7 @@
       "label": "attendance_summary_label()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L327",
+      "source_location": "L318",
       "_origin": "ast"
     },
     {
@@ -10912,7 +10912,7 @@
       "label": "dashboard_focus_items()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L353",
+      "source_location": "L344",
       "_origin": "ast"
     },
     {
@@ -10920,7 +10920,7 @@
       "label": "work_queue_summary_items()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L489",
+      "source_location": "L480",
       "_origin": "ast"
     },
     {
@@ -10928,7 +10928,7 @@
       "label": "work_queue_next_action()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L581",
+      "source_location": "L572",
       "_origin": "ast"
     },
     {
@@ -10936,7 +10936,7 @@
       "label": "dashboard()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L603",
+      "source_location": "L594",
       "_origin": "ast"
     },
     {
@@ -10944,7 +10944,7 @@
       "label": "work_queue()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L695",
+      "source_location": "L686",
       "_origin": "ast"
     },
     {
@@ -12064,7 +12064,7 @@
       "label": "_metrics_period()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L84",
+      "source_location": "L81",
       "_origin": "ast"
     },
     {
@@ -12072,7 +12072,7 @@
       "label": "_apply_since_filter()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L94",
+      "source_location": "L91",
       "_origin": "ast"
     },
     {
@@ -12080,7 +12080,7 @@
       "label": "_reschedule_metric_items()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L100",
+      "source_location": "L97",
       "_origin": "ast"
     },
     {
@@ -12088,7 +12088,7 @@
       "label": "_localized_messages()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L180",
+      "source_location": "L177",
       "_origin": "ast"
     },
     {
@@ -12096,7 +12096,7 @@
       "label": "ValidationError",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L180",
+      "source_location": "L177",
       "_origin": "ast"
     },
     {
@@ -12104,7 +12104,7 @@
       "label": "_plan_detail_url()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L186",
+      "source_location": "L183",
       "_origin": "ast"
     },
     {
@@ -12112,7 +12112,7 @@
       "label": "_chain_issue_rows()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L200",
+      "source_location": "L197",
       "_origin": "ast"
     },
     {
@@ -12120,7 +12120,7 @@
       "label": "AppointmentRescheduleChain",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L200",
+      "source_location": "L197",
       "_origin": "ast"
     },
     {
@@ -12128,7 +12128,7 @@
       "label": "_chain_stale_step_rows()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L245",
+      "source_location": "L242",
       "_origin": "ast"
     },
     {
@@ -12136,7 +12136,7 @@
       "label": "appointment_reschedule_plan_create()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L264",
+      "source_location": "L261",
       "_origin": "ast"
     },
     {
@@ -12144,7 +12144,7 @@
       "label": "reschedule_plan_list()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L282",
+      "source_location": "L279",
       "_origin": "ast"
     },
     {
@@ -12152,7 +12152,7 @@
       "label": "appointment_reschedule_plan_detail()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L597",
+      "source_location": "L584",
       "_origin": "ast"
     },
     {
@@ -55893,6 +55893,16 @@
     },
     {
       "source": "views_dashboard",
+      "target": "operations_services",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/dashboard.py",
+      "source_location": "L24",
+      "weight": 1.0
+    },
+    {
+      "source": "views_dashboard",
       "target": "views_common",
       "relation": "imports_from",
       "context": "import",
@@ -55943,7 +55953,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L108",
+      "source_location": "L105",
       "weight": 1.0
     },
     {
@@ -55953,7 +55963,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L108",
+      "source_location": "L105",
       "weight": 1.0
     },
     {
@@ -55962,7 +55972,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L116",
+      "source_location": "L113",
       "weight": 1.0
     },
     {
@@ -55971,7 +55981,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L123",
+      "source_location": "L120",
       "weight": 1.0
     },
     {
@@ -55980,7 +55990,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L133",
+      "source_location": "L130",
       "weight": 1.0
     },
     {
@@ -55989,7 +55999,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L165",
+      "source_location": "L159",
       "weight": 1.0
     },
     {
@@ -55998,7 +56008,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L175",
+      "source_location": "L169",
       "weight": 1.0
     },
     {
@@ -56007,7 +56017,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L185",
+      "source_location": "L179",
       "weight": 1.0
     },
     {
@@ -56017,7 +56027,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L185",
+      "source_location": "L179",
       "weight": 1.0
     },
     {
@@ -56026,7 +56036,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L208",
+      "source_location": "L202",
       "weight": 1.0
     },
     {
@@ -56035,7 +56045,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L236",
+      "source_location": "L230",
       "weight": 1.0
     },
     {
@@ -56044,7 +56054,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L266",
+      "source_location": "L257",
       "weight": 1.0
     },
     {
@@ -56053,7 +56063,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L293",
+      "source_location": "L284",
       "weight": 1.0
     },
     {
@@ -56062,7 +56072,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L310",
+      "source_location": "L301",
       "weight": 1.0
     },
     {
@@ -56071,7 +56081,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L318",
+      "source_location": "L309",
       "weight": 1.0
     },
     {
@@ -56080,7 +56090,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L327",
+      "source_location": "L318",
       "weight": 1.0
     },
     {
@@ -56089,7 +56099,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L353",
+      "source_location": "L344",
       "weight": 1.0
     },
     {
@@ -56098,7 +56108,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L489",
+      "source_location": "L480",
       "weight": 1.0
     },
     {
@@ -56107,7 +56117,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L581",
+      "source_location": "L572",
       "weight": 1.0
     },
     {
@@ -56116,7 +56126,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L603",
+      "source_location": "L594",
       "weight": 1.0
     },
     {
@@ -56125,7 +56135,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L695",
+      "source_location": "L686",
       "weight": 1.0
     },
     {
@@ -56155,7 +56165,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L110",
+      "source_location": "L107",
       "weight": 1.0
     },
     {
@@ -56165,7 +56175,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L117",
+      "source_location": "L114",
       "weight": 1.0
     },
     {
@@ -56175,7 +56185,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L118",
+      "source_location": "L115",
       "weight": 1.0
     },
     {
@@ -56185,7 +56195,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L144",
+      "source_location": "L141",
       "weight": 1.0
     },
     {
@@ -56195,7 +56205,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L167",
+      "source_location": "L161",
       "weight": 1.0
     },
     {
@@ -56205,7 +56215,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L189",
+      "source_location": "L183",
       "weight": 1.0
     },
     {
@@ -56215,7 +56225,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L191",
+      "source_location": "L185",
       "weight": 1.0
     },
     {
@@ -56225,7 +56235,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L212",
+      "source_location": "L206",
       "weight": 1.0
     },
     {
@@ -56235,7 +56245,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L254",
+      "source_location": "L248",
       "weight": 1.0
     },
     {
@@ -56245,7 +56255,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L261",
+      "source_location": "L252",
       "weight": 1.0
     },
     {
@@ -56255,7 +56265,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L268",
+      "source_location": "L259",
       "weight": 1.0
     },
     {
@@ -56265,7 +56275,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L272",
+      "source_location": "L263",
       "weight": 1.0
     },
     {
@@ -56275,7 +56285,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L408",
+      "source_location": "L399",
       "weight": 1.0
     },
     {
@@ -56285,7 +56295,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L434",
+      "source_location": "L425",
       "weight": 1.0
     },
     {
@@ -56295,7 +56305,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L514",
+      "source_location": "L505",
       "weight": 1.0
     },
     {
@@ -56305,7 +56315,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L609",
+      "source_location": "L600",
       "weight": 1.0
     },
     {
@@ -56315,7 +56325,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L610",
+      "source_location": "L601",
       "weight": 1.0
     },
     {
@@ -56325,7 +56335,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L611",
+      "source_location": "L602",
       "weight": 1.0
     },
     {
@@ -56335,7 +56345,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L612",
+      "source_location": "L603",
       "weight": 1.0
     },
     {
@@ -56345,7 +56355,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L614",
+      "source_location": "L605",
       "weight": 1.0
     },
     {
@@ -56355,7 +56365,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L616",
+      "source_location": "L607",
       "weight": 1.0
     },
     {
@@ -56365,7 +56375,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L648",
+      "source_location": "L639",
       "weight": 1.0
     },
     {
@@ -56375,7 +56385,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L649",
+      "source_location": "L640",
       "weight": 1.0
     },
     {
@@ -56385,7 +56395,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L696",
+      "source_location": "L687",
       "weight": 1.0
     },
     {
@@ -56395,7 +56405,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L698",
+      "source_location": "L689",
       "weight": 1.0
     },
     {
@@ -56405,7 +56415,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L699",
+      "source_location": "L690",
       "weight": 1.0
     },
     {
@@ -56415,7 +56425,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L705",
+      "source_location": "L696",
       "weight": 1.0
     },
     {
@@ -56425,7 +56435,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L708",
+      "source_location": "L699",
       "weight": 1.0
     },
     {
@@ -56435,7 +56445,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L712",
+      "source_location": "L703",
       "weight": 1.0
     },
     {
@@ -56445,7 +56455,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L731",
+      "source_location": "L722",
       "weight": 1.0
     },
     {
@@ -56455,7 +56465,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L732",
+      "source_location": "L723",
       "weight": 1.0
     },
     {
@@ -56465,7 +56475,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L734",
+      "source_location": "L725",
       "weight": 1.0
     },
     {
@@ -56475,7 +56485,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L735",
+      "source_location": "L726",
       "weight": 1.0
     },
     {
@@ -56485,7 +56495,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L737",
+      "source_location": "L728",
       "weight": 1.0
     },
     {
@@ -56495,7 +56505,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L738",
+      "source_location": "L729",
       "weight": 1.0
     },
     {
@@ -56505,7 +56515,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L772",
+      "source_location": "L763",
       "weight": 1.0
     },
     {
@@ -59938,7 +59948,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L84",
+      "source_location": "L81",
       "weight": 1.0
     },
     {
@@ -59947,7 +59957,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L94",
+      "source_location": "L91",
       "weight": 1.0
     },
     {
@@ -59956,7 +59966,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L100",
+      "source_location": "L97",
       "weight": 1.0
     },
     {
@@ -59965,7 +59975,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L180",
+      "source_location": "L177",
       "weight": 1.0
     },
     {
@@ -59975,7 +59985,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L180",
+      "source_location": "L177",
       "weight": 1.0
     },
     {
@@ -59984,7 +59994,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L186",
+      "source_location": "L183",
       "weight": 1.0
     },
     {
@@ -59993,7 +60003,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L200",
+      "source_location": "L197",
       "weight": 1.0
     },
     {
@@ -60003,7 +60013,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L200",
+      "source_location": "L197",
       "weight": 1.0
     },
     {
@@ -60012,7 +60022,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L245",
+      "source_location": "L242",
       "weight": 1.0
     },
     {
@@ -60022,7 +60032,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L245",
+      "source_location": "L242",
       "weight": 1.0
     },
     {
@@ -60031,7 +60041,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L264",
+      "source_location": "L261",
       "weight": 1.0
     },
     {
@@ -60040,7 +60050,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L282",
+      "source_location": "L279",
       "weight": 1.0
     },
     {
@@ -60049,7 +60059,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L597",
+      "source_location": "L584",
       "weight": 1.0
     },
     {
@@ -60059,7 +60069,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L101",
+      "source_location": "L98",
       "weight": 1.0
     },
     {
@@ -60069,7 +60079,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L286",
+      "source_location": "L283",
       "weight": 1.0
     },
     {
@@ -60079,7 +60089,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L587",
+      "source_location": "L574",
       "weight": 1.0
     },
     {
@@ -60089,7 +60099,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L624",
+      "source_location": "L611",
       "weight": 1.0
     },
     {
@@ -60099,7 +60109,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L650",
+      "source_location": "L637",
       "weight": 1.0
     },
     {
@@ -60109,7 +60119,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L743",
+      "source_location": "L730",
       "weight": 1.0
     },
     {
@@ -60119,7 +60129,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L744",
+      "source_location": "L731",
       "weight": 1.0
     },
     {
@@ -104270,16 +104280,6 @@
     },
     {
       "source": "views_dashboard",
-      "target": "operations_models_appointmentrescheduleplan",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "operations/views/dashboard.py",
-      "source_location": "L14",
-      "weight": 1.0
-    },
-    {
-      "source": "views_dashboard",
       "target": "operations_models_appointmentreschedulestep",
       "relation": "imports",
       "context": "import",
@@ -105366,6 +105366,16 @@
       "confidence": "EXTRACTED",
       "source_file": "operations/views/confirmations.py",
       "source_location": "L214",
+      "weight": 1.0
+    },
+    {
+      "source": "views_dashboard",
+      "target": "services_rescheduling_plans",
+      "relation": "imports_from",
+      "context": "submodule_import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/dashboard.py",
+      "source_location": "L24",
       "weight": 1.0
     },
     {
@@ -152116,15 +152126,6 @@
     },
     {
       "source": "q",
-      "target": "operations_models_appointmentrescheduleplan",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/views/dashboard.py",
-      "source_location": "L14",
-      "weight": 0.8
-    },
-    {
-      "source": "q",
       "target": "operations_models_appointmentreschedulestep",
       "relation": "uses",
       "confidence": "INFERRED",
@@ -157366,7 +157367,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L701",
+      "source_location": "L692",
       "weight": 1.0
     },
     {
@@ -158402,6 +158403,25 @@
       "source_file": "static/vendor/htmx/htmx.min.js",
       "source_location": "L1",
       "weight": 1.0
+    },
+    {
+      "source": "views_dashboard",
+      "target": "operations_models_appointmentrescheduleplan",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/dashboard.py",
+      "source_location": "L14",
+      "weight": 1.0
+    },
+    {
+      "source": "q",
+      "target": "operations_models_appointmentrescheduleplan",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/views/dashboard.py",
+      "source_location": "L14",
+      "weight": 0.8
     },
     {
       "source": "views_dashboard_dashboard",
