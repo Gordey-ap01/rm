@@ -704,6 +704,8 @@ def work_queue(request):
             "appointment__service",
             "participant__child",
             "staff_assignment__staff_member",
+            "reschedule_step",
+            "reschedule_step__plan",
         )
         .prefetch_related("appointment__participants__child")
         .order_by("status", "-created_at")[:40]

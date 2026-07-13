@@ -313,6 +313,9 @@
             {% if item.staff_assignment %}
               <p class="muted">Согласование со специалистом: {{ item.staff_assignment.staff_member }}</p>
             {% endif %}
+            {% if item.reschedule_step %}
+              <p class="muted">Согласование шага переноса: шаг {{ item.reschedule_step.position }} · {{ item.reschedule_step.get_status_display }}</p>
+            {% endif %}
             {% if participants %}
               <p class="muted">
                 Участники:
@@ -325,7 +328,11 @@
             {% if item.response_note %}<p>{{ item.response_note }}</p>{% endif %}
           </div>
           <div class="task-actions">
-            <a class="button-link secondary small-action" href="{% url 'appointment_detail' item.appointment.pk %}">Открыть занятие</a>
+            {% if item.reschedule_step %}
+              <a class="button-link secondary small-action" href="{% url 'appointment_reschedule_plan_detail' item.reschedule_step.plan.pk %}#step-{{ item.reschedule_step.pk }}">Открыть шаг переноса</a>
+            {% else %}
+              <a class="button-link secondary small-action" href="{% url 'appointment_detail' item.appointment.pk %}">Открыть занятие</a>
+            {% endif %}
           </div>
           {% endwith %}
         </div>

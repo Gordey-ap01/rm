@@ -670,6 +670,56 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertContains(response, "Queue staff group")
         self.assertContains(response, "Assistant Queue")
 
+    def test_reschedule_step_confirmation_links_to_step_detail(self):
+        day = timezone.localdate() + timedelta(days=5)
+        start = _local_dt(day, time(10, 0))
+        appointment = Appointment.objects.create(
+            child=self.child,
+            service=self.service,
+            staff_member=self.staff,
+            room=self.room,
+            starts_at=start,
+            ends_at=start + timedelta(minutes=30),
+            billing_account=self.account,
+        )
+        plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.READY,
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            reason="Confirmation queue step fixture",
+            created_by=self.admin,
+        )
+        step = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            confirmation_status=AppointmentRescheduleStep.ConfirmationStatus.WAITING,
+            source_appointment=appointment,
+            proposed_starts_at=start + timedelta(hours=1),
+            proposed_ends_at=start + timedelta(hours=1, minutes=30),
+            proposed_room=self.room,
+            proposed_primary_staff=self.staff,
+        )
+        AppointmentConfirmation.objects.create(
+            appointment=appointment,
+            reschedule_step=step,
+            target_type=AppointmentConfirmation.TargetType.REPRESENTATIVE,
+            email="step-confirmation@example.local",
+            subject="Согласуйте перенос",
+            message="Проверьте новое время.",
+        )
+
+        response = self.client.get(reverse("work_queue"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Согласование шага переноса")
+        self.assertContains(response, "Открыть шаг переноса")
+        self.assertContains(
+            response,
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#step-{step.pk}',
+        )
+        self.assertNotContains(response, f'{reverse("appointment_detail", args=[appointment.pk])}">Открыть занятие')
+
     def test_low_balance_task_links_to_recipient_payment_and_account(self):
         low_balance_child = Child.objects.create(last_name="Низкий", first_name="Баланс")
         account = BalanceAccount.objects.create(
