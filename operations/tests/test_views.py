@@ -5214,6 +5214,9 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             response,
             "План открыт только для просмотра истории.",
         )
+        self.assertContains(response, "Цепочка показывает сохраненный порядок шагов.")
+        self.assertContains(response, "Цепочка доступна только как история")
+        self.assertNotContains(response, "Перед применением система повторно проверяет")
         self.assertContains(response, "План завершен или отменен.")
         self.assertContains(response, "Архив согласований", count=2)
         self.assertContains(response, "Последний статус:", count=2)
@@ -5402,6 +5405,8 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertEqual(chain.status, chain.Status.READY)
         self.assertEqual(chain.validation_summary["ready"], 2)
         self.assertContains(response, "Цепочка перепроверена")
+        self.assertContains(response, "Цепочка показывает зависимый порядок шагов.")
+        self.assertContains(response, "Перед применением система повторно проверяет")
         self.assertContains(response, 'name="action" value="revalidate_chain"')
         self.assertContains(response, 'name="action" value="apply_chain"')
 
@@ -5423,7 +5428,10 @@ class ReschedulePlanViewTests(NewViewsTestBase):
 
                 self.assertEqual(response.status_code, 200)
                 self.assertFalse(response.context["chains"][0].can_revalidate)
-                self.assertContains(response, "Повторная проверка недоступна")
+                self.assertContains(
+                    response,
+                    "Повторная проверка недоступна для текущего статуса цепочки.",
+                )
                 self.assertNotContains(response, 'name="action" value="revalidate_chain"')
 
     def test_reschedule_plan_detail_can_apply_ready_chain(self):
@@ -5446,7 +5454,9 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertEqual(chain.status, chain.Status.APPLIED)
         self.assertEqual(plan.status, AppointmentReschedulePlan.Status.APPLIED)
         self.assertContains(response, "Цепочка применена")
-        self.assertContains(response, "Повторная проверка недоступна")
+        self.assertContains(response, "Цепочка доступна только как история")
+        self.assertContains(response, "Цепочка показывает сохраненный порядок шагов.")
+        self.assertNotContains(response, "Перед применением система повторно проверяет")
         self.assertNotContains(response, 'name="action" value="revalidate_chain"')
 
     def test_staff_absence_plan_detail_renders_manual_review_actions(self):

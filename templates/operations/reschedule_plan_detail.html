@@ -71,10 +71,17 @@
 {% if chains %}
   <section class="panel">
     <h2>Цепочки переноса</h2>
-    <p class="muted">
-      Цепочка показывает зависимый порядок шагов. Перед применением система повторно проверяет
-      расписание, кабинет, специалистов и согласования по каждому шагу.
-    </p>
+    {% if can_mutate_plan %}
+      <p class="muted">
+        Цепочка показывает зависимый порядок шагов. Перед применением система повторно проверяет
+        расписание, кабинет, специалистов и согласования по каждому шагу.
+      </p>
+    {% else %}
+      <p class="muted">
+        Цепочка показывает сохраненный порядок шагов. План уже завершен или отменен,
+        поэтому цепочки доступны только как история решений.
+      </p>
+    {% endif %}
     {% for chain in chains %}
       <div class="appointment-attention reschedule-chain-anchor" id="chain-{{ chain.pk }}">
         <h3>{{ chain.title|default:"Цепочка" }} · {{ chain.get_status_display }}</h3>
@@ -117,6 +124,8 @@
             <input type="hidden" name="chain_id" value="{{ chain.pk }}">
             <button type="submit" class="button-link secondary small-action">Перепроверить цепочку</button>
           </form>
+        {% elif not can_mutate_plan %}
+          <p class="muted">Цепочка доступна только как история завершенного или отмененного плана.</p>
         {% else %}
           <p class="muted">Повторная проверка недоступна для текущего статуса цепочки.</p>
         {% endif %}
