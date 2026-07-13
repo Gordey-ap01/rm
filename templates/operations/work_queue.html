@@ -391,4 +391,48 @@
     </div>
   </article>
 </section>
+<script>
+  (function () {
+    function queueAnchorId() {
+      if (!window.location.hash) {
+        return "";
+      }
+      try {
+        return decodeURIComponent(window.location.hash.slice(1));
+      } catch (error) {
+        return window.location.hash.slice(1);
+      }
+    }
+
+    function scrollToQueueAnchor() {
+      var anchorId = queueAnchorId();
+      if (anchorId.indexOf("queue-") !== 0) {
+        return;
+      }
+      var target = document.getElementById(anchorId);
+      if (!target) {
+        return;
+      }
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(function () {
+          target.scrollIntoView({ block: "start" });
+        });
+      });
+    }
+
+    function scheduleQueueAnchorScroll() {
+      scrollToQueueAnchor();
+      window.setTimeout(scrollToQueueAnchor, 80);
+      window.setTimeout(scrollToQueueAnchor, 180);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", scheduleQueueAnchorScroll, { once: true });
+    } else {
+      scheduleQueueAnchorScroll();
+    }
+    window.addEventListener("load", scheduleQueueAnchorScroll, { once: true });
+    window.addEventListener("hashchange", scheduleQueueAnchorScroll);
+  })();
+</script>
 {% endblock %}

@@ -9532,11 +9532,19 @@
       "_origin": "ast"
     },
     {
+      "id": "tests_test_views_rescheduleplanviewtests_test_dashboard_surfaces_reschedule_step_attention",
+      "label": ".test_dashboard_surfaces_reschedule_step_attention()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_views.py",
+      "source_location": "L4672",
+      "_origin": "ast"
+    },
+    {
       "id": "tests_test_views_rescheduleplanviewtests_test_work_queue_surfaces_ready_reschedule_chains",
       "label": ".test_work_queue_surfaces_ready_reschedule_chains()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4672",
+      "source_location": "L4702",
       "_origin": "ast"
     },
     {
@@ -9544,7 +9552,7 @@
       "label": ".test_work_queue_surfaces_priority_reschedule_steps()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4688",
+      "source_location": "L4718",
       "_origin": "ast"
     },
     {
@@ -9552,7 +9560,7 @@
       "label": ".test_work_queue_excludes_chain_steps_from_step_attention()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4751",
+      "source_location": "L4781",
       "_origin": "ast"
     },
     {
@@ -9560,7 +9568,7 @@
       "label": ".test_dashboard_orders_chain_attention_by_operational_priority()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4765",
+      "source_location": "L4795",
       "_origin": "ast"
     },
     {
@@ -9568,7 +9576,7 @@
       "label": ".test_work_queue_orders_chain_attention_by_operational_priority()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4787",
+      "source_location": "L4817",
       "_origin": "ast"
     },
     {
@@ -9576,7 +9584,7 @@
       "label": ".test_work_queue_labels_chain_next_actions()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4812",
+      "source_location": "L4842",
       "_origin": "ast"
     },
     {
@@ -9584,7 +9592,7 @@
       "label": ".test_reschedule_plan_detail_renders_steps()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4833",
+      "source_location": "L4863",
       "_origin": "ast"
     },
     {
@@ -9592,7 +9600,7 @@
       "label": ".test_reschedule_plan_detail_renders_chain_read_only_block()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4848",
+      "source_location": "L4878",
       "_origin": "ast"
     },
     {
@@ -9600,7 +9608,7 @@
       "label": ".test_reschedule_plan_detail_explains_stale_chain_step_checks()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4916",
+      "source_location": "L4946",
       "_origin": "ast"
     },
     {
@@ -9608,7 +9616,7 @@
       "label": ".test_reschedule_plan_detail_explains_confirmation_blocked_chain()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4947",
+      "source_location": "L4977",
       "_origin": "ast"
     },
     {
@@ -9616,7 +9624,7 @@
       "label": ".test_reschedule_plan_detail_explains_failed_chain_apply_error()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4967",
+      "source_location": "L4997",
       "_origin": "ast"
     },
     {
@@ -9624,7 +9632,7 @@
       "label": ".test_reschedule_plan_detail_can_revalidate_chain()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4979",
+      "source_location": "L5009",
       "_origin": "ast"
     },
     {
@@ -9632,7 +9640,7 @@
       "label": ".test_reschedule_plan_detail_hides_revalidate_for_terminal_chains()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5000",
+      "source_location": "L5030",
       "_origin": "ast"
     },
     {
@@ -9640,7 +9648,7 @@
       "label": ".test_reschedule_plan_detail_can_apply_ready_chain()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5021",
+      "source_location": "L5051",
       "_origin": "ast"
     },
     {
@@ -9648,7 +9656,7 @@
       "label": ".test_staff_absence_plan_detail_renders_manual_review_actions()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5044",
+      "source_location": "L5074",
       "_origin": "ast"
     },
     {
@@ -9656,7 +9664,7 @@
       "label": ".test_reschedule_plan_detail_marks_review_conflict_after_manual_resolution()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5063",
+      "source_location": "L5093",
       "_origin": "ast"
     },
     {
@@ -9664,7 +9672,7 @@
       "label": ".test_reschedule_plan_detail_can_apply_valid_step()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5108",
+      "source_location": "L5138",
       "_origin": "ast"
     },
     {
@@ -9672,7 +9680,7 @@
       "label": ".test_reschedule_plan_detail_skips_alternative_after_apply()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5133",
+      "source_location": "L5163",
       "_origin": "ast"
     },
     {
@@ -9680,7 +9688,7 @@
       "label": ".test_reschedule_plan_detail_can_apply_step_with_room_override()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5183",
+      "source_location": "L5213",
       "_origin": "ast"
     },
     {
@@ -9688,7 +9696,7 @@
       "label": ".test_reschedule_plan_detail_can_send_step_confirmations()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5254",
+      "source_location": "L5284",
       "_origin": "ast"
     },
     {
@@ -9696,7 +9704,7 @@
       "label": ".test_reschedule_plan_detail_can_apply_approved_step()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5300",
+      "source_location": "L5330",
       "_origin": "ast"
     },
     {
@@ -9704,7 +9712,7 @@
       "label": ".test_reschedule_step_public_confirmation_does_not_confirm_source_appointment()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5341",
+      "source_location": "L5371",
       "_origin": "ast"
     },
     {
@@ -9712,7 +9720,7 @@
       "label": "AppointmentBillingTests",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5379",
+      "source_location": "L5409",
       "_origin": "ast"
     },
     {
@@ -9720,7 +9728,7 @@
       "label": ".test_appointment_billing_get_redirects_to_detail()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5380",
+      "source_location": "L5410",
       "_origin": "ast"
     },
     {
@@ -9728,7 +9736,7 @@
       "label": ".test_appointment_billing_invalid_returns_400()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5394",
+      "source_location": "L5424",
       "_origin": "ast"
     },
     {
@@ -9736,7 +9744,7 @@
       "label": ".test_appointment_billing_charge()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5415",
+      "source_location": "L5445",
       "_origin": "ast"
     },
     {
@@ -9744,7 +9752,7 @@
       "label": ".test_appointment_billing_without_participant_id_uses_single_participant()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5439",
+      "source_location": "L5469",
       "_origin": "ast"
     },
     {
@@ -9752,7 +9760,7 @@
       "label": ".test_appointment_billing_group_requires_participant_id()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5493",
+      "source_location": "L5523",
       "_origin": "ast"
     },
     {
@@ -9760,7 +9768,7 @@
       "label": "RecipientEditTests",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5528",
+      "source_location": "L5558",
       "_origin": "ast"
     },
     {
@@ -9768,7 +9776,7 @@
       "label": ".test_recipient_import_preview_get()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5529",
+      "source_location": "L5559",
       "_origin": "ast"
     },
     {
@@ -9776,7 +9784,7 @@
       "label": ".test_recipient_import_preview_post_csv_does_not_create_records()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5534",
+      "source_location": "L5564",
       "_origin": "ast"
     },
     {
@@ -9784,7 +9792,7 @@
       "label": ".test_recipient_import_preview_shows_operator_summary()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5554",
+      "source_location": "L5584",
       "_origin": "ast"
     },
     {
@@ -9792,7 +9800,7 @@
       "label": ".test_recipient_detail_shows_representative_links()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5587",
+      "source_location": "L5617",
       "_origin": "ast"
     },
     {
@@ -9800,7 +9808,7 @@
       "label": ".test_recipient_detail_tables_have_mobile_labels()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5604",
+      "source_location": "L5634",
       "_origin": "ast"
     },
     {
@@ -9808,7 +9816,7 @@
       "label": ".test_recipient_detail_includes_group_participant_appointment()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5645",
+      "source_location": "L5675",
       "_origin": "ast"
     },
     {
@@ -9816,7 +9824,7 @@
       "label": ".test_recipient_list_counts_group_participant_appointments()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5683",
+      "source_location": "L5713",
       "_origin": "ast"
     },
     {
@@ -9824,7 +9832,7 @@
       "label": ".test_recipient_list_counts_legacy_appointment_without_participant()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5711",
+      "source_location": "L5741",
       "_origin": "ast"
     },
     {
@@ -9832,7 +9840,7 @@
       "label": ".test_recipient_list_shows_operator_context()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5731",
+      "source_location": "L5761",
       "_origin": "ast"
     },
     {
@@ -9840,7 +9848,7 @@
       "label": ".test_recipient_list_filters_before_limit()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5746",
+      "source_location": "L5776",
       "_origin": "ast"
     },
     {
@@ -9848,7 +9856,7 @@
       "label": ".test_recipient_edit_get()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5757",
+      "source_location": "L5787",
       "_origin": "ast"
     },
     {
@@ -9856,7 +9864,7 @@
       "label": ".test_recipient_and_representative_forms_show_operator_control()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5761",
+      "source_location": "L5791",
       "_origin": "ast"
     },
     {
@@ -9864,7 +9872,7 @@
       "label": ".test_recipient_edit_post()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5799",
+      "source_location": "L5829",
       "_origin": "ast"
     },
     {
@@ -9872,7 +9880,7 @@
       "label": ".test_representative_edit_get()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5817",
+      "source_location": "L5847",
       "_origin": "ast"
     },
     {
@@ -9880,7 +9888,7 @@
       "label": ".test_representative_edit_post()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5821",
+      "source_location": "L5851",
       "_origin": "ast"
     },
     {
@@ -9888,7 +9896,7 @@
       "label": ".test_recipient_create_with_representative_id()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5839",
+      "source_location": "L5869",
       "_origin": "ast"
     },
     {
@@ -9896,7 +9904,7 @@
       "label": ".test_recipient_representative_create_additional()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5846",
+      "source_location": "L5876",
       "_origin": "ast"
     },
     {
@@ -9904,7 +9912,7 @@
       "label": ".test_recipient_representative_create_primary_switches_signer()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5877",
+      "source_location": "L5907",
       "_origin": "ast"
     },
     {
@@ -9912,7 +9920,7 @@
       "label": "SafeNextUrlTests",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5913",
+      "source_location": "L5943",
       "_origin": "ast"
     },
     {
@@ -9920,7 +9928,7 @@
       "label": ".test_safe_next_url_allows_same_host()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5914",
+      "source_location": "L5944",
       "_origin": "ast"
     },
     {
@@ -9928,7 +9936,7 @@
       "label": ".test_safe_next_url_rejects_external()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5932",
+      "source_location": "L5962",
       "_origin": "ast"
     },
     {
@@ -9936,7 +9944,7 @@
       "label": ".test_safe_next_url_falls_back_when_no_next()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5948",
+      "source_location": "L5978",
       "_origin": "ast"
     },
     {
@@ -9944,7 +9952,7 @@
       "label": ".test_csrf_failure_for_non_login()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5964",
+      "source_location": "L5994",
       "_origin": "ast"
     },
     {
@@ -9952,7 +9960,7 @@
       "label": ".test_csrf_failure_for_login_path()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5970",
+      "source_location": "L6000",
       "_origin": "ast"
     },
     {
@@ -9960,7 +9968,7 @@
       "label": "SendConfirmationTaskTests",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5980",
+      "source_location": "L6010",
       "_origin": "ast"
     },
     {
@@ -9968,7 +9976,7 @@
       "label": ".test_returns_false_for_missing_confirmation()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5982",
+      "source_location": "L6012",
       "_origin": "ast"
     },
     {
@@ -9976,7 +9984,7 @@
       "label": ".test_returns_false_for_missing_email()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5989",
+      "source_location": "L6019",
       "_origin": "ast"
     },
     {
@@ -9984,7 +9992,7 @@
       "label": ".test_returns_true_on_success()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6015",
+      "source_location": "L6045",
       "_origin": "ast"
     },
     {
@@ -10756,11 +10764,19 @@
       "_origin": "ast"
     },
     {
+      "id": "views_dashboard_reschedule_step_attention_tone",
+      "label": "reschedule_step_attention_tone()",
+      "file_type": "code",
+      "source_file": "operations/views/dashboard.py",
+      "source_location": "L272",
+      "_origin": "ast"
+    },
+    {
       "id": "views_dashboard_low_balance_accounts",
       "label": "low_balance_accounts()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L272",
+      "source_location": "L289",
       "_origin": "ast"
     },
     {
@@ -10768,7 +10784,7 @@
       "label": "quick_billing_account()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L280",
+      "source_location": "L297",
       "_origin": "ast"
     },
     {
@@ -10776,7 +10792,7 @@
       "label": "attendance_summary_label()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L289",
+      "source_location": "L306",
       "_origin": "ast"
     },
     {
@@ -10784,7 +10800,7 @@
       "label": "dashboard_focus_items()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L315",
+      "source_location": "L332",
       "_origin": "ast"
     },
     {
@@ -10792,7 +10808,7 @@
       "label": "work_queue_summary_items()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L432",
+      "source_location": "L468",
       "_origin": "ast"
     },
     {
@@ -10800,7 +10816,7 @@
       "label": "work_queue_next_action()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L525",
+      "source_location": "L560",
       "_origin": "ast"
     },
     {
@@ -10808,7 +10824,7 @@
       "label": "dashboard()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L547",
+      "source_location": "L582",
       "_origin": "ast"
     },
     {
@@ -10816,7 +10832,7 @@
       "label": "work_queue()",
       "file_type": "code",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L632",
+      "source_location": "L678",
       "_origin": "ast"
     },
     {
@@ -51371,7 +51387,7 @@
     },
     {
       "source": "tests_test_views_rescheduleplanviewtests",
-      "target": "tests_test_views_rescheduleplanviewtests_test_work_queue_surfaces_ready_reschedule_chains",
+      "target": "tests_test_views_rescheduleplanviewtests_test_dashboard_surfaces_reschedule_step_attention",
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
@@ -51380,11 +51396,20 @@
     },
     {
       "source": "tests_test_views_rescheduleplanviewtests",
+      "target": "tests_test_views_rescheduleplanviewtests_test_work_queue_surfaces_ready_reschedule_chains",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_views.py",
+      "source_location": "L4702",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_views_rescheduleplanviewtests",
       "target": "tests_test_views_rescheduleplanviewtests_test_work_queue_surfaces_priority_reschedule_steps",
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4688",
+      "source_location": "L4718",
       "weight": 1.0
     },
     {
@@ -51393,7 +51418,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4751",
+      "source_location": "L4781",
       "weight": 1.0
     },
     {
@@ -51402,7 +51427,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4765",
+      "source_location": "L4795",
       "weight": 1.0
     },
     {
@@ -51411,7 +51436,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4787",
+      "source_location": "L4817",
       "weight": 1.0
     },
     {
@@ -51420,7 +51445,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4812",
+      "source_location": "L4842",
       "weight": 1.0
     },
     {
@@ -51429,7 +51454,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4833",
+      "source_location": "L4863",
       "weight": 1.0
     },
     {
@@ -51438,7 +51463,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4848",
+      "source_location": "L4878",
       "weight": 1.0
     },
     {
@@ -51447,7 +51472,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4916",
+      "source_location": "L4946",
       "weight": 1.0
     },
     {
@@ -51456,7 +51481,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4947",
+      "source_location": "L4977",
       "weight": 1.0
     },
     {
@@ -51465,7 +51490,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4967",
+      "source_location": "L4997",
       "weight": 1.0
     },
     {
@@ -51474,7 +51499,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4979",
+      "source_location": "L5009",
       "weight": 1.0
     },
     {
@@ -51483,7 +51508,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5000",
+      "source_location": "L5030",
       "weight": 1.0
     },
     {
@@ -51492,7 +51517,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5021",
+      "source_location": "L5051",
       "weight": 1.0
     },
     {
@@ -51501,7 +51526,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5044",
+      "source_location": "L5074",
       "weight": 1.0
     },
     {
@@ -51510,7 +51535,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5063",
+      "source_location": "L5093",
       "weight": 1.0
     },
     {
@@ -51519,7 +51544,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5108",
+      "source_location": "L5138",
       "weight": 1.0
     },
     {
@@ -51528,7 +51553,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5133",
+      "source_location": "L5163",
       "weight": 1.0
     },
     {
@@ -51537,7 +51562,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5183",
+      "source_location": "L5213",
       "weight": 1.0
     },
     {
@@ -51546,7 +51571,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5254",
+      "source_location": "L5284",
       "weight": 1.0
     },
     {
@@ -51555,7 +51580,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5300",
+      "source_location": "L5330",
       "weight": 1.0
     },
     {
@@ -51564,7 +51589,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5341",
+      "source_location": "L5371",
       "weight": 1.0
     },
     {
@@ -51573,7 +51598,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5379",
+      "source_location": "L5409",
       "weight": 1.0
     },
     {
@@ -51582,7 +51607,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5379",
+      "source_location": "L5409",
       "weight": 1.0
     },
     {
@@ -51591,7 +51616,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5380",
+      "source_location": "L5410",
       "weight": 1.0
     },
     {
@@ -51600,7 +51625,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5394",
+      "source_location": "L5424",
       "weight": 1.0
     },
     {
@@ -51609,7 +51634,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5415",
+      "source_location": "L5445",
       "weight": 1.0
     },
     {
@@ -51618,7 +51643,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5439",
+      "source_location": "L5469",
       "weight": 1.0
     },
     {
@@ -51627,7 +51652,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5493",
+      "source_location": "L5523",
       "weight": 1.0
     },
     {
@@ -51636,7 +51661,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5528",
+      "source_location": "L5558",
       "weight": 1.0
     },
     {
@@ -51645,7 +51670,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5528",
+      "source_location": "L5558",
       "weight": 1.0
     },
     {
@@ -51654,7 +51679,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5529",
+      "source_location": "L5559",
       "weight": 1.0
     },
     {
@@ -51663,7 +51688,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5534",
+      "source_location": "L5564",
       "weight": 1.0
     },
     {
@@ -51672,7 +51697,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5554",
+      "source_location": "L5584",
       "weight": 1.0
     },
     {
@@ -51681,7 +51706,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5587",
+      "source_location": "L5617",
       "weight": 1.0
     },
     {
@@ -51690,7 +51715,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5604",
+      "source_location": "L5634",
       "weight": 1.0
     },
     {
@@ -51699,7 +51724,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5645",
+      "source_location": "L5675",
       "weight": 1.0
     },
     {
@@ -51708,7 +51733,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5683",
+      "source_location": "L5713",
       "weight": 1.0
     },
     {
@@ -51717,7 +51742,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5711",
+      "source_location": "L5741",
       "weight": 1.0
     },
     {
@@ -51726,7 +51751,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5731",
+      "source_location": "L5761",
       "weight": 1.0
     },
     {
@@ -51735,7 +51760,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5746",
+      "source_location": "L5776",
       "weight": 1.0
     },
     {
@@ -51744,7 +51769,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5757",
+      "source_location": "L5787",
       "weight": 1.0
     },
     {
@@ -51753,7 +51778,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5761",
+      "source_location": "L5791",
       "weight": 1.0
     },
     {
@@ -51762,7 +51787,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5799",
+      "source_location": "L5829",
       "weight": 1.0
     },
     {
@@ -51771,7 +51796,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5817",
+      "source_location": "L5847",
       "weight": 1.0
     },
     {
@@ -51780,7 +51805,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5821",
+      "source_location": "L5851",
       "weight": 1.0
     },
     {
@@ -51789,7 +51814,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5839",
+      "source_location": "L5869",
       "weight": 1.0
     },
     {
@@ -51798,7 +51823,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5846",
+      "source_location": "L5876",
       "weight": 1.0
     },
     {
@@ -51807,7 +51832,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5877",
+      "source_location": "L5907",
       "weight": 1.0
     },
     {
@@ -51816,7 +51841,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5913",
+      "source_location": "L5943",
       "weight": 1.0
     },
     {
@@ -51825,7 +51850,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5913",
+      "source_location": "L5943",
       "weight": 1.0
     },
     {
@@ -51834,7 +51859,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5914",
+      "source_location": "L5944",
       "weight": 1.0
     },
     {
@@ -51843,7 +51868,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5932",
+      "source_location": "L5962",
       "weight": 1.0
     },
     {
@@ -51852,7 +51877,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5948",
+      "source_location": "L5978",
       "weight": 1.0
     },
     {
@@ -51861,7 +51886,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5964",
+      "source_location": "L5994",
       "weight": 1.0
     },
     {
@@ -51870,7 +51895,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5970",
+      "source_location": "L6000",
       "weight": 1.0
     },
     {
@@ -51879,7 +51904,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5980",
+      "source_location": "L6010",
       "weight": 1.0
     },
     {
@@ -51888,7 +51913,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5980",
+      "source_location": "L6010",
       "weight": 1.0
     },
     {
@@ -51897,7 +51922,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5982",
+      "source_location": "L6012",
       "weight": 1.0
     },
     {
@@ -51906,7 +51931,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5989",
+      "source_location": "L6019",
       "weight": 1.0
     },
     {
@@ -51915,7 +51940,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6015",
+      "source_location": "L6045",
       "weight": 1.0
     },
     {
@@ -52749,13 +52774,33 @@
       "weight": 1.0
     },
     {
+      "source": "tests_test_views_rescheduleplanviewtests_test_dashboard_surfaces_reschedule_step_attention",
+      "target": "tests_test_views_rescheduleplanviewtests_appointment",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_views.py",
+      "source_location": "L4673",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_views_rescheduleplanviewtests_test_dashboard_surfaces_reschedule_step_attention",
+      "target": "tests_test_views_local_dt",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_views.py",
+      "source_location": "L4686",
+      "weight": 1.0
+    },
+    {
       "source": "tests_test_views_rescheduleplanviewtests_test_work_queue_surfaces_ready_reschedule_chains",
       "target": "tests_test_views_rescheduleplanviewtests_reschedule_chain_fixture",
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4673",
+      "source_location": "L4703",
       "weight": 1.0
     },
     {
@@ -52765,7 +52810,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4689",
+      "source_location": "L4719",
       "weight": 1.0
     },
     {
@@ -52775,7 +52820,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4702",
+      "source_location": "L4732",
       "weight": 1.0
     },
     {
@@ -52785,7 +52830,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4752",
+      "source_location": "L4782",
       "weight": 1.0
     },
     {
@@ -52795,7 +52840,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4766",
+      "source_location": "L4796",
       "weight": 1.0
     },
     {
@@ -52805,7 +52850,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4788",
+      "source_location": "L4818",
       "weight": 1.0
     },
     {
@@ -52815,7 +52860,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4813",
+      "source_location": "L4843",
       "weight": 1.0
     },
     {
@@ -52825,7 +52870,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4834",
+      "source_location": "L4864",
       "weight": 1.0
     },
     {
@@ -52835,7 +52880,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4849",
+      "source_location": "L4879",
       "weight": 1.0
     },
     {
@@ -52845,7 +52890,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4850",
+      "source_location": "L4880",
       "weight": 1.0
     },
     {
@@ -52855,7 +52900,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4917",
+      "source_location": "L4947",
       "weight": 1.0
     },
     {
@@ -52865,7 +52910,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4948",
+      "source_location": "L4978",
       "weight": 1.0
     },
     {
@@ -52875,7 +52920,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4968",
+      "source_location": "L4998",
       "weight": 1.0
     },
     {
@@ -52885,7 +52930,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4980",
+      "source_location": "L5010",
       "weight": 1.0
     },
     {
@@ -52895,7 +52940,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5008",
+      "source_location": "L5038",
       "weight": 1.0
     },
     {
@@ -52905,7 +52950,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5022",
+      "source_location": "L5052",
       "weight": 1.0
     },
     {
@@ -52915,7 +52960,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5045",
+      "source_location": "L5075",
       "weight": 1.0
     },
     {
@@ -52925,7 +52970,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5064",
+      "source_location": "L5094",
       "weight": 1.0
     },
     {
@@ -52935,7 +52980,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5109",
+      "source_location": "L5139",
       "weight": 1.0
     },
     {
@@ -52945,7 +52990,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5134",
+      "source_location": "L5164",
       "weight": 1.0
     },
     {
@@ -52955,7 +53000,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5148",
+      "source_location": "L5178",
       "weight": 1.0
     },
     {
@@ -52965,7 +53010,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5184",
+      "source_location": "L5214",
       "weight": 1.0
     },
     {
@@ -52975,7 +53020,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5185",
+      "source_location": "L5215",
       "weight": 1.0
     },
     {
@@ -52985,7 +53030,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5257",
+      "source_location": "L5287",
       "weight": 1.0
     },
     {
@@ -52995,7 +53040,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5303",
+      "source_location": "L5333",
       "weight": 1.0
     },
     {
@@ -53005,7 +53050,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5342",
+      "source_location": "L5372",
       "weight": 1.0
     },
     {
@@ -53015,7 +53060,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5386",
+      "source_location": "L5416",
       "weight": 1.0
     },
     {
@@ -53025,7 +53070,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5400",
+      "source_location": "L5430",
       "weight": 1.0
     },
     {
@@ -53035,7 +53080,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5421",
+      "source_location": "L5451",
       "weight": 1.0
     },
     {
@@ -53045,7 +53090,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5453",
+      "source_location": "L5483",
       "weight": 1.0
     },
     {
@@ -53055,7 +53100,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5500",
+      "source_location": "L5530",
       "weight": 1.0
     },
     {
@@ -53065,7 +53110,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5614",
+      "source_location": "L5644",
       "weight": 1.0
     },
     {
@@ -53075,7 +53120,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5648",
+      "source_location": "L5678",
       "weight": 1.0
     },
     {
@@ -53085,7 +53130,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5685",
+      "source_location": "L5715",
       "weight": 1.0
     },
     {
@@ -53095,7 +53140,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5712",
+      "source_location": "L5742",
       "weight": 1.0
     },
     {
@@ -53105,7 +53150,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5998",
+      "source_location": "L6028",
       "weight": 1.0
     },
     {
@@ -53115,7 +53160,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6024",
+      "source_location": "L6054",
       "weight": 1.0
     },
     {
@@ -55480,7 +55525,7 @@
     },
     {
       "source": "views_dashboard",
-      "target": "views_dashboard_low_balance_accounts",
+      "target": "views_dashboard_reschedule_step_attention_tone",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
@@ -55489,16 +55534,7 @@
     },
     {
       "source": "views_dashboard",
-      "target": "views_dashboard_quick_billing_account",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "operations/views/dashboard.py",
-      "source_location": "L280",
-      "weight": 1.0
-    },
-    {
-      "source": "views_dashboard",
-      "target": "views_dashboard_attendance_summary_label",
+      "target": "views_dashboard_low_balance_accounts",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
@@ -55507,11 +55543,29 @@
     },
     {
       "source": "views_dashboard",
+      "target": "views_dashboard_quick_billing_account",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/dashboard.py",
+      "source_location": "L297",
+      "weight": 1.0
+    },
+    {
+      "source": "views_dashboard",
+      "target": "views_dashboard_attendance_summary_label",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/dashboard.py",
+      "source_location": "L306",
+      "weight": 1.0
+    },
+    {
+      "source": "views_dashboard",
       "target": "views_dashboard_dashboard_focus_items",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L315",
+      "source_location": "L332",
       "weight": 1.0
     },
     {
@@ -55520,7 +55574,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L432",
+      "source_location": "L468",
       "weight": 1.0
     },
     {
@@ -55529,7 +55583,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L525",
+      "source_location": "L560",
       "weight": 1.0
     },
     {
@@ -55538,7 +55592,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L547",
+      "source_location": "L582",
       "weight": 1.0
     },
     {
@@ -55547,7 +55601,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L632",
+      "source_location": "L678",
       "weight": 1.0
     },
     {
@@ -55667,7 +55721,27 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L366",
+      "source_location": "L387",
+      "weight": 1.0
+    },
+    {
+      "source": "views_dashboard_dashboard_focus_items",
+      "target": "views_dashboard_reschedule_step_attention_tone",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/dashboard.py",
+      "source_location": "L413",
+      "weight": 1.0
+    },
+    {
+      "source": "views_dashboard_work_queue_summary_items",
+      "target": "views_dashboard_reschedule_step_attention_tone",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/dashboard.py",
+      "source_location": "L493",
       "weight": 1.0
     },
     {
@@ -55677,7 +55751,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L553",
+      "source_location": "L588",
       "weight": 1.0
     },
     {
@@ -55687,7 +55761,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L554",
+      "source_location": "L589",
       "weight": 1.0
     },
     {
@@ -55697,7 +55771,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L555",
+      "source_location": "L590",
       "weight": 1.0
     },
     {
@@ -55707,7 +55781,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L557",
+      "source_location": "L592",
       "weight": 1.0
     },
     {
@@ -55717,7 +55791,17 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L562",
+      "source_location": "L597",
+      "weight": 1.0
+    },
+    {
+      "source": "views_dashboard_dashboard",
+      "target": "views_dashboard_reschedule_step_attention_counts",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/dashboard.py",
+      "source_location": "L599",
       "weight": 1.0
     },
     {
@@ -55727,7 +55811,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L593",
+      "source_location": "L631",
       "weight": 1.0
     },
     {
@@ -55737,7 +55821,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L594",
+      "source_location": "L632",
       "weight": 1.0
     },
     {
@@ -55747,7 +55831,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L633",
+      "source_location": "L679",
       "weight": 1.0
     },
     {
@@ -55757,7 +55841,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L635",
+      "source_location": "L681",
       "weight": 1.0
     },
     {
@@ -55767,7 +55851,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L636",
+      "source_location": "L682",
       "weight": 1.0
     },
     {
@@ -55777,7 +55861,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L642",
+      "source_location": "L688",
       "weight": 1.0
     },
     {
@@ -55787,7 +55871,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L645",
+      "source_location": "L691",
       "weight": 1.0
     },
     {
@@ -55797,7 +55881,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L650",
+      "source_location": "L696",
       "weight": 1.0
     },
     {
@@ -55807,7 +55891,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L670",
+      "source_location": "L716",
       "weight": 1.0
     },
     {
@@ -55817,7 +55901,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L671",
+      "source_location": "L717",
       "weight": 1.0
     },
     {
@@ -55827,7 +55911,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L673",
+      "source_location": "L719",
       "weight": 1.0
     },
     {
@@ -55837,7 +55921,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L674",
+      "source_location": "L720",
       "weight": 1.0
     },
     {
@@ -55847,7 +55931,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L676",
+      "source_location": "L722",
       "weight": 1.0
     },
     {
@@ -55857,7 +55941,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L677",
+      "source_location": "L723",
       "weight": 1.0
     },
     {
@@ -55867,7 +55951,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L711",
+      "source_location": "L757",
       "weight": 1.0
     },
     {
@@ -102223,7 +102307,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5915",
+      "source_location": "L5945",
       "weight": 1.0
     },
     {
@@ -102233,7 +102317,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5965",
+      "source_location": "L5995",
       "weight": 1.0
     },
     {
@@ -102243,7 +102327,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5983",
+      "source_location": "L6013",
       "weight": 1.0
     },
     {
@@ -156227,6 +156311,17 @@
       "weight": 1.0
     },
     {
+      "source": "tests_test_views_rescheduleplanviewtests_test_dashboard_surfaces_reschedule_step_attention",
+      "target": "time",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "operations/tests/test_views.py",
+      "source_location": "L4686",
+      "weight": 1.0
+    },
+    {
       "source": "tests_test_views_rescheduleplanviewtests_test_work_queue_surfaces_priority_reschedule_steps",
       "target": "time",
       "relation": "calls",
@@ -156234,7 +156329,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4702",
+      "source_location": "L4732",
       "weight": 1.0
     },
     {
@@ -156245,7 +156340,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4850",
+      "source_location": "L4880",
       "weight": 1.0
     },
     {
@@ -156256,7 +156351,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5148",
+      "source_location": "L5178",
       "weight": 1.0
     },
     {
@@ -156267,7 +156362,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5185",
+      "source_location": "L5215",
       "weight": 1.0
     },
     {
@@ -156278,7 +156373,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5386",
+      "source_location": "L5416",
       "weight": 1.0
     },
     {
@@ -156289,7 +156384,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5400",
+      "source_location": "L5430",
       "weight": 1.0
     },
     {
@@ -156300,7 +156395,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5421",
+      "source_location": "L5451",
       "weight": 1.0
     },
     {
@@ -156311,7 +156406,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5453",
+      "source_location": "L5483",
       "weight": 1.0
     },
     {
@@ -156322,7 +156417,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5500",
+      "source_location": "L5530",
       "weight": 1.0
     },
     {
@@ -156333,7 +156428,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5614",
+      "source_location": "L5644",
       "weight": 1.0
     },
     {
@@ -156344,7 +156439,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5648",
+      "source_location": "L5678",
       "weight": 1.0
     },
     {
@@ -156355,7 +156450,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5685",
+      "source_location": "L5715",
       "weight": 1.0
     },
     {
@@ -156366,7 +156461,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5712",
+      "source_location": "L5742",
       "weight": 1.0
     },
     {
@@ -156377,7 +156472,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5929",
+      "source_location": "L5959",
       "weight": 1.0
     },
     {
@@ -156388,7 +156483,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5945",
+      "source_location": "L5975",
       "weight": 1.0
     },
     {
@@ -156399,7 +156494,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5961",
+      "source_location": "L5991",
       "weight": 1.0
     },
     {
@@ -156410,7 +156505,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5967",
+      "source_location": "L5997",
       "weight": 1.0
     },
     {
@@ -156421,7 +156516,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5975",
+      "source_location": "L6005",
       "weight": 1.0
     },
     {
@@ -156432,7 +156527,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5998",
+      "source_location": "L6028",
       "weight": 1.0
     },
     {
@@ -156443,7 +156538,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6024",
+      "source_location": "L6054",
       "weight": 1.0
     },
     {
@@ -156608,7 +156703,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/views/dashboard.py",
-      "source_location": "L638",
+      "source_location": "L684",
       "weight": 1.0
     },
     {

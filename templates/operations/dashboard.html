@@ -78,6 +78,10 @@
     <span class="ops-metric-value">{{ ready_chain_count }}</span>
     <span>готовых цепочек переноса</span>
   </a>
+  <a class="ops-metric needs-action" href="{% url 'work_queue' %}#queue-reschedule-steps">
+    <span class="ops-metric-value">{{ reschedule_step_count }}</span>
+    <span>шагов переноса в очереди</span>
+  </a>
   <a class="ops-metric needs-action" href="{% url 'work_queue' %}">
     <span class="ops-metric-value">{{ confirmation_tasks }}</span>
     <span>email-согласований</span>

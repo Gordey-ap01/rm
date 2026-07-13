@@ -269,6 +269,23 @@ def reschedule_step_attention_counts(queryset=None) -> dict[str, int]:
     }
 
 
+def reschedule_step_attention_tone(
+    *,
+    total_count: int,
+    failed_count: int,
+    stale_count: int,
+    ready_count: int,
+) -> str:
+    if not total_count:
+        return "success"
+    nonready_count = total_count - ready_count
+    if failed_count:
+        return "danger"
+    if stale_count or nonready_count:
+        return "warning"
+    return "info"
+
+
 def low_balance_accounts():
     return [
         account
@@ -323,6 +340,10 @@ def dashboard_focus_items(
     ready_chain_count: int,
     stale_chain_count: int,
     failed_chain_count: int,
+    reschedule_step_count: int,
+    ready_step_count: int,
+    stale_step_count: int,
+    failed_step_count: int,
 ):
     queue_url = reverse("work_queue")
     items = []
@@ -384,6 +405,21 @@ def dashboard_focus_items(
                 "title": "Применить цепочки",
                 "detail": "Есть готовые атомарные переносы без свободных окон.",
                 "href": reschedule_plan_focus_url("chain_ready"),
+            }
+        )
+    if reschedule_step_count:
+        items.append(
+            {
+                "tone": reschedule_step_attention_tone(
+                    total_count=reschedule_step_count,
+                    failed_count=failed_step_count,
+                    stale_count=stale_step_count,
+                    ready_count=ready_step_count,
+                ),
+                "value": reschedule_step_count,
+                "title": "Разобрать шаги переноса",
+                "detail": "Одиночные шаги планов переноса ждут проверки, согласования или применения.",
+                "href": f"{queue_url}#queue-reschedule-steps",
             }
         )
     if confirmation_tasks:
@@ -454,13 +490,12 @@ def work_queue_summary_items(
     elif ready_chain_count:
         chain_tone = "info"
 
-    step_tone = "success"
-    if failed_step_count:
-        step_tone = "danger"
-    elif stale_step_count or nonready_step_count:
-        step_tone = "warning"
-    elif reschedule_step_count:
-        step_tone = "info"
+    step_tone = reschedule_step_attention_tone(
+        total_count=reschedule_step_count,
+        failed_count=failed_step_count,
+        stale_count=stale_step_count,
+        ready_count=reschedule_step_count - nonready_step_count,
+    )
 
     return [
         {
@@ -561,6 +596,8 @@ def dashboard(request):
     time_off_requests = TimeOffRequest.objects.filter(status=TimeOffRequest.Status.PENDING).count()
     chain_counts = reschedule_chain_attention_counts()
     chain_attention_count = chain_counts["ready"] + chain_counts["stale"] + chain_counts["failed"]
+    step_counts = reschedule_step_attention_counts()
+    reschedule_step_count = step_counts["total"]
     priority_total = (
         unresolved_billing
         + awaiting_transfer
@@ -568,6 +605,7 @@ def dashboard(request):
         + confirmation_tasks
         + time_off_requests
         + chain_attention_count
+        + reschedule_step_count
     )
     today_appointments = (
         Appointment.objects.filter(starts_at__date=today)
@@ -601,6 +639,10 @@ def dashboard(request):
         ready_chain_count=chain_counts["ready"],
         stale_chain_count=chain_counts["stale"],
         failed_chain_count=chain_counts["failed"],
+        reschedule_step_count=reschedule_step_count,
+        ready_step_count=step_counts["ready"],
+        stale_step_count=step_counts["stale"],
+        failed_step_count=step_counts["failed"],
     )
     return render(
         request,
@@ -618,6 +660,10 @@ def dashboard(request):
             "stale_chain_count": chain_counts["stale"],
             "failed_chain_count": chain_counts["failed"],
             "chain_attention_count": chain_attention_count,
+            "reschedule_step_count": reschedule_step_count,
+            "ready_step_count": step_counts["ready"],
+            "stale_step_count": step_counts["stale"],
+            "failed_step_count": step_counts["failed"],
             "priority_total": priority_total,
             "staff_load": staff_load,
             "low_balances": low_balances,

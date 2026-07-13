@@ -4669,6 +4669,36 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertContains(response, "?focus=chain_ready")
         self.assertContains(response, reverse("reschedule_plan_list"))
 
+    def test_dashboard_surfaces_reschedule_step_attention(self):
+        source = self._appointment()
+        plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.READY,
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            reason="Dashboard step fixture",
+            created_by=self.admin,
+        )
+        AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.FAILED,
+            source_appointment=source,
+            proposed_starts_at=_local_dt(timezone.localdate() + timedelta(days=5), time(12, 0)),
+            proposed_ends_at=_local_dt(timezone.localdate() + timedelta(days=5), time(12, 30)),
+            proposed_room=self.room,
+            proposed_primary_staff=self.staff,
+        )
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["reschedule_step_count"], 1)
+        self.assertEqual(response.context["failed_step_count"], 1)
+        self.assertEqual(response.context["priority_total"], 1)
+        self.assertContains(response, "Разобрать шаги переноса")
+        self.assertContains(response, "шагов переноса в очереди")
+        self.assertContains(response, f'{reverse("work_queue")}#queue-reschedule-steps')
+
     def test_work_queue_surfaces_ready_reschedule_chains(self):
         plan, chain = self._reschedule_chain_fixture()
         plan_svc.revalidate_chain(chain)

@@ -170,8 +170,8 @@
     "semantic_hash": "683569e802955afebbba78aae5916fc9"
   },
   "operations/tests/test_views.py": {
-    "mtime": 1783900597.3090353,
-    "ast_hash": "37e1bcdae06fc7ff429e120b03e20fac",
+    "mtime": 1783906428.0147755,
+    "ast_hash": "da7845cb9ba5c913277a80f3be599427",
     "semantic_hash": ""
   },
   "operations/urls.py": {
@@ -210,8 +210,8 @@
     "semantic_hash": "2521302cb2028fd14d785298ce216f6a"
   },
   "operations/views/dashboard.py": {
-    "mtime": 1783901278.5073953,
-    "ast_hash": "ed17a5da26b8404e46ab75a300ab680d",
+    "mtime": 1783906392.1758997,
+    "ast_hash": "c5f83a1c34694edf99c9453404573f6a",
     "semantic_hash": ""
   },
   "operations/views/documents.py": {
@@ -560,8 +560,8 @@
     "semantic_hash": ""
   },
   "templates/operations/dashboard.html": {
-    "mtime": 1783813904.7668662,
-    "ast_hash": "90534d75dfcb0f45f0e42815df8d46b5",
+    "mtime": 1783906402.1739376,
+    "ast_hash": "912eff923afb22ca9502f617687def37",
     "semantic_hash": ""
   },
   "templates/operations/document_form.html": {
@@ -645,8 +645,8 @@
     "semantic_hash": ""
   },
   "templates/operations/work_queue.html": {
-    "mtime": 1783900683.9490895,
-    "ast_hash": "5fb3d5f798c27b7f97c35048b9932695",
+    "mtime": 1783906673.5117724,
+    "ast_hash": "3b9ed19f63f14d96861f0ddb0e61d3d6",
     "semantic_hash": ""
   },
   "templates/registration/csrf_failure.html": {
