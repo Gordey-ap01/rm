@@ -90,6 +90,15 @@ TERMINAL_PLAN_STATUSES = (
 )
 
 
+def _raise_if_terminal_plan(
+    plan: AppointmentReschedulePlan,
+    *,
+    verb: str = "изменять",
+) -> None:
+    if plan.status in TERMINAL_PLAN_STATUSES:
+        raise ValidationError(f"Завершенный или отмененный план нельзя {verb}.")
+
+
 def _dependency_input_parts(raw: Any) -> tuple[int, int, str, str, dict[str, Any]]:
     relation_default = AppointmentRescheduleStepDependency.RelationType.FREES_TARGET_SLOT
     if isinstance(raw, dict):
@@ -894,6 +903,7 @@ def create_confirmations_for_step(
     step = (
         AppointmentRescheduleStep.objects.select_for_update()
         .select_related(
+            "plan",
             "source_appointment",
             "source_appointment__child",
             "source_appointment__service",
@@ -907,6 +917,7 @@ def create_confirmations_for_step(
         )
         .get(pk=step.pk)
     )
+    _raise_if_terminal_plan(step.plan)
     if step.action_type != AppointmentRescheduleStep.ActionType.MOVE:
         raise ValidationError("Согласования можно отправить только для шага переноса.")
     if step.status != AppointmentRescheduleStep.Status.VALID:
@@ -1024,8 +1035,7 @@ def _refresh_move_step_validation(
 @transaction.atomic
 def revalidate_plan(plan: AppointmentReschedulePlan) -> PlanValidationResult:
     plan = AppointmentReschedulePlan.objects.select_for_update().get(pk=plan.pk)
-    if plan.status in TERMINAL_PLAN_STATUSES:
-        raise ValidationError("Завершенный или отмененный план нельзя перепроверять.")
+    _raise_if_terminal_plan(plan, verb="перепроверять")
 
     valid_steps = 0
     stale_steps = 0
@@ -1103,6 +1113,7 @@ def revalidate_chain(chain: AppointmentRescheduleChain) -> ChainValidationResult
         AppointmentRescheduleChain.Status.CANCELLED,
     }:
         raise ValidationError("Completed chains cannot be revalidated.")
+    _raise_if_terminal_plan(chain.plan, verb="перепроверять")
 
     steps = list(
         AppointmentRescheduleStep.objects.select_for_update()
@@ -1131,13 +1142,6 @@ def revalidate_chain(chain: AppointmentRescheduleChain) -> ChainValidationResult
     connected_step_ids: set[int] = set()
     freed_source_ids_by_successor: dict[int, set[int]] = {step.pk: set() for step in steps}
 
-    if chain.plan.status in TERMINAL_PLAN_STATUSES:
-        issues.append(
-            {
-                "code": "terminal_plan",
-                "message": "Plan is completed or cancelled.",
-            }
-        )
     if len(steps) < 2:
         issues.append(
             {
@@ -1368,6 +1372,7 @@ def apply_chain(
                 .select_related("plan")
                 .get(pk=chain_pk)
             )
+            _raise_if_terminal_plan(chain.plan)
             if chain.status != AppointmentRescheduleChain.Status.READY:
                 raise ValidationError("Chain must be ready before applying.")
 
@@ -1465,6 +1470,7 @@ def mark_review_conflict_step_resolved(
         .select_related("plan", "source_appointment")
         .get(pk=step.pk)
     )
+    _raise_if_terminal_plan(step.plan)
     if step.action_type != AppointmentRescheduleStep.ActionType.REVIEW_CONFLICT:
         raise ValidationError("Разобранным можно отметить только шаг ручного конфликта.")
     if step.status in TERMINAL_STEP_STATUSES:
@@ -1504,6 +1510,7 @@ def apply_step(
         .select_related("plan", "source_appointment", "proposed_primary_staff", "proposed_room")
         .get(pk=step.pk)
     )
+    _raise_if_terminal_plan(step.plan)
     if step.action_type != AppointmentRescheduleStep.ActionType.MOVE:
         raise ValidationError("Применять можно только шаг переноса.")
     if step.status != AppointmentRescheduleStep.Status.VALID:

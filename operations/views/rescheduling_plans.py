@@ -596,6 +596,7 @@ def appointment_reschedule_plan_detail(request, pk: int):
         ),
         pk=pk,
     )
+    can_mutate_plan = plan.status not in TERMINAL_PLAN_STATUSES
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "revalidate":
@@ -723,7 +724,8 @@ def appointment_reschedule_plan_detail(request, pk: int):
         )
         chain.issue_rows = _chain_issue_rows(chain)
         chain.stale_step_rows = _chain_stale_step_rows(chain)
-        chain.can_revalidate = chain.status not in TERMINAL_CHAIN_STATUSES
+        chain.can_revalidate = can_mutate_plan and chain.status not in TERMINAL_CHAIN_STATUSES
+        chain.can_apply = can_mutate_plan and chain.status == AppointmentRescheduleChain.Status.READY
 
     return render(
         request,
@@ -731,7 +733,8 @@ def appointment_reschedule_plan_detail(request, pk: int):
         {
             "plan": plan,
             "chains": chains,
-            "can_revalidate_plan": plan.status not in TERMINAL_PLAN_STATUSES,
+            "can_revalidate_plan": can_mutate_plan,
+            "can_mutate_plan": can_mutate_plan,
             "steps": plan.steps.select_related(
                 "source_appointment",
                 "blocking_appointment",

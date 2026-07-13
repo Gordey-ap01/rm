@@ -4971,6 +4971,57 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertContains(response, "Повторная проверка плана недоступна")
         self.assertNotContains(response, 'name="action" value="revalidate"')
 
+    def test_reschedule_plan_detail_hides_step_and_chain_actions_for_terminal_plan(self):
+        plan, chain = self._reschedule_chain_fixture()
+        chain.status = AppointmentRescheduleChain.Status.READY
+        chain.validation_summary = {"ready": 2}
+        chain.save(update_fields=["status", "validation_summary", "updated_at"])
+        plan.status = AppointmentReschedulePlan.Status.CANCELLED
+        plan.save(update_fields=["status", "updated_at"])
+
+        response = self.client.get(reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["can_mutate_plan"])
+        self.assertFalse(response.context["chains"][0].can_revalidate)
+        self.assertFalse(response.context["chains"][0].can_apply)
+        self.assertContains(response, "План завершен или отменен.")
+        self.assertContains(response, "Повторная проверка плана недоступна")
+        self.assertNotContains(response, 'name="action" value="revalidate"')
+        self.assertNotContains(response, 'name="action" value="revalidate_chain"')
+        self.assertNotContains(response, 'name="action" value="apply_chain"')
+        self.assertNotContains(response, 'name="action" value="send_step_confirmations"')
+        self.assertNotContains(response, 'name="action" value="apply_step"')
+        self.assertNotContains(response, 'name="action" value="mark_review_conflict_resolved"')
+
+    def test_reschedule_plan_detail_rejects_terminal_plan_step_post(self):
+        appointment = self._appointment()
+        plan = plan_svc.create_plan_for_appointment(
+            appointment, actor=self.admin, days=2, limit=1
+        )
+        step = plan.steps.get()
+        plan.status = AppointmentReschedulePlan.Status.CANCELLED
+        plan.validation_summary = {"locked": "cancelled"}
+        plan.save(update_fields=["status", "validation_summary", "updated_at"])
+
+        response = self.client.post(
+            reverse("appointment_reschedule_plan_detail", args=[plan.pk]),
+            {"action": "apply_step", "step_id": step.pk},
+            follow=True,
+        )
+
+        plan.refresh_from_db()
+        step.refresh_from_db()
+        appointment.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(plan.status, AppointmentReschedulePlan.Status.CANCELLED)
+        self.assertEqual(plan.validation_summary, {"locked": "cancelled"})
+        self.assertEqual(step.status, AppointmentRescheduleStep.Status.VALID)
+        self.assertIsNone(step.created_appointment_id)
+        self.assertEqual(appointment.status, Appointment.Status.CONFIRMED)
+        self.assertContains(response, "нельзя изменять")
+        self.assertNotContains(response, 'name="action" value="apply_step"')
+
     def test_reschedule_plan_detail_renders_chain_read_only_block(self):
         first_source = self._appointment()
         second_start = _local_dt(timezone.localdate() + timedelta(days=5), time(11, 0))

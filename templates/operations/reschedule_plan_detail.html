@@ -107,7 +107,7 @@
         {% else %}
           <p class="muted">Повторная проверка недоступна для текущего статуса цепочки.</p>
         {% endif %}
-        {% if chain.status == "ready" %}
+        {% if chain.can_apply %}
           <form method="post" class="stacked-actions">
             {% csrf_token %}
             <input type="hidden" name="action" value="apply_chain">
@@ -261,7 +261,16 @@
             {% endif %}
           </td>
           <td data-label="Команда">
-            {% if step.action_type == "move" and step.status == "valid" %}
+            {% if not can_mutate_plan %}
+              <div class="stacked-actions">
+                <span class="muted">План завершен или отменен.</span>
+                {% if step.created_appointment %}
+                  <a class="button-link secondary small-action" href="{% url 'appointment_detail' step.created_appointment.pk %}">Открыть новое</a>
+                {% elif step.source_appointment %}
+                  <a class="button-link secondary small-action" href="{% url 'appointment_detail' step.source_appointment.pk %}">Открыть занятие</a>
+                {% endif %}
+              </div>
+            {% elif step.action_type == "move" and step.status == "valid" %}
               {% if step.confirmation_status == "not_requested" %}
                 <form method="post">
                   {% csrf_token %}

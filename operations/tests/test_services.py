@@ -1586,6 +1586,103 @@ class ReschedulingPlanServiceTests(_FixturesMixin, TestCase):
                 self.assertTrue(step.requires_staff_override)
                 self.assertTrue(step.requires_room_override)
 
+    def test_terminal_plan_rejects_step_actions_without_mutation(self):
+        self.staff_a.email = "staff-terminal-plan@example.local"
+        self.staff_a.save(update_fields=["email", "updated_at"])
+        appointment = self._appointment()
+        plan = plan_svc.create_plan_for_appointment(
+            appointment, actor=self.user, days=2, limit=1
+        )
+        move_step = plan.steps.get()
+        plan.status = AppointmentReschedulePlan.Status.CANCELLED
+        plan.validation_summary = {"locked": "cancelled"}
+        plan.save(update_fields=["status", "validation_summary", "updated_at"])
+
+        with self.assertRaisesMessage(ValidationError, "нельзя изменять"):
+            plan_svc.create_confirmations_for_step(move_step, actor=self.user)
+        with self.assertRaisesMessage(ValidationError, "нельзя изменять"):
+            plan_svc.apply_step(move_step, actor=self.user)
+
+        move_step.refresh_from_db()
+        appointment.refresh_from_db()
+        self.assertEqual(move_step.status, AppointmentRescheduleStep.Status.VALID)
+        self.assertIsNone(move_step.created_appointment_id)
+        self.assertEqual(appointment.status, Appointment.Status.CONFIRMED)
+        self.assertFalse(AppointmentConfirmation.objects.filter(reschedule_step=move_step).exists())
+        self.assertFalse(Appointment.objects.filter(source_appointment=appointment).exists())
+
+        review_plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.APPLIED,
+            plan_type=AppointmentReschedulePlan.PlanType.STAFF_ABSENCE,
+            root_appointment=appointment,
+            staff_member=self.staff_a,
+            reason="Завершенный ручной разбор",
+            created_by=self.user,
+        )
+        review_step = AppointmentRescheduleStep.objects.create(
+            plan=review_plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.REVIEW_CONFLICT,
+            status=AppointmentRescheduleStep.Status.PENDING,
+            source_appointment=appointment,
+        )
+        appointment.status = Appointment.Status.CANCELLED
+        appointment.save(update_fields=["status", "updated_at"])
+
+        with self.assertRaisesMessage(ValidationError, "нельзя изменять"):
+            plan_svc.mark_review_conflict_step_resolved(review_step, actor=self.user)
+
+        review_step.refresh_from_db()
+        self.assertEqual(review_step.status, AppointmentRescheduleStep.Status.PENDING)
+        self.assertEqual(review_step.admin_note, "")
+
+    def test_terminal_plan_rejects_chain_actions_without_mutation(self):
+        plan, chain, first, second, first_source, second_source = self._reschedule_chain_fixture()
+        chain.validation_summary = {"locked": "draft"}
+        chain.save(update_fields=["validation_summary", "updated_at"])
+        plan.status = AppointmentReschedulePlan.Status.CANCELLED
+        plan.validation_summary = {"locked": "cancelled"}
+        plan.save(update_fields=["status", "validation_summary", "updated_at"])
+
+        with self.assertRaisesMessage(ValidationError, "нельзя перепроверять"):
+            plan_svc.revalidate_chain(chain)
+
+        plan.refresh_from_db()
+        chain.refresh_from_db()
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(plan.status, AppointmentReschedulePlan.Status.CANCELLED)
+        self.assertEqual(plan.validation_summary, {"locked": "cancelled"})
+        self.assertEqual(chain.status, AppointmentRescheduleChain.Status.DRAFT)
+        self.assertEqual(chain.validation_summary, {"locked": "draft"})
+        self.assertEqual(first.status, AppointmentRescheduleStep.Status.VALID)
+        self.assertEqual(second.status, AppointmentRescheduleStep.Status.VALID)
+
+        plan.status = AppointmentReschedulePlan.Status.READY
+        plan.save(update_fields=["status", "updated_at"])
+        plan_svc.revalidate_chain(chain)
+        plan.status = AppointmentReschedulePlan.Status.APPLIED
+        plan.validation_summary = {"locked": "applied"}
+        plan.save(update_fields=["status", "validation_summary", "updated_at"])
+
+        with self.assertRaisesMessage(ValidationError, "нельзя изменять"):
+            plan_svc.apply_chain(chain, actor=self.user)
+
+        plan.refresh_from_db()
+        chain.refresh_from_db()
+        first.refresh_from_db()
+        second.refresh_from_db()
+        first_source.refresh_from_db()
+        second_source.refresh_from_db()
+        self.assertEqual(plan.status, AppointmentReschedulePlan.Status.APPLIED)
+        self.assertEqual(plan.validation_summary, {"locked": "applied"})
+        self.assertEqual(chain.status, AppointmentRescheduleChain.Status.READY)
+        self.assertEqual(first.status, AppointmentRescheduleStep.Status.VALID)
+        self.assertEqual(second.status, AppointmentRescheduleStep.Status.VALID)
+        self.assertEqual(first_source.status, Appointment.Status.CONFIRMED)
+        self.assertEqual(second_source.status, Appointment.Status.CONFIRMED)
+        self.assertFalse(Appointment.objects.filter(source_appointment__in=[first_source, second_source]).exists())
+
     def test_apply_valid_step_creates_new_appointment_without_billing_decision(self):
         appointment = self._appointment()
         plan = plan_svc.create_plan_for_appointment(
