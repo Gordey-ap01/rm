@@ -68,6 +68,18 @@ TERMINAL_PLAN_STATUSES = {
     AppointmentReschedulePlan.Status.CANCELLED,
 }
 
+ATTENTION_FOCUS_VALUES = {
+    "manual_review",
+    "stale",
+    "failed",
+    "waiting",
+    "declined",
+    "ready_to_apply",
+    "chain_ready",
+    "chain_stale",
+    "chain_failed",
+}
+
 
 def _metrics_period(raw_period: str) -> tuple[str, str, object | None]:
     labels = dict(METRICS_PERIOD_CHOICES)
@@ -365,6 +377,9 @@ def reschedule_plan_list(request):
     if confirmation in confirmation_status.values:
         plans = plans.filter(steps__confirmation_status=confirmation).distinct()
 
+    if focus in ATTENTION_FOCUS_VALUES:
+        plans = plans.exclude(status__in=TERMINAL_PLAN_STATUSES)
+
     if focus == "manual_review":
         plans = plans.filter(
             steps__action_type=action_type.REVIEW_CONFLICT,
@@ -486,6 +501,7 @@ def reschedule_plan_list(request):
                 chain_status.READY,
             ]
         )
+        .exclude(plan__status__in=TERMINAL_PLAN_STATUSES)
         .annotate(
             attention_priority=Case(
                 When(status=chain_status.FAILED, then=Value(0)),
@@ -514,6 +530,7 @@ def reschedule_plan_list(request):
                 )
             )
         )
+        .exclude(plan__status__in=TERMINAL_PLAN_STATUSES)
         .annotate(
             attention_priority=Case(
                 When(status=step_status.FAILED, then=Value(0)),
@@ -547,6 +564,7 @@ def reschedule_plan_list(request):
         )[:100]
     )
     for plan in plan_rows:
+        plan.is_terminal = plan.status in TERMINAL_PLAN_STATUSES
         plan.primary_attention_chain = (
             plan.attention_chains[0] if plan.attention_chains else None
         )

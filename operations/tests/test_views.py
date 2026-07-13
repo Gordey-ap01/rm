@@ -4791,6 +4791,108 @@ class ReschedulePlanViewTests(NewViewsTestBase):
                 self.assertEqual(list(response.context["plans"]), [expected_plan])
                 self.assertContains(response, f'value="{focus}" selected')
 
+    def test_reschedule_plan_list_focus_excludes_terminal_plan_attention(self):
+        chain_plan, _chain = self._chain_with_status(
+            AppointmentRescheduleChain.Status.READY,
+            "Terminal ready chain",
+            days=5,
+        )
+        chain_plan.status = AppointmentReschedulePlan.Status.APPLIED
+        chain_plan.save(update_fields=["status", "updated_at"])
+        source = self._appointment(days=9)
+        step_plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.CANCELLED,
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            reason="Terminal failed step fixture",
+            created_by=self.admin,
+        )
+        AppointmentRescheduleStep.objects.create(
+            plan=step_plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.FAILED,
+            source_appointment=source,
+            proposed_starts_at=_local_dt(timezone.localdate() + timedelta(days=9), time(12, 0)),
+            proposed_ends_at=_local_dt(timezone.localdate() + timedelta(days=9), time(12, 30)),
+            proposed_room=self.room,
+            proposed_primary_staff=self.staff,
+        )
+
+        cases = [
+            (AppointmentReschedulePlan.Status.APPLIED, "chain_ready"),
+            (AppointmentReschedulePlan.Status.CANCELLED, "failed"),
+        ]
+        for status, focus in cases:
+            with self.subTest(status=status, focus=focus):
+                response = self.client.get(
+                    reverse("reschedule_plan_list"),
+                    {"status": status, "focus": focus},
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(list(response.context["plans"]), [])
+                self.assertContains(response, "Планов переноса по выбранным фильтрам нет.")
+
+    def test_reschedule_plan_list_terminal_rows_are_read_only_history(self):
+        chain_plan, chain = self._chain_with_status(
+            AppointmentRescheduleChain.Status.READY,
+            "Terminal history chain",
+            days=5,
+        )
+        chain_plan.status = AppointmentReschedulePlan.Status.APPLIED
+        chain_plan.save(update_fields=["status", "updated_at"])
+        source = self._appointment(days=9)
+        step_plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.APPLIED,
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            reason="Terminal history step fixture",
+            created_by=self.admin,
+        )
+        failed_step = AppointmentRescheduleStep.objects.create(
+            plan=step_plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.FAILED,
+            source_appointment=source,
+            proposed_starts_at=_local_dt(timezone.localdate() + timedelta(days=9), time(12, 0)),
+            proposed_ends_at=_local_dt(timezone.localdate() + timedelta(days=9), time(12, 30)),
+            proposed_room=self.room,
+            proposed_primary_staff=self.staff,
+        )
+
+        response = self.client.get(
+            reverse("reschedule_plan_list"),
+            {"status": AppointmentReschedulePlan.Status.APPLIED},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        plans = list(response.context["plans"])
+        self.assertEqual(set(plans), {chain_plan, step_plan})
+        for plan in plans:
+            with self.subTest(plan=plan.pk):
+                self.assertTrue(plan.is_terminal)
+                self.assertIsNone(plan.primary_attention_chain)
+                self.assertIsNone(plan.primary_attention_step)
+        self.assertContains(response, "План завершен", count=2)
+        self.assertContains(
+            response,
+            reverse("appointment_reschedule_plan_detail", args=[chain_plan.pk]),
+        )
+        self.assertContains(
+            response,
+            reverse("appointment_reschedule_plan_detail", args=[step_plan.pk]),
+        )
+        self.assertNotContains(response, "Открыть цепочку")
+        self.assertNotContains(response, "Открыть шаг")
+        self.assertNotContains(
+            response,
+            f'{reverse("appointment_reschedule_plan_detail", args=[chain_plan.pk])}#chain-{chain.pk}',
+        )
+        self.assertNotContains(
+            response,
+            f'{reverse("appointment_reschedule_plan_detail", args=[step_plan.pk])}#step-{failed_step.pk}',
+        )
+
     def test_dashboard_surfaces_ready_reschedule_chains(self):
         _plan, chain = self._reschedule_chain_fixture()
         plan_svc.revalidate_chain(chain)
