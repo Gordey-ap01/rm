@@ -5117,6 +5117,14 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertContains(response, "reschedule-plan-table")
         self.assertContains(response, f'id="step-{step.pk}"')
         self.assertContains(response, 'data-label="Команда"')
+        self.assertContains(
+            response,
+            "План не меняет расписание, пока администратор не применит шаг.",
+        )
+        self.assertContains(
+            response,
+            "Перед применением шага система повторно проверяет получателей",
+        )
         self.assertContains(response, "Перепроверить план")
 
     def test_reschedule_plan_detail_hides_revalidate_for_terminal_plan(self):
@@ -5131,7 +5139,23 @@ class ReschedulePlanViewTests(NewViewsTestBase):
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.context["can_revalidate_plan"])
+        self.assertContains(
+            response,
+            "План применен: изменения расписания уже записаны, действия закрыты.",
+        )
+        self.assertContains(
+            response,
+            "План открыт только для просмотра истории.",
+        )
         self.assertContains(response, "Повторная проверка плана недоступна")
+        self.assertNotContains(
+            response,
+            "План не меняет расписание, пока администратор не применит шаг.",
+        )
+        self.assertNotContains(
+            response,
+            "Перед применением шага система повторно проверяет получателей",
+        )
         self.assertNotContains(response, 'name="action" value="revalidate"')
         self.assertNotContains(response, "Перепроверить план")
 
@@ -5182,6 +5206,14 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertFalse(response.context["can_mutate_plan"])
         self.assertFalse(response.context["chains"][0].can_revalidate)
         self.assertFalse(response.context["chains"][0].can_apply)
+        self.assertContains(
+            response,
+            "План отменен: действия закрыты, история сохранена.",
+        )
+        self.assertContains(
+            response,
+            "План открыт только для просмотра истории.",
+        )
         self.assertContains(response, "План завершен или отменен.")
         self.assertContains(response, "Архив согласований", count=2)
         self.assertContains(response, "Последний статус:", count=2)
