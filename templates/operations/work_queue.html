@@ -238,6 +238,58 @@
     </div>
   </article>
 
+  <article class="panel" id="queue-reschedule-steps">
+    <h2>Шаги планов переноса</h2>
+    <div class="task-list">
+      {% for step in reschedule_steps %}
+        <div class="task-card status-{{ step.status }}">
+          <div>
+            <strong>
+              Шаг {{ step.position }} · {{ step.get_action_type_display }}
+            </strong>
+            <p>
+              {{ step.plan.get_plan_type_display }} · {{ step.get_status_display }} ·
+              согласование: {{ step.get_confirmation_status_display }}
+            </p>
+            <p class="muted">
+              {{ step.source_appointment.child }} · {{ step.source_appointment.service }} ·
+              исходно {{ step.source_appointment.starts_at|date:"d.m H:i" }}
+            </p>
+            <p class="muted">
+              {% if step.proposed_starts_at %}
+                Предложено: {{ step.proposed_starts_at|date:"d.m H:i" }}-{{ step.proposed_ends_at|date:"H:i" }}
+                {% if step.proposed_primary_staff %} · {{ step.proposed_primary_staff }}{% endif %}
+                {% if step.proposed_room %} · {{ step.proposed_room }}{% endif %}
+              {% elif step.blocking_appointment %}
+                Конфликт: {{ step.blocking_appointment.starts_at|date:"d.m H:i" }} · {{ step.blocking_appointment.child }}
+              {% else %}
+                Новое окно еще не выбрано.
+              {% endif %}
+            </p>
+            {% if step.status == "failed" %}
+              <p class="muted">Следующее действие: открыть шаг, разобрать ошибку и повторить после исправления.</p>
+            {% elif step.action_type == "review_conflict" %}
+              <p class="muted">Следующее действие: вручную решить конфликт и отметить шаг разобранным.</p>
+            {% elif step.status == "stale" %}
+              <p class="muted">Следующее действие: перепроверить план, потому что расписание изменилось.</p>
+            {% elif step.confirmation_status == "declined" %}
+              <p class="muted">Следующее действие: обработать отказ и выбрать новый вариант переноса.</p>
+            {% elif step.confirmation_status == "waiting" %}
+              <p class="muted">Следующее действие: дождаться ответа или связаться с участниками согласования.</p>
+            {% elif step.status == "valid" %}
+              <p class="muted">Следующее действие: применить шаг или отправить согласования из плана.</p>
+            {% endif %}
+          </div>
+          <div class="task-actions">
+            <a class="button-link secondary small-action" href="{% url 'appointment_reschedule_plan_detail' step.plan.pk %}#step-{{ step.pk }}">Открыть шаг</a>
+          </div>
+        </div>
+      {% empty %}
+        <p class="empty-state">Одиночных шагов переноса, требующих внимания, нет.</p>
+      {% endfor %}
+    </div>
+  </article>
+
   <article class="panel" id="queue-confirmations">
     <h2>Email-согласования</h2>
     <div class="task-list">

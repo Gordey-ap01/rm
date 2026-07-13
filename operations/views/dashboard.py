@@ -17,6 +17,7 @@ from operations.models import (
     AppointmentConfirmation,
     AppointmentRescheduleChain,
     AppointmentReschedulePlan,
+    AppointmentRescheduleStep,
     AppointmentStaffAssignment,
     BalanceAccount,
     TimeOffRequest,
@@ -147,6 +148,124 @@ def reschedule_chain_attention_counts(queryset=None) -> dict[str, int]:
         "ready": queryset.filter(status=AppointmentRescheduleChain.Status.READY).count(),
         "stale": queryset.filter(status=AppointmentRescheduleChain.Status.STALE).count(),
         "failed": queryset.filter(status=AppointmentRescheduleChain.Status.FAILED).count(),
+    }
+
+
+def reschedule_step_open_statuses():
+    step_status = AppointmentRescheduleStep.Status
+    return [
+        step_status.PENDING,
+        step_status.VALID,
+        step_status.STALE,
+        step_status.FAILED,
+    ]
+
+
+def reschedule_step_attention_filter() -> Q:
+    step_status = AppointmentRescheduleStep.Status
+    confirmation_status = AppointmentRescheduleStep.ConfirmationStatus
+    action_type = AppointmentRescheduleStep.ActionType
+    open_step_statuses = reschedule_step_open_statuses()
+    return (
+        Q(status=step_status.FAILED)
+        | Q(action_type=action_type.REVIEW_CONFLICT, status__in=open_step_statuses)
+        | Q(status=step_status.STALE)
+        | Q(confirmation_status=confirmation_status.DECLINED)
+        | Q(confirmation_status=confirmation_status.WAITING)
+        | (
+            Q(status=step_status.VALID)
+            & Q(
+                confirmation_status__in=[
+                    confirmation_status.NOT_REQUESTED,
+                    confirmation_status.APPROVED,
+                ]
+            )
+        )
+    )
+
+
+def reschedule_step_attention_priority():
+    step_status = AppointmentRescheduleStep.Status
+    confirmation_status = AppointmentRescheduleStep.ConfirmationStatus
+    action_type = AppointmentRescheduleStep.ActionType
+    open_step_statuses = reschedule_step_open_statuses()
+    return Case(
+        When(status=step_status.FAILED, then=Value(0)),
+        When(
+            action_type=action_type.REVIEW_CONFLICT,
+            status__in=open_step_statuses,
+            then=Value(1),
+        ),
+        When(status=step_status.STALE, then=Value(2)),
+        When(confirmation_status=confirmation_status.DECLINED, then=Value(3)),
+        When(confirmation_status=confirmation_status.WAITING, then=Value(4)),
+        When(
+            status=step_status.VALID,
+            confirmation_status__in=[
+                confirmation_status.NOT_REQUESTED,
+                confirmation_status.APPROVED,
+            ],
+            then=Value(5),
+        ),
+        default=Value(9),
+        output_field=IntegerField(),
+    )
+
+
+def reschedule_step_attention_queryset():
+    return (
+        AppointmentRescheduleStep.objects.select_related(
+            "plan",
+            "plan__root_appointment",
+            "plan__root_appointment__child",
+            "plan__root_appointment__service",
+            "plan__root_appointment__staff_member",
+            "plan__staff_member",
+            "source_appointment",
+            "source_appointment__child",
+            "source_appointment__service",
+            "source_appointment__staff_member",
+            "blocking_appointment",
+            "blocking_appointment__child",
+            "proposed_primary_staff",
+            "proposed_room",
+        )
+        .filter(reschedule_step_attention_filter(), chain__isnull=True)
+        .exclude(
+            plan__status__in=[
+                AppointmentReschedulePlan.Status.APPLIED,
+                AppointmentReschedulePlan.Status.CANCELLED,
+            ]
+        )
+        .annotate(attention_priority=reschedule_step_attention_priority())
+        .order_by("attention_priority", "-plan__created_at", "position", "pk")
+    )
+
+
+def reschedule_step_attention_counts(queryset=None) -> dict[str, int]:
+    if queryset is None:
+        queryset = reschedule_step_attention_queryset()
+    step_status = AppointmentRescheduleStep.Status
+    confirmation_status = AppointmentRescheduleStep.ConfirmationStatus
+    action_type = AppointmentRescheduleStep.ActionType
+    open_step_statuses = reschedule_step_open_statuses()
+    return {
+        "total": queryset.count(),
+        "ready": queryset.filter(
+            status=step_status.VALID,
+            confirmation_status__in=[
+                confirmation_status.NOT_REQUESTED,
+                confirmation_status.APPROVED,
+            ],
+        ).count(),
+        "waiting": queryset.filter(confirmation_status=confirmation_status.WAITING).count(),
+        "declined": queryset.filter(confirmation_status=confirmation_status.DECLINED).count(),
+        "stale": queryset.filter(status=step_status.STALE).count(),
+        "failed": queryset.filter(status=step_status.FAILED).count(),
+        "manual_review": queryset.filter(
+            action_type=action_type.REVIEW_CONFLICT,
+            status__in=open_step_statuses,
+        ).count(),
     }
 
 
@@ -321,6 +440,10 @@ def work_queue_summary_items(
     ready_chain_count: int,
     stale_chain_count: int,
     failed_chain_count: int,
+    reschedule_step_count: int,
+    failed_step_count: int,
+    stale_step_count: int,
+    nonready_step_count: int,
 ):
     chain_attention_count = ready_chain_count + stale_chain_count + failed_chain_count
     chain_tone = "success"
@@ -330,6 +453,14 @@ def work_queue_summary_items(
         chain_tone = "warning"
     elif ready_chain_count:
         chain_tone = "info"
+
+    step_tone = "success"
+    if failed_step_count:
+        step_tone = "danger"
+    elif stale_step_count or nonready_step_count:
+        step_tone = "warning"
+    elif reschedule_step_count:
+        step_tone = "info"
 
     return [
         {
@@ -359,6 +490,13 @@ def work_queue_summary_items(
             "href": "#queue-reschedule-chains",
             "tone": chain_tone,
             "detail": "Готовые, устаревшие или проблемные атомарные переносы.",
+        },
+        {
+            "label": "Шаги планов переноса",
+            "value": reschedule_step_count,
+            "href": "#queue-reschedule-steps",
+            "tone": step_tone,
+            "detail": "Одиночные шаги переноса без цепочки, где нужно решение администратора.",
         },
         {
             "label": "Низкие балансы",
@@ -532,6 +670,9 @@ def work_queue(request):
     reschedule_chains_queryset = reschedule_chain_attention_queryset()
     chain_counts = reschedule_chain_attention_counts(reschedule_chains_queryset)
     reschedule_chains = list(reschedule_chains_queryset[:40])
+    reschedule_steps_queryset = reschedule_step_attention_queryset()
+    step_counts = reschedule_step_attention_counts(reschedule_steps_queryset)
+    reschedule_steps = list(reschedule_steps_queryset[:40])
     low_balances = low_balance_accounts()
     queue_summary = work_queue_summary_items(
         needs_billing_count=len(needs_billing),
@@ -543,6 +684,10 @@ def work_queue(request):
         ready_chain_count=chain_counts["ready"],
         stale_chain_count=chain_counts["stale"],
         failed_chain_count=chain_counts["failed"],
+        reschedule_step_count=step_counts["total"],
+        failed_step_count=step_counts["failed"],
+        stale_step_count=step_counts["stale"],
+        nonready_step_count=step_counts["total"] - step_counts["ready"],
     )
     return render(
         request,
@@ -555,9 +700,13 @@ def work_queue(request):
             "confirmation_tasks": confirmation_tasks,
             "time_off_requests": time_off_requests,
             "reschedule_chains": reschedule_chains,
+            "reschedule_steps": reschedule_steps,
             "ready_chain_count": chain_counts["ready"],
             "stale_chain_count": chain_counts["stale"],
             "failed_chain_count": chain_counts["failed"],
+            "reschedule_step_count": step_counts["total"],
+            "failed_step_count": step_counts["failed"],
+            "stale_step_count": step_counts["stale"],
             "queue_summary_items": queue_summary,
             "queue_next_action": work_queue_next_action(queue_summary),
         },

@@ -4685,6 +4685,83 @@ class ReschedulePlanViewTests(NewViewsTestBase):
             f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#chain-{chain.pk}',
         )
 
+    def test_work_queue_surfaces_priority_reschedule_steps(self):
+        source = self._appointment()
+        plan = AppointmentReschedulePlan.objects.create(
+            status=AppointmentReschedulePlan.Status.READY,
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            reason="Step queue fixture",
+            created_by=self.admin,
+        )
+        ready_step = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.VALID,
+            source_appointment=source,
+            proposed_starts_at=_local_dt(timezone.localdate() + timedelta(days=5), time(12, 0)),
+            proposed_ends_at=_local_dt(timezone.localdate() + timedelta(days=5), time(12, 30)),
+            proposed_room=self.room,
+            proposed_primary_staff=self.staff,
+        )
+        stale_step = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=2,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.STALE,
+            source_appointment=source,
+            proposed_starts_at=_local_dt(timezone.localdate() + timedelta(days=5), time(13, 0)),
+            proposed_ends_at=_local_dt(timezone.localdate() + timedelta(days=5), time(13, 30)),
+            proposed_room=self.room,
+            proposed_primary_staff=self.staff,
+            validation_messages=["slot changed"],
+        )
+        failed_step = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=3,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            status=AppointmentRescheduleStep.Status.FAILED,
+            source_appointment=source,
+            proposed_starts_at=_local_dt(timezone.localdate() + timedelta(days=5), time(14, 0)),
+            proposed_ends_at=_local_dt(timezone.localdate() + timedelta(days=5), time(14, 30)),
+            proposed_room=self.room,
+            proposed_primary_staff=self.staff,
+        )
+
+        response = self.client.get(reverse("work_queue"))
+
+        self.assertEqual(response.status_code, 200)
+        steps = list(response.context["reschedule_steps"])
+        self.assertEqual(steps[:3], [failed_step, stale_step, ready_step])
+        self.assertContains(response, "#queue-reschedule-steps")
+        self.assertContains(response, 'id="queue-reschedule-steps"')
+        self.assertContains(response, "Открыть шаг")
+        self.assertContains(
+            response,
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#step-{failed_step.pk}',
+        )
+        step_summary = next(
+            item
+            for item in response.context["queue_summary_items"]
+            if item["href"] == "#queue-reschedule-steps"
+        )
+        self.assertEqual(step_summary["value"], 3)
+        self.assertEqual(step_summary["tone"], "danger")
+
+    def test_work_queue_excludes_chain_steps_from_step_attention(self):
+        plan, chain = self._reschedule_chain_fixture()
+        plan_svc.revalidate_chain(chain)
+
+        response = self.client.get(reverse("work_queue"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(chain, list(response.context["reschedule_chains"]))
+        self.assertEqual(list(response.context["reschedule_steps"]), [])
+        self.assertContains(
+            response,
+            f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#chain-{chain.pk}',
+        )
+
     def test_dashboard_orders_chain_attention_by_operational_priority(self):
         self._chain_with_status(AppointmentRescheduleChain.Status.READY, "Ready chain", days=5)
         self._chain_with_status(AppointmentRescheduleChain.Status.STALE, "Stale chain", days=8)

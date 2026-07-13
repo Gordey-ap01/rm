@@ -170,8 +170,8 @@
     "semantic_hash": "683569e802955afebbba78aae5916fc9"
   },
   "operations/tests/test_views.py": {
-    "mtime": 1783857814.5347593,
-    "ast_hash": "f013c886c3078fa4c10b2655a819674b",
+    "mtime": 1783900597.3090353,
+    "ast_hash": "37e1bcdae06fc7ff429e120b03e20fac",
     "semantic_hash": ""
   },
   "operations/urls.py": {
@@ -210,8 +210,8 @@
     "semantic_hash": "2521302cb2028fd14d785298ce216f6a"
   },
   "operations/views/dashboard.py": {
-    "mtime": 1783836836.0074298,
-    "ast_hash": "b12a7a5eb6492eaf90e633190164e8dc",
+    "mtime": 1783901278.5073953,
+    "ast_hash": "ed17a5da26b8404e46ab75a300ab680d",
     "semantic_hash": ""
   },
   "operations/views/documents.py": {
@@ -645,8 +645,8 @@
     "semantic_hash": ""
   },
   "templates/operations/work_queue.html": {
-    "mtime": 1783840620.2045076,
-    "ast_hash": "704fe436e755b5d8eba37751ae0a1fdf",
+    "mtime": 1783900683.9490895,
+    "ast_hash": "5fb3d5f798c27b7f97c35048b9932695",
     "semantic_hash": ""
   },
   "templates/registration/csrf_failure.html": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1783857465.2026148,
-    "ast_hash": "9ee4a32cf4eef82ba1deea30659938a4",
+    "mtime": 1783901179.1209397,
+    "ast_hash": "2406ad31bc5830cc75446411e1cf68b0",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1783857507.8793101,
-    "ast_hash": "235d785f92cbcb40d7d5d2f26c4c30bb",
+    "mtime": 1783901234.8516803,
+    "ast_hash": "81ec43819bcfa2833d15ff3f8663d2c9",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1783857480.6297412,
-    "ast_hash": "a92109b236085c08239f2f82cc7f1e0f",
+    "mtime": 1783901198.151687,
+    "ast_hash": "747d5e71610abe8e932abc8f8179ffba",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
