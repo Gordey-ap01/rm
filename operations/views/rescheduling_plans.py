@@ -63,6 +63,11 @@ TERMINAL_CHAIN_STATUSES = {
     AppointmentRescheduleChain.Status.CANCELLED,
 }
 
+TERMINAL_PLAN_STATUSES = {
+    AppointmentReschedulePlan.Status.APPLIED,
+    AppointmentReschedulePlan.Status.CANCELLED,
+}
+
 
 def _metrics_period(raw_period: str) -> tuple[str, str, object | None]:
     labels = dict(METRICS_PERIOD_CHOICES)
@@ -594,15 +599,19 @@ def appointment_reschedule_plan_detail(request, pk: int):
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "revalidate":
-            result = plan_svc.revalidate_plan(plan)
-            messages.success(
-                request,
-                (
-                    "План перепроверен: "
-                    f"готово {result.valid_steps}, устарело {result.stale_steps}, "
-                    f"ожидает решения {result.pending_steps}."
-                ),
-            )
+            try:
+                result = plan_svc.revalidate_plan(plan)
+            except ValidationError as exc:
+                messages.error(request, _localized_messages(exc))
+            else:
+                messages.success(
+                    request,
+                    (
+                        "План перепроверен: "
+                        f"готово {result.valid_steps}, устарело {result.stale_steps}, "
+                        f"ожидает решения {result.pending_steps}."
+                    ),
+                )
             return redirect("appointment_reschedule_plan_detail", pk=plan.pk)
         if action == "revalidate_chain":
             chain = get_object_or_404(plan.chains.all(), pk=request.POST.get("chain_id"))
@@ -722,6 +731,7 @@ def appointment_reschedule_plan_detail(request, pk: int):
         {
             "plan": plan,
             "chains": chains,
+            "can_revalidate_plan": plan.status not in TERMINAL_PLAN_STATUSES,
             "steps": plan.steps.select_related(
                 "source_appointment",
                 "blocking_appointment",

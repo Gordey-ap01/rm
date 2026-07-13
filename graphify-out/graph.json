@@ -5584,7 +5584,7 @@
       "label": "revalidate_chain()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1091",
+      "source_location": "L1094",
       "_origin": "ast"
     },
     {
@@ -5592,7 +5592,7 @@
       "label": "AppointmentRescheduleChain",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1091",
+      "source_location": "L1094",
       "_origin": "ast"
     },
     {
@@ -5600,7 +5600,7 @@
       "label": "_mark_chain_apply_failed()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1338",
+      "source_location": "L1341",
       "_origin": "ast"
     },
     {
@@ -5608,7 +5608,7 @@
       "label": "apply_chain()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1353",
+      "source_location": "L1356",
       "_origin": "ast"
     },
     {
@@ -5616,7 +5616,7 @@
       "label": "mark_review_conflict_step_resolved()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1455",
+      "source_location": "L1458",
       "_origin": "ast"
     },
     {
@@ -5624,7 +5624,7 @@
       "label": "apply_step()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1492",
+      "source_location": "L1495",
       "_origin": "ast"
     },
     {
@@ -7324,11 +7324,19 @@
       "_origin": "ast"
     },
     {
+      "id": "tests_test_services_reschedulingplanservicetests_test_revalidate_plan_rejects_terminal_statuses_without_mutation",
+      "label": ".test_revalidate_plan_rejects_terminal_statuses_without_mutation()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L1545",
+      "_origin": "ast"
+    },
+    {
       "id": "tests_test_services_reschedulingplanservicetests_test_apply_valid_step_creates_new_appointment_without_billing_decision",
       "label": ".test_apply_valid_step_creates_new_appointment_without_billing_decision()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1545",
+      "source_location": "L1589",
       "_origin": "ast"
     },
     {
@@ -7336,7 +7344,7 @@
       "label": ".test_apply_step_skips_alternatives_for_same_source_only()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1566",
+      "source_location": "L1610",
       "_origin": "ast"
     },
     {
@@ -7344,7 +7352,7 @@
       "label": ".test_apply_step_with_room_override_creates_room_override()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1644",
+      "source_location": "L1688",
       "_origin": "ast"
     },
     {
@@ -7352,7 +7360,7 @@
       "label": ".test_group_plan_snapshot_includes_participants_and_staff()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1706",
+      "source_location": "L1750",
       "_origin": "ast"
     },
     {
@@ -7360,7 +7368,7 @@
       "label": ".test_create_staff_absence_plan_persists_pending_steps_without_cancelling()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1744",
+      "source_location": "L1788",
       "_origin": "ast"
     },
     {
@@ -7368,7 +7376,7 @@
       "label": ".test_mark_review_conflict_resolved_requires_non_active_source()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1769",
+      "source_location": "L1813",
       "_origin": "ast"
     },
     {
@@ -7376,7 +7384,7 @@
       "label": ".test_create_confirmations_for_step_targets_representative_and_specialist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1795",
+      "source_location": "L1839",
       "_origin": "ast"
     },
     {
@@ -7384,7 +7392,7 @@
       "label": ".test_create_confirmations_for_step_does_not_duplicate_existing_targets()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1826",
+      "source_location": "L1870",
       "_origin": "ast"
     },
     {
@@ -7392,7 +7400,7 @@
       "label": ".test_step_confirmation_status_waits_after_confirmations_are_created()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1843",
+      "source_location": "L1887",
       "_origin": "ast"
     },
     {
@@ -7400,7 +7408,7 @@
       "label": ".test_step_confirmation_status_becomes_approved_after_all_confirm()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1864",
+      "source_location": "L1908",
       "_origin": "ast"
     },
     {
@@ -7408,7 +7416,7 @@
       "label": ".test_step_confirmation_status_declined_blocks_apply()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1888",
+      "source_location": "L1932",
       "_origin": "ast"
     },
     {
@@ -7416,7 +7424,7 @@
       "label": "ProgramWizardServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1916",
+      "source_location": "L1960",
       "_origin": "ast"
     },
     {
@@ -7424,7 +7432,7 @@
       "label": ".setUp()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1917",
+      "source_location": "L1961",
       "_origin": "ast"
     },
     {
@@ -7432,7 +7440,7 @@
       "label": "._preview()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1934",
+      "source_location": "L1978",
       "_origin": "ast"
     },
     {
@@ -7440,7 +7448,7 @@
       "label": ".test_suggest_allows_second_specialist_when_room_capacity_allows()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1949",
+      "source_location": "L1993",
       "_origin": "ast"
     },
     {
@@ -7448,7 +7456,7 @@
       "label": ".test_suggest_skips_slot_when_room_capacity_is_full()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1973",
+      "source_location": "L2017",
       "_origin": "ast"
     },
     {
@@ -7456,7 +7464,7 @@
       "label": ".test_auto_suggest_uses_another_staff_and_room_when_primary_is_busy()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2006",
+      "source_location": "L2050",
       "_origin": "ast"
     },
     {
@@ -7464,7 +7472,7 @@
       "label": ".test_auto_suggest_respects_room_capacity_across_rooms()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2028",
+      "source_location": "L2072",
       "_origin": "ast"
     },
     {
@@ -7472,7 +7480,7 @@
       "label": ".test_balance_limit_caps_requested_sessions()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2047",
+      "source_location": "L2091",
       "_origin": "ast"
     },
     {
@@ -7480,7 +7488,7 @@
       "label": ".test_balance_limit_counts_existing_participant_reserves()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2065",
+      "source_location": "L2109",
       "_origin": "ast"
     },
     {
@@ -7488,7 +7496,7 @@
       "label": ".test_balance_limit_treats_charge_without_account_as_unpaid_reserve()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2100",
+      "source_location": "L2144",
       "_origin": "ast"
     },
     {
@@ -7496,7 +7504,7 @@
       "label": ".test_create_schedule_assigns_block_and_sequence()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2136",
+      "source_location": "L2180",
       "_origin": "ast"
     },
     {
@@ -7504,7 +7512,7 @@
       "label": ".test_preview_slots_do_not_overlap_each_other_when_duration_exceeds_step()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2157",
+      "source_location": "L2201",
       "_origin": "ast"
     },
     {
@@ -7512,7 +7520,7 @@
       "label": ".test_create_schedule_rejects_stale_preview_with_local_time()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2172",
+      "source_location": "L2216",
       "_origin": "ast"
     },
     {
@@ -7520,7 +7528,7 @@
       "label": "_minimal_xlsx()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2191",
+      "source_location": "L2235",
       "_origin": "ast"
     },
     {
@@ -7528,7 +7536,7 @@
       "label": "ImportPreviewServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2233",
+      "source_location": "L2277",
       "_origin": "ast"
     },
     {
@@ -7536,7 +7544,7 @@
       "label": ".test_csv_preview_validates_rows_and_existing_recipient()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2234",
+      "source_location": "L2278",
       "_origin": "ast"
     },
     {
@@ -7544,7 +7552,7 @@
       "label": ".test_xlsx_preview_maps_recipient_headers()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2254",
+      "source_location": "L2298",
       "_origin": "ast"
     },
     {
@@ -7552,7 +7560,7 @@
       "label": "ReportsServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2274",
+      "source_location": "L2318",
       "_origin": "ast"
     },
     {
@@ -7560,7 +7568,7 @@
       "label": ".setUp()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2275",
+      "source_location": "L2319",
       "_origin": "ast"
     },
     {
@@ -7568,7 +7576,7 @@
       "label": "._make_mixed_funding_group_charge()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2287",
+      "source_location": "L2331",
       "_origin": "ast"
     },
     {
@@ -7576,7 +7584,7 @@
       "label": "._make_same_funding_group_charge()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2335",
+      "source_location": "L2379",
       "_origin": "ast"
     },
     {
@@ -7584,7 +7592,7 @@
       "label": ".test_tomorrow_overview_returns_summary()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2393",
+      "source_location": "L2437",
       "_origin": "ast"
     },
     {
@@ -7592,7 +7600,7 @@
       "label": ".test_appointment_string_is_group_aware()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2408",
+      "source_location": "L2452",
       "_origin": "ast"
     },
     {
@@ -7600,7 +7608,7 @@
       "label": ".test_tomorrow_overview_excludes_group_after_all_participant_billing_decided()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2421",
+      "source_location": "L2465",
       "_origin": "ast"
     },
     {
@@ -7608,7 +7616,7 @@
       "label": ".test_tomorrow_overview_includes_group_with_undecided_participant()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2461",
+      "source_location": "L2505",
       "_origin": "ast"
     },
     {
@@ -7616,7 +7624,7 @@
       "label": ".test_timesheet_groups_by_day()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2493",
+      "source_location": "L2537",
       "_origin": "ast"
     },
     {
@@ -7624,7 +7632,7 @@
       "label": ".test_timesheet_counts_secondary_staff_assignments()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2508",
+      "source_location": "L2552",
       "_origin": "ast"
     },
     {
@@ -7632,7 +7640,7 @@
       "label": ".test_timesheet_includes_legacy_rows_when_assignments_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2534",
+      "source_location": "L2578",
       "_origin": "ast"
     },
     {
@@ -7640,7 +7648,7 @@
       "label": ".test_timesheet_accrues_pay_only_after_charge_decision()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2559",
+      "source_location": "L2603",
       "_origin": "ast"
     },
     {
@@ -7648,7 +7656,7 @@
       "label": ".test_timesheet_handles_charge_without_compensation_rule()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2584",
+      "source_location": "L2628",
       "_origin": "ast"
     },
     {
@@ -7656,7 +7664,7 @@
       "label": ".test_timesheet_uses_single_participant_billing_label()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2602",
+      "source_location": "L2646",
       "_origin": "ast"
     },
     {
@@ -7664,7 +7672,7 @@
       "label": ".test_timesheet_ignores_legacy_charge_when_participants_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2616",
+      "source_location": "L2660",
       "_origin": "ast"
     },
     {
@@ -7672,7 +7680,7 @@
       "label": ".test_timesheet_summarizes_group_participant_billing_labels()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2638",
+      "source_location": "L2682",
       "_origin": "ast"
     },
     {
@@ -7680,7 +7688,7 @@
       "label": ".test_timesheet_ignores_charge_participant_without_account()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2658",
+      "source_location": "L2702",
       "_origin": "ast"
     },
     {
@@ -7688,7 +7696,7 @@
       "label": ".test_timesheet_prefers_funding_specific_hourly_rule()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2677",
+      "source_location": "L2721",
       "_origin": "ast"
     },
     {
@@ -7696,7 +7704,7 @@
       "label": ".test_timesheet_prefers_duration_specific_rule()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2704",
+      "source_location": "L2748",
       "_origin": "ast"
     },
     {
@@ -7704,7 +7712,7 @@
       "label": ".test_timesheet_uses_grant_allocation_rate()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2733",
+      "source_location": "L2777",
       "_origin": "ast"
     },
     {
@@ -7712,7 +7720,7 @@
       "label": ".test_timesheet_uses_generic_rule_for_mixed_group_funding()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2760",
+      "source_location": "L2804",
       "_origin": "ast"
     },
     {
@@ -7720,7 +7728,7 @@
       "label": ".test_payroll_generation_is_idempotent_for_charged_assignment()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2788",
+      "source_location": "L2832",
       "_origin": "ast"
     },
     {
@@ -7728,7 +7736,7 @@
       "label": ".test_payroll_generation_ignores_legacy_charge_when_participants_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2823",
+      "source_location": "L2867",
       "_origin": "ast"
     },
     {
@@ -7736,7 +7744,7 @@
       "label": ".test_payroll_generation_includes_legacy_rows_when_assignments_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2849",
+      "source_location": "L2893",
       "_origin": "ast"
     },
     {
@@ -7744,7 +7752,7 @@
       "label": ".test_payroll_generation_prefers_duration_specific_rule()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2896",
+      "source_location": "L2940",
       "_origin": "ast"
     },
     {
@@ -7752,7 +7760,7 @@
       "label": ".test_payroll_generation_uses_grant_allocation_rate()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2931",
+      "source_location": "L2975",
       "_origin": "ast"
     },
     {
@@ -7760,7 +7768,7 @@
       "label": ".test_payroll_generation_does_not_link_single_participant_for_group_charge()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2964",
+      "source_location": "L3008",
       "_origin": "ast"
     },
     {
@@ -7768,7 +7776,7 @@
       "label": ".test_payroll_generation_uses_generic_rule_for_mixed_group_funding()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2993",
+      "source_location": "L3037",
       "_origin": "ast"
     },
     {
@@ -7776,7 +7784,7 @@
       "label": ".test_payroll_sheet_creation_and_approval()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3027",
+      "source_location": "L3071",
       "_origin": "ast"
     },
     {
@@ -7784,7 +7792,7 @@
       "label": ".test_grant_report_sums_initial_topups_charges()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3057",
+      "source_location": "L3101",
       "_origin": "ast"
     },
     {
@@ -7792,7 +7800,7 @@
       "label": ".test_grant_report_counts_group_participant_account_appointments()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3084",
+      "source_location": "L3128",
       "_origin": "ast"
     },
     {
@@ -7800,7 +7808,7 @@
       "label": ".test_grant_report_includes_recipient_allocations()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3130",
+      "source_location": "L3174",
       "_origin": "ast"
     },
     {
@@ -7808,7 +7816,7 @@
       "label": ".test_grant_report_recipient_allocation_filters_service_and_valid_dates()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3162",
+      "source_location": "L3206",
       "_origin": "ast"
     },
     {
@@ -7816,7 +7824,7 @@
       "label": ".test_grant_report_includes_service_quota_and_staff_allocation()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3223",
+      "source_location": "L3267",
       "_origin": "ast"
     },
     {
@@ -7824,7 +7832,7 @@
       "label": ".test_grant_report_quota_ignores_legacy_charge_when_participants_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3259",
+      "source_location": "L3303",
       "_origin": "ast"
     },
     {
@@ -7832,7 +7840,7 @@
       "label": ".test_grant_report_counts_staff_allocation_fact_inside_allocation_dates()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3289",
+      "source_location": "L3333",
       "_origin": "ast"
     },
     {
@@ -7840,7 +7848,7 @@
       "label": ".test_grant_report_counts_quota_fact_inside_quota_dates()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3330",
+      "source_location": "L3374",
       "_origin": "ast"
     },
     {
@@ -7848,7 +7856,7 @@
       "label": ".test_grant_report_direct_allocation_ignores_unallocated_staff_fact()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3378",
+      "source_location": "L3422",
       "_origin": "ast"
     },
     {
@@ -7856,7 +7864,7 @@
       "label": "NotificationsServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3421",
+      "source_location": "L3465",
       "_origin": "ast"
     },
     {
@@ -7864,7 +7872,7 @@
       "label": ".setUp()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3422",
+      "source_location": "L3466",
       "_origin": "ast"
     },
     {
@@ -7872,7 +7880,7 @@
       "label": ".test_send_confirmation_email_marks_sent()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3444",
+      "source_location": "L3488",
       "_origin": "ast"
     },
     {
@@ -7880,7 +7888,7 @@
       "label": ".test_build_confirmation_email_contains_url()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3459",
+      "source_location": "L3503",
       "_origin": "ast"
     },
     {
@@ -7888,7 +7896,7 @@
       "label": ".test_build_confirmation_email_uses_group_participants_and_staff()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3464",
+      "source_location": "L3508",
       "_origin": "ast"
     },
     {
@@ -9604,11 +9612,27 @@
       "_origin": "ast"
     },
     {
+      "id": "tests_test_views_rescheduleplanviewtests_test_reschedule_plan_detail_hides_revalidate_for_terminal_plan",
+      "label": ".test_reschedule_plan_detail_hides_revalidate_for_terminal_plan()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_views.py",
+      "source_location": "L4928",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_views_rescheduleplanviewtests_test_reschedule_plan_detail_rejects_terminal_plan_revalidate_post",
+      "label": ".test_reschedule_plan_detail_rejects_terminal_plan_revalidate_post()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_views.py",
+      "source_location": "L4944",
+      "_origin": "ast"
+    },
+    {
       "id": "tests_test_views_rescheduleplanviewtests_test_reschedule_plan_detail_renders_chain_read_only_block",
       "label": ".test_reschedule_plan_detail_renders_chain_read_only_block()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4928",
+      "source_location": "L4974",
       "_origin": "ast"
     },
     {
@@ -9616,7 +9640,7 @@
       "label": ".test_reschedule_plan_detail_explains_stale_chain_step_checks()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4996",
+      "source_location": "L5042",
       "_origin": "ast"
     },
     {
@@ -9624,7 +9648,7 @@
       "label": ".test_reschedule_plan_detail_explains_confirmation_blocked_chain()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5027",
+      "source_location": "L5073",
       "_origin": "ast"
     },
     {
@@ -9632,7 +9656,7 @@
       "label": ".test_reschedule_plan_detail_explains_failed_chain_apply_error()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5047",
+      "source_location": "L5093",
       "_origin": "ast"
     },
     {
@@ -9640,7 +9664,7 @@
       "label": ".test_reschedule_plan_detail_can_revalidate_chain()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5059",
+      "source_location": "L5105",
       "_origin": "ast"
     },
     {
@@ -9648,7 +9672,7 @@
       "label": ".test_reschedule_plan_detail_hides_revalidate_for_terminal_chains()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5080",
+      "source_location": "L5126",
       "_origin": "ast"
     },
     {
@@ -9656,7 +9680,7 @@
       "label": ".test_reschedule_plan_detail_can_apply_ready_chain()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5101",
+      "source_location": "L5147",
       "_origin": "ast"
     },
     {
@@ -9664,7 +9688,7 @@
       "label": ".test_staff_absence_plan_detail_renders_manual_review_actions()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5124",
+      "source_location": "L5170",
       "_origin": "ast"
     },
     {
@@ -9672,7 +9696,7 @@
       "label": ".test_reschedule_plan_detail_marks_review_conflict_after_manual_resolution()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5143",
+      "source_location": "L5189",
       "_origin": "ast"
     },
     {
@@ -9680,7 +9704,7 @@
       "label": ".test_reschedule_plan_detail_can_apply_valid_step()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5188",
+      "source_location": "L5234",
       "_origin": "ast"
     },
     {
@@ -9688,7 +9712,7 @@
       "label": ".test_reschedule_plan_detail_skips_alternative_after_apply()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5213",
+      "source_location": "L5259",
       "_origin": "ast"
     },
     {
@@ -9696,7 +9720,7 @@
       "label": ".test_reschedule_plan_detail_can_apply_step_with_room_override()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5263",
+      "source_location": "L5309",
       "_origin": "ast"
     },
     {
@@ -9704,7 +9728,7 @@
       "label": ".test_reschedule_plan_detail_can_send_step_confirmations()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5334",
+      "source_location": "L5380",
       "_origin": "ast"
     },
     {
@@ -9712,7 +9736,7 @@
       "label": ".test_reschedule_plan_detail_can_apply_approved_step()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5380",
+      "source_location": "L5426",
       "_origin": "ast"
     },
     {
@@ -9720,7 +9744,7 @@
       "label": ".test_reschedule_step_public_confirmation_does_not_confirm_source_appointment()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5421",
+      "source_location": "L5467",
       "_origin": "ast"
     },
     {
@@ -9728,7 +9752,7 @@
       "label": "AppointmentBillingTests",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5459",
+      "source_location": "L5505",
       "_origin": "ast"
     },
     {
@@ -9736,7 +9760,7 @@
       "label": ".test_appointment_billing_get_redirects_to_detail()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5460",
+      "source_location": "L5506",
       "_origin": "ast"
     },
     {
@@ -9744,7 +9768,7 @@
       "label": ".test_appointment_billing_invalid_returns_400()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5474",
+      "source_location": "L5520",
       "_origin": "ast"
     },
     {
@@ -9752,7 +9776,7 @@
       "label": ".test_appointment_billing_charge()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5495",
+      "source_location": "L5541",
       "_origin": "ast"
     },
     {
@@ -9760,7 +9784,7 @@
       "label": ".test_appointment_billing_without_participant_id_uses_single_participant()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5519",
+      "source_location": "L5565",
       "_origin": "ast"
     },
     {
@@ -9768,7 +9792,7 @@
       "label": ".test_appointment_billing_group_requires_participant_id()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5573",
+      "source_location": "L5619",
       "_origin": "ast"
     },
     {
@@ -9776,7 +9800,7 @@
       "label": "RecipientEditTests",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5608",
+      "source_location": "L5654",
       "_origin": "ast"
     },
     {
@@ -9784,7 +9808,7 @@
       "label": ".test_recipient_import_preview_get()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5609",
+      "source_location": "L5655",
       "_origin": "ast"
     },
     {
@@ -9792,7 +9816,7 @@
       "label": ".test_recipient_import_preview_post_csv_does_not_create_records()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5614",
+      "source_location": "L5660",
       "_origin": "ast"
     },
     {
@@ -9800,7 +9824,7 @@
       "label": ".test_recipient_import_preview_shows_operator_summary()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5634",
+      "source_location": "L5680",
       "_origin": "ast"
     },
     {
@@ -9808,7 +9832,7 @@
       "label": ".test_recipient_detail_shows_representative_links()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5667",
+      "source_location": "L5713",
       "_origin": "ast"
     },
     {
@@ -9816,7 +9840,7 @@
       "label": ".test_recipient_detail_tables_have_mobile_labels()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5684",
+      "source_location": "L5730",
       "_origin": "ast"
     },
     {
@@ -9824,7 +9848,7 @@
       "label": ".test_recipient_detail_includes_group_participant_appointment()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5725",
+      "source_location": "L5771",
       "_origin": "ast"
     },
     {
@@ -9832,7 +9856,7 @@
       "label": ".test_recipient_list_counts_group_participant_appointments()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5763",
+      "source_location": "L5809",
       "_origin": "ast"
     },
     {
@@ -9840,7 +9864,7 @@
       "label": ".test_recipient_list_counts_legacy_appointment_without_participant()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5791",
+      "source_location": "L5837",
       "_origin": "ast"
     },
     {
@@ -9848,7 +9872,7 @@
       "label": ".test_recipient_list_shows_operator_context()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5811",
+      "source_location": "L5857",
       "_origin": "ast"
     },
     {
@@ -9856,7 +9880,7 @@
       "label": ".test_recipient_list_filters_before_limit()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5826",
+      "source_location": "L5872",
       "_origin": "ast"
     },
     {
@@ -9864,7 +9888,7 @@
       "label": ".test_recipient_edit_get()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5837",
+      "source_location": "L5883",
       "_origin": "ast"
     },
     {
@@ -9872,7 +9896,7 @@
       "label": ".test_recipient_and_representative_forms_show_operator_control()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5841",
+      "source_location": "L5887",
       "_origin": "ast"
     },
     {
@@ -9880,7 +9904,7 @@
       "label": ".test_recipient_edit_post()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5879",
+      "source_location": "L5925",
       "_origin": "ast"
     },
     {
@@ -9888,7 +9912,7 @@
       "label": ".test_representative_edit_get()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5897",
+      "source_location": "L5943",
       "_origin": "ast"
     },
     {
@@ -9896,7 +9920,7 @@
       "label": ".test_representative_edit_post()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5901",
+      "source_location": "L5947",
       "_origin": "ast"
     },
     {
@@ -9904,7 +9928,7 @@
       "label": ".test_recipient_create_with_representative_id()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5919",
+      "source_location": "L5965",
       "_origin": "ast"
     },
     {
@@ -9912,7 +9936,7 @@
       "label": ".test_recipient_representative_create_additional()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5926",
+      "source_location": "L5972",
       "_origin": "ast"
     },
     {
@@ -9920,7 +9944,7 @@
       "label": ".test_recipient_representative_create_primary_switches_signer()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5957",
+      "source_location": "L6003",
       "_origin": "ast"
     },
     {
@@ -9928,7 +9952,7 @@
       "label": "SafeNextUrlTests",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5993",
+      "source_location": "L6039",
       "_origin": "ast"
     },
     {
@@ -9936,7 +9960,7 @@
       "label": ".test_safe_next_url_allows_same_host()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5994",
+      "source_location": "L6040",
       "_origin": "ast"
     },
     {
@@ -9944,7 +9968,7 @@
       "label": ".test_safe_next_url_rejects_external()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6012",
+      "source_location": "L6058",
       "_origin": "ast"
     },
     {
@@ -9952,7 +9976,7 @@
       "label": ".test_safe_next_url_falls_back_when_no_next()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6028",
+      "source_location": "L6074",
       "_origin": "ast"
     },
     {
@@ -9960,7 +9984,7 @@
       "label": ".test_csrf_failure_for_non_login()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6044",
+      "source_location": "L6090",
       "_origin": "ast"
     },
     {
@@ -9968,7 +9992,7 @@
       "label": ".test_csrf_failure_for_login_path()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6050",
+      "source_location": "L6096",
       "_origin": "ast"
     },
     {
@@ -9976,7 +10000,7 @@
       "label": "SendConfirmationTaskTests",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6060",
+      "source_location": "L6106",
       "_origin": "ast"
     },
     {
@@ -9984,7 +10008,7 @@
       "label": ".test_returns_false_for_missing_confirmation()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6062",
+      "source_location": "L6108",
       "_origin": "ast"
     },
     {
@@ -9992,7 +10016,7 @@
       "label": ".test_returns_false_for_missing_email()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6069",
+      "source_location": "L6115",
       "_origin": "ast"
     },
     {
@@ -10000,7 +10024,7 @@
       "label": ".test_returns_true_on_success()",
       "file_type": "code",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6095",
+      "source_location": "L6141",
       "_origin": "ast"
     },
     {
@@ -11960,7 +11984,7 @@
       "label": "_metrics_period()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L67",
+      "source_location": "L72",
       "_origin": "ast"
     },
     {
@@ -11968,7 +11992,7 @@
       "label": "_apply_since_filter()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L77",
+      "source_location": "L82",
       "_origin": "ast"
     },
     {
@@ -11976,7 +12000,7 @@
       "label": "_reschedule_metric_items()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L83",
+      "source_location": "L88",
       "_origin": "ast"
     },
     {
@@ -11984,7 +12008,7 @@
       "label": "_localized_messages()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L163",
+      "source_location": "L168",
       "_origin": "ast"
     },
     {
@@ -11992,7 +12016,7 @@
       "label": "ValidationError",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L163",
+      "source_location": "L168",
       "_origin": "ast"
     },
     {
@@ -12000,7 +12024,7 @@
       "label": "_plan_detail_url()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L169",
+      "source_location": "L174",
       "_origin": "ast"
     },
     {
@@ -12008,7 +12032,7 @@
       "label": "_chain_issue_rows()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L183",
+      "source_location": "L188",
       "_origin": "ast"
     },
     {
@@ -12016,7 +12040,7 @@
       "label": "AppointmentRescheduleChain",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L183",
+      "source_location": "L188",
       "_origin": "ast"
     },
     {
@@ -12024,7 +12048,7 @@
       "label": "_chain_stale_step_rows()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L228",
+      "source_location": "L233",
       "_origin": "ast"
     },
     {
@@ -12032,7 +12056,7 @@
       "label": "appointment_reschedule_plan_create()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L247",
+      "source_location": "L252",
       "_origin": "ast"
     },
     {
@@ -12040,7 +12064,7 @@
       "label": "reschedule_plan_list()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L265",
+      "source_location": "L270",
       "_origin": "ast"
     },
     {
@@ -12048,7 +12072,7 @@
       "label": "appointment_reschedule_plan_detail()",
       "file_type": "code",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L574",
+      "source_location": "L579",
       "_origin": "ast"
     },
     {
@@ -27847,6 +27871,62 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_11_plan_terminal_status_contract",
+      "label": "11-plan-terminal-status-contract.md",
+      "file_type": "document",
+      "source_file": "docs/11-plan-terminal-status-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_11_plan_terminal_status_contract_контракт_терминальных_статусов_плана_переноса",
+      "label": "Контракт терминальных статусов плана переноса",
+      "file_type": "document",
+      "source_file": "docs/11-plan-terminal-status-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_11_plan_terminal_status_contract_зачем_нужен_документ",
+      "label": "Зачем нужен документ",
+      "file_type": "document",
+      "source_file": "docs/11-plan-terminal-status-contract.md",
+      "source_location": "L7",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_11_plan_terminal_status_contract_терминальные_статусы_плана",
+      "label": "Терминальные статусы плана",
+      "file_type": "document",
+      "source_file": "docs/11-plan-terminal-status-contract.md",
+      "source_location": "L17",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_11_plan_terminal_status_contract_правила",
+      "label": "Правила",
+      "file_type": "document",
+      "source_file": "docs/11-plan-terminal-status-contract.md",
+      "source_location": "L24",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_11_plan_terminal_status_contract_не_входит_в_срез",
+      "label": "Не входит в срез",
+      "file_type": "document",
+      "source_file": "docs/11-plan-terminal-status-contract.md",
+      "source_location": "L34",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_11_plan_terminal_status_contract_acceptance_criteria",
+      "label": "Acceptance criteria",
+      "file_type": "document",
+      "source_file": "docs/11-plan-terminal-status-contract.md",
+      "source_location": "L42",
+      "_origin": "ast"
+    },
+    {
       "id": "docs_critical_stack_ux_review_2026_06_10",
       "label": "CRITICAL_STACK_UX_REVIEW_2026-06-10.md",
       "file_type": "document",
@@ -29371,7 +29451,7 @@
       "label": "Как использовать",
       "file_type": "document",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L39",
+      "source_location": "L40",
       "_origin": "ast"
     },
     {
@@ -29411,7 +29491,7 @@
       "label": "Порядок восстановления контекста",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L35",
+      "source_location": "L36",
       "_origin": "ast"
     },
     {
@@ -29419,7 +29499,7 @@
       "label": "Skills и назначение",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L47",
+      "source_location": "L49",
       "_origin": "ast"
     },
     {
@@ -29427,7 +29507,7 @@
       "label": "Восстановление инструментов",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L60",
+      "source_location": "L62",
       "_origin": "ast"
     },
     {
@@ -29435,7 +29515,7 @@
       "label": "Graphify",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L62",
+      "source_location": "L64",
       "_origin": "ast"
     },
     {
@@ -29443,7 +29523,7 @@
       "label": "Browser QA",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L81",
+      "source_location": "L83",
       "_origin": "ast"
     },
     {
@@ -29451,7 +29531,7 @@
       "label": "Протокол контрольной точки",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L90",
+      "source_location": "L92",
       "_origin": "ast"
     },
     {
@@ -29459,7 +29539,7 @@
       "label": "Текущее состояние восстановления",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L102",
+      "source_location": "L104",
       "_origin": "ast"
     },
     {
@@ -29467,7 +29547,7 @@
       "label": "Ближайшие задачи",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L134",
+      "source_location": "L136",
       "_origin": "ast"
     },
     {
@@ -29475,7 +29555,7 @@
       "label": "Постоянные риски",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L140",
+      "source_location": "L142",
       "_origin": "ast"
     },
     {
@@ -43889,7 +43969,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1091",
+      "source_location": "L1094",
       "weight": 1.0
     },
     {
@@ -43899,7 +43979,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1091",
+      "source_location": "L1094",
       "weight": 1.0
     },
     {
@@ -43909,7 +43989,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1091",
+      "source_location": "L1094",
       "weight": 1.0
     },
     {
@@ -43918,7 +43998,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1338",
+      "source_location": "L1341",
       "weight": 1.0
     },
     {
@@ -43927,7 +44007,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1353",
+      "source_location": "L1356",
       "weight": 1.0
     },
     {
@@ -43937,7 +44017,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1353",
+      "source_location": "L1356",
       "weight": 1.0
     },
     {
@@ -43947,7 +44027,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1353",
+      "source_location": "L1356",
       "weight": 1.0
     },
     {
@@ -43957,7 +44037,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1353",
+      "source_location": "L1356",
       "weight": 1.0
     },
     {
@@ -43966,7 +44046,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1455",
+      "source_location": "L1458",
       "weight": 1.0
     },
     {
@@ -43976,7 +44056,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1455",
+      "source_location": "L1458",
       "weight": 1.0
     },
     {
@@ -43986,7 +44066,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1455",
+      "source_location": "L1458",
       "weight": 1.0
     },
     {
@@ -43995,7 +44075,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1492",
+      "source_location": "L1495",
       "weight": 1.0
     },
     {
@@ -44005,7 +44085,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1492",
+      "source_location": "L1495",
       "weight": 1.0
     },
     {
@@ -44015,7 +44095,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1492",
+      "source_location": "L1495",
       "weight": 1.0
     },
     {
@@ -44285,7 +44365,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1043",
+      "source_location": "L1046",
       "weight": 1.0
     },
     {
@@ -44295,7 +44375,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1051",
+      "source_location": "L1054",
       "weight": 1.0
     },
     {
@@ -44305,7 +44385,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1087",
+      "source_location": "L1090",
       "weight": 1.0
     },
     {
@@ -44315,7 +44395,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1264",
+      "source_location": "L1267",
       "weight": 1.0
     },
     {
@@ -44325,7 +44405,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1283",
+      "source_location": "L1286",
       "weight": 1.0
     },
     {
@@ -44335,7 +44415,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1297",
+      "source_location": "L1300",
       "weight": 1.0
     },
     {
@@ -44345,7 +44425,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1328",
+      "source_location": "L1331",
       "weight": 1.0
     },
     {
@@ -44355,7 +44435,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1371",
+      "source_location": "L1374",
       "weight": 1.0
     },
     {
@@ -44365,7 +44445,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1397",
+      "source_location": "L1400",
       "weight": 1.0
     },
     {
@@ -44375,7 +44455,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1420",
+      "source_location": "L1423",
       "weight": 1.0
     },
     {
@@ -44385,7 +44465,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1440",
+      "source_location": "L1443",
       "weight": 1.0
     },
     {
@@ -44395,7 +44475,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1441",
+      "source_location": "L1444",
       "weight": 1.0
     },
     {
@@ -44405,7 +44485,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1444",
+      "source_location": "L1447",
       "weight": 1.0
     },
     {
@@ -44415,7 +44495,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1446",
+      "source_location": "L1449",
       "weight": 1.0
     },
     {
@@ -44425,7 +44505,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1468",
+      "source_location": "L1471",
       "weight": 1.0
     },
     {
@@ -44435,7 +44515,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1508",
+      "source_location": "L1511",
       "weight": 1.0
     },
     {
@@ -44445,7 +44525,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1521",
+      "source_location": "L1524",
       "weight": 1.0
     },
     {
@@ -44455,7 +44535,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1546",
+      "source_location": "L1549",
       "weight": 1.0
     },
     {
@@ -44465,7 +44545,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1547",
+      "source_location": "L1550",
       "weight": 1.0
     },
     {
@@ -47653,7 +47733,7 @@
     },
     {
       "source": "tests_test_services_reschedulingplanservicetests",
-      "target": "tests_test_services_reschedulingplanservicetests_test_apply_valid_step_creates_new_appointment_without_billing_decision",
+      "target": "tests_test_services_reschedulingplanservicetests_test_revalidate_plan_rejects_terminal_statuses_without_mutation",
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
@@ -47662,11 +47742,20 @@
     },
     {
       "source": "tests_test_services_reschedulingplanservicetests",
+      "target": "tests_test_services_reschedulingplanservicetests_test_apply_valid_step_creates_new_appointment_without_billing_decision",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L1589",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reschedulingplanservicetests",
       "target": "tests_test_services_reschedulingplanservicetests_test_apply_step_skips_alternatives_for_same_source_only",
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1566",
+      "source_location": "L1610",
       "weight": 1.0
     },
     {
@@ -47675,7 +47764,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1644",
+      "source_location": "L1688",
       "weight": 1.0
     },
     {
@@ -47684,7 +47773,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1706",
+      "source_location": "L1750",
       "weight": 1.0
     },
     {
@@ -47693,7 +47782,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1744",
+      "source_location": "L1788",
       "weight": 1.0
     },
     {
@@ -47702,7 +47791,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1769",
+      "source_location": "L1813",
       "weight": 1.0
     },
     {
@@ -47711,7 +47800,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1795",
+      "source_location": "L1839",
       "weight": 1.0
     },
     {
@@ -47720,7 +47809,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1826",
+      "source_location": "L1870",
       "weight": 1.0
     },
     {
@@ -47729,7 +47818,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1843",
+      "source_location": "L1887",
       "weight": 1.0
     },
     {
@@ -47738,7 +47827,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1864",
+      "source_location": "L1908",
       "weight": 1.0
     },
     {
@@ -47747,7 +47836,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1888",
+      "source_location": "L1932",
       "weight": 1.0
     },
     {
@@ -47756,7 +47845,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1916",
+      "source_location": "L1960",
       "weight": 1.0
     },
     {
@@ -47765,7 +47854,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1916",
+      "source_location": "L1960",
       "weight": 1.0
     },
     {
@@ -47774,7 +47863,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1916",
+      "source_location": "L1960",
       "weight": 1.0
     },
     {
@@ -47783,7 +47872,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1917",
+      "source_location": "L1961",
       "weight": 1.0
     },
     {
@@ -47792,7 +47881,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1934",
+      "source_location": "L1978",
       "weight": 1.0
     },
     {
@@ -47801,7 +47890,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1949",
+      "source_location": "L1993",
       "weight": 1.0
     },
     {
@@ -47810,7 +47899,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1973",
+      "source_location": "L2017",
       "weight": 1.0
     },
     {
@@ -47819,7 +47908,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2006",
+      "source_location": "L2050",
       "weight": 1.0
     },
     {
@@ -47828,7 +47917,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2028",
+      "source_location": "L2072",
       "weight": 1.0
     },
     {
@@ -47837,7 +47926,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2047",
+      "source_location": "L2091",
       "weight": 1.0
     },
     {
@@ -47846,7 +47935,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2065",
+      "source_location": "L2109",
       "weight": 1.0
     },
     {
@@ -47855,7 +47944,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2100",
+      "source_location": "L2144",
       "weight": 1.0
     },
     {
@@ -47864,7 +47953,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2136",
+      "source_location": "L2180",
       "weight": 1.0
     },
     {
@@ -47873,7 +47962,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2157",
+      "source_location": "L2201",
       "weight": 1.0
     },
     {
@@ -47882,7 +47971,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2172",
+      "source_location": "L2216",
       "weight": 1.0
     },
     {
@@ -47891,7 +47980,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2191",
+      "source_location": "L2235",
       "weight": 1.0
     },
     {
@@ -47900,7 +47989,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2233",
+      "source_location": "L2277",
       "weight": 1.0
     },
     {
@@ -47909,7 +47998,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2233",
+      "source_location": "L2277",
       "weight": 1.0
     },
     {
@@ -47918,7 +48007,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2234",
+      "source_location": "L2278",
       "weight": 1.0
     },
     {
@@ -47927,7 +48016,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2254",
+      "source_location": "L2298",
       "weight": 1.0
     },
     {
@@ -47936,7 +48025,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2274",
+      "source_location": "L2318",
       "weight": 1.0
     },
     {
@@ -47945,7 +48034,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2274",
+      "source_location": "L2318",
       "weight": 1.0
     },
     {
@@ -47954,7 +48043,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2274",
+      "source_location": "L2318",
       "weight": 1.0
     },
     {
@@ -47963,7 +48052,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2275",
+      "source_location": "L2319",
       "weight": 1.0
     },
     {
@@ -47972,7 +48061,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2287",
+      "source_location": "L2331",
       "weight": 1.0
     },
     {
@@ -47981,7 +48070,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2335",
+      "source_location": "L2379",
       "weight": 1.0
     },
     {
@@ -47990,7 +48079,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2393",
+      "source_location": "L2437",
       "weight": 1.0
     },
     {
@@ -47999,7 +48088,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2408",
+      "source_location": "L2452",
       "weight": 1.0
     },
     {
@@ -48008,7 +48097,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2421",
+      "source_location": "L2465",
       "weight": 1.0
     },
     {
@@ -48017,7 +48106,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2461",
+      "source_location": "L2505",
       "weight": 1.0
     },
     {
@@ -48026,7 +48115,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2493",
+      "source_location": "L2537",
       "weight": 1.0
     },
     {
@@ -48035,7 +48124,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2508",
+      "source_location": "L2552",
       "weight": 1.0
     },
     {
@@ -48044,7 +48133,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2534",
+      "source_location": "L2578",
       "weight": 1.0
     },
     {
@@ -48053,7 +48142,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2559",
+      "source_location": "L2603",
       "weight": 1.0
     },
     {
@@ -48062,7 +48151,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2584",
+      "source_location": "L2628",
       "weight": 1.0
     },
     {
@@ -48071,7 +48160,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2602",
+      "source_location": "L2646",
       "weight": 1.0
     },
     {
@@ -48080,7 +48169,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2616",
+      "source_location": "L2660",
       "weight": 1.0
     },
     {
@@ -48089,7 +48178,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2638",
+      "source_location": "L2682",
       "weight": 1.0
     },
     {
@@ -48098,7 +48187,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2658",
+      "source_location": "L2702",
       "weight": 1.0
     },
     {
@@ -48107,7 +48196,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2677",
+      "source_location": "L2721",
       "weight": 1.0
     },
     {
@@ -48116,7 +48205,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2704",
+      "source_location": "L2748",
       "weight": 1.0
     },
     {
@@ -48125,7 +48214,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2733",
+      "source_location": "L2777",
       "weight": 1.0
     },
     {
@@ -48134,7 +48223,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2760",
+      "source_location": "L2804",
       "weight": 1.0
     },
     {
@@ -48143,7 +48232,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2788",
+      "source_location": "L2832",
       "weight": 1.0
     },
     {
@@ -48152,7 +48241,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2823",
+      "source_location": "L2867",
       "weight": 1.0
     },
     {
@@ -48161,7 +48250,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2849",
+      "source_location": "L2893",
       "weight": 1.0
     },
     {
@@ -48170,7 +48259,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2896",
+      "source_location": "L2940",
       "weight": 1.0
     },
     {
@@ -48179,7 +48268,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2931",
+      "source_location": "L2975",
       "weight": 1.0
     },
     {
@@ -48188,7 +48277,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2964",
+      "source_location": "L3008",
       "weight": 1.0
     },
     {
@@ -48197,7 +48286,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2993",
+      "source_location": "L3037",
       "weight": 1.0
     },
     {
@@ -48206,7 +48295,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3027",
+      "source_location": "L3071",
       "weight": 1.0
     },
     {
@@ -48215,7 +48304,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3057",
+      "source_location": "L3101",
       "weight": 1.0
     },
     {
@@ -48224,7 +48313,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3084",
+      "source_location": "L3128",
       "weight": 1.0
     },
     {
@@ -48233,7 +48322,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3130",
+      "source_location": "L3174",
       "weight": 1.0
     },
     {
@@ -48242,7 +48331,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3162",
+      "source_location": "L3206",
       "weight": 1.0
     },
     {
@@ -48251,7 +48340,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3223",
+      "source_location": "L3267",
       "weight": 1.0
     },
     {
@@ -48260,7 +48349,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3259",
+      "source_location": "L3303",
       "weight": 1.0
     },
     {
@@ -48269,7 +48358,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3289",
+      "source_location": "L3333",
       "weight": 1.0
     },
     {
@@ -48278,7 +48367,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3330",
+      "source_location": "L3374",
       "weight": 1.0
     },
     {
@@ -48287,7 +48376,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3378",
+      "source_location": "L3422",
       "weight": 1.0
     },
     {
@@ -48296,7 +48385,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3421",
+      "source_location": "L3465",
       "weight": 1.0
     },
     {
@@ -48305,7 +48394,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3421",
+      "source_location": "L3465",
       "weight": 1.0
     },
     {
@@ -48314,7 +48403,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3421",
+      "source_location": "L3465",
       "weight": 1.0
     },
     {
@@ -48323,7 +48412,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3422",
+      "source_location": "L3466",
       "weight": 1.0
     },
     {
@@ -48332,7 +48421,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3444",
+      "source_location": "L3488",
       "weight": 1.0
     },
     {
@@ -48341,7 +48430,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3459",
+      "source_location": "L3503",
       "weight": 1.0
     },
     {
@@ -48350,7 +48439,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3464",
+      "source_location": "L3508",
       "weight": 1.0
     },
     {
@@ -48774,7 +48863,7 @@
       "weight": 1.0
     },
     {
-      "source": "tests_test_services_reschedulingplanservicetests_test_apply_valid_step_creates_new_appointment_without_billing_decision",
+      "source": "tests_test_services_reschedulingplanservicetests_test_revalidate_plan_rejects_terminal_statuses_without_mutation",
       "target": "tests_test_services_reschedulingplanservicetests_appointment",
       "relation": "calls",
       "context": "call",
@@ -48784,13 +48873,23 @@
       "weight": 1.0
     },
     {
+      "source": "tests_test_services_reschedulingplanservicetests_test_apply_valid_step_creates_new_appointment_without_billing_decision",
+      "target": "tests_test_services_reschedulingplanservicetests_appointment",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L1590",
+      "weight": 1.0
+    },
+    {
       "source": "tests_test_services_reschedulingplanservicetests_test_apply_step_skips_alternatives_for_same_source_only",
       "target": "tests_test_services_reschedulingplanservicetests_appointment",
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1567",
+      "source_location": "L1611",
       "weight": 1.0
     },
     {
@@ -48800,7 +48899,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1582",
+      "source_location": "L1626",
       "weight": 1.0
     },
     {
@@ -48810,7 +48909,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1645",
+      "source_location": "L1689",
       "weight": 1.0
     },
     {
@@ -48820,7 +48919,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1646",
+      "source_location": "L1690",
       "weight": 1.0
     },
     {
@@ -48830,7 +48929,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1707",
+      "source_location": "L1751",
       "weight": 1.0
     },
     {
@@ -48840,7 +48939,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1745",
+      "source_location": "L1789",
       "weight": 1.0
     },
     {
@@ -48850,7 +48949,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1770",
+      "source_location": "L1814",
       "weight": 1.0
     },
     {
@@ -48860,7 +48959,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1798",
+      "source_location": "L1842",
       "weight": 1.0
     },
     {
@@ -48870,7 +48969,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1829",
+      "source_location": "L1873",
       "weight": 1.0
     },
     {
@@ -48880,7 +48979,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1846",
+      "source_location": "L1890",
       "weight": 1.0
     },
     {
@@ -48890,7 +48989,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1867",
+      "source_location": "L1911",
       "weight": 1.0
     },
     {
@@ -48900,7 +48999,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1891",
+      "source_location": "L1935",
       "weight": 1.0
     },
     {
@@ -48910,7 +49009,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1918",
+      "source_location": "L1962",
       "weight": 1.0
     },
     {
@@ -48920,7 +49019,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1961",
+      "source_location": "L2005",
       "weight": 1.0
     },
     {
@@ -48930,7 +49029,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1966",
+      "source_location": "L2010",
       "weight": 1.0
     },
     {
@@ -48940,7 +49039,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1988",
+      "source_location": "L2032",
       "weight": 1.0
     },
     {
@@ -48950,7 +49049,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2001",
+      "source_location": "L2045",
       "weight": 1.0
     },
     {
@@ -48960,7 +49059,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2014",
+      "source_location": "L2058",
       "weight": 1.0
     },
     {
@@ -48970,7 +49069,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2019",
+      "source_location": "L2063",
       "weight": 1.0
     },
     {
@@ -48980,7 +49079,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2036",
+      "source_location": "L2080",
       "weight": 1.0
     },
     {
@@ -48990,7 +49089,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2041",
+      "source_location": "L2085",
       "weight": 1.0
     },
     {
@@ -49000,7 +49099,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2059",
+      "source_location": "L2103",
       "weight": 1.0
     },
     {
@@ -49010,7 +49109,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2081",
+      "source_location": "L2125",
       "weight": 1.0
     },
     {
@@ -49020,7 +49119,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2095",
+      "source_location": "L2139",
       "weight": 1.0
     },
     {
@@ -49030,7 +49129,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2116",
+      "source_location": "L2160",
       "weight": 1.0
     },
     {
@@ -49040,7 +49139,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2131",
+      "source_location": "L2175",
       "weight": 1.0
     },
     {
@@ -49050,7 +49149,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2137",
+      "source_location": "L2181",
       "weight": 1.0
     },
     {
@@ -49060,7 +49159,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2158",
+      "source_location": "L2202",
       "weight": 1.0
     },
     {
@@ -49070,7 +49169,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2173",
+      "source_location": "L2217",
       "weight": 1.0
     },
     {
@@ -49080,7 +49179,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2257",
+      "source_location": "L2301",
       "weight": 1.0
     },
     {
@@ -49090,7 +49189,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2276",
+      "source_location": "L2320",
       "weight": 1.0
     },
     {
@@ -49100,7 +49199,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2281",
+      "source_location": "L2325",
       "weight": 1.0
     },
     {
@@ -49110,7 +49209,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2399",
+      "source_location": "L2443",
       "weight": 1.0
     },
     {
@@ -49120,7 +49219,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2409",
+      "source_location": "L2453",
       "weight": 1.0
     },
     {
@@ -49130,7 +49229,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2498",
+      "source_location": "L2542",
       "weight": 1.0
     },
     {
@@ -49140,7 +49239,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2509",
+      "source_location": "L2553",
       "weight": 1.0
     },
     {
@@ -49150,7 +49249,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2539",
+      "source_location": "L2583",
       "weight": 1.0
     },
     {
@@ -49160,7 +49259,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2776",
+      "source_location": "L2820",
       "weight": 1.0
     },
     {
@@ -49170,7 +49269,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2867",
+      "source_location": "L2911",
       "weight": 1.0
     },
     {
@@ -49180,7 +49279,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2974",
+      "source_location": "L3018",
       "weight": 1.0
     },
     {
@@ -49190,7 +49289,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3009",
+      "source_location": "L3053",
       "weight": 1.0
     },
     {
@@ -49200,7 +49299,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3185",
+      "source_location": "L3229",
       "weight": 1.0
     },
     {
@@ -49210,7 +49309,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3359",
+      "source_location": "L3403",
       "weight": 1.0
     },
     {
@@ -49220,7 +49319,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3400",
+      "source_location": "L3444",
       "weight": 1.0
     },
     {
@@ -49230,7 +49329,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3428",
+      "source_location": "L3472",
       "weight": 1.0
     },
     {
@@ -51476,7 +51575,7 @@
     },
     {
       "source": "tests_test_views_rescheduleplanviewtests",
-      "target": "tests_test_views_rescheduleplanviewtests_test_reschedule_plan_detail_renders_chain_read_only_block",
+      "target": "tests_test_views_rescheduleplanviewtests_test_reschedule_plan_detail_hides_revalidate_for_terminal_plan",
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
@@ -51485,11 +51584,29 @@
     },
     {
       "source": "tests_test_views_rescheduleplanviewtests",
+      "target": "tests_test_views_rescheduleplanviewtests_test_reschedule_plan_detail_rejects_terminal_plan_revalidate_post",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_views.py",
+      "source_location": "L4944",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_views_rescheduleplanviewtests",
+      "target": "tests_test_views_rescheduleplanviewtests_test_reschedule_plan_detail_renders_chain_read_only_block",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_views.py",
+      "source_location": "L4974",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_views_rescheduleplanviewtests",
       "target": "tests_test_views_rescheduleplanviewtests_test_reschedule_plan_detail_explains_stale_chain_step_checks",
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4996",
+      "source_location": "L5042",
       "weight": 1.0
     },
     {
@@ -51498,7 +51615,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5027",
+      "source_location": "L5073",
       "weight": 1.0
     },
     {
@@ -51507,7 +51624,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5047",
+      "source_location": "L5093",
       "weight": 1.0
     },
     {
@@ -51516,7 +51633,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5059",
+      "source_location": "L5105",
       "weight": 1.0
     },
     {
@@ -51525,7 +51642,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5080",
+      "source_location": "L5126",
       "weight": 1.0
     },
     {
@@ -51534,7 +51651,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5101",
+      "source_location": "L5147",
       "weight": 1.0
     },
     {
@@ -51543,7 +51660,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5124",
+      "source_location": "L5170",
       "weight": 1.0
     },
     {
@@ -51552,7 +51669,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5143",
+      "source_location": "L5189",
       "weight": 1.0
     },
     {
@@ -51561,7 +51678,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5188",
+      "source_location": "L5234",
       "weight": 1.0
     },
     {
@@ -51570,7 +51687,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5213",
+      "source_location": "L5259",
       "weight": 1.0
     },
     {
@@ -51579,7 +51696,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5263",
+      "source_location": "L5309",
       "weight": 1.0
     },
     {
@@ -51588,7 +51705,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5334",
+      "source_location": "L5380",
       "weight": 1.0
     },
     {
@@ -51597,7 +51714,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5380",
+      "source_location": "L5426",
       "weight": 1.0
     },
     {
@@ -51606,7 +51723,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5421",
+      "source_location": "L5467",
       "weight": 1.0
     },
     {
@@ -51615,7 +51732,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5459",
+      "source_location": "L5505",
       "weight": 1.0
     },
     {
@@ -51624,7 +51741,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5459",
+      "source_location": "L5505",
       "weight": 1.0
     },
     {
@@ -51633,7 +51750,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5460",
+      "source_location": "L5506",
       "weight": 1.0
     },
     {
@@ -51642,7 +51759,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5474",
+      "source_location": "L5520",
       "weight": 1.0
     },
     {
@@ -51651,7 +51768,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5495",
+      "source_location": "L5541",
       "weight": 1.0
     },
     {
@@ -51660,7 +51777,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5519",
+      "source_location": "L5565",
       "weight": 1.0
     },
     {
@@ -51669,7 +51786,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5573",
+      "source_location": "L5619",
       "weight": 1.0
     },
     {
@@ -51678,7 +51795,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5608",
+      "source_location": "L5654",
       "weight": 1.0
     },
     {
@@ -51687,7 +51804,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5608",
+      "source_location": "L5654",
       "weight": 1.0
     },
     {
@@ -51696,7 +51813,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5609",
+      "source_location": "L5655",
       "weight": 1.0
     },
     {
@@ -51705,7 +51822,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5614",
+      "source_location": "L5660",
       "weight": 1.0
     },
     {
@@ -51714,7 +51831,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5634",
+      "source_location": "L5680",
       "weight": 1.0
     },
     {
@@ -51723,7 +51840,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5667",
+      "source_location": "L5713",
       "weight": 1.0
     },
     {
@@ -51732,7 +51849,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5684",
+      "source_location": "L5730",
       "weight": 1.0
     },
     {
@@ -51741,7 +51858,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5725",
+      "source_location": "L5771",
       "weight": 1.0
     },
     {
@@ -51750,7 +51867,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5763",
+      "source_location": "L5809",
       "weight": 1.0
     },
     {
@@ -51759,7 +51876,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5791",
+      "source_location": "L5837",
       "weight": 1.0
     },
     {
@@ -51768,7 +51885,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5811",
+      "source_location": "L5857",
       "weight": 1.0
     },
     {
@@ -51777,7 +51894,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5826",
+      "source_location": "L5872",
       "weight": 1.0
     },
     {
@@ -51786,7 +51903,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5837",
+      "source_location": "L5883",
       "weight": 1.0
     },
     {
@@ -51795,7 +51912,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5841",
+      "source_location": "L5887",
       "weight": 1.0
     },
     {
@@ -51804,7 +51921,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5879",
+      "source_location": "L5925",
       "weight": 1.0
     },
     {
@@ -51813,7 +51930,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5897",
+      "source_location": "L5943",
       "weight": 1.0
     },
     {
@@ -51822,7 +51939,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5901",
+      "source_location": "L5947",
       "weight": 1.0
     },
     {
@@ -51831,7 +51948,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5919",
+      "source_location": "L5965",
       "weight": 1.0
     },
     {
@@ -51840,7 +51957,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5926",
+      "source_location": "L5972",
       "weight": 1.0
     },
     {
@@ -51849,7 +51966,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5957",
+      "source_location": "L6003",
       "weight": 1.0
     },
     {
@@ -51858,7 +51975,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5993",
+      "source_location": "L6039",
       "weight": 1.0
     },
     {
@@ -51867,7 +51984,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5993",
+      "source_location": "L6039",
       "weight": 1.0
     },
     {
@@ -51876,7 +51993,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5994",
+      "source_location": "L6040",
       "weight": 1.0
     },
     {
@@ -51885,7 +52002,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6012",
+      "source_location": "L6058",
       "weight": 1.0
     },
     {
@@ -51894,7 +52011,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6028",
+      "source_location": "L6074",
       "weight": 1.0
     },
     {
@@ -51903,7 +52020,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6044",
+      "source_location": "L6090",
       "weight": 1.0
     },
     {
@@ -51912,7 +52029,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6050",
+      "source_location": "L6096",
       "weight": 1.0
     },
     {
@@ -51921,7 +52038,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6060",
+      "source_location": "L6106",
       "weight": 1.0
     },
     {
@@ -51930,7 +52047,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6060",
+      "source_location": "L6106",
       "weight": 1.0
     },
     {
@@ -51939,7 +52056,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6062",
+      "source_location": "L6108",
       "weight": 1.0
     },
     {
@@ -51948,7 +52065,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6069",
+      "source_location": "L6115",
       "weight": 1.0
     },
     {
@@ -51957,7 +52074,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6095",
+      "source_location": "L6141",
       "weight": 1.0
     },
     {
@@ -52901,7 +53018,7 @@
       "weight": 1.0
     },
     {
-      "source": "tests_test_views_rescheduleplanviewtests_test_reschedule_plan_detail_renders_chain_read_only_block",
+      "source": "tests_test_views_rescheduleplanviewtests_test_reschedule_plan_detail_hides_revalidate_for_terminal_plan",
       "target": "tests_test_views_rescheduleplanviewtests_appointment",
       "relation": "calls",
       "context": "call",
@@ -52911,13 +53028,33 @@
       "weight": 1.0
     },
     {
+      "source": "tests_test_views_rescheduleplanviewtests_test_reschedule_plan_detail_rejects_terminal_plan_revalidate_post",
+      "target": "tests_test_views_rescheduleplanviewtests_appointment",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_views.py",
+      "source_location": "L4945",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_views_rescheduleplanviewtests_test_reschedule_plan_detail_renders_chain_read_only_block",
+      "target": "tests_test_views_rescheduleplanviewtests_appointment",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_views.py",
+      "source_location": "L4975",
+      "weight": 1.0
+    },
+    {
       "source": "tests_test_views_rescheduleplanviewtests_test_reschedule_plan_detail_renders_chain_read_only_block",
       "target": "tests_test_views_local_dt",
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4930",
+      "source_location": "L4976",
       "weight": 1.0
     },
     {
@@ -52927,7 +53064,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4997",
+      "source_location": "L5043",
       "weight": 1.0
     },
     {
@@ -52937,7 +53074,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5028",
+      "source_location": "L5074",
       "weight": 1.0
     },
     {
@@ -52947,7 +53084,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5048",
+      "source_location": "L5094",
       "weight": 1.0
     },
     {
@@ -52957,7 +53094,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5060",
+      "source_location": "L5106",
       "weight": 1.0
     },
     {
@@ -52967,7 +53104,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5088",
+      "source_location": "L5134",
       "weight": 1.0
     },
     {
@@ -52977,7 +53114,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5102",
+      "source_location": "L5148",
       "weight": 1.0
     },
     {
@@ -52987,7 +53124,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5125",
+      "source_location": "L5171",
       "weight": 1.0
     },
     {
@@ -52997,7 +53134,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5144",
+      "source_location": "L5190",
       "weight": 1.0
     },
     {
@@ -53007,7 +53144,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5189",
+      "source_location": "L5235",
       "weight": 1.0
     },
     {
@@ -53017,7 +53154,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5214",
+      "source_location": "L5260",
       "weight": 1.0
     },
     {
@@ -53027,7 +53164,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5228",
+      "source_location": "L5274",
       "weight": 1.0
     },
     {
@@ -53037,7 +53174,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5264",
+      "source_location": "L5310",
       "weight": 1.0
     },
     {
@@ -53047,7 +53184,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5265",
+      "source_location": "L5311",
       "weight": 1.0
     },
     {
@@ -53057,7 +53194,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5337",
+      "source_location": "L5383",
       "weight": 1.0
     },
     {
@@ -53067,7 +53204,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5383",
+      "source_location": "L5429",
       "weight": 1.0
     },
     {
@@ -53077,7 +53214,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5422",
+      "source_location": "L5468",
       "weight": 1.0
     },
     {
@@ -53087,7 +53224,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5466",
+      "source_location": "L5512",
       "weight": 1.0
     },
     {
@@ -53097,7 +53234,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5480",
+      "source_location": "L5526",
       "weight": 1.0
     },
     {
@@ -53107,7 +53244,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5501",
+      "source_location": "L5547",
       "weight": 1.0
     },
     {
@@ -53117,7 +53254,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5533",
+      "source_location": "L5579",
       "weight": 1.0
     },
     {
@@ -53127,7 +53264,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5580",
+      "source_location": "L5626",
       "weight": 1.0
     },
     {
@@ -53137,7 +53274,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5694",
+      "source_location": "L5740",
       "weight": 1.0
     },
     {
@@ -53147,7 +53284,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5728",
+      "source_location": "L5774",
       "weight": 1.0
     },
     {
@@ -53157,7 +53294,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5765",
+      "source_location": "L5811",
       "weight": 1.0
     },
     {
@@ -53167,7 +53304,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5792",
+      "source_location": "L5838",
       "weight": 1.0
     },
     {
@@ -53177,7 +53314,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6078",
+      "source_location": "L6124",
       "weight": 1.0
     },
     {
@@ -53187,7 +53324,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6104",
+      "source_location": "L6150",
       "weight": 1.0
     },
     {
@@ -59411,7 +59548,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L67",
+      "source_location": "L72",
       "weight": 1.0
     },
     {
@@ -59420,7 +59557,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L77",
+      "source_location": "L82",
       "weight": 1.0
     },
     {
@@ -59429,7 +59566,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L83",
+      "source_location": "L88",
       "weight": 1.0
     },
     {
@@ -59438,7 +59575,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L163",
+      "source_location": "L168",
       "weight": 1.0
     },
     {
@@ -59448,7 +59585,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L163",
+      "source_location": "L168",
       "weight": 1.0
     },
     {
@@ -59457,7 +59594,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L169",
+      "source_location": "L174",
       "weight": 1.0
     },
     {
@@ -59466,7 +59603,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L183",
+      "source_location": "L188",
       "weight": 1.0
     },
     {
@@ -59476,7 +59613,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L183",
+      "source_location": "L188",
       "weight": 1.0
     },
     {
@@ -59485,7 +59622,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L228",
+      "source_location": "L233",
       "weight": 1.0
     },
     {
@@ -59495,7 +59632,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L228",
+      "source_location": "L233",
       "weight": 1.0
     },
     {
@@ -59504,7 +59641,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L247",
+      "source_location": "L252",
       "weight": 1.0
     },
     {
@@ -59513,7 +59650,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L265",
+      "source_location": "L270",
       "weight": 1.0
     },
     {
@@ -59522,7 +59659,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L574",
+      "source_location": "L579",
       "weight": 1.0
     },
     {
@@ -59532,7 +59669,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L84",
+      "source_location": "L89",
       "weight": 1.0
     },
     {
@@ -59542,7 +59679,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L269",
+      "source_location": "L274",
       "weight": 1.0
     },
     {
@@ -59552,7 +59689,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L564",
+      "source_location": "L569",
       "weight": 1.0
     },
     {
@@ -59562,7 +59699,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L612",
+      "source_location": "L605",
       "weight": 1.0
     },
     {
@@ -59572,7 +59709,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L622",
+      "source_location": "L631",
       "weight": 1.0
     },
     {
@@ -59582,7 +59719,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L715",
+      "source_location": "L724",
       "weight": 1.0
     },
     {
@@ -59592,7 +59729,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/rescheduling_plans.py",
-      "source_location": "L716",
+      "source_location": "L725",
       "weight": 1.0
     },
     {
@@ -96841,6 +96978,60 @@
       "weight": 1.0
     },
     {
+      "source": "docs_11_plan_terminal_status_contract",
+      "target": "docs_11_plan_terminal_status_contract_контракт_терминальных_статусов_плана_переноса",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/11-plan-terminal-status-contract.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_11_plan_terminal_status_contract_контракт_терминальных_статусов_плана_переноса",
+      "target": "docs_11_plan_terminal_status_contract_зачем_нужен_документ",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/11-plan-terminal-status-contract.md",
+      "source_location": "L7",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_11_plan_terminal_status_contract_контракт_терминальных_статусов_плана_переноса",
+      "target": "docs_11_plan_terminal_status_contract_терминальные_статусы_плана",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/11-plan-terminal-status-contract.md",
+      "source_location": "L17",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_11_plan_terminal_status_contract_контракт_терминальных_статусов_плана_переноса",
+      "target": "docs_11_plan_terminal_status_contract_правила",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/11-plan-terminal-status-contract.md",
+      "source_location": "L24",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_11_plan_terminal_status_contract_контракт_терминальных_статусов_плана_переноса",
+      "target": "docs_11_plan_terminal_status_contract_не_входит_в_срез",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/11-plan-terminal-status-contract.md",
+      "source_location": "L34",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_11_plan_terminal_status_contract_контракт_терминальных_статусов_плана_переноса",
+      "target": "docs_11_plan_terminal_status_contract_acceptance_criteria",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/11-plan-terminal-status-contract.md",
+      "source_location": "L42",
+      "weight": 1.0
+    },
+    {
       "source": "docs_critical_stack_ux_review_2026_06_10",
       "target": "docs_critical_stack_ux_review_2026_06_10_критический_срез_проекта_rmcodex",
       "relation": "contains",
@@ -98466,7 +98657,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L39",
+      "source_location": "L40",
       "weight": 1.0
     },
     {
@@ -98502,7 +98693,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L35",
+      "source_location": "L36",
       "weight": 1.0
     },
     {
@@ -98511,7 +98702,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L47",
+      "source_location": "L49",
       "weight": 1.0
     },
     {
@@ -98520,7 +98711,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L60",
+      "source_location": "L62",
       "weight": 1.0
     },
     {
@@ -98529,7 +98720,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L62",
+      "source_location": "L64",
       "weight": 1.0
     },
     {
@@ -98538,7 +98729,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L81",
+      "source_location": "L83",
       "weight": 1.0
     },
     {
@@ -98547,7 +98738,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L90",
+      "source_location": "L92",
       "weight": 1.0
     },
     {
@@ -98556,7 +98747,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L102",
+      "source_location": "L104",
       "weight": 1.0
     },
     {
@@ -98565,7 +98756,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L134",
+      "source_location": "L136",
       "weight": 1.0
     },
     {
@@ -98574,7 +98765,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L140",
+      "source_location": "L142",
       "weight": 1.0
     },
     {
@@ -102334,7 +102525,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5995",
+      "source_location": "L6041",
       "weight": 1.0
     },
     {
@@ -102344,7 +102535,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6045",
+      "source_location": "L6091",
       "weight": 1.0
     },
     {
@@ -102354,7 +102545,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6063",
+      "source_location": "L6109",
       "weight": 1.0
     },
     {
@@ -104964,7 +105155,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1446",
+      "source_location": "L1449",
       "weight": 1.0
     },
     {
@@ -154204,6 +154395,17 @@
       "weight": 1.0
     },
     {
+      "source": "services_rescheduling_plans_revalidate_plan",
+      "target": "validationerror",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "operations/services/rescheduling_plans.py",
+      "source_location": "L1028",
+      "weight": 1.0
+    },
+    {
       "source": "services_rescheduling_plans_revalidate_chain",
       "target": "validationerror",
       "relation": "calls",
@@ -154211,7 +154413,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1102",
+      "source_location": "L1105",
       "weight": 1.0
     },
     {
@@ -154222,7 +154424,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1369",
+      "source_location": "L1372",
       "weight": 1.0
     },
     {
@@ -154233,7 +154435,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1466",
+      "source_location": "L1469",
       "weight": 1.0
     },
     {
@@ -154244,7 +154446,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1505",
+      "source_location": "L1508",
       "weight": 1.0
     },
     {
@@ -154255,7 +154457,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1534",
+      "source_location": "L1537",
       "weight": 1.0
     },
     {
@@ -155267,7 +155469,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1582",
+      "source_location": "L1626",
       "weight": 1.0
     },
     {
@@ -155278,7 +155480,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1646",
+      "source_location": "L1690",
       "weight": 1.0
     },
     {
@@ -155289,7 +155491,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1939",
+      "source_location": "L1983",
       "weight": 1.0
     },
     {
@@ -155300,7 +155502,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1961",
+      "source_location": "L2005",
       "weight": 1.0
     },
     {
@@ -155311,7 +155513,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1988",
+      "source_location": "L2032",
       "weight": 1.0
     },
     {
@@ -155322,7 +155524,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2014",
+      "source_location": "L2058",
       "weight": 1.0
     },
     {
@@ -155333,7 +155535,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2036",
+      "source_location": "L2080",
       "weight": 1.0
     },
     {
@@ -155344,7 +155546,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2081",
+      "source_location": "L2125",
       "weight": 1.0
     },
     {
@@ -155355,7 +155557,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2116",
+      "source_location": "L2160",
       "weight": 1.0
     },
     {
@@ -155366,7 +155568,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2160",
+      "source_location": "L2204",
       "weight": 1.0
     },
     {
@@ -155377,7 +155579,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2225",
+      "source_location": "L2269",
       "weight": 1.0
     },
     {
@@ -155388,7 +155590,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2281",
+      "source_location": "L2325",
       "weight": 1.0
     },
     {
@@ -155399,7 +155601,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2399",
+      "source_location": "L2443",
       "weight": 1.0
     },
     {
@@ -155410,7 +155612,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2498",
+      "source_location": "L2542",
       "weight": 1.0
     },
     {
@@ -155421,7 +155623,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2509",
+      "source_location": "L2553",
       "weight": 1.0
     },
     {
@@ -155432,7 +155634,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2539",
+      "source_location": "L2583",
       "weight": 1.0
     },
     {
@@ -155443,7 +155645,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2867",
+      "source_location": "L2911",
       "weight": 1.0
     },
     {
@@ -155454,7 +155656,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3185",
+      "source_location": "L3229",
       "weight": 1.0
     },
     {
@@ -155465,7 +155667,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3359",
+      "source_location": "L3403",
       "weight": 1.0
     },
     {
@@ -155476,7 +155678,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3400",
+      "source_location": "L3444",
       "weight": 1.0
     },
     {
@@ -155487,7 +155689,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3428",
+      "source_location": "L3472",
       "weight": 1.0
     },
     {
@@ -156378,7 +156580,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L4930",
+      "source_location": "L4976",
       "weight": 1.0
     },
     {
@@ -156389,7 +156591,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5228",
+      "source_location": "L5274",
       "weight": 1.0
     },
     {
@@ -156400,7 +156602,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5265",
+      "source_location": "L5311",
       "weight": 1.0
     },
     {
@@ -156411,7 +156613,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5466",
+      "source_location": "L5512",
       "weight": 1.0
     },
     {
@@ -156422,7 +156624,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5480",
+      "source_location": "L5526",
       "weight": 1.0
     },
     {
@@ -156433,7 +156635,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5501",
+      "source_location": "L5547",
       "weight": 1.0
     },
     {
@@ -156444,7 +156646,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5533",
+      "source_location": "L5579",
       "weight": 1.0
     },
     {
@@ -156455,7 +156657,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5580",
+      "source_location": "L5626",
       "weight": 1.0
     },
     {
@@ -156466,7 +156668,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5694",
+      "source_location": "L5740",
       "weight": 1.0
     },
     {
@@ -156477,7 +156679,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5728",
+      "source_location": "L5774",
       "weight": 1.0
     },
     {
@@ -156488,7 +156690,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5765",
+      "source_location": "L5811",
       "weight": 1.0
     },
     {
@@ -156499,7 +156701,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L5792",
+      "source_location": "L5838",
       "weight": 1.0
     },
     {
@@ -156510,7 +156712,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6009",
+      "source_location": "L6055",
       "weight": 1.0
     },
     {
@@ -156521,7 +156723,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6025",
+      "source_location": "L6071",
       "weight": 1.0
     },
     {
@@ -156532,7 +156734,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6041",
+      "source_location": "L6087",
       "weight": 1.0
     },
     {
@@ -156543,7 +156745,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6047",
+      "source_location": "L6093",
       "weight": 1.0
     },
     {
@@ -156554,7 +156756,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6055",
+      "source_location": "L6101",
       "weight": 1.0
     },
     {
@@ -156565,7 +156767,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6078",
+      "source_location": "L6124",
       "weight": 1.0
     },
     {
@@ -156576,7 +156778,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_views.py",
-      "source_location": "L6104",
+      "source_location": "L6150",
       "weight": 1.0
     },
     {

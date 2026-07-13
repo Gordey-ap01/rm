@@ -1,6 +1,6 @@
 # Манифест восстановления проекта
 
-Дата: 2026-07-10
+Дата: 2026-07-13
 
 Назначение: компактная точка входа для продолжения проекта "Радость моя" после потери чата, платформы, интернета или контекста. Этот файл не заменяет PRD, ADR, доменную модель и журнал состояния. Он указывает, где лежит актуальная информация и в каком порядке ее читать.
 
@@ -22,6 +22,7 @@
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
 | `docs/10-reschedule-chain-dependencies-contract.md` | Контракт будущей модели атомарных цепочек переноса: chain/dependency schema, порядок применения, риски миграций и вертикальные срезы. | Перед кодом по длинным цепочкам переноса нескольких занятий. |
+| `docs/11-plan-terminal-status-contract.md` | Контракт терминальных статусов плана переноса: `applied/cancelled` планы нельзя перепроверять или возвращать в активный статус через revalidation. | Перед изменениями `revalidate_plan()`, plan detail actions или статусных правил планов переноса. |
 | `docs/01-prd.md` | Базовые продуктовые цели и крупные сценарии. | Для сверки продукта; при конфликте новее `current-state` и `07`. |
 | `docs/03-ux-ui-and-implementation-plan.md` | UX/UI карта и план рабочих экранов; содержит предупреждение 2026-06-29, что старый MVP-контекст уступает свежей доменной модели и `current-state`. | Перед изменениями интерфейса администратора/руководителя. |
 | `docs/05-domain-rules-mvp.md` | Старые доменные правила MVP. | Только как историческая база; проверять против `07`. |
@@ -39,10 +40,11 @@
 3. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
 4. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
 5. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
-6. Если задача затрагивает параллельную работу, прочитать `docs/08-parallel-agent-execution-plan.md`.
-7. Если задача UX/UI, прочитать `docs/03-ux-ui-and-implementation-plan.md` и соответствующие шаблоны/JS.
-8. Если задача по коду, читать только релевантные файлы: модели, сервисы, формы, views, шаблоны и тесты вокруг изменяемого сценария.
-9. Перед широким поиском по проекту сначала выполнить `graphify query "<вопрос>" --budget 500-1500`, если граф доступен и актуален.
+6. Если задача затрагивает терминальные статусы или перепроверку планов переноса, прочитать `docs/11-plan-terminal-status-contract.md`.
+7. Если задача затрагивает параллельную работу, прочитать `docs/08-parallel-agent-execution-plan.md`.
+8. Если задача UX/UI, прочитать `docs/03-ux-ui-and-implementation-plan.md` и соответствующие шаблоны/JS.
+9. Если задача по коду, читать только релевантные файлы: модели, сервисы, формы, views, шаблоны и тесты вокруг изменяемого сценария.
+10. Перед широким поиском по проекту сначала выполнить `graphify query "<вопрос>" --budget 500-1500`, если граф доступен и актуален.
 
 ## Skills и назначение
 
@@ -172,4 +174,6 @@ Browser QA - это проверка живого интерфейса в бра
 - Graphify code-index was updated after the step confirmation link slice: `graphify update . --no-cluster` re-extracted `134/134` code files and wrote `3892` nodes / `14054` edges. Semantic docs extraction was not rerun; do not write LLM API keys to project files.
 - Latest target-highlight slice 2026-07-13: reschedule deep-link targets now have CSS-only `:target` feedback for `#chain-*`, `#step-*`, and `#queue-*`, so administrator links visibly land on the relevant chain, step, or work-queue panel. No DB/model/migration/ledger/payroll/schedule/route/status-rule mutation. Verification: Django check, migration dry-run, full pytest (`424 passed`), secret scan, `git diff --check`, and in-app Browser desktop/mobile QA passed with synthetic `browserqa_target_highlight` data; QA data was cleaned and runserver on 8048 was stopped.
 - Graphify code-index after the target-highlight CSS slice reported no graph changes; current graph remains `3892` nodes / `14054` edges. Semantic docs extraction was not rerun; do not write LLM API keys to project files.
-- Recovery priority now: continue from the chain/step UX operations layer with the next non-DB slice or open a fresh contract before DB/ledger/payroll work. Plan-level terminal action visibility is not just a template cleanup because `revalidate_plan(plan)` does not yet guard terminal plan statuses; approve that status-rule contract before changing it. A separate manager chain dashboard is deferred until real usage shows a concrete gap beyond registry metrics plus dashboard/work queue/detail diagnostics/deep links; do not add migrations or touch ledger/payroll unless a fresh contract is approved.
+- Latest terminal plan guard slice 2026-07-13: `docs/11-plan-terminal-status-contract.md` is added; `revalidate_plan(plan)` now rejects terminal plans (`applied/cancelled`) before mutating validation state, and plan detail hides the plan-level revalidate form for terminal plans. No DB/model/migration/ledger/payroll/schedule/billing mutation. Verification: focused tests (`5 passed`), related service/view/work-queue tests (`76 passed`), Ruff, Django check, migration dry-run, full pytest (`427 passed`), and Playwright desktop/mobile Browser QA fallback passed with synthetic `browserqa_terminal_plan_guard` data; QA data was cleaned and runserver on 8049 was stopped.
+- Graphify code-index was updated after the terminal plan guard slice: `graphify update . --no-cluster` re-extracted `135/135` code files and wrote `3902` nodes / `14067` edges. Semantic docs extraction was not rerun; do not write LLM API keys to project files.
+- Recovery priority now: continue from the chain/step UX operations layer with the next non-DB slice or open a fresh approved contract before DB/ledger/payroll/status work. A separate manager chain dashboard is deferred until real usage shows a concrete gap beyond registry metrics plus dashboard/work queue/detail diagnostics/deep links; do not add migrations or touch ledger/payroll unless a fresh contract is approved.

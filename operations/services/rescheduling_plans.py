@@ -1024,6 +1024,9 @@ def _refresh_move_step_validation(
 @transaction.atomic
 def revalidate_plan(plan: AppointmentReschedulePlan) -> PlanValidationResult:
     plan = AppointmentReschedulePlan.objects.select_for_update().get(pk=plan.pk)
+    if plan.status in TERMINAL_PLAN_STATUSES:
+        raise ValidationError("Завершенный или отмененный план нельзя перепроверять.")
+
     valid_steps = 0
     stale_steps = 0
     pending_steps = 0

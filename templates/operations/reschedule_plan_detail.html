@@ -43,11 +43,15 @@
       Перед применением шага система повторно проверяет получателей, специалистов,
       кабинет и график. Списание исходного занятия остается отдельным решением.
     </p>
-    <form method="post">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="revalidate">
-      <button type="submit" class="button-link secondary">Перепроверить план</button>
-    </form>
+    {% if can_revalidate_plan %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="revalidate">
+        <button type="submit" class="button-link secondary">Перепроверить план</button>
+      </form>
+    {% else %}
+      <p class="muted">Повторная проверка плана недоступна для завершенного или отмененного плана.</p>
+    {% endif %}
   </div>
 </section>
 

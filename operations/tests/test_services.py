@@ -1542,6 +1542,50 @@ class ReschedulingPlanServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(step.status, AppointmentRescheduleStep.Status.STALE)
         self.assertIn("специалист уже занят", ", ".join(step.validation_messages))
 
+    def test_revalidate_plan_rejects_terminal_statuses_without_mutation(self):
+        appointment = self._appointment()
+        plan = plan_svc.create_plan_for_appointment(
+            appointment, actor=self.user, days=2, limit=1
+        )
+        step = plan.steps.get()
+        step.status = AppointmentRescheduleStep.Status.STALE
+        step.validation_messages = ["Сохраненная причина"]
+        step.conflict_snapshot = {"old": "snapshot"}
+        step.requires_staff_override = True
+        step.requires_room_override = True
+        step.save(
+            update_fields=[
+                "status",
+                "validation_messages",
+                "conflict_snapshot",
+                "requires_staff_override",
+                "requires_room_override",
+                "updated_at",
+            ]
+        )
+
+        for status in (
+            AppointmentReschedulePlan.Status.APPLIED,
+            AppointmentReschedulePlan.Status.CANCELLED,
+        ):
+            with self.subTest(status=status):
+                plan.status = status
+                plan.validation_summary = {"locked": status}
+                plan.save(update_fields=["status", "validation_summary", "updated_at"])
+
+                with self.assertRaisesMessage(ValidationError, "нельзя перепроверять"):
+                    plan_svc.revalidate_plan(plan)
+
+                plan.refresh_from_db()
+                step.refresh_from_db()
+                self.assertEqual(plan.status, status)
+                self.assertEqual(plan.validation_summary, {"locked": status})
+                self.assertEqual(step.status, AppointmentRescheduleStep.Status.STALE)
+                self.assertEqual(step.validation_messages, ["Сохраненная причина"])
+                self.assertEqual(step.conflict_snapshot, {"old": "snapshot"})
+                self.assertTrue(step.requires_staff_override)
+                self.assertTrue(step.requires_room_override)
+
     def test_apply_valid_step_creates_new_appointment_without_billing_decision(self):
         appointment = self._appointment()
         plan = plan_svc.create_plan_for_appointment(
