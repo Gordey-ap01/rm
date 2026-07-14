@@ -10,7 +10,6 @@ from django.db import transaction
 from django.db.models import Q, QuerySet
 from django.utils import timezone
 
-from operations.forms import appointment_group_conflicts, build_local_datetime, conflict_messages
 from operations.models import (
     ACTIVE_APPOINTMENT_STATUSES,
     Appointment,
@@ -21,6 +20,11 @@ from operations.models import (
     StaffMember,
     TimeOffRequest,
     room_usage_counts,
+)
+from operations.schedule_validation import (
+    appointment_group_conflicts,
+    build_local_datetime,
+    conflict_messages,
 )
 
 

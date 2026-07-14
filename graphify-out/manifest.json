@@ -25,9 +25,9 @@
     "semantic_hash": "d5c4a11ebd4c2f050d400ae3ba57c618"
   },
   "operations/forms.py": {
-    "mtime": 1783753859.3335645,
-    "ast_hash": "476073df96b74667bf714b2ee7e6a680",
-    "semantic_hash": "476073df96b74667bf714b2ee7e6a680"
+    "mtime": 1783996576.3254828,
+    "ast_hash": "0228e12c22f2ffa2a85bab9456f6b6dc",
+    "semantic_hash": ""
   },
   "operations/management/__init__.py": {
     "mtime": 1778721993.0832174,
@@ -105,9 +105,9 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/models.py": {
-    "mtime": 1782944084.2632408,
-    "ast_hash": "0dc729fa2a8f2f9c4abba945c713135a",
-    "semantic_hash": "0dc729fa2a8f2f9c4abba945c713135a"
+    "mtime": 1784000990.3891244,
+    "ast_hash": "d37e11349a7ce1028d56ce53152503a6",
+    "semantic_hash": ""
   },
   "operations/services/__init__.py": {
     "mtime": 1782845109.6529245,
@@ -145,9 +145,9 @@
     "semantic_hash": "95267710bf563dfc0a5739f21bd61a0a"
   },
   "operations/services/scheduling.py": {
-    "mtime": 1782491609.9704766,
-    "ast_hash": "a4669c2869ebb5cf25561418d588208d",
-    "semantic_hash": "a4669c2869ebb5cf25561418d588208d"
+    "mtime": 1783996539.9882953,
+    "ast_hash": "423dadf1edb8ad13c6cd8bafcbfd52ec",
+    "semantic_hash": ""
   },
   "operations/tasks.py": {
     "mtime": 1780415659.2907574,
@@ -165,8 +165,8 @@
     "semantic_hash": "bf315b84fbd5880aaa7af688dbe0dba4"
   },
   "operations/tests/test_services.py": {
-    "mtime": 1783943066.6806035,
-    "ast_hash": "8058c2591fa5a122e206d0692506e371",
+    "mtime": 1784001112.2911844,
+    "ast_hash": "c22f6a42b1152097734b35bcddeda583",
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
@@ -250,9 +250,9 @@
     "semantic_hash": "247756b955afff4d0e0f0641bb759a94"
   },
   "operations/views/scheduling_helpers.py": {
-    "mtime": 1782442454.3227515,
-    "ast_hash": "f6c4085968841d40d9070a689f0206bc",
-    "semantic_hash": "f6c4085968841d40d9070a689f0206bc"
+    "mtime": 1783996553.5126247,
+    "ast_hash": "368002142b534555af6717a30e0bb661",
+    "semantic_hash": ""
   },
   "operations/views/specialist.py": {
     "mtime": 1782628804.1425357,
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1783987716.7678988,
-    "ast_hash": "565712b49dd42c739ed5e7500bc62810",
+    "mtime": 1784001393.1521342,
+    "ast_hash": "680b1c5b7d48ff912f32f930f444dd0d",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1783987777.9052167,
-    "ast_hash": "3f3547b61f370237b7651a73a49deac1",
+    "mtime": 1784001420.3515742,
+    "ast_hash": "4e7dd839c521b16f699c810756ac6bd6",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1783987731.832962,
-    "ast_hash": "ad1fa9ae1c0131c83ce63ffd7961c571",
+    "mtime": 1784001410.754114,
+    "ast_hash": "24179530c5863b56933511a9c29a06e1",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -870,8 +870,8 @@
     "semantic_hash": "4eee83446240dcb62366531da9b366dc"
   },
   "operations/services/rescheduling_plans.py": {
-    "mtime": 1783942944.9477265,
-    "ast_hash": "44cecc6f8d1540db2e779920f15aedce",
+    "mtime": 1783996546.8002996,
+    "ast_hash": "797d6e75f128f31b6defee12c37f393a",
     "semantic_hash": ""
   },
   "operations/views/rescheduling_plans.py": {
@@ -917,6 +917,21 @@
   "docs/11-plan-terminal-status-contract.md": {
     "mtime": 1783942903.4615152,
     "ast_hash": "79bd32e8b267ff798b00fab479d71bce",
+    "semantic_hash": ""
+  },
+  "operations/schedule_validation.py": {
+    "mtime": 1783996495.0795555,
+    "ast_hash": "875eb9dde2cf845d9999ac3e1bd2b772",
+    "semantic_hash": ""
+  },
+  "docs/12-project-stage-audit-and-pivot-plan.md": {
+    "mtime": 1783996118.4705899,
+    "ast_hash": "bf8f280e4d342d3b2a77b83b4b028876",
+    "semantic_hash": ""
+  },
+  "docs/13-schedule-capacity-v2-contract.md": {
+    "mtime": 1784001431.8704338,
+    "ast_hash": "88863e0bb6baecc0b579093a2c7635e0",
     "semantic_hash": ""
   }
 }

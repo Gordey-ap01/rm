@@ -15,6 +15,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
+from operations import schedule_validation as schedule_rules
 from operations.models import (
     Appointment,
     AppointmentConfirmation,
@@ -315,6 +316,235 @@ class AppointmentServiceTests(_FixturesMixin, TestCase):
         )
         with self.assertRaises(ValueError):
             appt_svc.record_attendance(appt, action="weird")
+
+
+class ScheduleValidationTests(_FixturesMixin, TestCase):
+    def test_group_conflicts_use_participant_and_staff_snapshots(self):
+        second_child = Child.objects.create(last_name="Группа", first_name="Второй")
+        appt = appt_svc.create_appointment(
+            child=self.child,
+            staff_member=self.staff_a,
+            service=self.service_log,
+            starts_at=_local(self.day, time(10, 0)),
+            ends_at=_local(self.day, time(10, 30)),
+            room=self.room1,
+            billing_account=self.account,
+        )
+        AppointmentParticipant.objects.create(
+            appointment=appt,
+            child=second_child,
+            starts_at_snapshot=appt.starts_at,
+            ends_at_snapshot=appt.ends_at,
+            appointment_status=appt.status,
+        )
+        AppointmentStaffAssignment.objects.create(
+            appointment=appt,
+            staff_member=self.staff_b,
+            role=AppointmentStaffAssignment.Role.ASSISTANT,
+            starts_at_snapshot=appt.starts_at,
+            ends_at_snapshot=appt.ends_at,
+            appointment_status=appt.status,
+        )
+
+        conflicts = schedule_rules.appointment_group_conflicts(
+            _local(self.day, time(10, 15)),
+            _local(self.day, time(10, 45)),
+            [second_child],
+            [self.staff_b],
+            self.room2,
+        )
+
+        self.assertTrue(conflicts["child"].filter(pk=appt.pk).exists())
+        self.assertTrue(conflicts["staff"].filter(pk=appt.pk).exists())
+        self.assertIn("у получателя уже есть занятие в это время", schedule_rules.conflict_messages(conflicts))
+        self.assertIn("специалист уже занят в это время", schedule_rules.conflict_messages(conflicts))
+
+    def test_room_limit_counts_snapshot_staff_and_recipients(self):
+        second_child = Child.objects.create(last_name="Кабинет", first_name="Второй")
+        appt_svc.create_appointment(
+            child=self.child,
+            staff_member=self.staff_a,
+            service=self.service_log,
+            starts_at=_local(self.day, time(11, 0)),
+            ends_at=_local(self.day, time(11, 30)),
+            room=self.room1,
+            billing_account=self.account,
+        )
+
+        conflicts = schedule_rules.appointment_group_conflicts(
+            _local(self.day, time(11, 15)),
+            _local(self.day, time(11, 45)),
+            [second_child],
+            [self.staff_b],
+            self.room1,
+        )
+
+        self.assertTrue(conflicts["room_over_limit"])
+        self.assertTrue(conflicts["room_limit_reasons"]["staff"])
+        self.assertTrue(conflicts["room_limit_reasons"]["recipients"])
+        self.assertEqual(conflicts["room_limit_reasons"]["staff_total"], 2)
+        self.assertEqual(conflicts["room_limit_reasons"]["recipient_total"], 2)
+        self.assertIn("кабинет превышает правила вместимости", schedule_rules.conflict_messages(conflicts))
+
+    def test_room_limit_allows_capacity_until_configured_limit(self):
+        second_child = Child.objects.create(last_name="Кабинет", first_name="Разрешен")
+        room = Room.objects.create(
+            name="Групповой зал",
+            limit_staff_count=True,
+            max_staff_count=2,
+            limit_recipient_count=True,
+            max_recipient_count=2,
+            allow_group_sessions=True,
+        )
+        appt_svc.create_appointment(
+            child=self.child,
+            staff_member=self.staff_a,
+            service=self.service_log,
+            starts_at=_local(self.day, time(12, 0)),
+            ends_at=_local(self.day, time(12, 30)),
+            room=room,
+            billing_account=self.account,
+        )
+
+        conflicts = schedule_rules.appointment_group_conflicts(
+            _local(self.day, time(12, 15)),
+            _local(self.day, time(12, 45)),
+            [second_child],
+            [self.staff_b],
+            room,
+        )
+
+        self.assertFalse(conflicts["room_over_limit"])
+        self.assertFalse(conflicts["room"].exists())
+        self.assertNotIn("кабинет превышает правила вместимости", schedule_rules.conflict_messages(conflicts))
+
+    def test_model_validation_uses_snapshot_participants_and_staff(self):
+        second_child = Child.objects.create(last_name="Snapshot", first_name="Participant")
+        source = appt_svc.create_appointment(
+            child=self.child,
+            staff_member=self.staff_a,
+            service=self.service_log,
+            starts_at=_local(self.day, time(9, 0)),
+            ends_at=_local(self.day, time(9, 30)),
+            room=self.room1,
+            billing_account=self.account,
+        )
+        AppointmentParticipant.objects.create(
+            appointment=source,
+            child=second_child,
+            starts_at_snapshot=source.starts_at,
+            ends_at_snapshot=source.ends_at,
+            appointment_status=source.status,
+        )
+        AppointmentStaffAssignment.objects.create(
+            appointment=source,
+            staff_member=self.staff_b,
+            role=AppointmentStaffAssignment.Role.ASSISTANT,
+            starts_at_snapshot=source.starts_at,
+            ends_at_snapshot=source.ends_at,
+            appointment_status=source.status,
+        )
+        blocker = appt_svc.create_appointment(
+            child=second_child,
+            staff_member=self.staff_b,
+            service=self.service_log,
+            starts_at=_local(self.day, time(10, 0)),
+            ends_at=_local(self.day, time(10, 30)),
+            room=self.room2,
+        )
+
+        source.starts_at = blocker.starts_at
+        source.ends_at = blocker.ends_at
+
+        with self.assertRaises(ValidationError) as ctx:
+            source.full_clean()
+        message = str(ctx.exception)
+        self.assertIn("у получателя уже есть занятие", message)
+        self.assertIn("специалист уже занят", message)
+
+    def test_model_validation_counts_snapshot_group_room_capacity(self):
+        second_child = Child.objects.create(last_name="Capacity", first_name="Second")
+        third_child = Child.objects.create(last_name="Capacity", first_name="Occupant")
+        room = Room.objects.create(
+            name="Capacity Snapshot Room",
+            limit_staff_count=True,
+            max_staff_count=3,
+            limit_recipient_count=True,
+            max_recipient_count=2,
+            allow_group_sessions=True,
+        )
+        source = appt_svc.create_appointment(
+            child=self.child,
+            staff_member=self.staff_a,
+            service=self.service_log,
+            starts_at=_local(self.day, time(9, 0)),
+            ends_at=_local(self.day, time(9, 30)),
+            room=room,
+            billing_account=self.account,
+        )
+        AppointmentParticipant.objects.create(
+            appointment=source,
+            child=second_child,
+            starts_at_snapshot=source.starts_at,
+            ends_at_snapshot=source.ends_at,
+            appointment_status=source.status,
+        )
+        AppointmentStaffAssignment.objects.create(
+            appointment=source,
+            staff_member=self.staff_b,
+            role=AppointmentStaffAssignment.Role.ASSISTANT,
+            starts_at_snapshot=source.starts_at,
+            ends_at_snapshot=source.ends_at,
+            appointment_status=source.status,
+        )
+        occupant = appt_svc.create_appointment(
+            child=third_child,
+            staff_member=self.staff_afk,
+            service=self.service_log,
+            starts_at=_local(self.day, time(11, 0)),
+            ends_at=_local(self.day, time(11, 30)),
+            room=room,
+        )
+
+        source.starts_at = occupant.starts_at
+        source.ends_at = occupant.ends_at
+
+        with self.assertRaises(ValidationError) as ctx:
+            source.full_clean()
+        self.assertIn("кабинет уже занят по лимиту получателей", str(ctx.exception))
+
+    def test_model_validation_checks_snapshot_staff_availability(self):
+        self.room1.max_staff_count = 2
+        self.room1.save(update_fields=["max_staff_count", "updated_at"])
+        source = appt_svc.create_appointment(
+            child=self.child,
+            staff_member=self.staff_a,
+            service=self.service_log,
+            starts_at=_local(self.day, time(10, 0)),
+            ends_at=_local(self.day, time(10, 30)),
+            room=self.room1,
+            billing_account=self.account,
+        )
+        AppointmentStaffAssignment.objects.create(
+            appointment=source,
+            staff_member=self.staff_b,
+            role=AppointmentStaffAssignment.Role.ASSISTANT,
+            starts_at_snapshot=source.starts_at,
+            ends_at_snapshot=source.ends_at,
+            appointment_status=source.status,
+        )
+        TimeOffRequest.objects.create(
+            staff_member=self.staff_b,
+            starts_on=self.day,
+            ends_on=self.day,
+            status=TimeOffRequest.Status.APPROVED,
+        )
+
+        with self.assertRaises(ValidationError) as ctx:
+            source.full_clean()
+        message = str(ctx.exception)
+        self.assertIn(self.staff_b.full_name, message)
+        self.assertIn("отпуск", message)
 
 
 class BillingServiceTests(_FixturesMixin, TestCase):
@@ -2548,6 +2778,11 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
 
     def test_appointment_string_is_group_aware(self):
         appointment = self._make_same_funding_group_charge()
+        appointment.room.allow_group_sessions = True
+        appointment.room.max_recipient_count = 2
+        appointment.room.save(
+            update_fields=["allow_group_sessions", "max_recipient_count", "updated_at"]
+        )
         appointment.title = ""
         appointment.save(update_fields=["title", "updated_at"])
 

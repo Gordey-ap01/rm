@@ -8,13 +8,13 @@ from urllib.parse import urlencode
 from django.urls import reverse
 from django.utils import timezone
 
-from operations.forms import (
+from operations.models import Appointment, StaffMember
+from operations.schedule_validation import (
     appointment_group_conflicts,
     build_local_datetime,
     conflict_messages,
     staff_unavailability_reason,
 )
-from operations.models import Appointment, StaffMember
 
 
 def _appointment_children(appointment: Appointment):

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from datetime import time
 from decimal import Decimal
 from typing import Any
 
@@ -1235,116 +1234,99 @@ class Appointment(TimeStampedModel):
         но Python-проверка
         покрывает оба бэкенда и даёт внятные сообщения об ошибках в формах.
         """
-        base_qs = Appointment.objects.filter(
-            status__in=ACTIVE_APPOINTMENT_STATUSES,
-            starts_at__lt=self.ends_at,
-            ends_at__gt=self.starts_at,
-        )
-        if self.pk:
-            base_qs = base_qs.exclude(pk=self.pk)
         messages: list[str] = []
-        if self.child_id:
-            participant_qs = AppointmentParticipant.objects.filter(
-                appointment_status__in=ACTIVE_APPOINTMENT_STATUSES,
-                child_id=self.child_id,
-                starts_at_snapshot__lt=self.ends_at,
-                ends_at_snapshot__gt=self.starts_at,
-            ).select_related("appointment")
-            if self.pk:
-                participant_qs = participant_qs.exclude(appointment_id=self.pk)
-            other_participant = participant_qs.first()
-            other = (
-                other_participant.appointment
-                if other_participant
-                else base_qs.filter(child_id=self.child_id).first()
-            )
-            has_conflict = other_participant is not None or other is not None
-        else:
-            other = None
-            has_conflict = False
-        if has_conflict:
-            when = timezone.localtime(other.starts_at).strftime("%d.%m %H:%M") if other else ""
-            messages.append(
-                f"у получателя уже есть занятие в это время ({when})"
-                if when
-                else "у получателя уже есть занятие в это время"
-            )
+        from operations.schedule_validation import appointment_group_conflicts
 
-        if self.staff_member_id:
-            staff_qs = AppointmentStaffAssignment.objects.filter(
-                appointment_status__in=ACTIVE_APPOINTMENT_STATUSES,
-                staff_member_id=self.staff_member_id,
-                starts_at_snapshot__lt=self.ends_at,
-                ends_at_snapshot__gt=self.starts_at,
-            )
-            if self.pk:
-                staff_qs = staff_qs.exclude(appointment_id=self.pk)
-            has_staff_conflict = (
-                staff_qs.exists() or base_qs.filter(staff_member_id=self.staff_member_id).exists()
-            )
-        else:
-            has_staff_conflict = False
-        if has_staff_conflict:
+        room = None if getattr(self, "_skip_room_limit_validation", False) else self.room
+        conflicts = appointment_group_conflicts(
+            self.starts_at,
+            self.ends_at,
+            self._schedule_validation_children(),
+            self._schedule_validation_staff_members(),
+            room,
+            exclude_pk=self.pk,
+        )
+
+        if conflicts.get("child") and conflicts["child"].exists():
+            messages.append("у получателя уже есть занятие в это время")
+        if conflicts.get("staff") and conflicts["staff"].exists():
             messages.append("специалист уже занят в это время")
-
-        if self.room_id and not getattr(self, "_skip_room_limit_validation", False):
-            staff_count, recipient_count = self._room_usage_counts(base_qs)
-            if (
-                self.room.limit_staff_count
-                and staff_count + 1 > self.room.effective_max_staff_count
-            ):
+        if self.room_id and conflicts.get("room_over_limit"):
+            reasons = conflicts.get("room_limit_reasons") or {}
+            if reasons.get("staff"):
                 messages.append("кабинет уже занят по лимиту специалистов")
-            if (
-                self.room.limit_recipient_count
-                and recipient_count + 1 > self.room.effective_max_recipient_count
-            ):
+            if reasons.get("recipients"):
                 messages.append("кабинет уже занят по лимиту получателей")
+            if reasons.get("group"):
+                messages.append("кабинет не разрешает групповые занятия")
         if messages:
             raise ValidationError("Конфликт расписания: " + ", ".join(messages) + ".")
 
-    def _room_usage_counts(self, base_qs: QuerySet[Appointment]) -> tuple[int, int]:
-        return room_usage_counts(base_qs.filter(room_id=self.room_id))
+    def _schedule_validation_children(self) -> list[Child]:
+        if self.pk:
+            children = [
+                participant.child
+                for participant in self.participants.select_related("child").order_by("pk")
+            ]
+            if children:
+                return children
+        return [self.child] if self.child_id else []
+
+    def _schedule_validation_staff_members(self) -> list[StaffMember]:
+        if self.pk:
+            staff_members = [
+                assignment.staff_member
+                for assignment in self.staff_assignments.select_related("staff_member").order_by(
+                    "pk"
+                )
+            ]
+            if staff_members:
+                return staff_members
+        return [self.staff_member] if self.staff_member_id else []
 
     def _validate_staff_availability(self) -> None:
-        if not self.staff_member_id or not self.starts_at or not self.ends_at:
+        if not self.starts_at or not self.ends_at:
             return
-
-        local_start = timezone.localtime(self.starts_at)
-        local_end = timezone.localtime(self.ends_at)
-        day = local_start.date()
-        if local_end.date() != day:
-            raise ValidationError(
-                "Недоступность специалиста: занятие должно помещаться в один день."
-            )
         if self.staff_availability_override:
             return
 
-        if TimeOffRequest.objects.filter(
-            staff_member_id=self.staff_member_id,
-            status=TimeOffRequest.Status.APPROVED,
-            starts_on__lte=day,
-            ends_on__gte=day,
-        ).exists():
-            raise ValidationError("Недоступность специалиста: согласован отпуск/отгул.")
+        from operations.schedule_validation import staff_unavailability_reason
 
-        windows = list(
-            StaffAvailability.objects.filter(
-                staff_member_id=self.staff_member_id,
-                weekday=day.weekday(),
-                is_active=True,
-            ).order_by("starts_at")
-        )
-        start_time = local_start.time().replace(second=0, microsecond=0)
-        end_time = local_end.time().replace(second=0, microsecond=0)
-        if not windows:
-            if time(9, 0) <= start_time and end_time <= time(18, 0):
-                return
-            raise ValidationError("Недоступность специалиста: время вне базового окна 09:00-18:00.")
+        messages = []
+        if self.pk:
+            assignments = list(
+                self.staff_assignments.select_related("staff_member").order_by("pk")
+            )
+            if assignments:
+                for assignment in assignments:
+                    if assignment.override_availability:
+                        continue
+                    reason = staff_unavailability_reason(
+                        assignment.staff_member,
+                        self.starts_at,
+                        self.ends_at,
+                    )
+                    if reason:
+                        messages.append(f"{assignment.staff_member}: {reason}")
+            elif self.staff_member_id:
+                reason = staff_unavailability_reason(
+                    self.staff_member,
+                    self.starts_at,
+                    self.ends_at,
+                )
+                if reason:
+                    messages.append(reason)
+        elif self.staff_member_id:
+            reason = staff_unavailability_reason(
+                self.staff_member,
+                self.starts_at,
+                self.ends_at,
+            )
+            if reason:
+                messages.append(reason)
 
-        if not any(
-            window.starts_at <= start_time and end_time <= window.ends_at for window in windows
-        ):
-            raise ValidationError("Недоступность специалиста: время вне рабочего графика.")
+        if messages:
+            raise ValidationError("Недоступность специалиста: " + "; ".join(messages) + ".")
 
     @property
     def duration_minutes(self) -> int:

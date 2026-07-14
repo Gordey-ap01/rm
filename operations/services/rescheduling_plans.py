@@ -15,13 +15,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from operations.forms import (
-    AppointmentMoveForm,
-    appointment_group_conflicts,
-    build_local_datetime,
-    conflict_messages,
-    staff_unavailability_reason,
-)
+from operations.forms import AppointmentMoveForm
 from operations.models import (
     Appointment,
     AppointmentConfirmation,
@@ -33,6 +27,12 @@ from operations.models import (
     AppointmentStaffAssignment,
     ParentGuardian,
     StaffMember,
+)
+from operations.schedule_validation import (
+    appointment_group_conflicts,
+    build_local_datetime,
+    conflict_messages,
+    staff_unavailability_reason,
 )
 
 

@@ -1,6 +1,6 @@
 # Манифест восстановления проекта
 
-Дата: 2026-07-13
+Дата: 2026-07-14
 
 Назначение: компактная точка входа для продолжения проекта "Радость моя" после потери чата, платформы, интернета или контекста. Этот файл не заменяет PRD, ADR, доменную модель и журнал состояния. Он указывает, где лежит актуальная информация и в каком порядке ее читать.
 
@@ -18,6 +18,8 @@
 | --- | --- | --- |
 | `docs/project-recovery-manifest.md` | Входная точка восстановления, индекс документов, skills и протокол контрольных точек. | Всегда первым. |
 | `docs/current-state.md` | Текущее состояние, выполненные срезы, свежий журнал изменений, ближайшие риски. | Всегда вторым; в первую очередь последние датированные разделы. |
+| `docs/12-project-stage-audit-and-pivot-plan.md` | Аудит этапа после потерь сессий: фиксирует, что reschedule-блок достаточно закрыт и следующий фокус должен перейти к новому доменному контракту. | Читать третьим, если есть риск снова уйти в микросрезы вокруг переносов или нужно понять текущий этап. |
+| `docs/13-schedule-capacity-v2-contract.md` | Контракт следующего доменного среза: расписание, групповые занятия, несколько специалистов, кабинеты, вместимость и доступность специалистов. | Перед первым кодовым срезом `schedule-capacity-validation-source` и любыми изменениями schedule/capacity validation. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -37,14 +39,16 @@
 
 1. Открыть `docs/project-recovery-manifest.md`.
 2. Прочитать последние датированные разделы `docs/current-state.md`.
-3. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
-4. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
-5. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
-6. Если задача затрагивает терминальные статусы или перепроверку планов переноса, прочитать `docs/11-plan-terminal-status-contract.md`.
-7. Если задача затрагивает параллельную работу, прочитать `docs/08-parallel-agent-execution-plan.md`.
-8. Если задача UX/UI, прочитать `docs/03-ux-ui-and-implementation-plan.md` и соответствующие шаблоны/JS.
-9. Если задача по коду, читать только релевантные файлы: модели, сервисы, формы, views, шаблоны и тесты вокруг изменяемого сценария.
-10. Перед широким поиском по проекту сначала выполнить `graphify query "<вопрос>" --budget 500-1500`, если граф доступен и актуален.
+3. Если есть сомнение "на каком мы этапе" или риск повторить reschedule-loop, прочитать `docs/12-project-stage-audit-and-pivot-plan.md`.
+4. Если задача затрагивает расписание, групповые занятия, нескольких специалистов, кабинеты, вместимость или доступность специалистов, прочитать `docs/13-schedule-capacity-v2-contract.md`.
+5. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
+6. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
+7. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
+8. Если задача затрагивает терминальные статусы или перепроверку планов переноса, прочитать `docs/11-plan-terminal-status-contract.md`.
+9. Если задача затрагивает параллельную работу, прочитать `docs/08-parallel-agent-execution-plan.md`.
+10. Если задача UX/UI, прочитать `docs/03-ux-ui-and-implementation-plan.md` и соответствующие шаблоны/JS.
+11. Если задача по коду, читать только релевантные файлы: модели, сервисы, формы, views, шаблоны и тесты вокруг изменяемого сценария.
+12. Перед широким поиском по проекту сначала выполнить `graphify query "<вопрос>" --budget 500-1500`, если граф доступен и актуален.
 
 ## Skills и назначение
 
@@ -103,6 +107,10 @@ Browser QA - это проверка живого интерфейса в бра
 
 ## Текущее состояние восстановления
 
+- Stage audit 2026-07-14: добавлен `docs/12-project-stage-audit-and-pivot-plan.md`. Вывод: состояние проекта не потеряно, но свежие сессии локально зациклились на безопасных UX/control срезах вокруг persisted-планов переноса. Reschedule-блок считается достаточно закрытым для текущей фазы; новые микросрезы вокруг `/reschedule-plans/`, chain/step anchors, архивных подсказок, registry/work queue/dashboard сигналов не брать без конкретного бага, требования пользователя или нового утвержденного контракта. Следующий фокус переведен на `docs/13-schedule-capacity-v2-contract.md` по расписанию, групповым занятиям, кабинетам, вместимости и доступности специалистов.
+- Schedule-capacity contract 2026-07-14: добавлен `docs/13-schedule-capacity-v2-contract.md`. Первый кодовый срез после него - `schedule-capacity-validation-source`: единый источник истины для конфликтов получателей/специалистов/кабинетов и доступности, подключение к существующим формам/сервисам без миграций, если аудит не выявит реальную нехватку схемы.
+- Schedule validation foundation 2026-07-14: добавлен `operations/schedule_validation.py`, а `operations/forms.py`, `operations/services/scheduling.py`, `operations/services/rescheduling_plans.py` и `operations/views/scheduling_helpers.py` переключены на него. Это foundation-рефактор без изменения поведения и без миграций; добавлены focused `ScheduleValidationTests`; полный `pytest -q` прошел (`437 passed`). Graphify code-index обновлен до `3944` nodes / `14191` edges.
+- Model-level schedule validation 2026-07-14: `Appointment.clean()` переключен на общий schedule validation contract для snapshot-занятий. Существующие `AppointmentParticipant`/`AppointmentStaffAssignment` теперь являются источником правды для прямого `full_clean()`; legacy fallback применяется только если snapshot-строк нет. Полный `pytest -q` прошел (`440 passed`). Graphify code-index обновлен до `3950` nodes / `14206` edges.
 - Последний существенный срез: read-only схема атомарных цепочек переноса. Через миграцию `operations.0021_reschedule_chains` добавлены `AppointmentRescheduleChain`, `AppointmentRescheduleStepDependency`, nullable поля `chain/chain_position/chain_required` на `AppointmentRescheduleStep`, admin и auditlog registration. До этого реализовано закрытие альтернативных шагов после применения одного варианта, периодные read-only метрики `/reschedule-plans/`, применение одиночного шага с одноразовым разрешением кабинета (`AppointmentRoomOverride` с причиной и автором), read-only контроль реестра, ручной разбор `review_conflict`, `staff_absence` план без отмены занятий, ручное применение `approved`-шага, первый persisted-план переноса, связь `AppointmentConfirmation.reschedule_step`, отправка согласований и итог `confirmation_status/confirmation_summary`, а Stage 5 UX/UI закрыт финальным аудитом `data-label`.
 - Срез 2 по `docs/10-reschedule-chain-dependencies-contract.md` реализован: сервис `create_chain_for_steps()` создает chain/dependencies из выбранных `move`-шагов без применения расписания, проверяет cycle/mismatch и запрещает трактовать альтернативы одного `source_appointment` как цепочку. Detail плана показывает read-only блок цепочек.
 - Кодовая база уже содержит модель групповых занятий, участников, назначений специалистов, лимитов кабинетов, грантовых квот, payroll и preview-импорта.
@@ -135,9 +143,10 @@ Browser QA - это проверка живого интерфейса в бра
 
 ## Ближайшие задачи
 
-- Обновить semantic-часть Graphify, когда будет доступен LLM API key или локальный backend для docs/papers/images; code-only граф уже обновляется локально командой `graphify update . --no-cluster`.
-- Continue with the next non-DB operations slice after registry-level chain metrics, dashboard/work queue signals, and successful Browser QA. A separate manager chain dashboard is deferred until real usage shows a concrete gap. Do not change ledger/payroll or add migrations without a new approved contract.
-- Не начинать новые миграции без явного владельца БД и сверки с `docs/07-updated-domain-model-after-interview.md`, `docs/08-parallel-agent-execution-plan.md` и `docs/09-cascade-reschedule-domain-slice.md`.
+- Продолжить первый кодовый срез по `docs/13-schedule-capacity-v2-contract.md`: после foundation-рефактора и model-level validation сверить calendar drag-and-drop/API и подсказки занятых окон с `operations.schedule_validation`, особенно `operations/api.py::move_conflict_messages()`.
+- Не продолжать reschedule UX/control микросрезы без конкретного бага, требования пользователя или нового утвержденного контракта.
+- Не начинать новые миграции без явного владельца БД и сверки с `docs/07-updated-domain-model-after-interview.md`, `docs/08-parallel-agent-execution-plan.md` и `docs/12-project-stage-audit-and-pivot-plan.md`.
+- Обновить semantic-часть Graphify только если доступен LLM API key через переменную окружения; code-only граф можно обновлять локально командой `graphify update . --no-cluster`.
 
 ## Постоянные риски
 
