@@ -1308,3 +1308,10 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA не выполнялась: templates/views/JS не менялись, срез refactor-only.
 - Graphify code-index обновлен после financial-fact foundation: `graphify update . --no-cluster` переизвлек `140/140` code files и записал `3988` nodes / `14263` edges. Semantic docs extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
 - Следующий безопасный шаг: не расширять этот срез в модели/миграции. Если продолжать финансы, открыть следующий явный контракт для ledger summaries, payroll/grant UI или данных миграций; иначе вернуться к доменной карте приоритетов после интервью.
+
+## Обновление 2026-07-15: контракт financial-integrity-audit
+
+- Добавлен `docs/15-financial-integrity-audit-contract.md` как следующий безопасный финансовый контракт после `financial-fact-source-foundation`.
+- Цель следующего среза: read-only audit source для расхождений между `AppointmentChargeFact`, participant billing decisions и ledger, без автоисправлений, миграций, UI и изменений `billing.apply_decision()`.
+- Первый кодовый срез по контракту: `financial-integrity-audit-source` - новый сервис `operations/services/financial_integrity.py` с issue codes/severity/message и focused service tests.
+- Запрещено в этом срезе: `operations/models.py`, migration chain, auto-fix/backfill, payroll/grant semantics, templates/views и Excel write import.

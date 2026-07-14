@@ -26,6 +26,7 @@
 3. docs/12-project-stage-audit-and-pivot-plan.md
 4. docs/13-schedule-capacity-v2-contract.md
 5. docs/14-financial-fact-source-contract.md
+6. docs/15-financial-integrity-audit-contract.md
 
 Дальше читай только нужное для задачи:
 - БД, расписание, финансы, гранты, табели: docs/07-updated-domain-model-after-interview.md и docs/decisions/ADR-002-balance-accounts-ledger.md
@@ -40,7 +41,7 @@
 Если доступен Graphify и есть graphify-out/graph.json, сначала используй graphify query как индекс проекта. При расхождениях свежие docs/current-state.md, docs/07-updated-domain-model-after-interview.md, docs/12-project-stage-audit-and-pivot-plan.md, docs/13-schedule-capacity-v2-contract.md и код остаются источником правды.
 
 Следующая задача:
-Выбрать и зафиксировать следующий явный контракт перед любым расширением БД, ledger, payroll, grants, статусов или UI. Если продолжать финансы, сначала сделать короткий контракт для следующего вертикального среза после financial-fact-source-foundation; не менять operations/models.py, migration chain, billing.apply_decision semantics, статусы или UI без этого контракта.
+Реализовать первый кодовый срез по docs/15-financial-integrity-audit-contract.md: financial-integrity-audit-source. По умолчанию без миграций и UI: добавить read-only operations/services/financial_integrity.py, issue dataclass/codes для charge/participant/ledger расхождений, focused service tests и recovery docs. Не менять operations/models.py, migration chain, billing.apply_decision semantics, payroll/grant semantics, статусы или UI без отдельного контракта.
 
 Критические правила:
 - Не продолжать reschedule UX/control микросрезы без конкретного бага или нового требования.
