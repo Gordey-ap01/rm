@@ -1390,3 +1390,11 @@ SMTP для реальной промышленной рассылки еще н
 - Проверки: Ruff по затронутым Python-файлам прошел; `pytest operations/tests/test_views.py::WorkQueueViewTests -q` прошел (`17 passed`); `manage.py check --settings=rehab_center.settings_test` прошел; `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`; `pytest operations/tests/test_views.py -q` прошел (`235 passed`, 1 прежнее предупреждение django-tasks); полный `pytest -q --tb=short` прошел (`468 passed`, 1 прежнее предупреждение django-tasks).
 - Playwright Browser QA fallback прошел на desktop 1280x900 и mobile 390x900: dashboard metric/focus link, work queue financial section, issue code, service context, timestamp, appointment/account links, warning style, no console/page/request errors, no horizontal overflow. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-integrity-cache-reader`; QA data очищены, runserver на 8064 остановлен.
 - Graphify code-index обновлен после cached-reader среза: `graphify update . --no-cluster` записал `4112` nodes / `14639` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
+
+## Обновление 2026-07-15: контракт financial-integrity-triage-and-runner
+
+- Добавлен `docs/18-financial-integrity-triage-and-runner-contract.md` как следующий контракт перед любым triage/status UI или scheduled/background запуском financial integrity runner-а.
+- Контракт фиксирует инварианты: triage actions меняют только `FinancialIntegrityFinding`, UI не делает manual resolve active issue-ов, `ignored` скрывается из operational queue but remains updated by runner, reopen from ignored is explicit.
+- Первый безопасный путь без миграций: auditlog/admin visibility для `FinancialIntegrityCheckRun`/`FinancialIntegrityFinding`, затем triage service, затем work queue POST actions, затем finding detail, затем runner operations.
+- Event table `FinancialIntegrityFindingEvent` остается отдельным DB-owner срезом, если django-auditlog/current fields недостаточны для истории.
+- Код, модели, миграции, финансы, ledger, payroll, grants, statuses не менялись в этом контрактном docs-only срезе.

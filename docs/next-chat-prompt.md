@@ -26,6 +26,7 @@
 - DB-backed schema/runner по docs/17 выполнен: добавлены FinancialIntegrityCheckRun/FinancialIntegrityFinding, migration operations.0022, service `financial_integrity_checks.run_financial_integrity_check()`; service tests прошли: 135 passed; полный pytest прошел: 465 passed; Graphify code-index: 4102 nodes / 14589 edges. Dashboard/work queue еще читают синхронный audit, reader switch не начат.
 - Management command `run_financial_integrity_check` добавлена: запускает persisted financial integrity runner and prints summary counts; service tests прошли: 136 passed; полный pytest прошел: 466 passed; Graphify code-index: 4109 nodes / 14604 edges.
 - Financial-integrity cached reader выполнен: dashboard/work queue читают persisted active FinancialIntegrityFinding (`open`/`acknowledged`) вместо live `audit_appointments()` на GET; `resolved`/`ignored` скрыты. WorkQueueViewTests прошли: 17 passed; view tests: 235 passed; полный pytest: 468 passed; Playwright desktop/mobile Browser QA прошел; Graphify code-index: 4112 nodes / 14639 edges.
+- Добавлен docs/18-financial-integrity-triage-and-runner-contract.md: следующий контракт для triage actions, finding detail, auditlog/event choice and scheduled/manual runner policy. Код/миграции в этом docs-only срезе не менялись.
 
 Сначала обязательно прочитай:
 1. docs/project-recovery-manifest.md
@@ -36,6 +37,7 @@
 6. docs/15-financial-integrity-audit-contract.md
 7. docs/16-financial-integrity-surfacing-contract.md
 8. docs/17-financial-integrity-cache-and-triage-contract.md
+9. docs/18-financial-integrity-triage-and-runner-contract.md
 
 Дальше читай только нужное для задачи:
 - БД, расписание, финансы, гранты, табели: docs/07-updated-domain-model-after-interview.md и docs/decisions/ADR-002-balance-accounts-ledger.md
@@ -50,7 +52,7 @@
 Если доступен Graphify и есть graphify-out/graph.json, сначала используй graphify query как индекс проекта. При расхождениях свежие docs/current-state.md, docs/07-updated-domain-model-after-interview.md, docs/12-project-stage-audit-and-pivot-plan.md, docs/13-schedule-capacity-v2-contract.md и код остаются источником правды.
 
 Следующая задача:
-Не начинать заново `dashboard-work-queue-financial-integrity-signal`, `financial-integrity-cache-schema-and-runner`, `run_financial_integrity_check` или `financial-integrity-cache-reader`: они выполнены и проверены. Следующий вероятный срез: отдельный контракт для triage/status UI FinancialIntegrityFinding или scheduled/background invocation runner-а. Не менять billing.apply_decision semantics, payroll/grant semantics, статусы или auto-fix/backfill без отдельного контракта.
+Не начинать заново `dashboard-work-queue-financial-integrity-signal`, `financial-integrity-cache-schema-and-runner`, `run_financial_integrity_check`, `financial-integrity-cache-reader` или контракт docs/18: они выполнены. Следующий вероятный срез по docs/18: `financial-integrity-audit-admin-visibility` - зарегистрировать FinancialIntegrityCheckRun/Finding в auditlog/admin и покрыть тестами, без моделей/миграций/финансовых семантик. Не менять billing.apply_decision semantics, payroll/grant semantics, статусы appointment/payment или auto-fix/backfill без отдельного контракта.
 
 Критические правила:
 - Не продолжать reschedule UX/control микросрезы без конкретного бага или нового требования.
