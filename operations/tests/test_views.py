@@ -413,6 +413,122 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertContains(response, reverse("appointment_detail", args=[appointment.pk]))
         self.assertNotContains(response, "Исправить автоматически")
 
+    def test_work_queue_financial_integrity_can_acknowledge_finding(self):
+        self._financial_integrity_fixture()
+        finding = FinancialIntegrityFinding.objects.get()
+
+        response = self.client.post(
+            reverse("financial_integrity_finding_triage", args=[finding.pk]),
+            {
+                "action": "acknowledge",
+                "next": f"{reverse('work_queue')}#queue-financial-integrity",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], f"{reverse('work_queue')}#queue-financial-integrity")
+        finding.refresh_from_db()
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.ACKNOWLEDGED)
+        self.assertEqual(finding.triaged_by, self.admin)
+        self.assertIsNotNone(finding.triaged_at)
+
+    def test_work_queue_financial_integrity_can_return_acknowledged_finding_to_open(self):
+        self._financial_integrity_fixture()
+        finding = FinancialIntegrityFinding.objects.get()
+        finding.status = FinancialIntegrityFinding.Status.ACKNOWLEDGED
+        finding.triaged_by = self.admin
+        finding.triaged_at = timezone.now()
+        finding.save(update_fields=["status", "triaged_by", "triaged_at", "updated_at"])
+
+        response = self.client.post(
+            reverse("financial_integrity_finding_triage", args=[finding.pk]),
+            {
+                "action": "return_to_open",
+                "next": f"{reverse('work_queue')}#queue-financial-integrity",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        finding.refresh_from_db()
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
+
+    def test_work_queue_financial_integrity_ignore_requires_note(self):
+        self._financial_integrity_fixture()
+        finding = FinancialIntegrityFinding.objects.get()
+
+        response = self.client.post(
+            reverse("financial_integrity_finding_triage", args=[finding.pk]),
+            {
+                "action": "ignore",
+                "note": "   ",
+                "next": f"{reverse('work_queue')}#queue-financial-integrity",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        finding.refresh_from_db()
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
+        self.assertEqual(finding.triage_note, "")
+        queue_response = self.client.get(reverse("work_queue"))
+        self.assertEqual(queue_response.context["financial_integrity_issue_count"], 1)
+        self.assertContains(queue_response, "stale_debit_ledger_without_charge_fact")
+
+    def test_work_queue_financial_integrity_ignore_hides_finding_from_queue(self):
+        self._financial_integrity_fixture()
+        finding = FinancialIntegrityFinding.objects.get()
+
+        response = self.client.post(
+            reverse("financial_integrity_finding_triage", args=[finding.pk]),
+            {
+                "action": "ignore",
+                "note": "Проверено вручную, корректировка не нужна.",
+                "next": f"{reverse('work_queue')}#queue-financial-integrity",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        finding.refresh_from_db()
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.IGNORED)
+        self.assertEqual(finding.triage_note, "Проверено вручную, корректировка не нужна.")
+        queue_response = self.client.get(reverse("work_queue"))
+        self.assertEqual(queue_response.context["financial_integrity_issue_count"], 0)
+        self.assertNotContains(queue_response, "stale_debit_ledger_without_charge_fact")
+
+    def test_work_queue_financial_integrity_triage_rejects_external_next(self):
+        self._financial_integrity_fixture()
+        finding = FinancialIntegrityFinding.objects.get()
+
+        response = self.client.post(
+            reverse("financial_integrity_finding_triage", args=[finding.pk]),
+            {
+                "action": "acknowledge",
+                "next": "https://evil.example/phish",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], f"{reverse('work_queue')}#queue-financial-integrity")
+        finding.refresh_from_db()
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.ACKNOWLEDGED)
+
+    def test_work_queue_financial_integrity_triage_requires_admin(self):
+        self._financial_integrity_fixture()
+        finding = FinancialIntegrityFinding.objects.get()
+        user = User.objects.create_user("not-admin", password="x")
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("financial_integrity_finding_triage", args=[finding.pk]),
+            {
+                "action": "acknowledge",
+                "next": f"{reverse('work_queue')}#queue-financial-integrity",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        finding.refresh_from_db()
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
+
     def test_group_billing_task_links_to_participant_decisions(self):
         day = timezone.localdate() - timedelta(days=1)
         start = _local_dt(day, time(10, 0))

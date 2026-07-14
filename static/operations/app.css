@@ -1417,6 +1417,17 @@ th {
   display: inline-flex;
 }
 
+.financial-triage-form {
+  align-items: center;
+  gap: 6px;
+}
+
+.triage-note-input {
+  width: min(220px, 42vw);
+  min-height: 34px;
+  padding: 7px 10px;
+}
+
 .inline-form,
 .form,
 .mark-form {

@@ -56,6 +56,11 @@ urlpatterns = [
         name="staff_compensation_rule_toggle",
     ),
     path("work-queue/", views.work_queue, name="work_queue"),
+    path(
+        "financial-integrity/findings/<int:pk>/triage/",
+        views.financial_integrity_finding_triage,
+        name="financial_integrity_finding_triage",
+    ),
     path("balances/", views.balances, name="balances"),
     path("recipients/", views.recipient_list, name="recipient_list"),
     path("imports/recipients/", views.recipient_import_preview, name="recipient_import_preview"),

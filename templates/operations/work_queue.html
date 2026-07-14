@@ -141,6 +141,30 @@
               {% if finding.account_id %}
                 <a class="button-link secondary small-action" href="{% url 'balance_account_edit' finding.account_id %}">Открыть счет</a>
               {% endif %}
+              {% if finding.status == "open" %}
+                <form method="post" action="{% url 'financial_integrity_finding_triage' finding.pk %}" class="mini-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ financial_integrity_next_url }}">
+                  <input type="hidden" name="action" value="acknowledge">
+                  <button type="submit" class="small-action">Принять</button>
+                </form>
+              {% elif finding.status == "acknowledged" %}
+                <form method="post" action="{% url 'financial_integrity_finding_triage' finding.pk %}" class="mini-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ financial_integrity_next_url }}">
+                  <input type="hidden" name="action" value="return_to_open">
+                  <button type="submit" class="secondary-button small-action">Вернуть</button>
+                </form>
+              {% endif %}
+              {% if finding.status == "open" or finding.status == "acknowledged" %}
+                <form method="post" action="{% url 'financial_integrity_finding_triage' finding.pk %}" class="mini-form financial-triage-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ financial_integrity_next_url }}">
+                  <input type="hidden" name="action" value="ignore">
+                  <input class="triage-note-input" type="text" name="note" placeholder="Причина" aria-label="Причина игнорирования" required>
+                  <button type="submit" class="secondary-button small-action">Игнорировать</button>
+                </form>
+              {% endif %}
             </div>
           </div>
         {% endwith %}

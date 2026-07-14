@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Case, Count, IntegerField, Q, Value, When
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from operations.forms import default_charge_amount
 from operations.models import (
@@ -22,9 +24,12 @@ from operations.models import (
     FinancialIntegrityFinding,
     TimeOffRequest,
 )
-from operations.services import rescheduling_plans as plan_svc
+from operations.services import (
+    financial_integrity_triage as financial_integrity_triage_svc,
+    rescheduling_plans as plan_svc,
+)
 
-from ._common import is_admin_user
+from ._common import is_admin_user, safe_next_url
 
 
 def needs_billing_queryset():
@@ -396,6 +401,57 @@ def financial_integrity_finding_rows(findings_queryset) -> list[dict[str, object
         }
         for finding in findings_queryset[:FINANCIAL_INTEGRITY_DISPLAY_LIMIT]
     ]
+
+
+def financial_integrity_finding_triage_fallback_url() -> str:
+    return f"{reverse('work_queue')}#queue-financial-integrity"
+
+
+@login_required
+@user_passes_test(is_admin_user)
+@require_POST
+def financial_integrity_finding_triage(request, pk: int):
+    finding = get_object_or_404(FinancialIntegrityFinding, pk=pk)
+    action = request.POST.get("action", "")
+    note = request.POST.get("note", "")
+
+    try:
+        if action == "acknowledge":
+            financial_integrity_triage_svc.acknowledge_finding(
+                finding,
+                actor=request.user,
+                note=note,
+            )
+            messages.success(request, "Финансовое расхождение принято в работу.")
+        elif action == "return_to_open":
+            financial_integrity_triage_svc.return_finding_to_open(
+                finding,
+                actor=request.user,
+                note=note,
+            )
+            messages.success(request, "Финансовое расхождение возвращено в очередь.")
+        elif action == "ignore":
+            financial_integrity_triage_svc.ignore_finding(
+                finding,
+                actor=request.user,
+                note=note,
+            )
+            messages.success(request, "Финансовое расхождение скрыто из очереди.")
+        elif action == "reopen":
+            financial_integrity_triage_svc.reopen_finding(
+                finding,
+                actor=request.user,
+                note=note,
+            )
+            messages.success(request, "Финансовое расхождение возвращено в очередь.")
+        else:
+            raise financial_integrity_triage_svc.FinancialIntegrityTriageError(
+                "Неизвестное действие разбора."
+            )
+    except financial_integrity_triage_svc.FinancialIntegrityTriageError as exc:
+        messages.error(request, f"Действие не выполнено: {exc}")
+
+    return redirect(safe_next_url(request, financial_integrity_finding_triage_fallback_url()))
 
 
 def quick_billing_account(appointment):
@@ -882,6 +938,7 @@ def work_queue(request):
             "financial_integrity_error_count": financial_summary["errors"],
             "financial_integrity_warning_count": financial_summary["warnings"],
             "financial_integrity_info_count": financial_summary["info"],
+            "financial_integrity_next_url": f"{request.get_full_path()}#queue-financial-integrity",
             "confirmation_tasks": confirmation_tasks,
             "time_off_requests": time_off_requests,
             "reschedule_chains": reschedule_chains,

@@ -19,9 +19,7 @@
 
 Не выполнено:
 
-- triage POST actions;
 - finding detail page;
-- auditlog/admin registration для `FinancialIntegrityCheckRun`/`FinancialIntegrityFinding`;
 - event table for status history;
 - scheduled/background invocation;
 - manager trend report.
@@ -72,6 +70,32 @@
 - `graphify update . --no-cluster` обновил code-index до `4161` nodes / `14938` edges; semantic extraction не запускалась.
 
 Следующий кодовый срез по контракту: `financial-integrity-work-queue-triage-actions`.
+
+## Выполнение 2026-07-15: work queue triage actions
+
+Выполнен кодовый срез `financial-integrity-work-queue-triage-actions`.
+
+- В `#queue-financial-integrity` добавлены POST-действия для active findings:
+  - `open -> acknowledged` через кнопку `Принять`;
+  - `acknowledged -> open` через кнопку `Вернуть`;
+  - `open/acknowledged -> ignored` через кнопку `Игнорировать` с обязательной причиной.
+- Добавлен route `financial_integrity_finding_triage` и view, который вызывает только `operations.services.financial_integrity_triage`.
+- POST использует CSRF, текущий staff/admin permission через `is_admin_user`, safe `next` через `safe_next_url` и возвращает администратора в `#queue-financial-integrity`.
+- Ошибочные действия показывают message и не меняют finding.
+- `ignored` скрывается из dashboard/work queue через уже существующий active-reader (`open`, `acknowledged`).
+- Модели, миграции, runner semantics, billing/ledger/payroll/grants/reports/statuses не менялись.
+
+Проверки:
+
+- `ruff check operations/views/dashboard.py operations/urls.py operations/views/__init__.py operations/tests/test_views.py` прошел;
+- `pytest operations/tests/test_views.py::WorkQueueViewTests -q` прошел (`23 passed`);
+- `manage.py check --settings=rehab_center.settings_test` прошел;
+- `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`;
+- полный `pytest -q --tb=short` прошел (`484 passed`, 1 прежнее предупреждение django-tasks);
+- Playwright Browser QA fallback прошел на desktop 1280x900 и mobile 390x900: open finding показывает `Принять`/`Игнорировать`, acknowledge меняет статус и показывает `Вернуть`, ignore скрывает только ignored finding, mobile card не имеет horizontal overflow, console/page errors нет. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-triage-actions`; QA data очищены, runserver на 8065 остановлен.
+- `graphify update . --no-cluster` обновил code-index до `4171` nodes / `14961` edges; semantic extraction не запускалась.
+
+Следующий кодовый срез по контракту: `financial-integrity-finding-detail`.
 
 ## Инварианты
 

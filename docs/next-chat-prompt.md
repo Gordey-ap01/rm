@@ -29,6 +29,7 @@
 - Добавлен docs/18-financial-integrity-triage-and-runner-contract.md: следующий контракт для triage actions, finding detail, auditlog/event choice and scheduled/manual runner policy. Код/миграции в этом docs-only срезе не менялись.
 - Financial-integrity audit/admin visibility выполнен: FinancialIntegrityCheckRun/Finding зарегистрированы в auditlog registry and Django admin; auditlog tests прошли: 6 passed; полный pytest: 470 passed; миграций нет; Graphify code-index: 4137 nodes / 14844 edges.
 - Financial-integrity triage service выполнен: добавлен operations/services/financial_integrity_triage.py с actions acknowledge/return_to_open/ignore/reopen; service tests прошли: 144 passed; полный pytest: 478 passed; миграций нет; Graphify code-index: 4161 nodes / 14938 edges.
+- Financial-integrity work queue triage actions выполнен: `/work-queue/#queue-financial-integrity` имеет POST actions `Принять`, `Вернуть`, `Игнорировать` через triage service, CSRF/staff/safe-next checks; WorkQueueViewTests прошли: 23 passed; полный pytest: 484 passed; Playwright desktop/mobile Browser QA прошел; миграций нет; Graphify code-index: 4171 nodes / 14961 edges.
 
 Сначала обязательно прочитай:
 1. docs/project-recovery-manifest.md
@@ -54,7 +55,7 @@
 Если доступен Graphify и есть graphify-out/graph.json, сначала используй graphify query как индекс проекта. При расхождениях свежие docs/current-state.md, docs/07-updated-domain-model-after-interview.md, docs/12-project-stage-audit-and-pivot-plan.md, docs/13-schedule-capacity-v2-contract.md и код остаются источником правды.
 
 Следующая задача:
-Не начинать заново `dashboard-work-queue-financial-integrity-signal`, `financial-integrity-cache-schema-and-runner`, `run_financial_integrity_check`, `financial-integrity-cache-reader`, контракт docs/18, `financial-integrity-audit-admin-visibility` или `financial-integrity-triage-service`: они выполнены. Следующий вероятный срез по docs/18: `financial-integrity-work-queue-triage-actions` - POST actions в work queue через triage service, с CSRF/permission/safe-next tests and Browser QA, без моделей, миграций и финансовых семантик. Не менять billing.apply_decision semantics, payroll/grant semantics, статусы appointment/payment или auto-fix/backfill без отдельного контракта.
+Не начинать заново `dashboard-work-queue-financial-integrity-signal`, `financial-integrity-cache-schema-and-runner`, `run_financial_integrity_check`, `financial-integrity-cache-reader`, контракт docs/18, `financial-integrity-audit-admin-visibility`, `financial-integrity-triage-service` или `financial-integrity-work-queue-triage-actions`: они выполнены. Следующий вероятный срез по docs/18: `financial-integrity-finding-detail` - detail page для finding-а с source links, denormalized snapshot, triage state, safe actions and possibly scoped recheck. Не менять billing.apply_decision semantics, payroll/grant semantics, статусы appointment/payment, runner scheduling, event table или auto-fix/backfill без отдельного контракта и одного DB owner для миграций.
 
 Критические правила:
 - Не продолжать reschedule UX/control микросрезы без конкретного бага или нового требования.
