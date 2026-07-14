@@ -155,7 +155,10 @@
           {% for step in chain.ordered_steps %}
             <tr>
               <td data-label="Порядок">{{ step.chain_position }}</td>
-              <td data-label="Шаг">{{ step.position }} · {{ step.get_status_display }}</td>
+              <td data-label="Шаг">
+                <a class="small-action" href="#step-{{ step.pk }}">Шаг {{ step.position }}</a>
+                <div class="muted">{{ step.get_status_display }}</div>
+              </td>
               <td data-label="Исходное занятие">
                 <a href="{% url 'appointment_detail' step.source_appointment.pk %}">
                   {{ step.source_appointment }}

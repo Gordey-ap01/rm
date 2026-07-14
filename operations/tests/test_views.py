@@ -5321,6 +5321,8 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertContains(response, f'id="chain-{chain.pk}"')
         self.assertContains(response, 'data-label="Порядок"')
         self.assertContains(response, 'data-label="Предшественник"')
+        self.assertContains(response, f'href="#step-{first.pk}"')
+        self.assertContains(response, f'href="#step-{second.pk}"')
         self.assertContains(response, "Атомарно все или ничего")
         self.assertNotContains(response, "Применить цепочку")
 
