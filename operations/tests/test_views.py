@@ -28,6 +28,7 @@ from operations.models import (
     Document,
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
+    FinancialIntegrityFindingEvent,
     FundingServiceQuota,
     FundingSource,
     FundingStaffAllocation,
@@ -530,6 +531,13 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertEqual(run.requested_by, self.admin)
         self.assertEqual(run.candidate_count, 1)
         self.assertEqual(run.issue_count, 1)
+        event = FinancialIntegrityFindingEvent.objects.latest("pk")
+        self.assertEqual(event.event_type, FinancialIntegrityFindingEvent.EventType.SCOPED_RECHECK)
+        self.assertEqual(event.finding, finding)
+        self.assertEqual(event.run, run)
+        self.assertEqual(event.actor, self.admin)
+        self.assertEqual(event.status_from, FinancialIntegrityFinding.Status.OPEN)
+        self.assertEqual(event.status_to, FinancialIntegrityFinding.Status.OPEN)
         finding.refresh_from_db()
         self.assertEqual(finding.last_seen_run, run)
         self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)

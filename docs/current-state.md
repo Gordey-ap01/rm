@@ -1464,3 +1464,16 @@ SMTP для реальной промышленной рассылки еще н
 - Код, модели, миграции, runner, billing/ledger/payroll/grant/report/status semantics не менялись.
 - Graphify code-index обновлен после docs/19: `graphify update . --no-cluster` записал `4205` nodes / `15057` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
 - Следующий безопасный шаг по этой линии: DB-owner Slice 1 из docs/19, если утверждено продолжать именно event table; иначе вернуться к более приоритетной доменной зоне.
+
+## Обновление 2026-07-15: financial-integrity event schema/service
+
+- Выполнен DB-owner Slice 1 по `docs/19-financial-integrity-history-and-manager-report-contract.md`.
+- Добавлены `FinancialIntegrityFindingEvent`, migration `operations.0023_financialintegrityfindingevent`, Django admin and auditlog registration.
+- Добавлен `operations.services.financial_integrity_events.record_finding_event()` с idempotent `event_key`, snapshot-полями и nullable links to finding/run/actor.
+- Runner теперь пишет typed events: `created`, `resolved`, `reopened`. Повторное обнаружение того же active finding не пишет noisy `seen_again`, а только обновляет `last_seen_at/last_seen_run`.
+- Triage service пишет typed events: `acknowledged`, `returned_to_open`, `ignored`, `reopened`; invalid transitions и ignore без note не создают событий.
+- Scoped appointment recheck с detail page пишет `scoped_recheck` event после успешного POST-run.
+- No billing/ledger/payroll/grant/report/status semantic changes, no auto-fix/backfill, no manager report UI or timeline rendering yet.
+- Проверки: Ruff touched Python/migration прошел; service tests `145 passed`; auditlog tests `6 passed`; `WorkQueueViewTests` `30 passed`; `manage.py check` прошел; migration dry-run показал `No changes detected`; полный `pytest -q --tb=short` прошел (`492 passed`, 1 прежнее предупреждение django-tasks).
+- Graphify code-index обновлен после event schema/service: `graphify update . --no-cluster` записал `4222` nodes / `15254` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
+- Следующий безопасный срез по docs/19: detail timeline UI на существующей finding detail page или read-only manager trend report; не начинать оба одновременно.

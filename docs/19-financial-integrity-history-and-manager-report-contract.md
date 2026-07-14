@@ -2,7 +2,7 @@
 
 Дата: 2026-07-15
 
-Статус: draft, docs-only. Код, модели и миграции в этом срезе не менялись.
+Статус: accepted for current epic. Docs-only контракт создан, DB-owner Slice 1 выполнен; detail timeline UI и manager trend report еще не реализованы.
 
 Назначение: подготовить безопасный следующий этап после `financial-integrity-runner-operations`: человекочитаемую историю разбора financial integrity findings и read-only отчет руководителя по динамике финансовых расхождений. Контракт нужен до любых изменений `operations/models.py`, migration chain, runner-а, triage service или UI отчета.
 
@@ -70,6 +70,36 @@ Indexes:
 - `["status_to", "-event_at"]` for resolved/ignored/reopened trends.
 
 Do not add a separate aggregate table in the first migration.
+
+## Выполнение 2026-07-15: event schema/service slice
+
+Выполнен DB-owner Slice 1 без UI-отчета и без timeline rendering.
+
+- Добавлена модель `FinancialIntegrityFindingEvent` и миграция `operations.0023_financialintegrityfindingevent`.
+- Event table append-only на уровне сервиса: `event_key`, `event_type`, `event_at`, nullable links to finding/run/actor, status transition fields, code/severity/issue snapshots, note and `source_snapshot`.
+- Добавлен service `operations.services.financial_integrity_events.record_finding_event()` с idempotency через `event_key`.
+- `FinancialIntegrityFindingEvent` зарегистрирован в Django admin and auditlog.
+- Runner пишет events внутри transaction:
+  - `created` для нового finding;
+  - `resolved` при исчезновении active finding из проверки;
+  - `reopened` при повторном появлении previously resolved finding.
+- Triage service пишет events внутри transaction для `acknowledged`, `returned_to_open`, `ignored`, `reopened`.
+- Scoped appointment recheck на detail page пишет `scoped_recheck` event after successful POST run.
+- No noisy `seen_again` event добавлен не был; repeated check of same active finding обновляет `last_seen_at/last_seen_run`, но не раздувает event table.
+- Модели финансовых фактов, billing/ledger/payroll/grants/reports/status semantics, auto-fix/backfill и manager report UI не менялись.
+
+Проверки:
+
+- `ruff check` по затронутым Python files and migration прошел;
+- `pytest operations/tests/test_services.py -q --tb=short` прошел (`145 passed`);
+- `pytest operations/tests/test_auditlog.py -q` прошел (`6 passed`);
+- `pytest operations/tests/test_views.py::WorkQueueViewTests -q` прошел (`30 passed`);
+- `manage.py check --settings=rehab_center.settings_test` прошел;
+- `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`;
+- полный `pytest -q --tb=short` прошел (`492 passed`, 1 прежнее предупреждение django-tasks).
+- `graphify update . --no-cluster` обновил code-index до `4222` nodes / `15254` edges; semantic extraction не запускалась.
+
+Следующий срез по этому контракту: detail timeline UI на existing finding detail page, либо read-only manager trend report. Не начинать оба одновременно; UI worker может стартовать только после этого DB-owner commit.
 
 ## Event Recording Rules
 

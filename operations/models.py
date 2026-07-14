@@ -2360,6 +2360,69 @@ class FinancialIntegrityFinding(TimeStampedModel):
         return f"{self.code} / {self.get_status_display()}"
 
 
+class FinancialIntegrityFindingEvent(TimeStampedModel):
+    class EventType(models.TextChoices):
+        CREATED = "created", "Создано"
+        ACKNOWLEDGED = "acknowledged", "Принято в работу"
+        RETURNED_TO_OPEN = "returned_to_open", "Возвращено в очередь"
+        IGNORED = "ignored", "Скрыто из очереди"
+        REOPENED = "reopened", "Открыто повторно"
+        RESOLVED = "resolved", "Решено"
+        SCOPED_RECHECK = "scoped_recheck", "Точечная перепроверка"
+        NOTE_ADDED = "note_added", "Добавлена заметка"
+
+    finding = models.ForeignKey(
+        FinancialIntegrityFinding,
+        verbose_name="финансовое расхождение",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="events",
+    )
+    event_key = models.CharField("ключ события", max_length=64, unique=True)
+    event_type = models.CharField("тип события", max_length=40, choices=EventType.choices)
+    event_at = models.DateTimeField("время события", default=timezone.now, db_index=True)
+    run = models.ForeignKey(
+        FinancialIntegrityCheckRun,
+        verbose_name="запуск проверки",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="finding_events",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="пользователь",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="financial_integrity_events",
+    )
+    status_from = models.CharField("статус был", max_length=30, blank=True)
+    status_to = models.CharField("статус стал", max_length=30, blank=True)
+    severity = models.CharField("важность", max_length=20, blank=True)
+    code = models.CharField("код расхождения", max_length=100, blank=True)
+    issue_key = models.CharField("ключ расхождения", max_length=64, blank=True)
+    message = models.TextField("сообщение", blank=True)
+    note = models.TextField("заметка", blank=True)
+    source_snapshot = models.JSONField("snapshot источников", default=dict, blank=True)
+
+    class Meta:
+        verbose_name = "событие финансового расхождения"
+        verbose_name_plural = "события финансовых расхождений"
+        ordering = ["-event_at", "-pk"]
+        indexes = [
+            models.Index(fields=["finding", "-event_at"]),
+            models.Index(fields=["event_type", "-event_at"]),
+            models.Index(fields=["run", "event_type"]),
+            models.Index(fields=["code", "-event_at"]),
+            models.Index(fields=["status_to", "-event_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_event_type_display()} / {self.code or self.issue_key}"
+
+
 class PayrollAccrual(TimeStampedModel):
     class Status(models.TextChoices):
         DRAFT = "draft", "Черновик"

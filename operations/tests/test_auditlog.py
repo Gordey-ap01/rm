@@ -18,6 +18,7 @@ from operations.models import (
     Child,
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
+    FinancialIntegrityFindingEvent,
     FundingSource,
     GrantRecipientAllocation,
     LedgerEntry,
@@ -80,6 +81,7 @@ class AuditLogTests(TestCase):
             FundingSource,
             FinancialIntegrityCheckRun,
             FinancialIntegrityFinding,
+            FinancialIntegrityFindingEvent,
             GrantRecipientAllocation,
             LedgerEntry,
             PayrollAccrual,
@@ -91,6 +93,7 @@ class AuditLogTests(TestCase):
     def test_financial_integrity_models_registered_in_admin(self):
         self.assertIn(FinancialIntegrityCheckRun, admin.site._registry)
         self.assertIn(FinancialIntegrityFinding, admin.site._registry)
+        self.assertIn(FinancialIntegrityFindingEvent, admin.site._registry)
 
     def test_financial_integrity_finding_update_is_logged(self):
         now = timezone.now()

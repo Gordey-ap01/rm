@@ -31,6 +31,7 @@ from operations.models import (
     Child,
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
+    FinancialIntegrityFindingEvent,
     FundingServiceQuota,
     FundingSource,
     FundingStaffAllocation,
@@ -55,6 +56,7 @@ from operations.services import (
     financial_facts as financial_facts_svc,
     financial_integrity as financial_integrity_svc,
     financial_integrity_checks as financial_integrity_checks_svc,
+    financial_integrity_events as financial_integrity_events_svc,
     financial_integrity_triage as financial_integrity_triage_svc,
     import_preview as import_preview_svc,
     notifications as notif_svc,
@@ -3568,6 +3570,16 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(finding.payload["appointment_id"], appointment.pk)
         self.assertEqual(finding.payload["participant_id"], participant.pk)
         self.assertTrue(finding.participant_name)
+        event = FinancialIntegrityFindingEvent.objects.get()
+        self.assertEqual(event.finding, finding)
+        self.assertEqual(event.event_type, FinancialIntegrityFindingEvent.EventType.CREATED)
+        self.assertEqual(event.run, run)
+        self.assertEqual(event.status_from, "")
+        self.assertEqual(event.status_to, FinancialIntegrityFinding.Status.OPEN)
+        self.assertEqual(event.code, finding.code)
+        self.assertEqual(event.issue_key, finding.issue_key)
+        self.assertEqual(event.source_snapshot["appointment_id"], appointment.pk)
+        self.assertEqual(event.source_snapshot["appointment_participant_id"], participant.pk)
 
     def test_financial_integrity_check_run_does_not_duplicate_same_finding(self):
         appointment = Appointment.objects.get(staff_member=self.staff_a)
@@ -3588,6 +3600,7 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
 
         finding = FinancialIntegrityFinding.objects.get()
         self.assertEqual(FinancialIntegrityFinding.objects.count(), 1)
+        self.assertEqual(FinancialIntegrityFindingEvent.objects.count(), 1)
         self.assertEqual(finding.first_seen_run, first_run)
         self.assertEqual(finding.last_seen_run, second_run)
 
@@ -3617,6 +3630,12 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(finding.status, FinancialIntegrityFinding.Status.RESOLVED)
         self.assertEqual(finding.resolved_run, resolve_run)
         self.assertIsNotNone(finding.resolved_at)
+        event = FinancialIntegrityFindingEvent.objects.latest("pk")
+        self.assertEqual(event.event_type, FinancialIntegrityFindingEvent.EventType.RESOLVED)
+        self.assertEqual(event.finding, finding)
+        self.assertEqual(event.run, resolve_run)
+        self.assertEqual(event.status_from, FinancialIntegrityFinding.Status.OPEN)
+        self.assertEqual(event.status_to, FinancialIntegrityFinding.Status.RESOLVED)
 
     def test_financial_integrity_check_run_reopens_resolved_finding(self):
         appointment = Appointment.objects.get(staff_member=self.staff_a)
@@ -3653,6 +3672,12 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(finding.last_seen_run, reopen_run)
         self.assertIsNone(finding.resolved_at)
         self.assertIsNone(finding.resolved_run)
+        event = FinancialIntegrityFindingEvent.objects.latest("pk")
+        self.assertEqual(event.event_type, FinancialIntegrityFindingEvent.EventType.REOPENED)
+        self.assertEqual(event.finding, finding)
+        self.assertEqual(event.run, reopen_run)
+        self.assertEqual(event.status_from, FinancialIntegrityFinding.Status.RESOLVED)
+        self.assertEqual(event.status_to, FinancialIntegrityFinding.Status.OPEN)
 
     def test_financial_integrity_check_run_counts_severities(self):
         appointment = Appointment.objects.get(staff_member=self.staff_a)
@@ -3716,6 +3741,34 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertIn("Financial integrity check", stdout.getvalue())
         self.assertIn("1 issues", stdout.getvalue())
 
+    def test_financial_integrity_event_service_is_idempotent(self):
+        finding = self._financial_integrity_finding()
+        event_at = timezone.now()
+
+        first_event = financial_integrity_events_svc.record_finding_event(
+            finding,
+            event_type=FinancialIntegrityFindingEvent.EventType.NOTE_ADDED,
+            actor=self.user,
+            status_from=finding.status,
+            status_to=finding.status,
+            note="Same logical event",
+            event_at=event_at,
+        )
+        second_event = financial_integrity_events_svc.record_finding_event(
+            finding,
+            event_type=FinancialIntegrityFindingEvent.EventType.NOTE_ADDED,
+            actor=self.user,
+            status_from=finding.status,
+            status_to=finding.status,
+            note="Same logical event",
+            event_at=event_at,
+        )
+
+        self.assertEqual(first_event.pk, second_event.pk)
+        self.assertEqual(FinancialIntegrityFindingEvent.objects.count(), 1)
+        self.assertEqual(first_event.actor, self.user)
+        self.assertEqual(first_event.issue_key, finding.issue_key)
+
     def test_financial_integrity_triage_acknowledges_open_finding(self):
         finding = self._financial_integrity_finding()
 
@@ -3730,6 +3783,13 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(finding.triage_note, "Review started")
         self.assertEqual(finding.triaged_by, self.user)
         self.assertIsNotNone(finding.triaged_at)
+        event = FinancialIntegrityFindingEvent.objects.get()
+        self.assertEqual(event.event_type, FinancialIntegrityFindingEvent.EventType.ACKNOWLEDGED)
+        self.assertEqual(event.finding, finding)
+        self.assertEqual(event.actor, self.user)
+        self.assertEqual(event.status_from, FinancialIntegrityFinding.Status.OPEN)
+        self.assertEqual(event.status_to, FinancialIntegrityFinding.Status.ACKNOWLEDGED)
+        self.assertEqual(event.note, "Review started")
 
     def test_financial_integrity_triage_returns_acknowledged_finding_to_open(self):
         finding = self._financial_integrity_finding(
@@ -3746,6 +3806,10 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
         self.assertEqual(finding.triage_note, "Needs queue attention again.")
         self.assertEqual(finding.triaged_by, self.user)
+        event = FinancialIntegrityFindingEvent.objects.get()
+        self.assertEqual(event.event_type, FinancialIntegrityFindingEvent.EventType.RETURNED_TO_OPEN)
+        self.assertEqual(event.status_from, FinancialIntegrityFinding.Status.ACKNOWLEDGED)
+        self.assertEqual(event.status_to, FinancialIntegrityFinding.Status.OPEN)
 
     def test_financial_integrity_triage_ignore_requires_note(self):
         finding = self._financial_integrity_finding()
@@ -3760,6 +3824,7 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         finding.refresh_from_db()
         self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
         self.assertEqual(finding.triage_note, "")
+        self.assertFalse(FinancialIntegrityFindingEvent.objects.exists())
 
     def test_financial_integrity_triage_ignores_active_finding(self):
         finding = self._financial_integrity_finding(
@@ -3776,6 +3841,11 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(finding.status, FinancialIntegrityFinding.Status.IGNORED)
         self.assertEqual(finding.triage_note, "Duplicate known data import issue.")
         self.assertEqual(finding.triaged_by, self.user)
+        event = FinancialIntegrityFindingEvent.objects.get()
+        self.assertEqual(event.event_type, FinancialIntegrityFindingEvent.EventType.IGNORED)
+        self.assertEqual(event.status_from, FinancialIntegrityFinding.Status.ACKNOWLEDGED)
+        self.assertEqual(event.status_to, FinancialIntegrityFinding.Status.IGNORED)
+        self.assertEqual(event.note, "Duplicate known data import issue.")
 
     def test_financial_integrity_triage_reopens_ignored_finding(self):
         finding = self._financial_integrity_finding(
@@ -3792,6 +3862,10 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
         self.assertEqual(finding.triage_note, "Needs review again.")
         self.assertEqual(finding.triaged_by, self.user)
+        event = FinancialIntegrityFindingEvent.objects.get()
+        self.assertEqual(event.event_type, FinancialIntegrityFindingEvent.EventType.REOPENED)
+        self.assertEqual(event.status_from, FinancialIntegrityFinding.Status.IGNORED)
+        self.assertEqual(event.status_to, FinancialIntegrityFinding.Status.OPEN)
 
     def test_financial_integrity_triage_reopens_resolved_finding_and_clears_resolution(self):
         run = FinancialIntegrityCheckRun.objects.create(
@@ -3812,6 +3886,10 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
         self.assertIsNone(finding.resolved_at)
         self.assertIsNone(finding.resolved_run)
+        event = FinancialIntegrityFindingEvent.objects.get()
+        self.assertEqual(event.event_type, FinancialIntegrityFindingEvent.EventType.REOPENED)
+        self.assertEqual(event.status_from, FinancialIntegrityFinding.Status.RESOLVED)
+        self.assertEqual(event.status_to, FinancialIntegrityFinding.Status.OPEN)
 
     def test_financial_integrity_triage_rejects_invalid_transition(self):
         finding = self._financial_integrity_finding(
@@ -3824,6 +3902,7 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         finding.refresh_from_db()
         self.assertEqual(finding.status, FinancialIntegrityFinding.Status.RESOLVED)
         self.assertIsNone(finding.triaged_by)
+        self.assertFalse(FinancialIntegrityFindingEvent.objects.exists())
 
     def test_financial_integrity_triage_requires_actor(self):
         finding = self._financial_integrity_finding()
@@ -3833,6 +3912,7 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
 
         finding.refresh_from_db()
         self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
+        self.assertFalse(FinancialIntegrityFindingEvent.objects.exists())
 
     def _single_issue(
         self,

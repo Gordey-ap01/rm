@@ -12,9 +12,13 @@ from operations.models import (
     Appointment,
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
+    FinancialIntegrityFindingEvent,
     LedgerEntry,
 )
-from operations.services import financial_integrity
+from operations.services import (
+    financial_integrity,
+    financial_integrity_events as financial_integrity_events_svc,
+)
 
 
 def financial_integrity_candidate_queryset():
@@ -133,8 +137,16 @@ def _upsert_finding(
         },
     )
     if created:
+        financial_integrity_events_svc.record_finding_event(
+            finding,
+            event_type=FinancialIntegrityFindingEvent.EventType.CREATED,
+            run=run,
+            status_to=finding.status,
+            event_at=seen_at,
+        )
         return finding
 
+    previous_status = finding.status
     update_fields = [
         "code",
         "severity",
@@ -166,6 +178,15 @@ def _upsert_finding(
         finding.resolved_run = None
         update_fields.extend(["status", "resolved_at", "resolved_run"])
     finding.save(update_fields=update_fields)
+    if previous_status == FinancialIntegrityFinding.Status.RESOLVED:
+        financial_integrity_events_svc.record_finding_event(
+            finding,
+            event_type=FinancialIntegrityFindingEvent.EventType.REOPENED,
+            run=run,
+            status_from=previous_status,
+            status_to=finding.status,
+            event_at=seen_at,
+        )
     return finding
 
 
@@ -188,12 +209,23 @@ def _resolve_unseen_findings(
         queryset = queryset.filter(appointment_id__in=appointment_ids)
     if seen_keys:
         queryset = queryset.exclude(issue_key__in=seen_keys)
-    return queryset.update(
-        status=FinancialIntegrityFinding.Status.RESOLVED,
-        resolved_at=resolved_at,
-        resolved_run=run,
-        updated_at=timezone.now(),
-    )
+    resolved_count = 0
+    for finding in queryset:
+        previous_status = finding.status
+        finding.status = FinancialIntegrityFinding.Status.RESOLVED
+        finding.resolved_at = resolved_at
+        finding.resolved_run = run
+        finding.save(update_fields=["status", "resolved_at", "resolved_run", "updated_at"])
+        financial_integrity_events_svc.record_finding_event(
+            finding,
+            event_type=FinancialIntegrityFindingEvent.EventType.RESOLVED,
+            run=run,
+            status_from=previous_status,
+            status_to=finding.status,
+            event_at=resolved_at,
+        )
+        resolved_count += 1
+    return resolved_count
 
 
 def _finding_values(

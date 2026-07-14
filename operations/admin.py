@@ -17,6 +17,7 @@ from .models import (
     Document,
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
+    FinancialIntegrityFindingEvent,
     FundingServiceQuota,
     FundingSource,
     FundingStaffAllocation,
@@ -777,6 +778,24 @@ class FinancialIntegrityFindingAdmin(admin.ModelAdmin):
     )
     date_hierarchy = "last_seen_at"
     readonly_fields = ("created_at", "updated_at", "payload")
+
+
+@admin.register(FinancialIntegrityFindingEvent)
+class FinancialIntegrityFindingEventAdmin(admin.ModelAdmin):
+    list_display = (
+        "event_at",
+        "event_type",
+        "code",
+        "status_from",
+        "status_to",
+        "run",
+        "actor",
+    )
+    search_fields = ("event_key", "issue_key", "code", "message", "note")
+    list_filter = ("event_type", "status_to", "severity", "code")
+    autocomplete_fields = ("finding", "run", "actor")
+    date_hierarchy = "event_at"
+    readonly_fields = ("created_at", "updated_at", "source_snapshot")
 
 
 @admin.register(Recommendation)

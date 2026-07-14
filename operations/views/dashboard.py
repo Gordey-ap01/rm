@@ -23,10 +23,12 @@ from operations.models import (
     BalanceAccount,
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
+    FinancialIntegrityFindingEvent,
     TimeOffRequest,
 )
 from operations.services import (
     financial_integrity_checks as financial_integrity_checks_svc,
+    financial_integrity_events as financial_integrity_events_svc,
     financial_integrity_triage as financial_integrity_triage_svc,
     rescheduling_plans as plan_svc,
 )
@@ -596,6 +598,7 @@ def financial_integrity_finding_recheck(request, pk: int):
         return redirect(safe_next_url(request, fallback_url))
 
     try:
+        status_from = finding.status
         run = financial_integrity_checks_svc.run_financial_integrity_check(
             appointments=[finding.appointment],
             requested_by=request.user,
@@ -603,6 +606,16 @@ def financial_integrity_finding_recheck(request, pk: int):
     except Exception as exc:
         messages.error(request, f"Повторная проверка не выполнена: {exc}")
     else:
+        finding.refresh_from_db()
+        financial_integrity_events_svc.record_finding_event(
+            finding,
+            event_type=FinancialIntegrityFindingEvent.EventType.SCOPED_RECHECK,
+            run=run,
+            actor=request.user,
+            status_from=status_from,
+            status_to=finding.status,
+            note=f"candidate_count={run.candidate_count}; issue_count={run.issue_count}",
+        )
         messages.success(
             request,
             (
