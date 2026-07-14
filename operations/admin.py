@@ -15,6 +15,8 @@ from .models import (
     Child,
     Consent,
     Document,
+    FinancialIntegrityCheckRun,
+    FinancialIntegrityFinding,
     FundingServiceQuota,
     FundingSource,
     FundingStaffAllocation,
@@ -714,6 +716,67 @@ class LedgerEntryAdmin(admin.ModelAdmin):
     search_fields = ("account__child__last_name", "account__funding_source__name", "reason")
     list_filter = ("entry_type", "account__unit")
     autocomplete_fields = ("account", "appointment", "appointment_participant", "created_by")
+
+
+@admin.register(FinancialIntegrityCheckRun)
+class FinancialIntegrityCheckRunAdmin(admin.ModelAdmin):
+    list_display = (
+        "started_at",
+        "run_type",
+        "status",
+        "candidate_count",
+        "issue_count",
+        "error_count",
+        "warning_count",
+        "info_count",
+        "requested_by",
+        "finished_at",
+    )
+    search_fields = ("error_message", "requested_by__username", "requested_by__email")
+    list_filter = ("run_type", "status")
+    autocomplete_fields = ("requested_by",)
+    date_hierarchy = "started_at"
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(FinancialIntegrityFinding)
+class FinancialIntegrityFindingAdmin(admin.ModelAdmin):
+    list_display = (
+        "code",
+        "severity",
+        "status",
+        "appointment_starts_at",
+        "appointment_service_name",
+        "participant_name",
+        "account_label",
+        "funding_source_name",
+        "last_seen_at",
+        "triaged_by",
+    )
+    search_fields = (
+        "issue_key",
+        "code",
+        "message",
+        "appointment_service_name",
+        "participant_name",
+        "account_label",
+        "funding_source_name",
+        "triage_note",
+    )
+    list_filter = ("status", "severity", "code")
+    autocomplete_fields = (
+        "appointment",
+        "appointment_participant",
+        "ledger_entry",
+        "account",
+        "funding_source",
+        "first_seen_run",
+        "last_seen_run",
+        "resolved_run",
+        "triaged_by",
+    )
+    date_hierarchy = "last_seen_at"
+    readonly_fields = ("created_at", "updated_at", "payload")
 
 
 @admin.register(Recommendation)

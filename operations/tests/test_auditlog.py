@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from auditlog.models import LogEntry
+from django.contrib import admin
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
+from django.utils import timezone
 
 from operations.models import (
     Appointment,
@@ -13,6 +16,8 @@ from operations.models import (
     AppointmentRescheduleStepDependency,
     AppointmentStaffAssignment,
     Child,
+    FinancialIntegrityCheckRun,
+    FinancialIntegrityFinding,
     FundingSource,
     GrantRecipientAllocation,
     LedgerEntry,
@@ -73,6 +78,8 @@ class AuditLogTests(TestCase):
             AppointmentStaffAssignment,
             Child,
             FundingSource,
+            FinancialIntegrityCheckRun,
+            FinancialIntegrityFinding,
             GrantRecipientAllocation,
             LedgerEntry,
             PayrollAccrual,
@@ -80,3 +87,35 @@ class AuditLogTests(TestCase):
             StaffMember,
         ):
             self.assertIn(model, auditlog._registry)
+
+    def test_financial_integrity_models_registered_in_admin(self):
+        self.assertIn(FinancialIntegrityCheckRun, admin.site._registry)
+        self.assertIn(FinancialIntegrityFinding, admin.site._registry)
+
+    def test_financial_integrity_finding_update_is_logged(self):
+        now = timezone.now()
+        finding = FinancialIntegrityFinding.objects.create(
+            issue_key="auditlog-financial-integrity-finding",
+            code="auditlog_test_issue",
+            severity=FinancialIntegrityFinding.Severity.WARNING,
+            status=FinancialIntegrityFinding.Status.OPEN,
+            first_seen_at=now,
+            last_seen_at=now,
+            message="Auditlog test issue.",
+        )
+
+        finding.status = FinancialIntegrityFinding.Status.ACKNOWLEDGED
+        finding.triage_note = "Accepted for review."
+        finding.triaged_by = self.user
+        finding.triaged_at = now
+        finding.save()
+
+        content_type = ContentType.objects.get_for_model(FinancialIntegrityFinding)
+        update = LogEntry.objects.filter(
+            action=LogEntry.Action.UPDATE,
+            content_type=content_type,
+            object_pk=str(finding.pk),
+        ).latest("timestamp")
+
+        self.assertIn("status", update.changes_dict)
+        self.assertIn("triage_note", update.changes_dict)

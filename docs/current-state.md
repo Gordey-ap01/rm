@@ -1398,3 +1398,13 @@ SMTP для реальной промышленной рассылки еще н
 - Первый безопасный путь без миграций: auditlog/admin visibility для `FinancialIntegrityCheckRun`/`FinancialIntegrityFinding`, затем triage service, затем work queue POST actions, затем finding detail, затем runner operations.
 - Event table `FinancialIntegrityFindingEvent` остается отдельным DB-owner срезом, если django-auditlog/current fields недостаточны для истории.
 - Код, модели, миграции, финансы, ledger, payroll, grants, statuses не менялись в этом контрактном docs-only срезе.
+
+## Обновление 2026-07-15: financial-integrity audit/admin visibility
+
+- Выполнен первый кодовый срез по `docs/18-financial-integrity-triage-and-runner-contract.md`.
+- `FinancialIntegrityCheckRun` и `FinancialIntegrityFinding` зарегистрированы в auditlog registry and Django admin.
+- Admin visibility добавляет list display, filters, search, autocomplete links and date hierarchy для check runs/findings.
+- Добавлены tests: модели есть в auditlog registry, есть в admin registry, update finding-а пишет auditlog `LogEntry` с `status` and `triage_note`.
+- No model/migration changes, no runner semantic changes, no triage POST UI yet, no billing/ledger/payroll/grant/report/status changes.
+- Проверки: Ruff по затронутым файлам прошел; `pytest operations/tests/test_auditlog.py -q` прошел (`6 passed`, 1 прежнее предупреждение django-tasks); `manage.py check --settings=rehab_center.settings_test` прошел; `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`; полный `pytest -q --tb=short` прошел (`470 passed`, 1 прежнее предупреждение django-tasks).
+- Graphify code-index обновлен после audit/admin visibility среза: `graphify update . --no-cluster` записал `4137` nodes / `14844` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.

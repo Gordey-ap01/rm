@@ -26,6 +26,27 @@
 - scheduled/background invocation;
 - manager trend report.
 
+## Выполнение 2026-07-15: audit/admin visibility
+
+Выполнен первый кодовый срез `financial-integrity-audit-admin-visibility`.
+
+- `FinancialIntegrityCheckRun` and `FinancialIntegrityFinding` зарегистрированы в `operations/apps.py` auditlog registry.
+- Добавлены Django admin classes для check runs and findings: list display, filters, search, autocomplete links and date hierarchy.
+- Добавлены tests: новые модели присутствуют в auditlog registry, присутствуют в admin registry, update finding-а пишет auditlog `LogEntry` с изменениями `status` and `triage_note`.
+- Модели, миграции, runner semantics, billing/ledger/payroll/grants/reports/statuses не менялись.
+
+Проверки:
+
+- `ruff check operations/apps.py operations/admin.py operations/tests/test_auditlog.py` прошел;
+- `pytest operations/tests/test_auditlog.py -q` прошел (`6 passed`, 1 прежнее предупреждение django-tasks);
+- `manage.py check --settings=rehab_center.settings_test` прошел;
+- `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`;
+- полный `pytest -q --tb=short` прошел (`470 passed`, 1 прежнее предупреждение django-tasks);
+- `git diff --check` показал только стандартные LF->CRLF warnings.
+- `graphify update . --no-cluster` обновил code-index до `4137` nodes / `14844` edges; semantic extraction не запускалась.
+
+Следующий кодовый срез по контракту: `financial-integrity-triage-service`.
+
 ## Инварианты
 
 1. Triage actions are finding-only mutations. Они не меняют appointment, ledger, balance account, payroll, grant quota, payment or report facts.
@@ -216,4 +237,3 @@ Safe parallel split after this contract is accepted:
 3. Should the first manual runner UI allow full check, scoped appointment check only, or no UI run button at all?
 4. Desired production schedule: hourly, nightly, after billing actions, or manual only until real data volume is measured?
 5. Should ignored findings appear in a separate manager-only archive page?
-
