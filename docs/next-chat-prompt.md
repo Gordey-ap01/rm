@@ -7,7 +7,7 @@
 
 Цель: не срочный MVP, а серьезный рабочий продукт для реабилитационного центра: расписание, финансы, программы занятий, гранты, табели, кабинет специалиста и отчеты руководителя.
 
-Текущий этап на 2026-07-14:
+Текущий этап на 2026-07-15:
 - Stage 5 табличной UX/UI стабилизации закрыт.
 - Базовая модель групповых занятий уже есть: AppointmentParticipant, AppointmentStaffAssignment, кабинетные лимиты, представители, participant-level списания, табель и часть грантов/payroll.
 - Persisted-планы переноса расписания и цепочки переноса достаточно закрыты для текущей фазы: plan/step/confirmation, staff_absence plan, review_conflict handling, room override on apply, chain schema/build/revalidate/apply, registry/work queue/dashboard attention, terminal action locks/history copy.
@@ -18,12 +18,14 @@
 - Calendar drag-and-drop/API уже продолжен: operations/api.py::move_conflict_messages() использует operations.schedule_validation.appointment_validation_conflicts(); API проверяет snapshot-участников/специалистов, legacy fallback, доступность специалистов, лимиты кабинета и запрет групп; полный pytest прошел: 441 passed; Graphify code-index: 3953 nodes / 14224 edges. Browser QA не выполнена, потому что callable Browser tool в сессии не открылся.
 - Подсказки свободных окон уже продолжены: operations/services/scheduling.py::find_overlaps() и find_free_slots() используют общий appointment_group_conflicts() для групповых получателей, нескольких специалистов, кабинетных лимитов и запрета групп; массовый перенос по отсутствию специалиста подбирает кандидатов через обновленный find_free_slots(); полный pytest прошел: 444 passed; Graphify code-index: 3961 nodes / 14242 edges.
 - Первый backend/service/API срез schedule-capacity-validation-source закрыт acceptance review 2026-07-14: общий schedule validation подключен к form/model/API/free-slots/manual-move/shift-helper слоям без миграций и без изменений ledger/payroll/grants/statuses.
+- Следующий контракт создан: docs/14-financial-fact-source-contract.md. Фокус - единый read-only источник факта "занятие списано" для payroll, табеля, grant report и ledger-сводок. Первый срез: financial-fact-source-foundation без миграций.
 
 Сначала обязательно прочитай:
 1. docs/project-recovery-manifest.md
 2. последние датированные разделы docs/current-state.md
 3. docs/12-project-stage-audit-and-pivot-plan.md
 4. docs/13-schedule-capacity-v2-contract.md
+5. docs/14-financial-fact-source-contract.md
 
 Дальше читай только нужное для задачи:
 - БД, расписание, финансы, гранты, табели: docs/07-updated-domain-model-after-interview.md и docs/decisions/ADR-002-balance-accounts-ledger.md
@@ -38,7 +40,7 @@
 Если доступен Graphify и есть graphify-out/graph.json, сначала используй graphify query как индекс проекта. При расхождениях свежие docs/current-state.md, docs/07-updated-domain-model-after-interview.md, docs/12-project-stage-audit-and-pivot-plan.md, docs/13-schedule-capacity-v2-contract.md и код остаются источником правды.
 
 Следующая задача:
-Выбрать и оформить следующий явный контракт перед новыми изменениями БД, ledger, payroll, grants, статусов или более глубокой логики расписания. Не продолжать schedule-capacity-validation-source как бесконечный audit-loop. Остаточный UI пункт: при доступном Browser tool выполнить smoke создания/редактирования/ручного переноса перед будущими изменениями шаблонов или JS календаря.
+Реализовать первый кодовый срез по docs/14-financial-fact-source-contract.md: financial-fact-source-foundation. По умолчанию без миграций: добавить общий helper/service финансового факта списания, переключить payroll/reports без изменения поведения, добавить parity tests. Не менять operations/models.py, migration chain, billing.apply_decision semantics, статусы или UI без отдельного контракта.
 
 Критические правила:
 - Не продолжать reschedule UX/control микросрезы без конкретного бага или нового требования.
