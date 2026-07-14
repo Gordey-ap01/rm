@@ -907,6 +907,47 @@ h2 {
   font-size: 13px;
 }
 
+.queue-run-summary {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 12px;
+  background: var(--surface-strong);
+}
+
+.queue-run-summary strong {
+  color: var(--heading);
+  font-size: 15px;
+}
+
+.queue-run-summary p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.queue-run-summary.is-warning {
+  border-left-color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.queue-run-summary.is-danger {
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.queue-run-summary.is-info {
+  border-left-color: #1267f2;
+  background: rgba(18, 103, 242, .08);
+}
+
+.queue-run-summary.is-success {
+  border-left-color: var(--ok);
+  background: var(--ok-soft);
+}
+
 .panel,
 .auth-panel {
   background: var(--surface);

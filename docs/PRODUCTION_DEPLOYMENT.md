@@ -131,6 +131,22 @@ crontab -e
 
 Важно: локальные бэкапы на том же сервере защищают от ошибки в базе, но не защищают от потери сервера. Для серьёзной эксплуатации нужен второй слой: S3/объектное хранилище или выгрузка на другой сервер.
 
+## Финансовая проверка
+
+Ручной эксплуатационный запуск сохраненной проверки финансовой целостности:
+
+```bash
+docker compose --env-file .env.production -f compose.prod.yaml exec web python manage.py run_financial_integrity_check --run-type management_command
+```
+
+Ночной cron-вариант, например в 04:10:
+
+```cron
+10 4 * * * cd /opt/rm && docker compose --env-file .env.production -f compose.prod.yaml exec -T web python manage.py run_financial_integrity_check --run-type scheduled >> /var/log/rm-financial-integrity.log 2>&1
+```
+
+Команда не исправляет финансовые данные автоматически. Она обновляет `FinancialIntegrityCheckRun` и `FinancialIntegrityFinding`; последняя проверка и failed-run message видны администратору в очереди работ в блоке финансового контроля.
+
 ## Обновление системы
 
 ```bash

@@ -102,6 +102,30 @@
 
   <article class="panel" id="queue-financial-integrity">
     <h2>Финансовый контроль</h2>
+    <div class="queue-run-summary is-{{ financial_integrity_latest_run_tone }}">
+      <strong>Последняя проверка</strong>
+      {% if financial_integrity_latest_run %}
+        <p>
+          #{{ financial_integrity_latest_run.pk }} ·
+          {{ financial_integrity_latest_run.get_status_display }} ·
+          {{ financial_integrity_latest_run.get_run_type_display }} ·
+          {{ financial_integrity_latest_run.started_at|date:"d.m H:i" }}
+        </p>
+        <p class="muted">
+          Проверено занятий: {{ financial_integrity_latest_run.candidate_count }} ·
+          расхождений: {{ financial_integrity_latest_run.issue_count }}
+          (ошибок {{ financial_integrity_latest_run.error_count }},
+          предупреждений {{ financial_integrity_latest_run.warning_count }},
+          инфо {{ financial_integrity_latest_run.info_count }})
+        </p>
+        {% if financial_integrity_latest_run.status == "failed" and financial_integrity_latest_run.error_message %}
+          <p class="muted">Ошибка: {{ financial_integrity_latest_run.error_message }}</p>
+        {% endif %}
+      {% else %}
+        <p>Сохраненная проверка еще не запускалась.</p>
+        <p class="muted">Для фонового запуска используйте management command `run_financial_integrity_check --run-type scheduled`.</p>
+      {% endif %}
+    </div>
     <div class="task-list">
       {% for row in financial_integrity_issues %}
         {% with finding=row.finding %}

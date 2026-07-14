@@ -416,6 +416,45 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertContains(response, reverse("financial_integrity_finding_detail", args=[finding.pk]))
         self.assertNotContains(response, "Исправить автоматически")
 
+    def test_work_queue_shows_financial_integrity_run_hint_without_runs(self):
+        response = self.client.get(reverse("work_queue"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(FinancialIntegrityCheckRun.objects.count(), 0)
+        self.assertIsNone(response.context["financial_integrity_latest_run"])
+        self.assertEqual(response.context["financial_integrity_latest_run_tone"], "info")
+        self.assertContains(response, "Сохраненная проверка еще не запускалась")
+        self.assertContains(response, "run_financial_integrity_check --run-type scheduled")
+
+    def test_work_queue_shows_latest_financial_integrity_run_summary(self):
+        self._financial_integrity_fixture()
+        run = FinancialIntegrityCheckRun.objects.get()
+
+        response = self.client.get(reverse("work_queue"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(FinancialIntegrityCheckRun.objects.count(), 1)
+        self.assertEqual(response.context["financial_integrity_latest_run"], run)
+        self.assertEqual(response.context["financial_integrity_latest_run_tone"], "warning")
+        self.assertContains(response, f"#{run.pk}")
+        self.assertContains(response, "расхождений: 1")
+
+    def test_work_queue_shows_failed_financial_integrity_run_summary(self):
+        run = FinancialIntegrityCheckRun.objects.create(
+            run_type=FinancialIntegrityCheckRun.RunType.SCHEDULED,
+            status=FinancialIntegrityCheckRun.Status.FAILED,
+            started_at=timezone.now(),
+            finished_at=timezone.now(),
+            error_message="QA runner failure",
+        )
+
+        response = self.client.get(reverse("work_queue"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["financial_integrity_latest_run"], run)
+        self.assertEqual(response.context["financial_integrity_latest_run_tone"], "danger")
+        self.assertContains(response, "QA runner failure")
+
     def test_financial_integrity_finding_detail_shows_sources_and_actions(self):
         self._financial_integrity_fixture()
         finding = FinancialIntegrityFinding.objects.get()

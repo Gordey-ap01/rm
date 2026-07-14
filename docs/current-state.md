@@ -1443,3 +1443,14 @@ SMTP для реальной промышленной рассылки еще н
 - Playwright Browser QA fallback прошел на desktop 1280x900 и mobile 390x900: work queue detail link, finding code/service/recipient snapshot, actions, required ignore note, payload, acknowledge action switch, scoped recheck, mobile overflow `0`, console/page errors нет. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-detail`; QA data очищены, runserver на 8066 остановлен.
 - Graphify code-index обновлен после finding detail: `graphify update . --no-cluster` записал `4182` nodes / `15020` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
 - Следующий безопасный срез по docs/18: `financial-integrity-runner-operations` - эксплуатационный запуск/summary latest run, production schedule documentation and failure visibility. Не начинать event table, manager trend report, auto-fix/backfill or billing/ledger/payroll/grant/status semantics без отдельного контракта/DB owner.
+
+## Обновление 2026-07-15: financial-integrity runner operations
+
+- Выполнен срез `financial-integrity-runner-operations` по `docs/18-financial-integrity-triage-and-runner-contract.md`.
+- Work queue block `#queue-financial-integrity` показывает последнюю сохраненную проверку `FinancialIntegrityCheckRun`: id, статус, тип запуска, время, количество проверенных занятий и счетчики findings. Failed run подсвечивается danger и показывает `error_message`; completed run с issues - warning; no-run/running - info; completed zero-issue - success.
+- GET work queue не запускает полный audit и не создает run; кнопка полного UI-запуска намеренно не добавлена. Scoped appointment recheck остается только на detail page.
+- В `docs/PRODUCTION_DEPLOYMENT.md` добавлены manual и cron команды для `run_financial_integrity_check`; команда не делает auto-fix/backfill, а только обновляет check runs/findings.
+- No model/migration changes, no financial semantic changes, no `billing.apply_decision()`, ledger posting, payroll/grant/report/status changes.
+- Проверки: Ruff touched Python прошел; `pytest operations/tests/test_views.py::WorkQueueViewTests -q` прошел (`30 passed`); `manage.py check` прошел; migration dry-run показал `No changes detected`; полный `pytest -q --tb=short` прошел (`491 passed`, 1 прежнее предупреждение django-tasks); Playwright desktop/mobile Browser QA fallback прошел, артефакты `%TEMP%\rmcodex-browser-qa-financial-runner-ops`, runserver 8067 остановлен.
+- Graphify code-index обновлен после runner operations: `graphify update . --no-cluster` записал `4191` nodes / `15044` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
+- Следующий шаг не должен заново делать runner summary. Возможные следующие направления: отдельный docs-only контракт для event table/manager trend report с DB owner, либо возврат к более приоритетной доменной зоне после сверки `current-state` и актуальных требований.

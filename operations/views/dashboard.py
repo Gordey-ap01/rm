@@ -21,6 +21,7 @@ from operations.models import (
     AppointmentRescheduleStep,
     AppointmentStaffAssignment,
     BalanceAccount,
+    FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
     TimeOffRequest,
 )
@@ -390,6 +391,26 @@ def financial_integrity_summary(findings_queryset) -> dict[str, int | str]:
         "info": info_count,
         "tone": tone,
     }
+
+
+def financial_integrity_latest_run():
+    return (
+        FinancialIntegrityCheckRun.objects.select_related("requested_by")
+        .order_by("-started_at", "-pk")
+        .first()
+    )
+
+
+def financial_integrity_run_tone(run: FinancialIntegrityCheckRun | None) -> str:
+    if run is None:
+        return "info"
+    if run.status == FinancialIntegrityCheckRun.Status.FAILED:
+        return "danger"
+    if run.status == FinancialIntegrityCheckRun.Status.RUNNING:
+        return "info"
+    if run.issue_count:
+        return "warning"
+    return "success"
 
 
 def financial_integrity_finding_rows(findings_queryset) -> list[dict[str, object]]:
@@ -1046,6 +1067,7 @@ def work_queue(request):
     financial_findings = financial_integrity_active_findings_queryset()
     financial_summary = financial_integrity_summary(financial_findings)
     financial_issue_rows = financial_integrity_finding_rows(financial_findings)
+    financial_latest_run = financial_integrity_latest_run()
     queue_summary = work_queue_summary_items(
         needs_billing_count=len(needs_billing),
         needs_attendance_count=len(needs_attendance),
@@ -1077,6 +1099,10 @@ def work_queue(request):
             "financial_integrity_warning_count": financial_summary["warnings"],
             "financial_integrity_info_count": financial_summary["info"],
             "financial_integrity_next_url": f"{request.get_full_path()}#queue-financial-integrity",
+            "financial_integrity_latest_run": financial_latest_run,
+            "financial_integrity_latest_run_tone": financial_integrity_run_tone(
+                financial_latest_run
+            ),
             "confirmation_tasks": confirmation_tasks,
             "time_off_requests": time_off_requests,
             "reschedule_chains": reschedule_chains,

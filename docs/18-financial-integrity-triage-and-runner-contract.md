@@ -20,7 +20,7 @@
 Не выполнено:
 
 - event table for status history;
-- scheduled/background invocation;
+- in-process scheduled/background invocation;
 - manager trend report.
 
 ## Выполнение 2026-07-15: audit/admin visibility
@@ -116,7 +116,31 @@
 - Playwright Browser QA fallback прошел на desktop 1280x900 и mobile 390x900: work queue содержит detail link, detail page показывает source snapshot, actions, payload, acknowledge переключает action set, scoped recheck возвращает на detail page, mobile overflow `0`, console/page errors нет. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-detail`; QA data очищены, runserver на 8066 остановлен.
 - `graphify update . --no-cluster` обновил code-index до `4182` nodes / `15020` edges; semantic extraction не запускалась.
 
-Следующий кодовый срез по контракту: `financial-integrity-runner-operations`.
+Ранее запланированный следующий кодовый срез по контракту: `financial-integrity-runner-operations`; статус выполнения зафиксирован ниже.
+
+## Выполнение 2026-07-15: runner operations
+
+Выполнен кодовый срез `financial-integrity-runner-operations`.
+
+- Work queue section `#queue-financial-integrity` показывает компактную сводку последнего `FinancialIntegrityCheckRun`: id, статус, тип запуска, время старта, количество проверенных занятий и счетчики findings по severity.
+- Если запусков еще нет, UI показывает нейтральную подсказку для эксплуатационного запуска через `run_financial_integrity_check --run-type scheduled`.
+- Failed run виден в очереди как danger-сводка с текстом `error_message`; completed run с issues подсвечивается warning, running/no-run - info, completed zero-issue run - success.
+- GET `work_queue` не запускает полный аудит и не создает `FinancialIntegrityCheckRun`; UI читает только сохраненную историю запусков.
+- Кнопка полного ручного запуска из UI намеренно не добавлена. Полный запуск остается через management command/external scheduler; scoped appointment recheck уже доступен только на detail page.
+- Документирован production-safe запуск через `python manage.py run_financial_integrity_check --run-type scheduled`; in-process scheduler/django-tasks worker lifecycle остается отдельным deferred-срезом.
+- Модели, миграции, runner semantics, billing/ledger/payroll/grants/reports/statuses не менялись.
+
+Проверки:
+
+- `ruff check operations/views/dashboard.py operations/tests/test_views.py` прошел;
+- `pytest operations/tests/test_views.py::WorkQueueViewTests -q` прошел (`30 passed`);
+- `manage.py check --settings=rehab_center.settings_test` прошел;
+- `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`;
+- полный `pytest -q --tb=short` прошел (`491 passed`, 1 прежнее предупреждение django-tasks);
+- Playwright Browser QA fallback прошел на desktop 1280x900 и mobile 390x900: latest failed run summary виден, active finding остается видимым, detail link доступен, full-run form отсутствует, mobile overflow `0`, console/page errors нет. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-runner-ops`; QA data очищены, runserver на 8067 остановлен.
+- `graphify update . --no-cluster` обновил code-index до `4191` nodes / `15044` edges; semantic extraction не запускалась.
+
+Следующий безопасный срез после этого: либо docs-only контракт для `FinancialIntegrityFindingEvent`/manager trend report, либо возврат к более приоритетной доменной зоне. Не начинать event table, manager trend report, auto-fix/backfill или изменения billing/ledger/payroll/grants/statuses без отдельного контракта и одного DB owner для миграций.
 
 ## Инварианты
 

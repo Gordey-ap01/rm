@@ -170,8 +170,8 @@
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
-    "mtime": 1784055984.3021185,
-    "ast_hash": "1d4a547d25abd9c499016e68c4b30732",
+    "mtime": 1784067975.606152,
+    "ast_hash": "bd54b152bd2e4869f0c5d96fd5df61c4",
     "semantic_hash": ""
   },
   "operations/urls.py": {
@@ -210,8 +210,8 @@
     "semantic_hash": "2521302cb2028fd14d785298ce216f6a"
   },
   "operations/views/dashboard.py": {
-    "mtime": 1784055645.5177598,
-    "ast_hash": "721c69f393e154098fed36e9abd46a7b",
+    "mtime": 1784067873.327721,
+    "ast_hash": "963f5af218cd310529df85575688a27d",
     "semantic_hash": ""
   },
   "operations/views/documents.py": {
@@ -440,9 +440,9 @@
     "semantic_hash": "e92ba1abfa0f52e6b1b5fcc1b1efbf95"
   },
   "docs/PRODUCTION_DEPLOYMENT.md": {
-    "mtime": 1781111214.384578,
-    "ast_hash": "3e2236f93243207ba3e91bf59b2ea5ab",
-    "semantic_hash": "3e2236f93243207ba3e91bf59b2ea5ab"
+    "mtime": 1784068490.611607,
+    "ast_hash": "fb4b74acc718e964a0df94e3a382fd0b",
+    "semantic_hash": ""
   },
   "docs/REMOTE_SMARTPHONE_ACCESS.md": {
     "mtime": 1781103905.2160623,
@@ -645,8 +645,8 @@
     "semantic_hash": ""
   },
   "templates/operations/work_queue.html": {
-    "mtime": 1784055693.7578537,
-    "ast_hash": "6e033913847e275b9c6f359a75cb59bb",
+    "mtime": 1784067887.3703182,
+    "ast_hash": "c0c8495b9264b166a2b877fb3fdcdc8f",
     "semantic_hash": ""
   },
   "templates/registration/csrf_failure.html": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784067575.8156972,
-    "ast_hash": "24ea26dc55db076bda02c7b560057109",
+    "mtime": 1784068532.579523,
+    "ast_hash": "82607a3edb3a2905d771cd837a8d7f1f",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784067618.3525143,
-    "ast_hash": "083773be079a8f06887781cb6a51f093",
+    "mtime": 1784068575.8677938,
+    "ast_hash": "374c78fd948e623b19982fb657ce5c60",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784067601.9595106,
-    "ast_hash": "2604fedcdd37e8d444a2fb764c5e7102",
+    "mtime": 1784068561.3157778,
+    "ast_hash": "8e598d4938a6c7b1a5e79817bc4936be",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -980,8 +980,8 @@
     "semantic_hash": ""
   },
   "docs/18-financial-integrity-triage-and-runner-contract.md": {
-    "mtime": 1784067555.2711272,
-    "ast_hash": "5ac4afb6b826d043ab531b0d034847ac",
+    "mtime": 1784068595.260498,
+    "ast_hash": "3b0163719719879b3cd0ca3aa57e7cb5",
     "semantic_hash": ""
   },
   "operations/services/financial_integrity_triage.py": {
