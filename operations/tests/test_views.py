@@ -26,6 +26,7 @@ from operations.models import (
     Consent,
     Discount,
     Document,
+    FinancialIntegrityFinding,
     FundingServiceQuota,
     FundingSource,
     FundingStaffAllocation,
@@ -44,7 +45,11 @@ from operations.models import (
     StaffMember,
     TreatmentProgram,
 )
-from operations.services import billing as billing_svc, rescheduling_plans as plan_svc
+from operations.services import (
+    billing as billing_svc,
+    financial_integrity_checks as financial_integrity_checks_svc,
+    rescheduling_plans as plan_svc,
+)
 
 
 def _local_dt(day, clock):
@@ -316,6 +321,10 @@ class WorkQueueViewTests(NewViewsTestBase):
             reason="Stale work queue ledger",
             created_by=self.admin,
         )
+        financial_integrity_checks_svc.run_financial_integrity_check(
+            appointments=[appointment],
+            requested_by=self.admin,
+        )
         return appointment
 
     def test_work_queue_shows_next_action_and_section_links(self):
@@ -354,6 +363,33 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertContains(response, "Проверить финансы")
         self.assertContains(response, "финансовых расхождений")
         self.assertContains(response, f'{reverse("work_queue")}#queue-financial-integrity')
+
+    def test_dashboard_uses_persisted_financial_findings_without_live_audit(self):
+        appointment = self._financial_integrity_fixture()
+        LedgerEntry.objects.filter(appointment=appointment).delete()
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(LedgerEntry.objects.filter(appointment=appointment).exists())
+        self.assertEqual(response.context["financial_integrity_count"], 1)
+        self.assertEqual(response.context["financial_integrity_warning_count"], 1)
+
+    def test_resolved_financial_findings_are_hidden_from_queue_and_dashboard(self):
+        self._financial_integrity_fixture()
+        FinancialIntegrityFinding.objects.update(
+            status=FinancialIntegrityFinding.Status.RESOLVED,
+            resolved_at=timezone.now(),
+        )
+
+        dashboard_response = self.client.get(reverse("dashboard"))
+        queue_response = self.client.get(reverse("work_queue"))
+
+        self.assertEqual(dashboard_response.status_code, 200)
+        self.assertEqual(queue_response.status_code, 200)
+        self.assertEqual(dashboard_response.context["financial_integrity_count"], 0)
+        self.assertEqual(queue_response.context["financial_integrity_issue_count"], 0)
+        self.assertNotContains(queue_response, "stale_debit_ledger_without_charge_fact")
 
     def test_work_queue_surfaces_financial_integrity_issues(self):
         appointment = self._financial_integrity_fixture()

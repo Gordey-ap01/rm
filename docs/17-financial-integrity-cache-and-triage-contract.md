@@ -237,6 +237,28 @@ Acceptance criteria:
 - Do not put real personal data into payload beyond IDs and minimal diagnostic facts already visible to authorized admins.
 - Do not make dashboard run the command synchronously on GET.
 
+## Выполнение 2026-07-15: reader switch dashboard/work queue
+
+Выполнен UI-reader срез `financial-integrity-cache-reader`.
+
+- `operations/views/dashboard.py` больше не вызывает синхронный `audit_appointments()` на GET dashboard/work queue.
+- Dashboard/work queue читают persisted active findings из `FinancialIntegrityFinding` со статусами `open` и `acknowledged`.
+- `resolved` и `ignored` finding-и не поднимают счетчики и не появляются в очереди работ.
+- Work queue показывает denormalized snapshot finding-а: message, severity/status, issue code, занятие/услугу, участника, счет/источник, ledger amount/type, `last_seen_at`, ссылки на занятие и счет, если исходные FK еще существуют.
+- Запуск проверки остается в `run_financial_integrity_check()` и management command; auto-fix/backfill/triage UI не добавлялись.
+- Не менялись `billing.apply_decision()`, ledger posting, payroll, grants, reports, statuses, модели и миграции.
+
+Проверки:
+
+- `ruff check operations/views/dashboard.py operations/tests/test_views.py` прошел;
+- `pytest operations/tests/test_views.py::WorkQueueViewTests -q` прошел (`17 passed`);
+- `manage.py check --settings=rehab_center.settings_test` прошел;
+- `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`;
+- `pytest operations/tests/test_views.py -q` прошел (`235 passed`, 1 прежнее предупреждение django-tasks);
+- полный `pytest -q --tb=short` прошел (`468 passed`, 1 прежнее предупреждение django-tasks);
+- Playwright Browser QA fallback прошел на desktop 1280x900 и mobile 390x900: dashboard metric/focus link, work queue section, issue code, service context, timestamp, appointment/account links, warning style, no console/page/request errors, no horizontal overflow. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-integrity-cache-reader`; QA data очищены, runserver на 8064 остановлен.
+- `graphify update . --no-cluster` обновил code-index до `4112` nodes / `14639` edges; semantic extraction не запускалась.
+
 ## Parallel agents
 
 До утверждения контракта работают только read-only reviewers. После утверждения:

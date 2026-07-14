@@ -19,13 +19,10 @@ from operations.models import (
     AppointmentRescheduleStep,
     AppointmentStaffAssignment,
     BalanceAccount,
-    LedgerEntry,
+    FinancialIntegrityFinding,
     TimeOffRequest,
 )
-from operations.services import (
-    financial_integrity as financial_integrity_svc,
-    rescheduling_plans as plan_svc,
-)
+from operations.services import rescheduling_plans as plan_svc
 
 from ._common import is_admin_user
 
@@ -105,6 +102,10 @@ def reschedule_plan_focus_url(focus: str) -> str:
 
 TERMINAL_RESCHEDULE_PLAN_STATUSES = plan_svc.TERMINAL_PLAN_STATUSES
 FINANCIAL_INTEGRITY_DISPLAY_LIMIT = 40
+FINANCIAL_INTEGRITY_ACTIVE_STATUSES = (
+    FinancialIntegrityFinding.Status.OPEN,
+    FinancialIntegrityFinding.Status.ACKNOWLEDGED,
+)
 
 
 def confirmation_attention_filter() -> Q:
@@ -311,66 +312,64 @@ def low_balance_accounts():
     ]
 
 
-def financial_integrity_candidate_queryset():
+def financial_integrity_active_findings_queryset():
+    severity_order = Case(
+        When(severity=FinancialIntegrityFinding.Severity.ERROR, then=Value(0)),
+        When(severity=FinancialIntegrityFinding.Severity.WARNING, then=Value(1)),
+        When(severity=FinancialIntegrityFinding.Severity.INFO, then=Value(2)),
+        default=Value(3),
+        output_field=IntegerField(),
+    )
+    status_order = Case(
+        When(status=FinancialIntegrityFinding.Status.OPEN, then=Value(0)),
+        When(status=FinancialIntegrityFinding.Status.ACKNOWLEDGED, then=Value(1)),
+        default=Value(2),
+        output_field=IntegerField(),
+    )
     return (
-        Appointment.objects.filter(
-            Q(billing_decision=Appointment.BillingDecision.CHARGE)
-            | Q(participants__billing_decision=Appointment.BillingDecision.CHARGE)
-            | Q(ledger_entries__entry_type=LedgerEntry.EntryType.DEBIT)
-        )
+        FinancialIntegrityFinding.objects.filter(status__in=FINANCIAL_INTEGRITY_ACTIVE_STATUSES)
         .select_related(
-            "child",
-            "staff_member",
-            "service",
-            "room",
-            "billing_account",
-            "billing_account__funding_source",
+            "appointment",
+            "appointment__service",
+            "appointment_participant",
+            "appointment_participant__child",
+            "ledger_entry",
+            "account",
+            "funding_source",
+            "last_seen_run",
         )
-        .prefetch_related(
-            "participants__child",
-            "participants__billing_account",
-            "participants__billing_account__funding_source",
-            "ledger_entries__account",
-            "ledger_entries__account__funding_source",
-            "ledger_entries__appointment_participant",
-        )
-        .distinct()
-        .order_by("-updated_at", "-pk")
+        .annotate(severity_order=severity_order, status_order=status_order)
+        .order_by("severity_order", "status_order", "-last_seen_at", "-pk")
     )
 
 
-def financial_integrity_issues() -> list[financial_integrity_svc.FinancialIntegrityIssue]:
-    return financial_integrity_svc.audit_appointments(financial_integrity_candidate_queryset())
-
-
-def financial_integrity_issue_tone(
-    issue: financial_integrity_svc.FinancialIntegrityIssue,
-) -> str:
-    if issue.severity == financial_integrity_svc.FinancialIssueSeverity.ERROR:
+def financial_integrity_finding_tone(finding: FinancialIntegrityFinding) -> str:
+    if finding.severity == FinancialIntegrityFinding.Severity.ERROR:
         return "danger"
-    if issue.severity == financial_integrity_svc.FinancialIssueSeverity.WARNING:
+    if finding.severity == FinancialIntegrityFinding.Severity.WARNING:
         return "warning"
     return "info"
 
 
-def financial_integrity_summary(
-    issues: list[financial_integrity_svc.FinancialIntegrityIssue],
-) -> dict[str, int | str]:
-    error_count = sum(
-        1
-        for issue in issues
-        if issue.severity == financial_integrity_svc.FinancialIssueSeverity.ERROR
+def financial_integrity_summary(findings_queryset) -> dict[str, int | str]:
+    counts = findings_queryset.aggregate(
+        total=Count("pk"),
+        errors=Count(
+            "pk",
+            filter=Q(severity=FinancialIntegrityFinding.Severity.ERROR),
+        ),
+        warnings=Count(
+            "pk",
+            filter=Q(severity=FinancialIntegrityFinding.Severity.WARNING),
+        ),
+        info=Count(
+            "pk",
+            filter=Q(severity=FinancialIntegrityFinding.Severity.INFO),
+        ),
     )
-    warning_count = sum(
-        1
-        for issue in issues
-        if issue.severity == financial_integrity_svc.FinancialIssueSeverity.WARNING
-    )
-    info_count = sum(
-        1
-        for issue in issues
-        if issue.severity == financial_integrity_svc.FinancialIssueSeverity.INFO
-    )
+    error_count = counts["errors"]
+    warning_count = counts["warnings"]
+    info_count = counts["info"]
     tone = "success"
     if error_count:
         tone = "danger"
@@ -379,7 +378,7 @@ def financial_integrity_summary(
     elif info_count:
         tone = "info"
     return {
-        "total": len(issues),
+        "total": counts["total"],
         "errors": error_count,
         "warnings": warning_count,
         "info": info_count,
@@ -387,21 +386,15 @@ def financial_integrity_summary(
     }
 
 
-def financial_integrity_issue_rows(
-    issues: list[financial_integrity_svc.FinancialIntegrityIssue],
-) -> list[dict[str, object]]:
-    severity_labels = {
-        financial_integrity_svc.FinancialIssueSeverity.ERROR: "Ошибка",
-        financial_integrity_svc.FinancialIssueSeverity.WARNING: "Проверить",
-        financial_integrity_svc.FinancialIssueSeverity.INFO: "Информация",
-    }
+def financial_integrity_finding_rows(findings_queryset) -> list[dict[str, object]]:
     return [
         {
-            "issue": issue,
-            "tone": financial_integrity_issue_tone(issue),
-            "severity_label": severity_labels.get(issue.severity, issue.severity),
+            "finding": finding,
+            "tone": financial_integrity_finding_tone(finding),
+            "severity_label": finding.get_severity_display(),
+            "status_label": finding.get_status_display(),
         }
-        for issue in issues[:FINANCIAL_INTEGRITY_DISPLAY_LIMIT]
+        for finding in findings_queryset[:FINANCIAL_INTEGRITY_DISPLAY_LIMIT]
     ]
 
 
@@ -726,8 +719,8 @@ def dashboard(request):
     chain_attention_count = chain_counts["ready"] + chain_counts["stale"] + chain_counts["failed"]
     step_counts = reschedule_step_attention_counts()
     reschedule_step_count = step_counts["total"]
-    financial_issues = financial_integrity_issues()
-    financial_summary = financial_integrity_summary(financial_issues)
+    financial_findings = financial_integrity_active_findings_queryset()
+    financial_summary = financial_integrity_summary(financial_findings)
     priority_total = (
         unresolved_billing
         + awaiting_transfer
@@ -856,9 +849,9 @@ def work_queue(request):
     step_counts = reschedule_step_attention_counts(reschedule_steps_queryset)
     reschedule_steps = list(reschedule_steps_queryset[:40])
     low_balances = low_balance_accounts()
-    financial_issues = financial_integrity_issues()
-    financial_summary = financial_integrity_summary(financial_issues)
-    financial_issue_rows = financial_integrity_issue_rows(financial_issues)
+    financial_findings = financial_integrity_active_findings_queryset()
+    financial_summary = financial_integrity_summary(financial_findings)
+    financial_issue_rows = financial_integrity_finding_rows(financial_findings)
     queue_summary = work_queue_summary_items(
         needs_billing_count=len(needs_billing),
         needs_attendance_count=len(needs_attendance),

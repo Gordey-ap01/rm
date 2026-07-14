@@ -104,43 +104,48 @@
     <h2>Финансовый контроль</h2>
     <div class="task-list">
       {% for row in financial_integrity_issues %}
-        {% with issue=row.issue %}
+        {% with finding=row.finding %}
           <div class="task-card status-{{ row.tone }}">
             <div>
-              <strong>{{ issue.message }}</strong>
-              <p>
-                {{ row.severity_label }} · {{ issue.code }}
-                {% if issue.appointment %}
-                  · {{ issue.appointment.starts_at|date:"d.m H:i" }} · {{ issue.appointment.service }}
-                {% endif %}
-              </p>
-              {% if issue.participant %}
-                <p class="muted">Участник: {{ issue.participant.child }}</p>
-              {% endif %}
-              {% if issue.account %}
+              <strong>{{ finding.message }}</strong>
+              <p>{{ row.severity_label }} · {{ row.status_label }} · {{ finding.code }}</p>
+              {% if finding.appointment_starts_at or finding.appointment_service_name %}
                 <p class="muted">
-                  Счет: {{ issue.account }}
-                  {% if issue.funding_source %} · {{ issue.funding_source }}{% endif %}
+                  Занятие:
+                  {% if finding.appointment_starts_at %}{{ finding.appointment_starts_at|date:"d.m H:i" }}{% endif %}
+                  {% if finding.appointment_service_name %} · {{ finding.appointment_service_name }}{% endif %}
                 </p>
-              {% elif issue.funding_source %}
-                <p class="muted">Источник: {{ issue.funding_source }}</p>
               {% endif %}
-              {% if issue.ledger_entry %}
-                <p class="muted">Ledger: {{ issue.ledger_entry.get_entry_type_display }} {{ issue.ledger_entry.amount }}</p>
+              {% if finding.participant_name %}
+                <p class="muted">Участник: {{ finding.participant_name }}</p>
+              {% elif finding.appointment_participant %}
+                <p class="muted">Участник: {{ finding.appointment_participant.child }}</p>
               {% endif %}
+              {% if finding.account_label %}
+                <p class="muted">
+                  Счет: {{ finding.account_label }}
+                  {% if finding.funding_source_name %} · {{ finding.funding_source_name }}{% endif %}
+                </p>
+              {% elif finding.funding_source_name %}
+                <p class="muted">Источник: {{ finding.funding_source_name }}</p>
+              {% endif %}
+              {% if finding.ledger_entry_type or finding.ledger_amount %}
+                <p class="muted">Ledger: {{ finding.ledger_entry_type }} {{ finding.ledger_amount }}</p>
+              {% endif %}
+              <p class="muted">Последняя проверка: {{ finding.last_seen_at|date:"d.m H:i" }}</p>
             </div>
             <div class="task-actions">
-              {% if issue.appointment %}
-                <a class="button-link secondary small-action" href="{% url 'appointment_detail' issue.appointment.pk %}">Открыть занятие</a>
+              {% if finding.appointment_id %}
+                <a class="button-link secondary small-action" href="{% url 'appointment_detail' finding.appointment_id %}">Открыть занятие</a>
               {% endif %}
-              {% if issue.account %}
-                <a class="button-link secondary small-action" href="{% url 'balance_account_edit' issue.account.pk %}">Открыть счет</a>
+              {% if finding.account_id %}
+                <a class="button-link secondary small-action" href="{% url 'balance_account_edit' finding.account_id %}">Открыть счет</a>
               {% endif %}
             </div>
           </div>
         {% endwith %}
       {% empty %}
-        <p class="empty-state">Финансовых расхождений в проверке не найдено.</p>
+        <p class="empty-state">Активных финансовых расхождений в сохраненной проверке нет.</p>
       {% endfor %}
     </div>
   </article>

@@ -1379,3 +1379,14 @@ SMTP для реальной промышленной рассылки еще н
 - Dashboard/work queue еще не переключались на persisted findings, templates/JS/UI не менялись, Browser QA не требовалась.
 - Проверки: touched-file Ruff прошел; `pytest operations/tests/test_services.py -q --tb=short` прошел (`136 passed`, 1 прежнее предупреждение django-tasks); `manage.py check` прошел; `manage.py makemigrations --check --dry-run` показал `No changes detected`; полный `pytest -q --tb=short` прошел (`466 passed`, 1 прежнее предупреждение django-tasks).
 - Graphify code-index обновлен после command-среза: `graphify update . --no-cluster` записал `4109` nodes / `14604` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
+
+## Обновление 2026-07-15: financial-integrity cached reader
+
+- Dashboard/work queue переключены с синхронного `audit_appointments()` на persisted active findings из `FinancialIntegrityFinding`.
+- Активными для UI считаются `open` и `acknowledged`; `resolved` и `ignored` скрыты из счетчиков dashboard/work queue.
+- Work queue показывает сохраненный snapshot finding-а: message, severity/status, issue code, занятие/услугу, участника, счет/источник, ledger amount/type, `last_seen_at`, ссылки на занятие и счет при наличии FK.
+- Management command/runner остаются единственным способом наполнить cache; dashboard GET не запускает проверку.
+- No DB/model/migration changes, no auto-fix/backfill/triage UI, no changes to `billing.apply_decision()`, ledger posting, payroll, grants, reports or statuses.
+- Проверки: Ruff по затронутым Python-файлам прошел; `pytest operations/tests/test_views.py::WorkQueueViewTests -q` прошел (`17 passed`); `manage.py check --settings=rehab_center.settings_test` прошел; `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`; `pytest operations/tests/test_views.py -q` прошел (`235 passed`, 1 прежнее предупреждение django-tasks); полный `pytest -q --tb=short` прошел (`468 passed`, 1 прежнее предупреждение django-tasks).
+- Playwright Browser QA fallback прошел на desktop 1280x900 и mobile 390x900: dashboard metric/focus link, work queue financial section, issue code, service context, timestamp, appointment/account links, warning style, no console/page/request errors, no horizontal overflow. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-integrity-cache-reader`; QA data очищены, runserver на 8064 остановлен.
+- Graphify code-index обновлен после cached-reader среза: `graphify update . --no-cluster` записал `4112` nodes / `14639` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.

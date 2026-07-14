@@ -170,8 +170,8 @@
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
-    "mtime": 1784046136.412529,
-    "ast_hash": "b329678ad5726157f19c8dcef9cb52c2",
+    "mtime": 1784051694.4709723,
+    "ast_hash": "9b81fcbf588d09ee682880d39d67713a",
     "semantic_hash": ""
   },
   "operations/urls.py": {
@@ -210,8 +210,8 @@
     "semantic_hash": "2521302cb2028fd14d785298ce216f6a"
   },
   "operations/views/dashboard.py": {
-    "mtime": 1784046162.9584982,
-    "ast_hash": "b4caece4d1d9071b401da4e0e8cb6deb",
+    "mtime": 1784051576.9657848,
+    "ast_hash": "7582dc533617af1b975f145d92cf6a33",
     "semantic_hash": ""
   },
   "operations/views/documents.py": {
@@ -645,8 +645,8 @@
     "semantic_hash": ""
   },
   "templates/operations/work_queue.html": {
-    "mtime": 1784046094.0719893,
-    "ast_hash": "0ccc0c9730c090e01b533f9ea96c875b",
+    "mtime": 1784052494.944422,
+    "ast_hash": "d74c8f615af9b3e9b43f76840038adf7",
     "semantic_hash": ""
   },
   "templates/registration/csrf_failure.html": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784050991.9835203,
-    "ast_hash": "3def62757341c6eb667098c8daf77dbb",
+    "mtime": 1784052576.176211,
+    "ast_hash": "98d431d79fcd94d9967674ee77954577",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784051045.7979758,
-    "ast_hash": "5e6f5907f781f0e87b7496461e3f589c",
+    "mtime": 1784052611.4990008,
+    "ast_hash": "337285086c1f7d29dc6da38a750edac6",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784051005.1837707,
-    "ast_hash": "f240d2c8dd5c517f2cf74f2965ff25f0",
+    "mtime": 1784052596.510259,
+    "ast_hash": "e22f40dedf7541a34570c3c5ebd8640e",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -960,8 +960,8 @@
     "semantic_hash": ""
   },
   "docs/17-financial-integrity-cache-and-triage-contract.md": {
-    "mtime": 1784050978.5569997,
-    "ast_hash": "305d6af2b3bd645fc1587cd06386dbbf",
+    "mtime": 1784052545.2844772,
+    "ast_hash": "1dd0f05c50586ad248870cced0cae897",
     "semantic_hash": ""
   },
   "operations/migrations/0022_financialintegritycheckrun_financialintegrityfinding_and_more.py": {
