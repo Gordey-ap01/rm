@@ -55,6 +55,7 @@ from operations.services import (
     financial_facts as financial_facts_svc,
     financial_integrity as financial_integrity_svc,
     financial_integrity_checks as financial_integrity_checks_svc,
+    financial_integrity_triage as financial_integrity_triage_svc,
     import_preview as import_preview_svc,
     notifications as notif_svc,
     payroll as payroll_svc,
@@ -3715,6 +3716,124 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertIn("Financial integrity check", stdout.getvalue())
         self.assertIn("1 issues", stdout.getvalue())
 
+    def test_financial_integrity_triage_acknowledges_open_finding(self):
+        finding = self._financial_integrity_finding()
+
+        financial_integrity_triage_svc.acknowledge_finding(
+            finding,
+            actor=self.user,
+            note="  Review started  ",
+        )
+
+        finding.refresh_from_db()
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.ACKNOWLEDGED)
+        self.assertEqual(finding.triage_note, "Review started")
+        self.assertEqual(finding.triaged_by, self.user)
+        self.assertIsNotNone(finding.triaged_at)
+
+    def test_financial_integrity_triage_returns_acknowledged_finding_to_open(self):
+        finding = self._financial_integrity_finding(
+            status=FinancialIntegrityFinding.Status.ACKNOWLEDGED
+        )
+
+        financial_integrity_triage_svc.return_finding_to_open(
+            finding,
+            actor=self.user,
+            note="Needs queue attention again.",
+        )
+
+        finding.refresh_from_db()
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
+        self.assertEqual(finding.triage_note, "Needs queue attention again.")
+        self.assertEqual(finding.triaged_by, self.user)
+
+    def test_financial_integrity_triage_ignore_requires_note(self):
+        finding = self._financial_integrity_finding()
+
+        with self.assertRaises(financial_integrity_triage_svc.FinancialIntegrityTriageError):
+            financial_integrity_triage_svc.ignore_finding(
+                finding,
+                actor=self.user,
+                note=" ",
+            )
+
+        finding.refresh_from_db()
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
+        self.assertEqual(finding.triage_note, "")
+
+    def test_financial_integrity_triage_ignores_active_finding(self):
+        finding = self._financial_integrity_finding(
+            status=FinancialIntegrityFinding.Status.ACKNOWLEDGED
+        )
+
+        financial_integrity_triage_svc.ignore_finding(
+            finding,
+            actor=self.user,
+            note="Duplicate known data import issue.",
+        )
+
+        finding.refresh_from_db()
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.IGNORED)
+        self.assertEqual(finding.triage_note, "Duplicate known data import issue.")
+        self.assertEqual(finding.triaged_by, self.user)
+
+    def test_financial_integrity_triage_reopens_ignored_finding(self):
+        finding = self._financial_integrity_finding(
+            status=FinancialIntegrityFinding.Status.IGNORED
+        )
+
+        financial_integrity_triage_svc.reopen_finding(
+            finding,
+            actor=self.user,
+            note="Needs review again.",
+        )
+
+        finding.refresh_from_db()
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
+        self.assertEqual(finding.triage_note, "Needs review again.")
+        self.assertEqual(finding.triaged_by, self.user)
+
+    def test_financial_integrity_triage_reopens_resolved_finding_and_clears_resolution(self):
+        run = FinancialIntegrityCheckRun.objects.create(
+            run_type=FinancialIntegrityCheckRun.RunType.MANUAL,
+            status=FinancialIntegrityCheckRun.Status.COMPLETED,
+            finished_at=timezone.now(),
+        )
+        finding = self._financial_integrity_finding(
+            status=FinancialIntegrityFinding.Status.RESOLVED
+        )
+        finding.resolved_at = timezone.now()
+        finding.resolved_run = run
+        finding.save(update_fields=["resolved_at", "resolved_run", "updated_at"])
+
+        financial_integrity_triage_svc.reopen_finding(finding, actor=self.user)
+
+        finding.refresh_from_db()
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
+        self.assertIsNone(finding.resolved_at)
+        self.assertIsNone(finding.resolved_run)
+
+    def test_financial_integrity_triage_rejects_invalid_transition(self):
+        finding = self._financial_integrity_finding(
+            status=FinancialIntegrityFinding.Status.RESOLVED
+        )
+
+        with self.assertRaises(financial_integrity_triage_svc.FinancialIntegrityTriageError):
+            financial_integrity_triage_svc.acknowledge_finding(finding, actor=self.user)
+
+        finding.refresh_from_db()
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.RESOLVED)
+        self.assertIsNone(finding.triaged_by)
+
+    def test_financial_integrity_triage_requires_actor(self):
+        finding = self._financial_integrity_finding()
+
+        with self.assertRaises(financial_integrity_triage_svc.FinancialIntegrityTriageError):
+            financial_integrity_triage_svc.acknowledge_finding(finding, actor=None)
+
+        finding.refresh_from_db()
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
+
     def _single_issue(
         self,
         issues: list[financial_integrity_svc.FinancialIntegrityIssue],
@@ -3723,6 +3842,22 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         matching = [issue for issue in issues if issue.code == code]
         self.assertEqual(len(matching), 1, [issue.code for issue in issues])
         return matching[0]
+
+    def _financial_integrity_finding(
+        self,
+        *,
+        status: str = FinancialIntegrityFinding.Status.OPEN,
+    ) -> FinancialIntegrityFinding:
+        now = timezone.now()
+        return FinancialIntegrityFinding.objects.create(
+            issue_key=f"triage-service-{status}",
+            code="triage_service_test_issue",
+            severity=FinancialIntegrityFinding.Severity.WARNING,
+            status=status,
+            first_seen_at=now,
+            last_seen_at=now,
+            message="Triage service test issue.",
+        )
 
     def test_payroll_generation_is_idempotent_for_charged_assignment(self):
         StaffCompensationRule.objects.create(

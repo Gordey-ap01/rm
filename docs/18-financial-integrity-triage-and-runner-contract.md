@@ -47,6 +47,32 @@
 
 Следующий кодовый срез по контракту: `financial-integrity-triage-service`.
 
+## Выполнение 2026-07-15: triage service
+
+Выполнен кодовый срез `financial-integrity-triage-service`.
+
+- Добавлен `operations/services/financial_integrity_triage.py`.
+- Service exposes explicit finding-only actions:
+  - `acknowledge_finding()`: `open -> acknowledged`;
+  - `return_finding_to_open()`: `acknowledged -> open`;
+  - `ignore_finding()`: `open/acknowledged -> ignored`, requires non-empty note;
+  - `reopen_finding()`: `ignored/resolved -> open`, clears `resolved_at/resolved_run`.
+- Все actions требуют `actor`; triage fields обновляются через `triaged_by`, `triaged_at`, `triage_note`.
+- Invalid transitions raise `FinancialIntegrityTriageError`.
+- UI, URLs, templates, models, migrations, runner semantics, billing/ledger/payroll/grants/reports/statuses не менялись.
+
+Проверки:
+
+- `ruff check operations/services/__init__.py operations/services/financial_integrity_triage.py operations/tests/test_services.py` прошел;
+- `pytest operations/tests/test_services.py -q --tb=short` прошел (`144 passed`, 1 прежнее предупреждение django-tasks);
+- `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`;
+- `manage.py check --settings=rehab_center.settings_test` прошел;
+- полный `pytest -q --tb=short` прошел (`478 passed`, 1 прежнее предупреждение django-tasks);
+- `git diff --check` показал только стандартные LF->CRLF warnings.
+- `graphify update . --no-cluster` обновил code-index до `4161` nodes / `14938` edges; semantic extraction не запускалась.
+
+Следующий кодовый срез по контракту: `financial-integrity-work-queue-triage-actions`.
+
 ## Инварианты
 
 1. Triage actions are finding-only mutations. Они не меняют appointment, ledger, balance account, payroll, grant quota, payment or report facts.

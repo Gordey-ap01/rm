@@ -1408,3 +1408,13 @@ SMTP для реальной промышленной рассылки еще н
 - No model/migration changes, no runner semantic changes, no triage POST UI yet, no billing/ledger/payroll/grant/report/status changes.
 - Проверки: Ruff по затронутым файлам прошел; `pytest operations/tests/test_auditlog.py -q` прошел (`6 passed`, 1 прежнее предупреждение django-tasks); `manage.py check --settings=rehab_center.settings_test` прошел; `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`; полный `pytest -q --tb=short` прошел (`470 passed`, 1 прежнее предупреждение django-tasks).
 - Graphify code-index обновлен после audit/admin visibility среза: `graphify update . --no-cluster` записал `4137` nodes / `14844` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
+
+## Обновление 2026-07-15: financial-integrity triage service
+
+- Добавлен `operations/services/financial_integrity_triage.py` как service-level слой для finding-only transitions.
+- Реализованы explicit actions: `acknowledge_finding`, `return_finding_to_open`, `ignore_finding`, `reopen_finding`; invalid transitions raise `FinancialIntegrityTriageError`.
+- `ignore_finding` требует non-empty note; все actions требуют actor and update `triage_note`, `triaged_by`, `triaged_at`.
+- `reopen_finding` для resolved/ignored возвращает finding в `open`; для resolved очищает `resolved_at/resolved_run`.
+- No UI/URLs/templates changes, no model/migration changes, no runner semantic changes, no billing/ledger/payroll/grant/report/status changes.
+- Проверки: Ruff по затронутым файлам прошел; `pytest operations/tests/test_services.py -q --tb=short` прошел (`144 passed`, 1 прежнее предупреждение django-tasks); `manage.py check --settings=rehab_center.settings_test` прошел; `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`; полный `pytest -q --tb=short` прошел (`478 passed`, 1 прежнее предупреждение django-tasks).
+- Graphify code-index обновлен после triage-service среза: `graphify update . --no-cluster` записал `4161` nodes / `14938` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
