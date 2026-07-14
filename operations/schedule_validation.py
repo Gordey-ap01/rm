@@ -16,6 +16,8 @@ from operations.models import (
     room_usage_counts,
 )
 
+_APPOINTMENT_ROOM = object()
+
 
 def appointment_group_conflicts(
     starts_at,
@@ -46,12 +48,21 @@ def appointment_group_conflicts(
             child__in=children,
             starts_at_snapshot__lt=ends_at,
             ends_at_snapshot__gt=starts_at,
-        ).select_related("appointment")
+        ).select_related("appointment", "child")
         if excluded_ids:
             participant_qs = participant_qs.exclude(appointment_id__in=excluded_ids)
+        participant_conflict = participant_qs.first()
+        legacy_child_conflict = qs.filter(child__in=children).select_related("child").first()
         appointment_ids = list(participant_qs.values_list("appointment_id", flat=True))
         conflicts["child"] = Appointment.objects.filter(pk__in=appointment_ids) | qs.filter(
             child__in=children
+        )
+        conflicts["child_target"] = (
+            participant_conflict.child
+            if participant_conflict
+            else legacy_child_conflict.child
+            if legacy_child_conflict
+            else None
         )
     if staff_members:
         assignment_qs = AppointmentStaffAssignment.objects.filter(
@@ -59,12 +70,23 @@ def appointment_group_conflicts(
             staff_member__in=staff_members,
             starts_at_snapshot__lt=ends_at,
             ends_at_snapshot__gt=starts_at,
-        ).select_related("appointment")
+        ).select_related("appointment", "staff_member")
         if excluded_ids:
             assignment_qs = assignment_qs.exclude(appointment_id__in=excluded_ids)
+        assignment_conflict = assignment_qs.first()
+        legacy_staff_conflict = (
+            qs.filter(staff_member__in=staff_members).select_related("staff_member").first()
+        )
         appointment_ids = list(assignment_qs.values_list("appointment_id", flat=True))
         conflicts["staff"] = Appointment.objects.filter(pk__in=appointment_ids) | qs.filter(
             staff_member__in=staff_members
+        )
+        conflicts["staff_target"] = (
+            assignment_conflict.staff_member
+            if assignment_conflict
+            else legacy_staff_conflict.staff_member
+            if legacy_staff_conflict
+            else None
         )
     if room:
         room_qs = qs.filter(room=room)
@@ -91,6 +113,48 @@ def appointment_group_conflicts(
             "recipient_total": recipient_total,
         }
     return conflicts
+
+
+def appointment_validation_children(appointment: Appointment):
+    if appointment.pk:
+        children = [
+            participant.child
+            for participant in appointment.participants.select_related("child").order_by("pk")
+        ]
+        if children:
+            return children
+    return [appointment.child] if appointment.child_id else []
+
+
+def appointment_validation_staff_members(appointment: Appointment):
+    if appointment.pk:
+        staff_members = [
+            assignment.staff_member
+            for assignment in appointment.staff_assignments.select_related("staff_member").order_by(
+                "pk"
+            )
+        ]
+        if staff_members:
+            return staff_members
+    return [appointment.staff_member] if appointment.staff_member_id else []
+
+
+def appointment_validation_conflicts(
+    appointment: Appointment,
+    starts_at,
+    ends_at,
+    *,
+    room=_APPOINTMENT_ROOM,
+):
+    validation_room = appointment.room if room is _APPOINTMENT_ROOM else room
+    return appointment_group_conflicts(
+        starts_at,
+        ends_at,
+        appointment_validation_children(appointment),
+        appointment_validation_staff_members(appointment),
+        validation_room,
+        exclude_pk=appointment.pk,
+    )
 
 
 def appointment_conflicts(starts_at, ends_at, child, staff_member, room=None, exclude_pk=None):

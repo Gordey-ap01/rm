@@ -1477,6 +1477,68 @@ class ApiAccessTests(TestCase):
         self.assertEqual(participant.starts_at_snapshot, target_start)
         self.assertFalse(moving.participants.filter(child=children[0]).exists())
 
+    def test_api_move_rejects_group_when_room_disallows_groups(self):
+        self.client.force_login(self.admin)
+        parent = ParentGuardian.objects.create(
+            last_name="Parent", first_name="API Group Room Flag", phone="+70000000019"
+        )
+        child_a = Child.objects.create(
+            last_name="GroupFlag", first_name="Child A", primary_parent=parent
+        )
+        child_b = Child.objects.create(
+            last_name="GroupFlag", first_name="Child B", primary_parent=parent
+        )
+        staff = StaffMember.objects.create(full_name="API Group Flag Staff")
+        service = Service.objects.create(
+            name="API Group Flag Service", code="AGFLAG", default_duration_minutes=30
+        )
+        room = Room.objects.create(
+            name="API Individual Only Room",
+            max_staff_count=2,
+            max_recipient_count=4,
+            allow_group_sessions=False,
+        )
+        source_start = timezone.make_aware(
+            datetime.combine(timezone.localdate() + timedelta(days=21), time(9, 0)),
+            timezone.get_current_timezone(),
+        )
+        target_start = timezone.make_aware(
+            datetime.combine(timezone.localdate() + timedelta(days=22), time(10, 0)),
+            timezone.get_current_timezone(),
+        )
+        moving = Appointment.objects.create(
+            child=child_a,
+            service=service,
+            staff_member=staff,
+            room=room,
+            starts_at=source_start,
+            ends_at=source_start + timedelta(minutes=30),
+            session_type=Appointment.SessionType.GROUP,
+        )
+        AppointmentParticipant.objects.create(
+            appointment=moving,
+            child=child_b,
+            starts_at_snapshot=moving.starts_at,
+            ends_at_snapshot=moving.ends_at,
+            appointment_status=moving.status,
+        )
+
+        response = self.client.patch(
+            f"/api/appointments/{moving.pk}/move/",
+            data=json.dumps(
+                {
+                    "starts_at": target_start.isoformat(),
+                    "ends_at": (target_start + timedelta(minutes=30)).isoformat(),
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("групповые занятия", response.json()["detail"])
+        moving.refresh_from_db()
+        self.assertEqual(moving.starts_at, source_start)
+
     def test_api_move_rejects_secondary_staff_time_off(self):
         self.client.force_login(self.admin)
         parent = ParentGuardian.objects.create(

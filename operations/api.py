@@ -10,16 +10,17 @@ from ninja.security import django_auth
 from operations.models import (
     ACTIVE_APPOINTMENT_STATUSES,
     Appointment,
-    AppointmentParticipant,
-    AppointmentStaffAssignment,
     Discount,
     Room,
     Service,
     StaffMember,
     TimeOffRequest,
-    room_usage_counts,
 )
-from operations.services.scheduling import is_within_availability
+from operations.schedule_validation import (
+    appointment_validation_conflicts,
+    appointment_validation_staff_members,
+    staff_unavailability_reason,
+)
 
 api = NinjaAPI(auth=django_auth, urls_namespace="api", version="1.0.0")
 
@@ -63,129 +64,37 @@ def admin_api_forbidden(request):
 
 
 def move_conflict_messages(appointment: Appointment, starts_at, ends_at) -> list[str]:
-    actual_participant_ids = set(appointment.participants.values_list("child_id", flat=True))
-    participant_ids = set(actual_participant_ids)
-    if appointment.child_id:
-        participant_ids.add(appointment.child_id)
-    participant_ids.discard(None)
-    actual_participant_ids.discard(None)
-
-    staff_assignments = list(appointment.staff_assignments.select_related("staff_member"))
-    actual_staff_ids = {assignment.staff_member_id for assignment in staff_assignments}
-    staff_ids = set(actual_staff_ids)
-    if appointment.staff_member_id:
-        staff_ids.add(appointment.staff_member_id)
-    staff_ids.discard(None)
-    actual_staff_ids.discard(None)
-
     messages: list[str] = []
-    if participant_ids:
-        participant_conflict = (
-            AppointmentParticipant.objects.filter(
-                appointment_status__in=ACTIVE_APPOINTMENT_STATUSES,
-                child_id__in=participant_ids,
-                starts_at_snapshot__lt=ends_at,
-                ends_at_snapshot__gt=starts_at,
-            )
-            .exclude(appointment_id=appointment.pk)
-            .select_related("child", "appointment")
-            .first()
-        )
-        legacy_child_conflict = (
-            Appointment.objects.filter(
-                status__in=ACTIVE_APPOINTMENT_STATUSES,
-                child_id__in=participant_ids,
-                starts_at__lt=ends_at,
-                ends_at__gt=starts_at,
-            )
-            .exclude(pk=appointment.pk)
-            .select_related("child")
-            .first()
-        )
-        if participant_conflict or legacy_child_conflict:
-            child = (
-                participant_conflict.child
-                if participant_conflict
-                else legacy_child_conflict.child
-            )
-            messages.append(f"получатель уже занят в это время: {child}")
+    conflicts = appointment_validation_conflicts(appointment, starts_at, ends_at)
 
-    if staff_ids:
-        staff_conflict = (
-            AppointmentStaffAssignment.objects.filter(
-                appointment_status__in=ACTIVE_APPOINTMENT_STATUSES,
-                staff_member_id__in=staff_ids,
-                starts_at_snapshot__lt=ends_at,
-                ends_at_snapshot__gt=starts_at,
-            )
-            .exclude(appointment_id=appointment.pk)
-            .select_related("staff_member", "appointment")
-            .first()
+    if conflicts.get("child") and conflicts["child"].exists():
+        child = conflicts.get("child_target")
+        messages.append(
+            f"получатель уже занят в это время: {child}"
+            if child
+            else "получатель уже занят в это время"
         )
-        legacy_staff_conflict = (
-            Appointment.objects.filter(
-                status__in=ACTIVE_APPOINTMENT_STATUSES,
-                staff_member_id__in=staff_ids,
-                starts_at__lt=ends_at,
-                ends_at__gt=starts_at,
-            )
-            .exclude(pk=appointment.pk)
-            .select_related("staff_member")
-            .first()
+    if conflicts.get("staff") and conflicts["staff"].exists():
+        staff = conflicts.get("staff_target")
+        messages.append(
+            f"специалист уже занят в это время: {staff}"
+            if staff
+            else "специалист уже занят в это время"
         )
-        if staff_conflict or legacy_staff_conflict:
-            staff = (
-                staff_conflict.staff_member
-                if staff_conflict
-                else legacy_staff_conflict.staff_member
-            )
-            messages.append(f"специалист уже занят в это время: {staff}")
 
-        checked_staff_ids = set()
-        if staff_assignments:
-            for assignment in staff_assignments:
-                checked_staff_ids.add(assignment.staff_member_id)
-                unavailable = is_within_availability(
-                    assignment.staff_member,
-                    starts_at,
-                    ends_at,
-                )
-                if unavailable:
-                    messages.append(f"недоступность специалиста {assignment.staff_member}: {unavailable}")
-        if (
-            appointment.staff_member_id
-            and appointment.staff_member_id not in checked_staff_ids
-        ):
-            unavailable = is_within_availability(
-                appointment.staff_member,
-                starts_at,
-                ends_at,
-            )
-            if unavailable:
-                messages.append(f"недоступность специалиста {appointment.staff_member}: {unavailable}")
+    for staff in appointment_validation_staff_members(appointment):
+        unavailable = staff_unavailability_reason(staff, starts_at, ends_at)
+        if unavailable:
+            messages.append(f"недоступность специалиста {staff}: {unavailable}")
 
-    if appointment.room_id:
-        room_qs = Appointment.objects.filter(
-            status__in=ACTIVE_APPOINTMENT_STATUSES,
-            room_id=appointment.room_id,
-            starts_at__lt=ends_at,
-            ends_at__gt=starts_at,
-        ).exclude(pk=appointment.pk)
-        room_staff_occupancy, room_recipient_occupancy = room_usage_counts(room_qs)
-
-        room = appointment.room
-        incoming_staff = len(actual_staff_ids) or (1 if appointment.staff_member_id else 0)
-        incoming_recipients = len(actual_participant_ids) or (1 if appointment.child_id else 0)
-        if (
-            room.limit_staff_count
-            and room_staff_occupancy + incoming_staff > room.effective_max_staff_count
-        ):
+    if appointment.room_id and conflicts.get("room_over_limit"):
+        reasons = conflicts.get("room_limit_reasons") or {}
+        if reasons.get("staff"):
             messages.append("кабинет уже занят по лимиту специалистов")
-        if (
-            room.limit_recipient_count
-            and room_recipient_occupancy + incoming_recipients > room.effective_max_recipient_count
-        ):
+        if reasons.get("recipients"):
             messages.append("кабинет уже занят по лимиту получателей")
+        if reasons.get("group"):
+            messages.append("кабинет не разрешает групповые занятия")
 
     return messages
 

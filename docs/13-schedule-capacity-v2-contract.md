@@ -93,12 +93,13 @@
 - Добавлен `operations/schedule_validation.py` как общий source-of-truth для `appointment_group_conflicts()`, `appointment_conflicts()`, `conflict_messages()`, `staff_unavailability_reason()` и `build_local_datetime()`.
 - `operations/forms.py`, `operations/services/scheduling.py`, `operations/services/rescheduling_plans.py` и `operations/views/scheduling_helpers.py` переключены на общий модуль без изменения поведения.
 - `Appointment.clean()` теперь использует общий schedule validation contract для существующих snapshot-занятий: `AppointmentParticipant` и `AppointmentStaffAssignment` являются источником правды, legacy-поля используются как fallback только при отсутствии snapshot-строк.
+- `operations/api.py::move_conflict_messages()` теперь использует `operations.schedule_validation.appointment_validation_conflicts()` и единый контракт для snapshot-участников, snapshot-назначений, legacy fallback, недоступности специалистов, лимитов кабинета и запрета групп в кабинете.
 - Добавлены focused tests для helper-level и model-level проверки snapshot-участников, snapshot-специалистов, вместимости кабинета и недоступности ассистента.
+- Добавлена API-регрессия drag-and-drop для запрета группового занятия в кабинете с `allow_group_sessions=false`.
 - Миграции не добавлялись.
 
 Осталось в первом кодовом срезе:
 
-- сверить `operations/api.py::move_conflict_messages()` и calendar drag-and-drop с `operations.schedule_validation`;
 - сверить подсказки свободных/занятых окон с тем же контрактом;
 - не менять ledger/payroll/grants/statuses.
 

@@ -1235,16 +1235,14 @@ class Appointment(TimeStampedModel):
         покрывает оба бэкенда и даёт внятные сообщения об ошибках в формах.
         """
         messages: list[str] = []
-        from operations.schedule_validation import appointment_group_conflicts
+        from operations.schedule_validation import appointment_validation_conflicts
 
         room = None if getattr(self, "_skip_room_limit_validation", False) else self.room
-        conflicts = appointment_group_conflicts(
+        conflicts = appointment_validation_conflicts(
+            self,
             self.starts_at,
             self.ends_at,
-            self._schedule_validation_children(),
-            self._schedule_validation_staff_members(),
-            room,
-            exclude_pk=self.pk,
+            room=room,
         )
 
         if conflicts.get("child") and conflicts["child"].exists():
@@ -1261,28 +1259,6 @@ class Appointment(TimeStampedModel):
                 messages.append("кабинет не разрешает групповые занятия")
         if messages:
             raise ValidationError("Конфликт расписания: " + ", ".join(messages) + ".")
-
-    def _schedule_validation_children(self) -> list[Child]:
-        if self.pk:
-            children = [
-                participant.child
-                for participant in self.participants.select_related("child").order_by("pk")
-            ]
-            if children:
-                return children
-        return [self.child] if self.child_id else []
-
-    def _schedule_validation_staff_members(self) -> list[StaffMember]:
-        if self.pk:
-            staff_members = [
-                assignment.staff_member
-                for assignment in self.staff_assignments.select_related("staff_member").order_by(
-                    "pk"
-                )
-            ]
-            if staff_members:
-                return staff_members
-        return [self.staff_member] if self.staff_member_id else []
 
     def _validate_staff_availability(self) -> None:
         if not self.starts_at or not self.ends_at:

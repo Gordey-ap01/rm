@@ -15,9 +15,9 @@
     "semantic_hash": "f8fe4dbe53fc6ad287cd5851762a008b"
   },
   "operations/api.py": {
-    "mtime": 1782566437.8949032,
-    "ast_hash": "45eefd339588597ecb67e0f079c8bf1c",
-    "semantic_hash": "45eefd339588597ecb67e0f079c8bf1c"
+    "mtime": 1784017345.3637226,
+    "ast_hash": "6cc28af53005a2754c801c231e04069d",
+    "semantic_hash": ""
   },
   "operations/apps.py": {
     "mtime": 1782944138.1893642,
@@ -105,8 +105,8 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/models.py": {
-    "mtime": 1784000990.3891244,
-    "ast_hash": "d37e11349a7ce1028d56ce53152503a6",
+    "mtime": 1784017172.0702758,
+    "ast_hash": "4763c5c832bcddcc7b84b33016e39d54",
     "semantic_hash": ""
   },
   "operations/services/__init__.py": {
@@ -155,9 +155,9 @@
     "semantic_hash": "50782352c5fa9df21258784a69f4da41"
   },
   "operations/tests.py": {
-    "mtime": 1782825995.3436396,
-    "ast_hash": "c2d8de1b494d392c64a44701815d46ee",
-    "semantic_hash": "c2d8de1b494d392c64a44701815d46ee"
+    "mtime": 1784017475.746133,
+    "ast_hash": "05835115fe71771fada3f587e65641f9",
+    "semantic_hash": ""
   },
   "operations/tests/test_auditlog.py": {
     "mtime": 1782944177.5584154,
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784001393.1521342,
-    "ast_hash": "680b1c5b7d48ff912f32f930f444dd0d",
+    "mtime": 1784001463.807662,
+    "ast_hash": "b59b6acdb63766b49d7b8cdbdffd5c09",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -820,8 +820,8 @@
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784001410.754114,
-    "ast_hash": "24179530c5863b56933511a9c29a06e1",
+    "mtime": 1784001472.3602996,
+    "ast_hash": "2f847b82f1e51819126154eff73a5f27",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -920,8 +920,8 @@
     "semantic_hash": ""
   },
   "operations/schedule_validation.py": {
-    "mtime": 1783996495.0795555,
-    "ast_hash": "875eb9dde2cf845d9999ac3e1bd2b772",
+    "mtime": 1784017312.243957,
+    "ast_hash": "3af865900777d160c19a1502a9bdc65a",
     "semantic_hash": ""
   },
   "docs/12-project-stage-audit-and-pivot-plan.md": {
