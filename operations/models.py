@@ -2175,6 +2175,191 @@ class LedgerEntry(TimeStampedModel):
             )
 
 
+class FinancialIntegrityCheckRun(TimeStampedModel):
+    class RunType(models.TextChoices):
+        MANUAL = "manual", "Ручной запуск"
+        SCHEDULED = "scheduled", "По расписанию"
+        MANAGEMENT_COMMAND = "management_command", "Команда управления"
+        SYSTEM = "system", "Системный запуск"
+
+    class Status(models.TextChoices):
+        RUNNING = "running", "Выполняется"
+        COMPLETED = "completed", "Завершено"
+        FAILED = "failed", "Ошибка"
+
+    run_type = models.CharField(
+        "тип запуска",
+        max_length=30,
+        choices=RunType.choices,
+        default=RunType.MANUAL,
+    )
+    status = models.CharField(
+        "статус",
+        max_length=30,
+        choices=Status.choices,
+        default=Status.RUNNING,
+    )
+    started_at = models.DateTimeField("начало проверки", default=timezone.now)
+    finished_at = models.DateTimeField("окончание проверки", null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="запустил",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="financial_integrity_check_runs",
+    )
+    candidate_count = models.PositiveIntegerField("проверено занятий", default=0)
+    issue_count = models.PositiveIntegerField("всего расхождений", default=0)
+    error_count = models.PositiveIntegerField("ошибок", default=0)
+    warning_count = models.PositiveIntegerField("предупреждений", default=0)
+    info_count = models.PositiveIntegerField("информационных", default=0)
+    error_message = models.TextField("сообщение ошибки", blank=True)
+
+    class Meta:
+        verbose_name = "запуск финансовой проверки"
+        verbose_name_plural = "запуски финансовых проверок"
+        ordering = ["-started_at", "-pk"]
+        indexes = [
+            models.Index(fields=["status", "started_at"]),
+            models.Index(fields=["run_type", "started_at"]),
+            models.Index(fields=["-started_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_run_type_display()} / {self.get_status_display()} / {self.started_at:%d.%m.%Y %H:%M}"
+
+
+class FinancialIntegrityFinding(TimeStampedModel):
+    class Status(models.TextChoices):
+        OPEN = "open", "Открыто"
+        ACKNOWLEDGED = "acknowledged", "Принято в работу"
+        RESOLVED = "resolved", "Решено"
+        IGNORED = "ignored", "Игнорируется"
+
+    class Severity(models.TextChoices):
+        ERROR = "error", "Ошибка"
+        WARNING = "warning", "Проверить"
+        INFO = "info", "Информация"
+
+    issue_key = models.CharField("ключ расхождения", max_length=64, unique=True)
+    code = models.CharField("код расхождения", max_length=100)
+    severity = models.CharField("важность", max_length=20, choices=Severity.choices)
+    status = models.CharField(
+        "статус",
+        max_length=30,
+        choices=Status.choices,
+        default=Status.OPEN,
+    )
+    appointment = models.ForeignKey(
+        Appointment,
+        verbose_name="занятие",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="financial_integrity_findings",
+    )
+    appointment_participant = models.ForeignKey(
+        AppointmentParticipant,
+        verbose_name="участник занятия",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="financial_integrity_findings",
+    )
+    ledger_entry = models.ForeignKey(
+        LedgerEntry,
+        verbose_name="ledger-проводка",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="financial_integrity_findings",
+    )
+    account = models.ForeignKey(
+        BalanceAccount,
+        verbose_name="счет",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="financial_integrity_findings",
+    )
+    funding_source = models.ForeignKey(
+        FundingSource,
+        verbose_name="источник финансирования",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="financial_integrity_findings",
+    )
+    first_seen_at = models.DateTimeField("впервые найдено")
+    last_seen_at = models.DateTimeField("последний раз найдено")
+    resolved_at = models.DateTimeField("решено", null=True, blank=True)
+    first_seen_run = models.ForeignKey(
+        FinancialIntegrityCheckRun,
+        verbose_name="первый запуск",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="first_seen_findings",
+    )
+    last_seen_run = models.ForeignKey(
+        FinancialIntegrityCheckRun,
+        verbose_name="последний запуск",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="last_seen_findings",
+    )
+    resolved_run = models.ForeignKey(
+        FinancialIntegrityCheckRun,
+        verbose_name="запуск решения",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resolved_findings",
+    )
+    message = models.TextField("сообщение")
+    appointment_starts_at = models.DateTimeField("дата занятия", null=True, blank=True)
+    appointment_service_name = models.CharField("услуга", max_length=200, blank=True)
+    participant_name = models.CharField("участник", max_length=240, blank=True)
+    account_label = models.CharField("счет", max_length=255, blank=True)
+    funding_source_name = models.CharField("источник", max_length=200, blank=True)
+    ledger_entry_type = models.CharField("тип ledger", max_length=30, blank=True)
+    ledger_amount = models.DecimalField(
+        "сумма ledger",
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    payload = models.JSONField("данные проверки", default=dict, blank=True)
+    triage_note = models.TextField("заметка разбора", blank=True)
+    triaged_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="разобрал",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="financial_integrity_triaged_findings",
+    )
+    triaged_at = models.DateTimeField("разобрано", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "финансовое расхождение"
+        verbose_name_plural = "финансовые расхождения"
+        ordering = ["status", "-last_seen_at", "-pk"]
+        indexes = [
+            models.Index(fields=["status", "severity", "-last_seen_at"]),
+            models.Index(fields=["code", "status"]),
+            models.Index(fields=["appointment", "status"]),
+            models.Index(fields=["account", "status"]),
+            models.Index(fields=["funding_source", "status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.code} / {self.get_status_display()}"
+
+
 class PayrollAccrual(TimeStampedModel):
     class Status(models.TextChoices):
         DRAFT = "draft", "Черновик"

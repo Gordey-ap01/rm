@@ -1359,3 +1359,15 @@ SMTP для реальной промышленной рассылки еще н
 - No DB/model/migration changes, no dashboard/work queue switch, no billing/ledger/payroll/grant/status semantic changes.
 - Проверки: touched-file Ruff прошел; `pytest operations/tests/test_services.py -q --tb=short` прошел (`130 passed`, 1 прежнее предупреждение django-tasks); `manage.py check` прошел; `manage.py makemigrations --check --dry-run` показал `No changes detected`; полный `pytest -q --tb=short` прошел (`460 passed`, 1 прежнее предупреждение django-tasks); `git diff --check` показал только LF->CRLF warnings.
 - Graphify code-index обновлен после helper-only среза: `graphify update . --no-cluster` записал `4076` nodes / `14497` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
+
+## Обновление 2026-07-15: financial-integrity cache schema and runner
+
+- Выполнен первый DB-backed срез `financial-integrity-cache-schema-and-runner` по `docs/17-financial-integrity-cache-and-triage-contract.md`.
+- Добавлены additive модели `FinancialIntegrityCheckRun` и `FinancialIntegrityFinding`, миграция `operations/migrations/0022_financialintegritycheckrun_financialintegrityfinding_and_more.py`.
+- Finding хранит unique `issue_key`, severity/status, source-object ссылки через `SET_NULL`, first/last/resolved run timestamps, denormalized display fields and JSON payload.
+- Добавлен `operations/services/financial_integrity_checks.py`: runner создает check run, вызывает read-only `audit_appointments()`, upsert-ит finding-и по `financial_integrity_issue_key()`, обновляет counts, resolves unseen open/acknowledged findings and reopens resolved findings when same key appears again.
+- Dashboard/work queue еще не переключались на persisted findings; templates/JS/UI не менялись, Browser QA не требовалась для этого schema/service среза.
+- No auto-fix/backfill, no changes to `billing.apply_decision()`, ledger posting, payroll, grants, reports or statuses.
+- Проверки: touched-file Ruff прошел; `pytest operations/tests/test_services.py -q --tb=short` прошел (`135 passed`, 1 прежнее предупреждение django-tasks); `manage.py check` прошел; `manage.py makemigrations --check --dry-run` показал `No changes detected`; полный `pytest -q --tb=short` прошел (`465 passed`, 1 прежнее предупреждение django-tasks); `git diff --check` показал только LF->CRLF warnings.
+- Graphify code-index обновлен после schema/runner среза: `graphify update . --no-cluster` записал `4102` nodes / `14589` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
+- Следующий безопасный шаг по контракту: отдельный reader switch dashboard/work queue на persisted open findings, с acceptance review and Browser QA.

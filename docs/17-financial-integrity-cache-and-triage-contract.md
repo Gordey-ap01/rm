@@ -6,6 +6,32 @@
 
 Назначение: перевести финансовый audit из синхронной проверки dashboard/work queue в production-scale контур с сохраненными finding-ами, triage-статусами и контролируемым запуском проверок, не меняя семантику списаний, ledger, payroll, grants и `billing.apply_decision()`.
 
+## Выполнение 2026-07-15: schema and runner
+
+Выполнен первый DB-backed кодовый срез `financial-integrity-cache-schema-and-runner`.
+
+- Добавлены additive модели `FinancialIntegrityCheckRun` и `FinancialIntegrityFinding`.
+- Добавлена миграция `operations/migrations/0022_financialintegritycheckrun_financialintegrityfinding_and_more.py`.
+- Все source-object ссылки finding-а используют `SET_NULL`; audit snapshot дополнительно хранит denormalized display fields и JSON payload.
+- Добавлен writer service `operations.services.financial_integrity_checks.run_financial_integrity_check()`.
+- Runner создает check run, вызывает read-only `audit_appointments()`, upsert-ит finding-и по `financial_integrity_issue_key()`, обновляет counts и помечает unseen open/acknowledged findings as resolved.
+- Resolved finding автоматически reopened, если тот же `issue_key` снова найден.
+- Scoped run with explicit `appointments` resolves unseen findings only внутри выбранных appointments; full run resolves all unseen open/acknowledged findings.
+- Dashboard/work queue еще не переключались на persisted findings; auto-fix/backfill/triage UI не добавлялись.
+- Не менялись `billing.apply_decision()`, ledger posting, payroll, grants, reports, statuses.
+
+Проверки:
+
+- `ruff check operations/models.py operations/services/__init__.py operations/services/financial_integrity.py operations/services/financial_integrity_checks.py operations/tests/test_services.py` прошел;
+- `pytest operations/tests/test_services.py -q --tb=short` прошел (`135 passed`, 1 прежнее предупреждение django-tasks);
+- `manage.py check` прошел;
+- `manage.py makemigrations --check --dry-run` показал `No changes detected`;
+- полный `pytest -q --tb=short` прошел (`465 passed`, 1 прежнее предупреждение django-tasks);
+- `git diff --check` показал только стандартные LF->CRLF warnings;
+- `graphify update . --no-cluster` обновил code-index до `4102` nodes / `14589` edges; semantic extraction не запускалась.
+
+Следующий кодовый срез по этому контракту: reader switch для dashboard/work queue на persisted open findings, но только после отдельного acceptance review и с Browser QA, потому что будут меняться views/templates.
+
 ## Подготовительный срез 2026-07-15: issue key foundation
 
 До миграций выполнен безопасный helper-only срез:

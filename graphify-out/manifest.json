@@ -105,13 +105,13 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/models.py": {
-    "mtime": 1784017172.0702758,
-    "ast_hash": "4763c5c832bcddcc7b84b33016e39d54",
+    "mtime": 1784050046.0959523,
+    "ast_hash": "5ef3d6f169e004698ade19a4d45694ed",
     "semantic_hash": ""
   },
   "operations/services/__init__.py": {
-    "mtime": 1784045417.0614045,
-    "ast_hash": "b9d3d88395f9a46277ca503698c03cc9",
+    "mtime": 1784050165.353602,
+    "ast_hash": "7ab90ecd7247539ad0004e128e908a90",
     "semantic_hash": ""
   },
   "operations/services/appointments.py": {
@@ -165,8 +165,8 @@
     "semantic_hash": "bf315b84fbd5880aaa7af688dbe0dba4"
   },
   "operations/tests/test_services.py": {
-    "mtime": 1784047877.4106116,
-    "ast_hash": "a1ed8cb54f07a34a24f00437eca9490f",
+    "mtime": 1784050265.0267093,
+    "ast_hash": "3de802a4ef26770efb13959ed49d0b63",
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784047955.6714396,
-    "ast_hash": "225726ce69f03438d720d8f346c3a546",
+    "mtime": 1784050521.7092326,
+    "ast_hash": "12a48c6c81cc72a059a7357ed356ab0e",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784048014.8431685,
-    "ast_hash": "aa5c675a7c29ee60ca8047b5773edc41",
+    "mtime": 1784050572.5704567,
+    "ast_hash": "67b2218139b3f2761b5e73df78a1971a",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784047989.4372358,
-    "ast_hash": "f98fda0cb500d5ac53143f11facabb79",
+    "mtime": 1784050547.3115518,
+    "ast_hash": "e44dea9ee82a29709c978e02fb02f20b",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -960,8 +960,18 @@
     "semantic_hash": ""
   },
   "docs/17-financial-integrity-cache-and-triage-contract.md": {
-    "mtime": 1784047938.8677595,
-    "ast_hash": "1f1d88c9ea0fbf3c8e614dddcf4d1174",
+    "mtime": 1784050502.168123,
+    "ast_hash": "54be34edb9d2c34a621ede30af7d911d",
+    "semantic_hash": ""
+  },
+  "operations/migrations/0022_financialintegritycheckrun_financialintegrityfinding_and_more.py": {
+    "mtime": 1784050053.872998,
+    "ast_hash": "943012ccc6ed87b109e56364f2201e39",
+    "semantic_hash": ""
+  },
+  "operations/services/financial_integrity_checks.py": {
+    "mtime": 1784050202.1938965,
+    "ast_hash": "d4b156953a0c883c8b6de021c7efb1de",
     "semantic_hash": ""
   }
 }

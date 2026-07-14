@@ -28,6 +28,8 @@ from operations.models import (
     AppointmentStaffAssignment,
     BalanceAccount,
     Child,
+    FinancialIntegrityCheckRun,
+    FinancialIntegrityFinding,
     FundingServiceQuota,
     FundingSource,
     FundingStaffAllocation,
@@ -51,6 +53,7 @@ from operations.services import (
     billing as billing_svc,
     financial_facts as financial_facts_svc,
     financial_integrity as financial_integrity_svc,
+    financial_integrity_checks as financial_integrity_checks_svc,
     import_preview as import_preview_svc,
     notifications as notif_svc,
     payroll as payroll_svc,
@@ -3529,6 +3532,160 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
             financial_integrity_svc.financial_integrity_issue_key(first_issue),
             financial_integrity_svc.financial_integrity_issue_key(second_issue),
         )
+
+    def test_financial_integrity_check_run_creates_persisted_finding(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        participant = appointment.participants.get()
+        AppointmentParticipant.objects.filter(pk=participant.pk).update(
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account=None,
+        )
+
+        run = financial_integrity_checks_svc.run_financial_integrity_check(
+            appointments=[appointment],
+            requested_by=self.user,
+        )
+
+        finding = FinancialIntegrityFinding.objects.get()
+        self.assertEqual(run.status, FinancialIntegrityCheckRun.Status.COMPLETED)
+        self.assertEqual(run.candidate_count, 1)
+        self.assertEqual(run.issue_count, 1)
+        self.assertEqual(run.error_count, 1)
+        self.assertEqual(run.warning_count, 0)
+        self.assertEqual(run.info_count, 0)
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
+        self.assertEqual(
+            finding.code,
+            financial_integrity_svc.FinancialIssueCode.PARTICIPANT_CHARGE_WITHOUT_ACCOUNT,
+        )
+        self.assertEqual(finding.severity, FinancialIntegrityFinding.Severity.ERROR)
+        self.assertEqual(finding.appointment, appointment)
+        self.assertEqual(finding.appointment_participant.pk, participant.pk)
+        self.assertEqual(finding.first_seen_run, run)
+        self.assertEqual(finding.last_seen_run, run)
+        self.assertEqual(finding.payload["appointment_id"], appointment.pk)
+        self.assertEqual(finding.payload["participant_id"], participant.pk)
+        self.assertTrue(finding.participant_name)
+
+    def test_financial_integrity_check_run_does_not_duplicate_same_finding(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        participant = appointment.participants.get()
+        AppointmentParticipant.objects.filter(pk=participant.pk).update(
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account=None,
+        )
+
+        first_run = financial_integrity_checks_svc.run_financial_integrity_check(
+            appointments=[appointment],
+            requested_by=self.user,
+        )
+        second_run = financial_integrity_checks_svc.run_financial_integrity_check(
+            appointments=[appointment],
+            requested_by=self.user,
+        )
+
+        finding = FinancialIntegrityFinding.objects.get()
+        self.assertEqual(FinancialIntegrityFinding.objects.count(), 1)
+        self.assertEqual(finding.first_seen_run, first_run)
+        self.assertEqual(finding.last_seen_run, second_run)
+
+    def test_financial_integrity_check_run_resolves_unseen_finding(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        participant = appointment.participants.get()
+        AppointmentParticipant.objects.filter(pk=participant.pk).update(
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account=None,
+        )
+        financial_integrity_checks_svc.run_financial_integrity_check(
+            appointments=[appointment],
+            requested_by=self.user,
+        )
+        AppointmentParticipant.objects.filter(pk=participant.pk).update(
+            billing_decision=Appointment.BillingDecision.UNDECIDED,
+            billing_account=None,
+        )
+
+        resolve_run = financial_integrity_checks_svc.run_financial_integrity_check(
+            appointments=[appointment],
+            requested_by=self.user,
+        )
+
+        finding = FinancialIntegrityFinding.objects.get()
+        self.assertEqual(resolve_run.issue_count, 0)
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.RESOLVED)
+        self.assertEqual(finding.resolved_run, resolve_run)
+        self.assertIsNotNone(finding.resolved_at)
+
+    def test_financial_integrity_check_run_reopens_resolved_finding(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        participant = appointment.participants.get()
+        AppointmentParticipant.objects.filter(pk=participant.pk).update(
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account=None,
+        )
+        financial_integrity_checks_svc.run_financial_integrity_check(
+            appointments=[appointment],
+            requested_by=self.user,
+        )
+        AppointmentParticipant.objects.filter(pk=participant.pk).update(
+            billing_decision=Appointment.BillingDecision.UNDECIDED,
+            billing_account=None,
+        )
+        financial_integrity_checks_svc.run_financial_integrity_check(
+            appointments=[appointment],
+            requested_by=self.user,
+        )
+        AppointmentParticipant.objects.filter(pk=participant.pk).update(
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account=None,
+        )
+
+        reopen_run = financial_integrity_checks_svc.run_financial_integrity_check(
+            appointments=[appointment],
+            requested_by=self.user,
+        )
+
+        finding = FinancialIntegrityFinding.objects.get()
+        self.assertEqual(reopen_run.issue_count, 1)
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
+        self.assertEqual(finding.last_seen_run, reopen_run)
+        self.assertIsNone(finding.resolved_at)
+        self.assertIsNone(finding.resolved_run)
+
+    def test_financial_integrity_check_run_counts_severities(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        participant = appointment.participants.get()
+        AppointmentParticipant.objects.filter(pk=participant.pk).update(
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account=None,
+        )
+        stale_appointment = appt_svc.create_appointment(
+            child=self.child,
+            staff_member=self.staff_b,
+            service=self.service_log,
+            room=self.room2,
+            starts_at=_local(self.day, time(11, 0)),
+            ends_at=_local(self.day, time(11, 30)),
+        )
+        LedgerEntry.objects.create(
+            appointment=stale_appointment,
+            account=self.account,
+            entry_type=LedgerEntry.EntryType.DEBIT,
+            amount=Decimal("-1"),
+            reason="Stale check run ledger",
+            created_by=self.user,
+        )
+
+        run = financial_integrity_checks_svc.run_financial_integrity_check(
+            appointments=[appointment, stale_appointment],
+            requested_by=self.user,
+        )
+
+        self.assertEqual(run.issue_count, 2)
+        self.assertEqual(run.error_count, 1)
+        self.assertEqual(run.warning_count, 1)
+        self.assertEqual(run.info_count, 0)
+        self.assertEqual(FinancialIntegrityFinding.objects.count(), 2)
 
     def _single_issue(
         self,
