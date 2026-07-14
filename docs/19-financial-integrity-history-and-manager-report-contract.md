@@ -101,6 +101,27 @@ Do not add a separate aggregate table in the first migration.
 
 Следующий срез по этому контракту: detail timeline UI на existing finding detail page, либо read-only manager trend report. Не начинать оба одновременно; UI worker может стартовать только после этого DB-owner commit.
 
+## Выполнение 2026-07-15: detail timeline UI slice
+
+Выполнен UI-срез без новой миграции и без изменений финансовой семантики.
+
+- Existing finding detail page `/financial-integrity/findings/<id>/` теперь получает `event_rows` из `FinancialIntegrityFindingEvent`.
+- Timeline показывает последние 20 событий по finding: тип события, время, actor/system label, status transition, note и run id.
+- GET detail page не создает новых событий; запись событий остается только в runner/triage/scoped recheck paths.
+- Добавлены CSS-стили `financial-integrity-history` / `financial-integrity-event` поверх существующей `compact-timeline`; mobile layout не должен давать горизонтальный overflow.
+- Тесты detail page проверяют наличие timeline, отсутствие side-effect event creation на GET и отображение note из triage event.
+- Manager trend report остается следующим отдельным read-only срезом; он не был начат в этом UI-срезе.
+
+Проверки:
+
+- `ruff check operations/views/dashboard.py operations/tests/test_views.py` прошел;
+- `pytest operations/tests/test_views.py::WorkQueueViewTests -q --tb=short` прошел (`30 passed`);
+- `manage.py check --settings=rehab_center.settings_test` прошел;
+- `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`;
+- полный `pytest -q --tb=short` прошел (`492 passed`, 1 прежнее предупреждение django-tasks);
+- Playwright Browser QA fallback прошел на `/financial-integrity/findings/8/` desktop 1365x900 и mobile 390x844: history block `1`, events `2`, note visible, payload visible, overflow `0`, console/page errors and 4xx/5xx responses отсутствуют. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-timeline`; QA data очищены, runserver на 8068 остановлен.
+- `graphify update . --no-cluster` обновил code-index до `4229` nodes / `15275` edges; semantic extraction не запускалась.
+
 ## Event Recording Rules
 
 Events are append-only. UI must not edit or delete them.

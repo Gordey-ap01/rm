@@ -111,10 +111,21 @@ def reschedule_plan_focus_url(focus: str) -> str:
 
 TERMINAL_RESCHEDULE_PLAN_STATUSES = plan_svc.TERMINAL_PLAN_STATUSES
 FINANCIAL_INTEGRITY_DISPLAY_LIMIT = 40
+FINANCIAL_INTEGRITY_EVENT_DISPLAY_LIMIT = 20
 FINANCIAL_INTEGRITY_ACTIVE_STATUSES = (
     FinancialIntegrityFinding.Status.OPEN,
     FinancialIntegrityFinding.Status.ACKNOWLEDGED,
 )
+FINANCIAL_INTEGRITY_EVENT_TONES = {
+    FinancialIntegrityFindingEvent.EventType.CREATED: "warning",
+    FinancialIntegrityFindingEvent.EventType.ACKNOWLEDGED: "info",
+    FinancialIntegrityFindingEvent.EventType.RETURNED_TO_OPEN: "warning",
+    FinancialIntegrityFindingEvent.EventType.IGNORED: "muted",
+    FinancialIntegrityFindingEvent.EventType.REOPENED: "danger",
+    FinancialIntegrityFindingEvent.EventType.RESOLVED: "success",
+    FinancialIntegrityFindingEvent.EventType.SCOPED_RECHECK: "info",
+    FinancialIntegrityFindingEvent.EventType.NOTE_ADDED: "info",
+}
 
 
 def confirmation_attention_filter() -> Q:
@@ -427,6 +438,43 @@ def financial_integrity_finding_rows(findings_queryset) -> list[dict[str, object
     ]
 
 
+def financial_integrity_status_label(status: str) -> str:
+    if not status:
+        return ""
+    try:
+        return FinancialIntegrityFinding.Status(status).label
+    except ValueError:
+        return status
+
+
+def financial_integrity_event_actor_label(event: FinancialIntegrityFindingEvent) -> str:
+    if event.actor_id:
+        return event.actor.get_full_name() or event.actor.get_username() or str(event.actor)
+    if event.run_id:
+        return "Автопроверка"
+    return "Система"
+
+
+def financial_integrity_event_rows(
+    finding: FinancialIntegrityFinding,
+) -> list[dict[str, object]]:
+    events = (
+        FinancialIntegrityFindingEvent.objects.filter(finding=finding)
+        .select_related("run", "actor")
+        .order_by("-event_at", "-pk")[:FINANCIAL_INTEGRITY_EVENT_DISPLAY_LIMIT]
+    )
+    return [
+        {
+            "event": event,
+            "tone": FINANCIAL_INTEGRITY_EVENT_TONES.get(event.event_type, "info"),
+            "actor_label": financial_integrity_event_actor_label(event),
+            "status_from_label": financial_integrity_status_label(event.status_from),
+            "status_to_label": financial_integrity_status_label(event.status_to),
+        }
+        for event in events
+    ]
+
+
 def financial_integrity_finding_triage_fallback_url() -> str:
     return f"{reverse('work_queue')}#queue-financial-integrity"
 
@@ -534,6 +582,7 @@ def financial_integrity_finding_detail(request, pk: int):
             "finding": finding,
             "tone": financial_integrity_finding_tone(finding),
             "source_items": financial_integrity_finding_source_items(finding),
+            "event_rows": financial_integrity_event_rows(finding),
             "detail_url": detail_url,
             "work_queue_financial_url": financial_integrity_finding_triage_fallback_url(),
         },

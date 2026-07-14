@@ -1490,6 +1490,74 @@ th {
   flex-wrap: wrap;
 }
 
+.financial-integrity-history {
+  overflow: visible;
+}
+
+.financial-integrity-history-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.financial-integrity-history-head h2 {
+  margin-bottom: 4px;
+}
+
+.financial-integrity-history-head p,
+.financial-integrity-history-head small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.financial-integrity-event {
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: flex-start;
+}
+
+.financial-integrity-event span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+
+.financial-integrity-event.is-success {
+  border-left-color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.financial-integrity-event.is-warning {
+  border-left-color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.financial-integrity-event.is-danger {
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.financial-integrity-event.is-muted {
+  border-left-color: var(--line-strong);
+  background: #f8fafc;
+}
+
+.financial-integrity-event-note {
+  grid-column: 2;
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .financial-integrity-payload {
   max-height: 360px;
   margin: 0;

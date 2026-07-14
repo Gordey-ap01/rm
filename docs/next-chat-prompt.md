@@ -77,3 +77,12 @@
 1. Начать новый чат в этом же проекте.
 2. Вставить текст из блока выше.
 3. Не прикладывать полную копию проекта: модель должна читать манифест и только нужные документы.
+## Последнее уточнение 2026-07-15
+
+После текста промпта выше считать актуальным:
+
+- `financial-integrity-detail-timeline-ui` выполнен: `/financial-integrity/findings/<id>/` показывает read-only timeline из `FinancialIntegrityFindingEvent` с event type/time/actor/status transition/note/run id.
+- GET detail page не пишет events; запись событий остается только в runner/triage/scoped recheck paths.
+- Проверки прошли: Ruff touched Python, focused `WorkQueueViewTests` (`30 passed`), Django check, migration dry-run `No changes detected`, full pytest (`492 passed`), Playwright Browser QA fallback desktop/mobile.
+- Следующий безопасный шаг по docs/19: read-only manager trend report. Не начинать заново detail timeline UI, event schema/service, runner operations, finding detail или предыдущие financial-integrity срезы.
+- Graphify code-index after financial-integrity detail timeline UI: `4229` nodes / `15275` edges; semantic extraction was not rerun.

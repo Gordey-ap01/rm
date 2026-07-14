@@ -1477,3 +1477,14 @@ SMTP для реальной промышленной рассылки еще н
 - Проверки: Ruff touched Python/migration прошел; service tests `145 passed`; auditlog tests `6 passed`; `WorkQueueViewTests` `30 passed`; `manage.py check` прошел; migration dry-run показал `No changes detected`; полный `pytest -q --tb=short` прошел (`492 passed`, 1 прежнее предупреждение django-tasks).
 - Graphify code-index обновлен после event schema/service: `graphify update . --no-cluster` записал `4222` nodes / `15254` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
 - Следующий безопасный срез по docs/19: detail timeline UI на существующей finding detail page или read-only manager trend report; не начинать оба одновременно.
+## Обновление 2026-07-15: financial-integrity detail timeline UI
+
+- Выполнен UI-срез по `docs/19-financial-integrity-history-and-manager-report-contract.md` без миграций.
+- `/financial-integrity/findings/<id>/` теперь показывает timeline последних `FinancialIntegrityFindingEvent`: тип события, время, автор/система, переход статуса, note и run id.
+- GET detail page не пишет события; событие по-прежнему создается только runner/triage/scoped recheck paths.
+- Добавлены стили `financial-integrity-history` / `financial-integrity-event` поверх существующей `compact-timeline`; мобильный layout проверен на overflow.
+- No model/migration changes, no billing/ledger/payroll/grant/report/status semantic changes, no auto-fix/backfill.
+- Проверки: Ruff touched Python прошел; `pytest operations/tests/test_views.py::WorkQueueViewTests -q --tb=short` прошел (`30 passed`); `manage.py check` прошел; migration dry-run показал `No changes detected`; полный `pytest -q --tb=short` прошел (`492 passed`, 1 прежнее предупреждение django-tasks).
+- Playwright Browser QA fallback прошел на desktop 1365x900 и mobile 390x844: history block виден, 2 события, note visible, payload visible, overflow `0`, console/page errors и 4xx/5xx responses нет. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-timeline`; QA data очищены, runserver 8068 остановлен.
+- Следующий безопасный срез по docs/19: read-only manager trend report. Detail timeline UI заново не начинать.
+- Graphify code-index after financial-integrity detail timeline UI: `4229` nodes / `15275` edges; semantic extraction was not rerun.

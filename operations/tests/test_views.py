@@ -459,10 +459,12 @@ class WorkQueueViewTests(NewViewsTestBase):
     def test_financial_integrity_finding_detail_shows_sources_and_actions(self):
         self._financial_integrity_fixture()
         finding = FinancialIntegrityFinding.objects.get()
+        event_count = FinancialIntegrityFindingEvent.objects.count()
 
         response = self.client.get(reverse("financial_integrity_finding_detail", args=[finding.pk]))
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(FinancialIntegrityFindingEvent.objects.count(), event_count)
         self.assertContains(response, finding.issue_key)
         self.assertContains(response, finding.code)
         self.assertContains(response, finding.message)
@@ -472,7 +474,14 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertContains(response, 'name="action" value="acknowledge"')
         self.assertContains(response, 'name="action" value="ignore"')
         self.assertContains(response, reverse("financial_integrity_finding_recheck", args=[finding.pk]))
+        self.assertContains(response, "financial-integrity-history")
+        self.assertContains(response, "financial-integrity-event")
         self.assertContains(response, "financial-integrity-payload")
+        self.assertEqual(len(response.context["event_rows"]), 1)
+        self.assertEqual(
+            response.context["event_rows"][0]["event"].event_type,
+            FinancialIntegrityFindingEvent.EventType.CREATED,
+        )
 
     def test_financial_integrity_finding_detail_handles_missing_source_objects(self):
         self._financial_integrity_fixture()
@@ -639,6 +648,9 @@ class WorkQueueViewTests(NewViewsTestBase):
         queue_response = self.client.get(reverse("work_queue"))
         self.assertEqual(queue_response.context["financial_integrity_issue_count"], 0)
         self.assertNotContains(queue_response, "stale_debit_ledger_without_charge_fact")
+        detail_response = self.client.get(reverse("financial_integrity_finding_detail", args=[finding.pk]))
+        self.assertContains(detail_response, "financial-integrity-event-note")
+        self.assertEqual(detail_response.context["event_rows"][0]["event"].note, finding.triage_note)
 
     def test_work_queue_financial_integrity_triage_rejects_external_next(self):
         self._financial_integrity_fixture()

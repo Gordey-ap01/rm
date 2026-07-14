@@ -139,6 +139,36 @@
   </article>
 </section>
 
+<section class="panel financial-integrity-history" aria-label="История финансового расхождения">
+  <div class="financial-integrity-history-head">
+    <div>
+      <h2>История</h2>
+      <p>Последние события по этому расхождению</p>
+    </div>
+    <small>{{ event_rows|length }} из последних событий</small>
+  </div>
+  <div class="compact-timeline financial-integrity-timeline">
+    {% for row in event_rows %}
+      <article class="timeline-item financial-integrity-event is-{{ row.tone }}">
+        <span><i class="bi bi-activity" aria-hidden="true"></i></span>
+        <strong>{{ row.event.get_event_type_display }}</strong>
+        <small>
+          {{ row.event.event_at|date:"d.m.Y H:i" }} · {{ row.actor_label }}
+          {% if row.status_from_label or row.status_to_label %}
+            · {{ row.status_from_label|default:"-" }} -> {{ row.status_to_label|default:"-" }}
+          {% endif %}
+          {% if row.event.run_id %} · запуск #{{ row.event.run_id }}{% endif %}
+        </small>
+        {% if row.event.note %}
+          <p class="financial-integrity-event-note">{{ row.event.note }}</p>
+        {% endif %}
+      </article>
+    {% empty %}
+      <p class="empty-state">История появится после запуска проверки или действия разбора.</p>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="panel">
   <h2>Данные проверки</h2>
   <pre class="financial-integrity-payload">{{ finding.payload }}</pre>
