@@ -5119,6 +5119,10 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertContains(response, 'data-label="Команда"')
         self.assertContains(
             response,
+            reverse("appointment_move", args=[appointment.pk]),
+        )
+        self.assertContains(
+            response,
             "План не меняет расписание, пока администратор не применит шаг.",
         )
         self.assertContains(
@@ -5139,6 +5143,8 @@ class ReschedulePlanViewTests(NewViewsTestBase):
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.context["can_revalidate_plan"])
+        self.assertContains(response, reverse("appointment_detail", args=[appointment.pk]))
+        self.assertNotContains(response, reverse("appointment_move", args=[appointment.pk]))
         self.assertContains(
             response,
             "План применен: изменения расписания уже записаны, действия закрыты.",

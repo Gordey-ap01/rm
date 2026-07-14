@@ -14,7 +14,9 @@
   <div class="header-actions">
     {% if plan.root_appointment %}
       <a class="button-link secondary" href="{% url 'appointment_detail' plan.root_appointment.pk %}">К занятию</a>
-      <a class="button-link secondary" href="{% url 'appointment_move' plan.root_appointment.pk %}">К переносу</a>
+      {% if can_mutate_plan %}
+        <a class="button-link secondary" href="{% url 'appointment_move' plan.root_appointment.pk %}">К переносу</a>
+      {% endif %}
     {% endif %}
   </div>
 </section>
