@@ -194,10 +194,16 @@
           {% for dependency in chain.dependency_rows %}
             <tr>
               <td data-label="Предшественник">
-                {{ dependency.predecessor_step.chain_position }} · шаг {{ dependency.predecessor_step.position }}
+                {{ dependency.predecessor_step.chain_position }} ·
+                <a class="small-action" href="#step-{{ dependency.predecessor_step.pk }}">
+                  шаг {{ dependency.predecessor_step.position }}
+                </a>
               </td>
               <td data-label="Следующий шаг">
-                {{ dependency.successor_step.chain_position }} · шаг {{ dependency.successor_step.position }}
+                {{ dependency.successor_step.chain_position }} ·
+                <a class="small-action" href="#step-{{ dependency.successor_step.pk }}">
+                  шаг {{ dependency.successor_step.position }}
+                </a>
               </td>
               <td data-label="Тип">{{ dependency.get_relation_type_display }}</td>
               <td data-label="Причина">{{ dependency.reason|default:"—" }}</td>
