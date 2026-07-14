@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from typing import Any
@@ -15,7 +16,6 @@ from operations.models import (
     Appointment,
     AppointmentConfirmation,
     AppointmentParticipant,
-    AppointmentStaffAssignment,
     StaffAvailability,
     StaffMember,
     TimeOffRequest,
@@ -24,7 +24,6 @@ from operations.models import (
 from operations.schedule_validation import (
     appointment_group_conflicts,
     build_local_datetime,
-    conflict_messages,
 )
 
 
@@ -35,6 +34,8 @@ class ConflictReport:
     child_conflict: Appointment | None
     staff_conflict: Appointment | None
     room_conflict: Appointment | None
+    room_over_limit: bool = False
+    room_limit_reasons: dict[str, Any] | None = None
     room_capacity: int = 1
     room_occupancy: int = 0
     room_staff_occupancy: int = 0
@@ -42,7 +43,14 @@ class ConflictReport:
 
     @property
     def has_conflict(self) -> bool:
-        return any((self.child_conflict, self.staff_conflict, self.room_conflict))
+        return any(
+            (
+                self.child_conflict,
+                self.staff_conflict,
+                self.room_conflict,
+                self.room_over_limit,
+            )
+        )
 
     def human_messages(self) -> list[str]:
         out: list[str] = []
@@ -56,7 +64,31 @@ class ConflictReport:
             out.append("специалист уже занят в это время")
         if self.room_conflict:
             out.append("кабинет уже занят в это время")
+        if self.room_over_limit and not self.room_conflict:
+            reasons = self.room_limit_reasons or {}
+            if reasons.get("group"):
+                out.append("кабинет не разрешает групповое занятие")
+            else:
+                out.append("кабинет превышает правила вместимости")
         return out
+
+
+def _normalize_entities(primary: Any | None, many: Iterable[Any] | None) -> list[Any]:
+    """Return explicit group members, falling back to the legacy single field."""
+
+    values = list(many) if many is not None else ([primary] if primary else [])
+    return [value for value in values if value]
+
+
+def _first_conflict(conflicts: dict[str, Any], key: str) -> Appointment | None:
+    conflict_qs = conflicts.get(key)
+    if conflict_qs is None:
+        return None
+    return (
+        conflict_qs.select_related("child", "staff_member", "room")
+        .order_by("starts_at", "pk")
+        .first()
+    )
 
 
 def find_overlaps(
@@ -67,8 +99,10 @@ def find_overlaps(
     staff_member: Any = None,
     room: Any = None,
     exclude_pk: int | None = None,
+    children: Iterable[Any] | None = None,
+    staff_members: Iterable[Any] | None = None,
 ) -> ConflictReport:
-    """Ищет пересекающиеся активные занятия (по ребёнку, специалисту или кабинету).
+    """Ищет пересекающиеся активные занятия по участникам, специалистам и кабинету.
 
     Новая модель хранит получателей и специалистов в отдельных таблицах.
     Старые поля ``Appointment.child`` и ``Appointment.staff_member`` остаются
@@ -86,65 +120,48 @@ def find_overlaps(
     if exclude_pk:
         qs = qs.exclude(pk=exclude_pk)
 
-    child_conflict = None
-    if child:
-        participant_qs = AppointmentParticipant.objects.filter(
-            appointment_status__in=ACTIVE_APPOINTMENT_STATUSES,
-            child=child,
-            starts_at_snapshot__lt=ends_at,
-            ends_at_snapshot__gt=starts_at,
-        ).select_related("appointment", "appointment__child", "appointment__staff_member", "appointment__service", "appointment__room")
-        if exclude_pk:
-            participant_qs = participant_qs.exclude(appointment_id=exclude_pk)
-        participant = participant_qs.first()
-        child_conflict = participant.appointment if participant else qs.filter(child=child).first()
-
-    staff_conflict = None
-    if staff_member:
-        assignment_qs = AppointmentStaffAssignment.objects.filter(
-            appointment_status__in=ACTIVE_APPOINTMENT_STATUSES,
-            staff_member=staff_member,
-            starts_at_snapshot__lt=ends_at,
-            ends_at_snapshot__gt=starts_at,
-        ).select_related("appointment", "appointment__child", "appointment__staff_member", "appointment__service", "appointment__room")
-        if exclude_pk:
-            assignment_qs = assignment_qs.exclude(appointment_id=exclude_pk)
-        assignment = assignment_qs.first()
-        staff_conflict = assignment.appointment if assignment else qs.filter(staff_member=staff_member).first()
+    children_list = _normalize_entities(child, children)
+    staff_members_list = _normalize_entities(staff_member, staff_members)
+    conflicts = appointment_group_conflicts(
+        starts_at,
+        ends_at,
+        children_list,
+        staff_members_list,
+        room,
+        exclude_pk=exclude_pk,
+    )
 
     room_qs = qs.filter(room=room) if room else qs.none()
     room_staff_occupancy = 0
     room_recipient_occupancy = 0
+    room_over_limit = False
+    room_limit_reasons: dict[str, Any] | None = None
     if room:
         room_staff_occupancy, room_recipient_occupancy = room_usage_counts(room_qs)
     room_occupancy = max(room_staff_occupancy, room_recipient_occupancy)
     room_capacity = (
         min(
             getattr(room, "effective_max_staff_count", max(getattr(room, "capacity", 1) or 1, 1)),
-            getattr(room, "effective_max_recipient_count", max(getattr(room, "capacity", 1) or 1, 1)),
+            getattr(
+                room, "effective_max_recipient_count", max(getattr(room, "capacity", 1) or 1, 1)
+            ),
         )
         if room
         else 1
     )
     room_conflict = None
     if room:
-        incoming_staff = 1 if staff_member else 0
-        incoming_recipient = 1 if child else 0
-        staff_over_limit = (
-            room.limit_staff_count
-            and room_staff_occupancy + incoming_staff > room.effective_max_staff_count
-        )
-        recipient_over_limit = (
-            room.limit_recipient_count
-            and room_recipient_occupancy + incoming_recipient > room.effective_max_recipient_count
-        )
-        if staff_over_limit or recipient_over_limit:
-            room_conflict = room_qs.first()
+        room_limit_reasons = conflicts.get("room_limit_reasons")
+        room_over_limit = bool(conflicts.get("room_over_limit"))
+        if room_over_limit:
+            room_conflict = _first_conflict(conflicts, "room")
 
     return ConflictReport(
-        child_conflict=child_conflict,
-        staff_conflict=staff_conflict,
+        child_conflict=_first_conflict(conflicts, "child"),
+        staff_conflict=_first_conflict(conflicts, "staff"),
         room_conflict=room_conflict,
+        room_over_limit=room_over_limit,
+        room_limit_reasons=room_limit_reasons,
         room_capacity=room_capacity,
         room_occupancy=room_occupancy,
         room_staff_occupancy=room_staff_occupancy,
@@ -207,6 +224,8 @@ def find_free_slots(
     staff_member: StaffMember | None = None,
     child: Any = None,
     room: Any = None,
+    children: Iterable[Any] | None = None,
+    staff_members: Iterable[Any] | None = None,
     slot_step_minutes: int = 30,
     start_hour: int = 9,
     end_hour: int = 18,
@@ -215,12 +234,15 @@ def find_free_slots(
 
     Алгоритм:
     - генерируем слоты с шагом ``slot_step_minutes`` от ``start_hour`` до ``end_hour - duration``;
-    - исключаем слоты, которые пересекаются с любым активным занятием по (child, staff, room);
-    - исключаем слоты вне окна доступности (если указан ``staff_member``).
+    - исключаем слоты, которые пересекаются с активными занятиями по участникам/специалистам;
+    - исключаем слоты, нарушающие правила кабинета;
+    - исключаем слоты вне окна доступности любого выбранного специалиста.
     """
     if day < timezone.localdate():
         return []
 
+    children_list = _normalize_entities(child, children)
+    staff_members_list = _normalize_entities(staff_member, staff_members)
     starts: list[datetime] = []
     step = timedelta(minutes=slot_step_minutes)
     window = timedelta(minutes=duration_minutes)
@@ -229,8 +251,19 @@ def find_free_slots(
 
     while cursor + window <= window_end:
         slot_end = cursor + window
-        report = find_overlaps(cursor, slot_end, child=child, staff_member=staff_member, room=room)
-        if not report.has_conflict and not is_within_availability(staff_member, cursor, slot_end):
+        report = find_overlaps(
+            cursor,
+            slot_end,
+            child=child,
+            staff_member=staff_member,
+            room=room,
+            children=children_list,
+            staff_members=staff_members_list,
+        )
+        has_staff_unavailability = any(
+            is_within_availability(candidate, cursor, slot_end) for candidate in staff_members_list
+        )
+        if not report.has_conflict and not has_staff_unavailability:
             starts.append(cursor)
         cursor += step
     return starts
@@ -418,18 +451,10 @@ def mass_reschedule(
                     staff_member=peer,
                     child=None,
                     room=None,
+                    children=children,
+                    staff_members=[peer],
                 )
                 for slot in peer_slots:
-                    conflicts = appointment_group_conflicts(
-                        slot,
-                        slot + timedelta(minutes=appt.duration_minutes),
-                        children,
-                        [peer],
-                        None,
-                        exclude_pk=appt.pk,
-                    )
-                    if conflict_messages(conflicts):
-                        continue
                     slots.append(slot)
                     if len(slots) >= max_suggestions_per_appointment:
                         break

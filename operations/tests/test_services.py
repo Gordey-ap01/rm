@@ -932,6 +932,31 @@ class SchedulingServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(report.room_staff_occupancy, 2)
         self.assertEqual(report.room_recipient_occupancy, 2)
 
+    def test_find_overlaps_blocks_group_when_room_disallows_groups(self):
+        self.room1.allow_group_sessions = False
+        self.room1.max_staff_count = 2
+        self.room1.max_recipient_count = 5
+        self.room1.save(
+            update_fields=["allow_group_sessions", "max_staff_count", "max_recipient_count"]
+        )
+        second_child = Child.objects.create(
+            last_name="Петров", first_name="Илья", primary_parent=self.parent
+        )
+
+        report = sched_svc.find_overlaps(
+            _local(self.day, time(10, 0)),
+            _local(self.day, time(10, 30)),
+            children=[self.child, second_child],
+            staff_members=[self.staff_a],
+            room=self.room1,
+        )
+
+        self.assertTrue(report.has_conflict)
+        self.assertTrue(report.room_over_limit)
+        self.assertIsNone(report.room_conflict)
+        self.assertTrue(report.room_limit_reasons["group"])
+        self.assertIn("групповое", " ".join(report.human_messages()))
+
     def test_is_within_availability_blocked_by_time_off(self):
         TimeOffRequest.objects.create(
             staff_member=self.staff_a,
@@ -976,6 +1001,45 @@ class SchedulingServiceTests(_FixturesMixin, TestCase):
         )
         self.assertIn(time(9, 0), [slot.time() for slot in slots])
         self.assertNotIn(time(10, 30), [slot.time() for slot in slots])
+
+    def test_find_free_slots_blocks_group_room_rules(self):
+        self.room1.allow_group_sessions = False
+        self.room1.max_staff_count = 2
+        self.room1.max_recipient_count = 5
+        self.room1.save(
+            update_fields=["allow_group_sessions", "max_staff_count", "max_recipient_count"]
+        )
+        second_child = Child.objects.create(
+            last_name="Петров", first_name="Илья", primary_parent=self.parent
+        )
+
+        slots = sched_svc.find_free_slots(
+            self.day,
+            30,
+            children=[self.child, second_child],
+            staff_members=[self.staff_a],
+            room=self.room1,
+        )
+
+        self.assertEqual(slots, [])
+
+    def test_find_free_slots_checks_all_staff_availability(self):
+        TimeOffRequest.objects.create(
+            staff_member=self.staff_b,
+            request_type=TimeOffRequest.RequestType.VACATION,
+            starts_on=self.day,
+            ends_on=self.day,
+            status=TimeOffRequest.Status.APPROVED,
+        )
+
+        slots = sched_svc.find_free_slots(
+            self.day,
+            30,
+            child=self.child,
+            staff_members=[self.staff_a, self.staff_b],
+        )
+
+        self.assertEqual(slots, [])
 
     def test_mass_reschedule_cancels_and_creates_confirmations(self):
         appt_svc.create_appointment(

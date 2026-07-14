@@ -5696,7 +5696,7 @@
       "label": "ConflictReport",
       "file_type": "code",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L32",
+      "source_location": "L31",
       "_origin": "ast"
     },
     {
@@ -5704,7 +5704,7 @@
       "label": ".has_conflict()",
       "file_type": "code",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L44",
+      "source_location": "L45",
       "_origin": "ast"
     },
     {
@@ -5712,23 +5712,15 @@
       "label": ".human_messages()",
       "file_type": "code",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L47",
+      "source_location": "L55",
       "_origin": "ast"
     },
     {
-      "id": "services_scheduling_find_overlaps",
-      "label": "find_overlaps()",
+      "id": "services_scheduling_normalize_entities",
+      "label": "_normalize_entities()",
       "file_type": "code",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L62",
-      "_origin": "ast"
-    },
-    {
-      "id": "operations_services_scheduling_py_datetime",
-      "label": "datetime",
-      "file_type": "code",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L62",
+      "source_location": "L76",
       "_origin": "ast"
     },
     {
@@ -5736,63 +5728,15 @@
       "label": "Any",
       "file_type": "code",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L62",
+      "source_location": "L76",
       "_origin": "ast"
     },
     {
-      "id": "services_scheduling_is_within_availability",
-      "label": "is_within_availability()",
+      "id": "services_scheduling_first_conflict",
+      "label": "_first_conflict()",
       "file_type": "code",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L155",
-      "_origin": "ast"
-    },
-    {
-      "id": "operations_services_scheduling_py_staffmember",
-      "label": "StaffMember",
-      "file_type": "code",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L155",
-      "_origin": "ast"
-    },
-    {
-      "id": "services_scheduling_find_free_slots",
-      "label": "find_free_slots()",
-      "file_type": "code",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L203",
-      "_origin": "ast"
-    },
-    {
-      "id": "operations_services_scheduling_py_date",
-      "label": "date",
-      "file_type": "code",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L203",
-      "_origin": "ast"
-    },
-    {
-      "id": "services_scheduling_massrescheduleresult",
-      "label": "MassRescheduleResult",
-      "file_type": "code",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L240",
-      "_origin": "ast"
-    },
-    {
-      "id": "services_scheduling_representativeconfirmationtarget",
-      "label": "RepresentativeConfirmationTarget",
-      "file_type": "code",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L252",
-      "_origin": "ast"
-    },
-    {
-      "id": "services_scheduling_representative_confirmation_targets",
-      "label": "representative_confirmation_targets()",
-      "file_type": "code",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L258",
+      "source_location": "L83",
       "_origin": "ast"
     },
     {
@@ -5800,7 +5744,79 @@
       "label": "Appointment",
       "file_type": "code",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L258",
+      "source_location": "L83",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_scheduling_find_overlaps",
+      "label": "find_overlaps()",
+      "file_type": "code",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L94",
+      "_origin": "ast"
+    },
+    {
+      "id": "operations_services_scheduling_py_datetime",
+      "label": "datetime",
+      "file_type": "code",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L94",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_scheduling_is_within_availability",
+      "label": "is_within_availability()",
+      "file_type": "code",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L172",
+      "_origin": "ast"
+    },
+    {
+      "id": "operations_services_scheduling_py_staffmember",
+      "label": "StaffMember",
+      "file_type": "code",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L172",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_scheduling_find_free_slots",
+      "label": "find_free_slots()",
+      "file_type": "code",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L220",
+      "_origin": "ast"
+    },
+    {
+      "id": "operations_services_scheduling_py_date",
+      "label": "date",
+      "file_type": "code",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L220",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_scheduling_massrescheduleresult",
+      "label": "MassRescheduleResult",
+      "file_type": "code",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L273",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_scheduling_representativeconfirmationtarget",
+      "label": "RepresentativeConfirmationTarget",
+      "file_type": "code",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L285",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_scheduling_representative_confirmation_targets",
+      "label": "representative_confirmation_targets()",
+      "file_type": "code",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L291",
       "_origin": "ast"
     },
     {
@@ -5808,7 +5824,7 @@
       "label": "appointment_children_for_reschedule()",
       "file_type": "code",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L315",
+      "source_location": "L348",
       "_origin": "ast"
     },
     {
@@ -5816,7 +5832,7 @@
       "label": "mass_reschedule()",
       "file_type": "code",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L326",
+      "source_location": "L359",
       "_origin": "ast"
     },
     {
@@ -5824,7 +5840,7 @@
       "label": "filter_staff_by_category()",
       "file_type": "code",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L450",
+      "source_location": "L475",
       "_origin": "ast"
     },
     {
@@ -5832,7 +5848,7 @@
       "label": "QuerySet",
       "file_type": "code",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L450",
+      "source_location": "L475",
       "_origin": "ast"
     },
     {
@@ -5844,51 +5860,59 @@
       "_origin": "ast"
     },
     {
-      "id": "services_scheduling_rationale_33",
+      "id": "services_scheduling_rationale_32",
       "label": "Результат проверки пересечений.",
       "file_type": "rationale",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L33",
+      "source_location": "L32",
       "_origin": "ast"
     },
     {
-      "id": "services_scheduling_rationale_71",
-      "label": "Ищет пересекающиеся активные занятия (по ребёнку, специалисту или кабинету).",
+      "id": "services_scheduling_rationale_77",
+      "label": "Return explicit group members, falling back to the legacy single field.",
       "file_type": "rationale",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L71",
+      "source_location": "L77",
       "_origin": "ast"
     },
     {
-      "id": "services_scheduling_rationale_160",
+      "id": "services_scheduling_rationale_105",
+      "label": "Ищет пересекающиеся активные занятия по участникам, специалистам и кабинету.",
+      "file_type": "rationale",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L105",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_scheduling_rationale_177",
       "label": "Возвращает ``\"\"`` если время попадает в доступность, иначе — человекочитаемую пр",
       "file_type": "rationale",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L160",
+      "source_location": "L177",
       "_origin": "ast"
     },
     {
-      "id": "services_scheduling_rationale_214",
+      "id": "services_scheduling_rationale_233",
       "label": "Возвращает список свободных ``starts_at`` (datetime) на день.      Алгоритм:",
       "file_type": "rationale",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L214",
+      "source_location": "L233",
       "_origin": "ast"
     },
     {
-      "id": "services_scheduling_rationale_241",
+      "id": "services_scheduling_rationale_274",
       "label": "Результат массового переноса при отсутствии специалиста.",
       "file_type": "rationale",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L241",
+      "source_location": "L274",
       "_origin": "ast"
     },
     {
-      "id": "services_scheduling_rationale_336",
+      "id": "services_scheduling_rationale_369",
       "label": "Отменяет все активные занятия специалиста в диапазоне и предлагает слоты.      Ш",
       "file_type": "rationale",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L336",
+      "source_location": "L369",
       "_origin": "ast"
     },
     {
@@ -7244,11 +7268,19 @@
       "_origin": "ast"
     },
     {
+      "id": "tests_test_services_schedulingservicetests_test_find_overlaps_blocks_group_when_room_disallows_groups",
+      "label": ".test_find_overlaps_blocks_group_when_room_disallows_groups()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L935",
+      "_origin": "ast"
+    },
+    {
       "id": "tests_test_services_schedulingservicetests_test_is_within_availability_blocked_by_time_off",
       "label": ".test_is_within_availability_blocked_by_time_off()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L935",
+      "source_location": "L960",
       "_origin": "ast"
     },
     {
@@ -7256,7 +7288,7 @@
       "label": ".test_is_within_availability_uses_staff_window()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L950",
+      "source_location": "L975",
       "_origin": "ast"
     },
     {
@@ -7264,7 +7296,23 @@
       "label": ".test_find_free_slots_respects_staff_availability()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L963",
+      "source_location": "L988",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_services_schedulingservicetests_test_find_free_slots_blocks_group_room_rules",
+      "label": ".test_find_free_slots_blocks_group_room_rules()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L1005",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_services_schedulingservicetests_test_find_free_slots_checks_all_staff_availability",
+      "label": ".test_find_free_slots_checks_all_staff_availability()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L1026",
       "_origin": "ast"
     },
     {
@@ -7272,7 +7320,7 @@
       "label": ".test_mass_reschedule_cancels_and_creates_confirmations()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L980",
+      "source_location": "L1044",
       "_origin": "ast"
     },
     {
@@ -7280,7 +7328,7 @@
       "label": ".test_mass_reschedule_uses_group_participants_and_staff_assignments()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1011",
+      "source_location": "L1075",
       "_origin": "ast"
     },
     {
@@ -7288,7 +7336,7 @@
       "label": ".test_mass_reschedule_targets_same_representative_per_group_participant()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1084",
+      "source_location": "L1148",
       "_origin": "ast"
     },
     {
@@ -7296,7 +7344,7 @@
       "label": "ReschedulingPlanServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1132",
+      "source_location": "L1196",
       "_origin": "ast"
     },
     {
@@ -7304,7 +7352,7 @@
       "label": "._appointment()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1133",
+      "source_location": "L1197",
       "_origin": "ast"
     },
     {
@@ -7312,7 +7360,7 @@
       "label": "._reschedule_chain_fixture()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1144",
+      "source_location": "L1208",
       "_origin": "ast"
     },
     {
@@ -7320,7 +7368,7 @@
       "label": ".test_create_plan_persists_valid_steps_without_changing_appointment()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1200",
+      "source_location": "L1264",
       "_origin": "ast"
     },
     {
@@ -7328,7 +7376,7 @@
       "label": ".test_reschedule_chain_schema_keeps_existing_steps_optional()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1221",
+      "source_location": "L1285",
       "_origin": "ast"
     },
     {
@@ -7336,7 +7384,7 @@
       "label": ".test_reschedule_step_dependency_validates_plan_and_self_edge()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1249",
+      "source_location": "L1313",
       "_origin": "ast"
     },
     {
@@ -7344,7 +7392,7 @@
       "label": ".test_create_chain_for_steps_builds_dependencies_without_applying()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1324",
+      "source_location": "L1388",
       "_origin": "ast"
     },
     {
@@ -7352,7 +7400,7 @@
       "label": ".test_create_chain_for_steps_rejects_alternatives_for_same_source()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1399",
+      "source_location": "L1463",
       "_origin": "ast"
     },
     {
@@ -7360,7 +7408,7 @@
       "label": ".test_create_chain_for_steps_rejects_terminal_plan()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1444",
+      "source_location": "L1508",
       "_origin": "ast"
     },
     {
@@ -7368,7 +7416,7 @@
       "label": ".test_create_chain_for_steps_rejects_cycles()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1494",
+      "source_location": "L1558",
       "_origin": "ast"
     },
     {
@@ -7376,7 +7424,7 @@
       "label": ".test_revalidate_chain_marks_ready_without_applying()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1548",
+      "source_location": "L1612",
       "_origin": "ast"
     },
     {
@@ -7384,7 +7432,7 @@
       "label": ".test_revalidate_chain_marks_stale_when_target_window_becomes_busy()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1571",
+      "source_location": "L1635",
       "_origin": "ast"
     },
     {
@@ -7392,7 +7440,7 @@
       "label": ".test_revalidate_chain_blocks_declined_confirmation()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1605",
+      "source_location": "L1669",
       "_origin": "ast"
     },
     {
@@ -7400,7 +7448,7 @@
       "label": ".test_apply_chain_applies_steps_atomically()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1633",
+      "source_location": "L1697",
       "_origin": "ast"
     },
     {
@@ -7408,7 +7456,7 @@
       "label": ".test_apply_chain_requires_ready_chain()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1663",
+      "source_location": "L1727",
       "_origin": "ast"
     },
     {
@@ -7416,7 +7464,7 @@
       "label": ".test_apply_chain_persists_stale_revalidation_without_failed_status()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1681",
+      "source_location": "L1745",
       "_origin": "ast"
     },
     {
@@ -7424,7 +7472,7 @@
       "label": ".test_apply_chain_rolls_back_when_later_step_fails()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1710",
+      "source_location": "L1774",
       "_origin": "ast"
     },
     {
@@ -7432,7 +7480,7 @@
       "label": ".test_revalidate_marks_step_stale_when_window_becomes_busy()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1741",
+      "source_location": "L1805",
       "_origin": "ast"
     },
     {
@@ -7440,7 +7488,7 @@
       "label": ".test_revalidate_plan_rejects_terminal_statuses_without_mutation()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1775",
+      "source_location": "L1839",
       "_origin": "ast"
     },
     {
@@ -7448,7 +7496,7 @@
       "label": ".test_terminal_plan_rejects_step_actions_without_mutation()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1819",
+      "source_location": "L1883",
       "_origin": "ast"
     },
     {
@@ -7456,7 +7504,7 @@
       "label": ".test_terminal_plan_rejects_chain_actions_without_mutation()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1869",
+      "source_location": "L1933",
       "_origin": "ast"
     },
     {
@@ -7464,7 +7512,7 @@
       "label": ".test_apply_valid_step_creates_new_appointment_without_billing_decision()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1916",
+      "source_location": "L1980",
       "_origin": "ast"
     },
     {
@@ -7472,7 +7520,7 @@
       "label": ".test_apply_step_skips_alternatives_for_same_source_only()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1937",
+      "source_location": "L2001",
       "_origin": "ast"
     },
     {
@@ -7480,7 +7528,7 @@
       "label": ".test_apply_step_with_room_override_creates_room_override()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2015",
+      "source_location": "L2079",
       "_origin": "ast"
     },
     {
@@ -7488,7 +7536,7 @@
       "label": ".test_group_plan_snapshot_includes_participants_and_staff()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2077",
+      "source_location": "L2141",
       "_origin": "ast"
     },
     {
@@ -7496,7 +7544,7 @@
       "label": ".test_create_staff_absence_plan_persists_pending_steps_without_cancelling()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2115",
+      "source_location": "L2179",
       "_origin": "ast"
     },
     {
@@ -7504,7 +7552,7 @@
       "label": ".test_mark_review_conflict_resolved_requires_non_active_source()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2140",
+      "source_location": "L2204",
       "_origin": "ast"
     },
     {
@@ -7512,7 +7560,7 @@
       "label": ".test_create_confirmations_for_step_targets_representative_and_specialist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2166",
+      "source_location": "L2230",
       "_origin": "ast"
     },
     {
@@ -7520,7 +7568,7 @@
       "label": ".test_create_confirmations_for_step_does_not_duplicate_existing_targets()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2197",
+      "source_location": "L2261",
       "_origin": "ast"
     },
     {
@@ -7528,7 +7576,7 @@
       "label": ".test_step_confirmation_status_waits_after_confirmations_are_created()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2214",
+      "source_location": "L2278",
       "_origin": "ast"
     },
     {
@@ -7536,7 +7584,7 @@
       "label": ".test_step_confirmation_status_becomes_approved_after_all_confirm()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2235",
+      "source_location": "L2299",
       "_origin": "ast"
     },
     {
@@ -7544,7 +7592,7 @@
       "label": ".test_step_confirmation_status_declined_blocks_apply()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2259",
+      "source_location": "L2323",
       "_origin": "ast"
     },
     {
@@ -7552,7 +7600,7 @@
       "label": "ProgramWizardServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2287",
+      "source_location": "L2351",
       "_origin": "ast"
     },
     {
@@ -7560,7 +7608,7 @@
       "label": ".setUp()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2288",
+      "source_location": "L2352",
       "_origin": "ast"
     },
     {
@@ -7568,7 +7616,7 @@
       "label": "._preview()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2305",
+      "source_location": "L2369",
       "_origin": "ast"
     },
     {
@@ -7576,7 +7624,7 @@
       "label": ".test_suggest_allows_second_specialist_when_room_capacity_allows()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2320",
+      "source_location": "L2384",
       "_origin": "ast"
     },
     {
@@ -7584,7 +7632,7 @@
       "label": ".test_suggest_skips_slot_when_room_capacity_is_full()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2344",
+      "source_location": "L2408",
       "_origin": "ast"
     },
     {
@@ -7592,7 +7640,7 @@
       "label": ".test_auto_suggest_uses_another_staff_and_room_when_primary_is_busy()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2377",
+      "source_location": "L2441",
       "_origin": "ast"
     },
     {
@@ -7600,7 +7648,7 @@
       "label": ".test_auto_suggest_respects_room_capacity_across_rooms()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2399",
+      "source_location": "L2463",
       "_origin": "ast"
     },
     {
@@ -7608,7 +7656,7 @@
       "label": ".test_balance_limit_caps_requested_sessions()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2418",
+      "source_location": "L2482",
       "_origin": "ast"
     },
     {
@@ -7616,7 +7664,7 @@
       "label": ".test_balance_limit_counts_existing_participant_reserves()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2436",
+      "source_location": "L2500",
       "_origin": "ast"
     },
     {
@@ -7624,7 +7672,7 @@
       "label": ".test_balance_limit_treats_charge_without_account_as_unpaid_reserve()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2471",
+      "source_location": "L2535",
       "_origin": "ast"
     },
     {
@@ -7632,7 +7680,7 @@
       "label": ".test_create_schedule_assigns_block_and_sequence()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2507",
+      "source_location": "L2571",
       "_origin": "ast"
     },
     {
@@ -7640,7 +7688,7 @@
       "label": ".test_preview_slots_do_not_overlap_each_other_when_duration_exceeds_step()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2528",
+      "source_location": "L2592",
       "_origin": "ast"
     },
     {
@@ -7648,7 +7696,7 @@
       "label": ".test_create_schedule_rejects_stale_preview_with_local_time()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2543",
+      "source_location": "L2607",
       "_origin": "ast"
     },
     {
@@ -7656,7 +7704,7 @@
       "label": "_minimal_xlsx()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2562",
+      "source_location": "L2626",
       "_origin": "ast"
     },
     {
@@ -7664,7 +7712,7 @@
       "label": "ImportPreviewServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2604",
+      "source_location": "L2668",
       "_origin": "ast"
     },
     {
@@ -7672,7 +7720,7 @@
       "label": ".test_csv_preview_validates_rows_and_existing_recipient()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2605",
+      "source_location": "L2669",
       "_origin": "ast"
     },
     {
@@ -7680,7 +7728,7 @@
       "label": ".test_xlsx_preview_maps_recipient_headers()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2625",
+      "source_location": "L2689",
       "_origin": "ast"
     },
     {
@@ -7688,7 +7736,7 @@
       "label": "ReportsServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2645",
+      "source_location": "L2709",
       "_origin": "ast"
     },
     {
@@ -7696,7 +7744,7 @@
       "label": ".setUp()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2646",
+      "source_location": "L2710",
       "_origin": "ast"
     },
     {
@@ -7704,7 +7752,7 @@
       "label": "._make_mixed_funding_group_charge()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2658",
+      "source_location": "L2722",
       "_origin": "ast"
     },
     {
@@ -7712,7 +7760,7 @@
       "label": "._make_same_funding_group_charge()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2706",
+      "source_location": "L2770",
       "_origin": "ast"
     },
     {
@@ -7720,7 +7768,7 @@
       "label": ".test_tomorrow_overview_returns_summary()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2764",
+      "source_location": "L2828",
       "_origin": "ast"
     },
     {
@@ -7728,7 +7776,7 @@
       "label": ".test_appointment_string_is_group_aware()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2779",
+      "source_location": "L2843",
       "_origin": "ast"
     },
     {
@@ -7736,7 +7784,7 @@
       "label": ".test_tomorrow_overview_excludes_group_after_all_participant_billing_decided()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2797",
+      "source_location": "L2861",
       "_origin": "ast"
     },
     {
@@ -7744,7 +7792,7 @@
       "label": ".test_tomorrow_overview_includes_group_with_undecided_participant()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2837",
+      "source_location": "L2901",
       "_origin": "ast"
     },
     {
@@ -7752,7 +7800,7 @@
       "label": ".test_timesheet_groups_by_day()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2869",
+      "source_location": "L2933",
       "_origin": "ast"
     },
     {
@@ -7760,7 +7808,7 @@
       "label": ".test_timesheet_counts_secondary_staff_assignments()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2884",
+      "source_location": "L2948",
       "_origin": "ast"
     },
     {
@@ -7768,7 +7816,7 @@
       "label": ".test_timesheet_includes_legacy_rows_when_assignments_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2910",
+      "source_location": "L2974",
       "_origin": "ast"
     },
     {
@@ -7776,7 +7824,7 @@
       "label": ".test_timesheet_accrues_pay_only_after_charge_decision()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2935",
+      "source_location": "L2999",
       "_origin": "ast"
     },
     {
@@ -7784,7 +7832,7 @@
       "label": ".test_timesheet_handles_charge_without_compensation_rule()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2960",
+      "source_location": "L3024",
       "_origin": "ast"
     },
     {
@@ -7792,7 +7840,7 @@
       "label": ".test_timesheet_uses_single_participant_billing_label()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2978",
+      "source_location": "L3042",
       "_origin": "ast"
     },
     {
@@ -7800,7 +7848,7 @@
       "label": ".test_timesheet_ignores_legacy_charge_when_participants_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2992",
+      "source_location": "L3056",
       "_origin": "ast"
     },
     {
@@ -7808,7 +7856,7 @@
       "label": ".test_timesheet_summarizes_group_participant_billing_labels()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3014",
+      "source_location": "L3078",
       "_origin": "ast"
     },
     {
@@ -7816,7 +7864,7 @@
       "label": ".test_timesheet_ignores_charge_participant_without_account()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3034",
+      "source_location": "L3098",
       "_origin": "ast"
     },
     {
@@ -7824,7 +7872,7 @@
       "label": ".test_timesheet_prefers_funding_specific_hourly_rule()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3053",
+      "source_location": "L3117",
       "_origin": "ast"
     },
     {
@@ -7832,7 +7880,7 @@
       "label": ".test_timesheet_prefers_duration_specific_rule()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3080",
+      "source_location": "L3144",
       "_origin": "ast"
     },
     {
@@ -7840,7 +7888,7 @@
       "label": ".test_timesheet_uses_grant_allocation_rate()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3109",
+      "source_location": "L3173",
       "_origin": "ast"
     },
     {
@@ -7848,7 +7896,7 @@
       "label": ".test_timesheet_uses_generic_rule_for_mixed_group_funding()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3136",
+      "source_location": "L3200",
       "_origin": "ast"
     },
     {
@@ -7856,7 +7904,7 @@
       "label": ".test_payroll_generation_is_idempotent_for_charged_assignment()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3164",
+      "source_location": "L3228",
       "_origin": "ast"
     },
     {
@@ -7864,7 +7912,7 @@
       "label": ".test_payroll_generation_ignores_legacy_charge_when_participants_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3199",
+      "source_location": "L3263",
       "_origin": "ast"
     },
     {
@@ -7872,7 +7920,7 @@
       "label": ".test_payroll_generation_includes_legacy_rows_when_assignments_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3225",
+      "source_location": "L3289",
       "_origin": "ast"
     },
     {
@@ -7880,7 +7928,7 @@
       "label": ".test_payroll_generation_prefers_duration_specific_rule()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3272",
+      "source_location": "L3336",
       "_origin": "ast"
     },
     {
@@ -7888,7 +7936,7 @@
       "label": ".test_payroll_generation_uses_grant_allocation_rate()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3307",
+      "source_location": "L3371",
       "_origin": "ast"
     },
     {
@@ -7896,7 +7944,7 @@
       "label": ".test_payroll_generation_does_not_link_single_participant_for_group_charge()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3340",
+      "source_location": "L3404",
       "_origin": "ast"
     },
     {
@@ -7904,7 +7952,7 @@
       "label": ".test_payroll_generation_uses_generic_rule_for_mixed_group_funding()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3369",
+      "source_location": "L3433",
       "_origin": "ast"
     },
     {
@@ -7912,7 +7960,7 @@
       "label": ".test_payroll_sheet_creation_and_approval()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3403",
+      "source_location": "L3467",
       "_origin": "ast"
     },
     {
@@ -7920,7 +7968,7 @@
       "label": ".test_grant_report_sums_initial_topups_charges()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3433",
+      "source_location": "L3497",
       "_origin": "ast"
     },
     {
@@ -7928,7 +7976,7 @@
       "label": ".test_grant_report_counts_group_participant_account_appointments()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3460",
+      "source_location": "L3524",
       "_origin": "ast"
     },
     {
@@ -7936,7 +7984,7 @@
       "label": ".test_grant_report_includes_recipient_allocations()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3506",
+      "source_location": "L3570",
       "_origin": "ast"
     },
     {
@@ -7944,7 +7992,7 @@
       "label": ".test_grant_report_recipient_allocation_filters_service_and_valid_dates()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3538",
+      "source_location": "L3602",
       "_origin": "ast"
     },
     {
@@ -7952,7 +8000,7 @@
       "label": ".test_grant_report_includes_service_quota_and_staff_allocation()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3599",
+      "source_location": "L3663",
       "_origin": "ast"
     },
     {
@@ -7960,7 +8008,7 @@
       "label": ".test_grant_report_quota_ignores_legacy_charge_when_participants_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3635",
+      "source_location": "L3699",
       "_origin": "ast"
     },
     {
@@ -7968,7 +8016,7 @@
       "label": ".test_grant_report_counts_staff_allocation_fact_inside_allocation_dates()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3665",
+      "source_location": "L3729",
       "_origin": "ast"
     },
     {
@@ -7976,7 +8024,7 @@
       "label": ".test_grant_report_counts_quota_fact_inside_quota_dates()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3706",
+      "source_location": "L3770",
       "_origin": "ast"
     },
     {
@@ -7984,7 +8032,7 @@
       "label": ".test_grant_report_direct_allocation_ignores_unallocated_staff_fact()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3754",
+      "source_location": "L3818",
       "_origin": "ast"
     },
     {
@@ -7992,7 +8040,7 @@
       "label": "NotificationsServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3797",
+      "source_location": "L3861",
       "_origin": "ast"
     },
     {
@@ -8000,7 +8048,7 @@
       "label": ".setUp()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3798",
+      "source_location": "L3862",
       "_origin": "ast"
     },
     {
@@ -8008,7 +8056,7 @@
       "label": ".test_send_confirmation_email_marks_sent()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3820",
+      "source_location": "L3884",
       "_origin": "ast"
     },
     {
@@ -8016,7 +8064,7 @@
       "label": ".test_build_confirmation_email_contains_url()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3835",
+      "source_location": "L3899",
       "_origin": "ast"
     },
     {
@@ -8024,7 +8072,7 @@
       "label": ".test_build_confirmation_email_uses_group_participants_and_staff()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3840",
+      "source_location": "L3904",
       "_origin": "ast"
     },
     {
@@ -28267,7 +28315,7 @@
       "label": "Acceptance criteria первого кодового среза",
       "file_type": "document",
       "source_file": "docs/13-schedule-capacity-v2-contract.md",
-      "source_location": "L105",
+      "source_location": "L109",
       "_origin": "ast"
     },
     {
@@ -28275,7 +28323,7 @@
       "label": "Проверки",
       "file_type": "document",
       "source_file": "docs/13-schedule-capacity-v2-contract.md",
-      "source_location": "L119",
+      "source_location": "L123",
       "_origin": "ast"
     },
     {
@@ -28283,7 +28331,7 @@
       "label": "Риски",
       "file_type": "document",
       "source_file": "docs/13-schedule-capacity-v2-contract.md",
-      "source_location": "L136",
+      "source_location": "L140",
       "_origin": "ast"
     },
     {
@@ -28291,7 +28339,7 @@
       "label": "Файловые границы",
       "file_type": "document",
       "source_file": "docs/13-schedule-capacity-v2-contract.md",
-      "source_location": "L144",
+      "source_location": "L148",
       "_origin": "ast"
     },
     {
@@ -28299,7 +28347,7 @@
       "label": "Параллельные агенты",
       "file_type": "document",
       "source_file": "docs/13-schedule-capacity-v2-contract.md",
-      "source_location": "L167",
+      "source_location": "L171",
       "_origin": "ast"
     },
     {
@@ -29519,6 +29567,22 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_current_state_обновление_2026_07_14_calendar_drag_and_drop_api_на_общем_schedule_validation",
+      "label": "Обновление 2026-07-14: calendar drag-and-drop/API на общем schedule validation",
+      "file_type": "document",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1259",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_current_state_обновление_2026_07_14_свободные_окна_на_общем_schedule_validation",
+      "label": "Обновление 2026-07-14: свободные окна на общем schedule validation",
+      "file_type": "document",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1271",
+      "_origin": "ast"
+    },
+    {
       "id": "decisions_adr_001_django_postgresql_local_first",
       "label": "ADR-001-django-postgresql-local-first.md",
       "file_type": "document",
@@ -29859,7 +29923,7 @@
       "label": "Как использовать",
       "file_type": "document",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L50",
+      "source_location": "L52",
       "_origin": "ast"
     },
     {
@@ -29955,7 +30019,7 @@
       "label": "Ближайшие задачи",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L144",
+      "source_location": "L146",
       "_origin": "ast"
     },
     {
@@ -29963,7 +30027,7 @@
       "label": "Постоянные риски",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L151",
+      "source_location": "L153",
       "_origin": "ast"
     },
     {
@@ -45033,7 +45097,7 @@
     },
     {
       "source": "services_scheduling",
-      "target": "dataclasses",
+      "target": "collections_abc",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -45043,7 +45107,7 @@
     },
     {
       "source": "services_scheduling",
-      "target": "operations_services_scheduling_py_datetime",
+      "target": "dataclasses",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -45053,7 +45117,7 @@
     },
     {
       "source": "services_scheduling",
-      "target": "typing",
+      "target": "operations_services_scheduling_py_datetime",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -45063,17 +45127,17 @@
     },
     {
       "source": "services_scheduling",
-      "target": "django_db",
+      "target": "typing",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L9",
+      "source_location": "L8",
       "weight": 1.0
     },
     {
       "source": "services_scheduling",
-      "target": "django_db_models",
+      "target": "django_db",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -45083,7 +45147,7 @@
     },
     {
       "source": "services_scheduling",
-      "target": "django_utils",
+      "target": "django_db_models",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -45093,12 +45157,22 @@
     },
     {
       "source": "services_scheduling",
+      "target": "django_utils",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L12",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling",
       "target": "operations_models",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 1.0
     },
     {
@@ -45117,7 +45191,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L32",
+      "source_location": "L31",
       "weight": 1.0
     },
     {
@@ -45126,7 +45200,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L44",
+      "source_location": "L45",
       "weight": 1.0
     },
     {
@@ -45135,7 +45209,55 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L47",
+      "source_location": "L55",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling",
+      "target": "services_scheduling_normalize_entities",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L76",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling_normalize_entities",
+      "target": "operations_services_scheduling_py_any",
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L76",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling",
+      "target": "services_scheduling_first_conflict",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L83",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling_first_conflict",
+      "target": "operations_services_scheduling_py_any",
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L83",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling_first_conflict",
+      "target": "operations_services_scheduling_py_appointment",
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L83",
       "weight": 1.0
     },
     {
@@ -45144,7 +45266,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L62",
+      "source_location": "L94",
       "weight": 1.0
     },
     {
@@ -45154,7 +45276,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L62",
+      "source_location": "L94",
       "weight": 1.0
     },
     {
@@ -45164,7 +45286,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L62",
+      "source_location": "L94",
       "weight": 1.0
     },
     {
@@ -45174,7 +45296,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L62",
+      "source_location": "L94",
       "weight": 1.0
     },
     {
@@ -45183,7 +45305,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L155",
+      "source_location": "L172",
       "weight": 1.0
     },
     {
@@ -45193,7 +45315,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L155",
+      "source_location": "L172",
       "weight": 1.0
     },
     {
@@ -45203,7 +45325,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L155",
+      "source_location": "L172",
       "weight": 1.0
     },
     {
@@ -45212,7 +45334,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L203",
+      "source_location": "L220",
       "weight": 1.0
     },
     {
@@ -45222,7 +45344,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L203",
+      "source_location": "L220",
       "weight": 1.0
     },
     {
@@ -45232,7 +45354,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L203",
+      "source_location": "L220",
       "weight": 1.0
     },
     {
@@ -45242,7 +45364,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L203",
+      "source_location": "L220",
       "weight": 1.0
     },
     {
@@ -45252,7 +45374,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L203",
+      "source_location": "L220",
       "weight": 1.0
     },
     {
@@ -45261,7 +45383,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L240",
+      "source_location": "L273",
       "weight": 1.0
     },
     {
@@ -45270,7 +45392,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L252",
+      "source_location": "L285",
       "weight": 1.0
     },
     {
@@ -45279,7 +45401,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L258",
+      "source_location": "L291",
       "weight": 1.0
     },
     {
@@ -45289,7 +45411,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L258",
+      "source_location": "L291",
       "weight": 1.0
     },
     {
@@ -45299,7 +45421,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L258",
+      "source_location": "L291",
       "weight": 1.0
     },
     {
@@ -45308,7 +45430,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L315",
+      "source_location": "L348",
       "weight": 1.0
     },
     {
@@ -45318,7 +45440,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L315",
+      "source_location": "L348",
       "weight": 1.0
     },
     {
@@ -45328,7 +45450,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L315",
+      "source_location": "L348",
       "weight": 1.0
     },
     {
@@ -45337,7 +45459,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L326",
+      "source_location": "L359",
       "weight": 1.0
     },
     {
@@ -45347,7 +45469,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L326",
+      "source_location": "L359",
       "weight": 1.0
     },
     {
@@ -45357,7 +45479,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L326",
+      "source_location": "L359",
       "weight": 1.0
     },
     {
@@ -45367,7 +45489,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L326",
+      "source_location": "L359",
       "weight": 1.0
     },
     {
@@ -45377,7 +45499,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L326",
+      "source_location": "L359",
       "weight": 1.0
     },
     {
@@ -45386,7 +45508,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L450",
+      "source_location": "L475",
       "weight": 1.0
     },
     {
@@ -45396,7 +45518,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L450",
+      "source_location": "L475",
       "weight": 1.0
     },
     {
@@ -45406,7 +45528,27 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L450",
+      "source_location": "L475",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling_find_overlaps",
+      "target": "services_scheduling_normalize_entities",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L123",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling_find_overlaps",
+      "target": "services_scheduling_first_conflict",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L157",
       "weight": 1.0
     },
     {
@@ -45416,7 +45558,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L144",
+      "source_location": "L159",
       "weight": 1.0
     },
     {
@@ -45426,7 +45568,17 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L171",
+      "source_location": "L188",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling_find_free_slots",
+      "target": "services_scheduling_normalize_entities",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L244",
       "weight": 1.0
     },
     {
@@ -45436,7 +45588,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L232",
+      "source_location": "L254",
       "weight": 1.0
     },
     {
@@ -45446,7 +45598,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L233",
+      "source_location": "L264",
       "weight": 1.0
     },
     {
@@ -45456,7 +45608,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L291",
+      "source_location": "L324",
       "weight": 1.0
     },
     {
@@ -45466,7 +45618,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L384",
+      "source_location": "L417",
       "weight": 1.0
     },
     {
@@ -45476,7 +45628,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L413",
+      "source_location": "L446",
       "weight": 1.0
     },
     {
@@ -45486,7 +45638,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L415",
+      "source_location": "L448",
       "weight": 1.0
     },
     {
@@ -45496,7 +45648,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L440",
+      "source_location": "L465",
       "weight": 1.0
     },
     {
@@ -45509,57 +45661,66 @@
       "weight": 1.0
     },
     {
-      "source": "services_scheduling_rationale_33",
+      "source": "services_scheduling_rationale_32",
       "target": "services_scheduling_conflictreport",
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L33",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
-      "source": "services_scheduling_rationale_71",
+      "source": "services_scheduling_rationale_77",
+      "target": "services_scheduling_normalize_entities",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L77",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling_rationale_105",
       "target": "services_scheduling_find_overlaps",
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L71",
+      "source_location": "L105",
       "weight": 1.0
     },
     {
-      "source": "services_scheduling_rationale_160",
+      "source": "services_scheduling_rationale_177",
       "target": "services_scheduling_is_within_availability",
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L160",
+      "source_location": "L177",
       "weight": 1.0
     },
     {
-      "source": "services_scheduling_rationale_214",
+      "source": "services_scheduling_rationale_233",
       "target": "services_scheduling_find_free_slots",
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L214",
+      "source_location": "L233",
       "weight": 1.0
     },
     {
-      "source": "services_scheduling_rationale_241",
+      "source": "services_scheduling_rationale_274",
       "target": "services_scheduling_massrescheduleresult",
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L241",
+      "source_location": "L274",
       "weight": 1.0
     },
     {
-      "source": "services_scheduling_rationale_336",
+      "source": "services_scheduling_rationale_369",
       "target": "services_scheduling_mass_reschedule",
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L336",
+      "source_location": "L369",
       "weight": 1.0
     },
     {
@@ -48073,7 +48234,7 @@
     },
     {
       "source": "tests_test_services_schedulingservicetests",
-      "target": "tests_test_services_schedulingservicetests_test_is_within_availability_blocked_by_time_off",
+      "target": "tests_test_services_schedulingservicetests_test_find_overlaps_blocks_group_when_room_disallows_groups",
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
@@ -48082,11 +48243,20 @@
     },
     {
       "source": "tests_test_services_schedulingservicetests",
+      "target": "tests_test_services_schedulingservicetests_test_is_within_availability_blocked_by_time_off",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L960",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_schedulingservicetests",
       "target": "tests_test_services_schedulingservicetests_test_is_within_availability_uses_staff_window",
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L950",
+      "source_location": "L975",
       "weight": 1.0
     },
     {
@@ -48095,7 +48265,25 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L963",
+      "source_location": "L988",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_schedulingservicetests",
+      "target": "tests_test_services_schedulingservicetests_test_find_free_slots_blocks_group_room_rules",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L1005",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_schedulingservicetests",
+      "target": "tests_test_services_schedulingservicetests_test_find_free_slots_checks_all_staff_availability",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L1026",
       "weight": 1.0
     },
     {
@@ -48104,7 +48292,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L980",
+      "source_location": "L1044",
       "weight": 1.0
     },
     {
@@ -48113,7 +48301,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1011",
+      "source_location": "L1075",
       "weight": 1.0
     },
     {
@@ -48122,7 +48310,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1084",
+      "source_location": "L1148",
       "weight": 1.0
     },
     {
@@ -48131,7 +48319,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1132",
+      "source_location": "L1196",
       "weight": 1.0
     },
     {
@@ -48140,7 +48328,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1132",
+      "source_location": "L1196",
       "weight": 1.0
     },
     {
@@ -48149,7 +48337,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1132",
+      "source_location": "L1196",
       "weight": 1.0
     },
     {
@@ -48158,7 +48346,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1133",
+      "source_location": "L1197",
       "weight": 1.0
     },
     {
@@ -48167,7 +48355,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1144",
+      "source_location": "L1208",
       "weight": 1.0
     },
     {
@@ -48176,7 +48364,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1200",
+      "source_location": "L1264",
       "weight": 1.0
     },
     {
@@ -48185,7 +48373,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1221",
+      "source_location": "L1285",
       "weight": 1.0
     },
     {
@@ -48194,7 +48382,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1249",
+      "source_location": "L1313",
       "weight": 1.0
     },
     {
@@ -48203,7 +48391,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1324",
+      "source_location": "L1388",
       "weight": 1.0
     },
     {
@@ -48212,7 +48400,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1399",
+      "source_location": "L1463",
       "weight": 1.0
     },
     {
@@ -48221,7 +48409,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1444",
+      "source_location": "L1508",
       "weight": 1.0
     },
     {
@@ -48230,7 +48418,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1494",
+      "source_location": "L1558",
       "weight": 1.0
     },
     {
@@ -48239,7 +48427,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1548",
+      "source_location": "L1612",
       "weight": 1.0
     },
     {
@@ -48248,7 +48436,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1571",
+      "source_location": "L1635",
       "weight": 1.0
     },
     {
@@ -48257,7 +48445,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1605",
+      "source_location": "L1669",
       "weight": 1.0
     },
     {
@@ -48266,7 +48454,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1633",
+      "source_location": "L1697",
       "weight": 1.0
     },
     {
@@ -48275,7 +48463,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1663",
+      "source_location": "L1727",
       "weight": 1.0
     },
     {
@@ -48284,7 +48472,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1681",
+      "source_location": "L1745",
       "weight": 1.0
     },
     {
@@ -48293,7 +48481,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1710",
+      "source_location": "L1774",
       "weight": 1.0
     },
     {
@@ -48302,7 +48490,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1741",
+      "source_location": "L1805",
       "weight": 1.0
     },
     {
@@ -48311,7 +48499,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1775",
+      "source_location": "L1839",
       "weight": 1.0
     },
     {
@@ -48320,7 +48508,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1819",
+      "source_location": "L1883",
       "weight": 1.0
     },
     {
@@ -48329,7 +48517,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1869",
+      "source_location": "L1933",
       "weight": 1.0
     },
     {
@@ -48338,7 +48526,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1916",
+      "source_location": "L1980",
       "weight": 1.0
     },
     {
@@ -48347,7 +48535,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1937",
+      "source_location": "L2001",
       "weight": 1.0
     },
     {
@@ -48356,7 +48544,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2015",
+      "source_location": "L2079",
       "weight": 1.0
     },
     {
@@ -48365,7 +48553,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2077",
+      "source_location": "L2141",
       "weight": 1.0
     },
     {
@@ -48374,7 +48562,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2115",
+      "source_location": "L2179",
       "weight": 1.0
     },
     {
@@ -48383,7 +48571,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2140",
+      "source_location": "L2204",
       "weight": 1.0
     },
     {
@@ -48392,7 +48580,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2166",
+      "source_location": "L2230",
       "weight": 1.0
     },
     {
@@ -48401,7 +48589,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2197",
+      "source_location": "L2261",
       "weight": 1.0
     },
     {
@@ -48410,7 +48598,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2214",
+      "source_location": "L2278",
       "weight": 1.0
     },
     {
@@ -48419,7 +48607,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2235",
+      "source_location": "L2299",
       "weight": 1.0
     },
     {
@@ -48428,7 +48616,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2259",
+      "source_location": "L2323",
       "weight": 1.0
     },
     {
@@ -48437,7 +48625,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2287",
+      "source_location": "L2351",
       "weight": 1.0
     },
     {
@@ -48446,7 +48634,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2287",
+      "source_location": "L2351",
       "weight": 1.0
     },
     {
@@ -48455,7 +48643,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2287",
+      "source_location": "L2351",
       "weight": 1.0
     },
     {
@@ -48464,7 +48652,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2288",
+      "source_location": "L2352",
       "weight": 1.0
     },
     {
@@ -48473,7 +48661,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2305",
+      "source_location": "L2369",
       "weight": 1.0
     },
     {
@@ -48482,7 +48670,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2320",
+      "source_location": "L2384",
       "weight": 1.0
     },
     {
@@ -48491,7 +48679,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2344",
+      "source_location": "L2408",
       "weight": 1.0
     },
     {
@@ -48500,7 +48688,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2377",
+      "source_location": "L2441",
       "weight": 1.0
     },
     {
@@ -48509,7 +48697,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2399",
+      "source_location": "L2463",
       "weight": 1.0
     },
     {
@@ -48518,7 +48706,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2418",
+      "source_location": "L2482",
       "weight": 1.0
     },
     {
@@ -48527,7 +48715,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2436",
+      "source_location": "L2500",
       "weight": 1.0
     },
     {
@@ -48536,7 +48724,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2471",
+      "source_location": "L2535",
       "weight": 1.0
     },
     {
@@ -48545,7 +48733,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2507",
+      "source_location": "L2571",
       "weight": 1.0
     },
     {
@@ -48554,7 +48742,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2528",
+      "source_location": "L2592",
       "weight": 1.0
     },
     {
@@ -48563,7 +48751,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2543",
+      "source_location": "L2607",
       "weight": 1.0
     },
     {
@@ -48572,7 +48760,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2562",
+      "source_location": "L2626",
       "weight": 1.0
     },
     {
@@ -48581,7 +48769,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2604",
+      "source_location": "L2668",
       "weight": 1.0
     },
     {
@@ -48590,7 +48778,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2604",
+      "source_location": "L2668",
       "weight": 1.0
     },
     {
@@ -48599,7 +48787,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2605",
+      "source_location": "L2669",
       "weight": 1.0
     },
     {
@@ -48608,7 +48796,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2625",
+      "source_location": "L2689",
       "weight": 1.0
     },
     {
@@ -48617,7 +48805,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2645",
+      "source_location": "L2709",
       "weight": 1.0
     },
     {
@@ -48626,7 +48814,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2645",
+      "source_location": "L2709",
       "weight": 1.0
     },
     {
@@ -48635,7 +48823,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2645",
+      "source_location": "L2709",
       "weight": 1.0
     },
     {
@@ -48644,7 +48832,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2646",
+      "source_location": "L2710",
       "weight": 1.0
     },
     {
@@ -48653,7 +48841,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2658",
+      "source_location": "L2722",
       "weight": 1.0
     },
     {
@@ -48662,7 +48850,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2706",
+      "source_location": "L2770",
       "weight": 1.0
     },
     {
@@ -48671,7 +48859,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2764",
+      "source_location": "L2828",
       "weight": 1.0
     },
     {
@@ -48680,7 +48868,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2779",
+      "source_location": "L2843",
       "weight": 1.0
     },
     {
@@ -48689,7 +48877,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2797",
+      "source_location": "L2861",
       "weight": 1.0
     },
     {
@@ -48698,7 +48886,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2837",
+      "source_location": "L2901",
       "weight": 1.0
     },
     {
@@ -48707,7 +48895,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2869",
+      "source_location": "L2933",
       "weight": 1.0
     },
     {
@@ -48716,7 +48904,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2884",
+      "source_location": "L2948",
       "weight": 1.0
     },
     {
@@ -48725,7 +48913,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2910",
+      "source_location": "L2974",
       "weight": 1.0
     },
     {
@@ -48734,7 +48922,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2935",
+      "source_location": "L2999",
       "weight": 1.0
     },
     {
@@ -48743,7 +48931,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2960",
+      "source_location": "L3024",
       "weight": 1.0
     },
     {
@@ -48752,7 +48940,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2978",
+      "source_location": "L3042",
       "weight": 1.0
     },
     {
@@ -48761,7 +48949,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2992",
+      "source_location": "L3056",
       "weight": 1.0
     },
     {
@@ -48770,7 +48958,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3014",
+      "source_location": "L3078",
       "weight": 1.0
     },
     {
@@ -48779,7 +48967,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3034",
+      "source_location": "L3098",
       "weight": 1.0
     },
     {
@@ -48788,7 +48976,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3053",
+      "source_location": "L3117",
       "weight": 1.0
     },
     {
@@ -48797,7 +48985,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3080",
+      "source_location": "L3144",
       "weight": 1.0
     },
     {
@@ -48806,7 +48994,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3109",
+      "source_location": "L3173",
       "weight": 1.0
     },
     {
@@ -48815,7 +49003,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3136",
+      "source_location": "L3200",
       "weight": 1.0
     },
     {
@@ -48824,7 +49012,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3164",
+      "source_location": "L3228",
       "weight": 1.0
     },
     {
@@ -48833,7 +49021,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3199",
+      "source_location": "L3263",
       "weight": 1.0
     },
     {
@@ -48842,7 +49030,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3225",
+      "source_location": "L3289",
       "weight": 1.0
     },
     {
@@ -48851,7 +49039,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3272",
+      "source_location": "L3336",
       "weight": 1.0
     },
     {
@@ -48860,7 +49048,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3307",
+      "source_location": "L3371",
       "weight": 1.0
     },
     {
@@ -48869,7 +49057,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3340",
+      "source_location": "L3404",
       "weight": 1.0
     },
     {
@@ -48878,7 +49066,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3369",
+      "source_location": "L3433",
       "weight": 1.0
     },
     {
@@ -48887,7 +49075,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3403",
+      "source_location": "L3467",
       "weight": 1.0
     },
     {
@@ -48896,7 +49084,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3433",
+      "source_location": "L3497",
       "weight": 1.0
     },
     {
@@ -48905,7 +49093,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3460",
+      "source_location": "L3524",
       "weight": 1.0
     },
     {
@@ -48914,7 +49102,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3506",
+      "source_location": "L3570",
       "weight": 1.0
     },
     {
@@ -48923,7 +49111,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3538",
+      "source_location": "L3602",
       "weight": 1.0
     },
     {
@@ -48932,7 +49120,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3599",
+      "source_location": "L3663",
       "weight": 1.0
     },
     {
@@ -48941,7 +49129,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3635",
+      "source_location": "L3699",
       "weight": 1.0
     },
     {
@@ -48950,7 +49138,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3665",
+      "source_location": "L3729",
       "weight": 1.0
     },
     {
@@ -48959,7 +49147,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3706",
+      "source_location": "L3770",
       "weight": 1.0
     },
     {
@@ -48968,7 +49156,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3754",
+      "source_location": "L3818",
       "weight": 1.0
     },
     {
@@ -48977,7 +49165,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3797",
+      "source_location": "L3861",
       "weight": 1.0
     },
     {
@@ -48986,7 +49174,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3797",
+      "source_location": "L3861",
       "weight": 1.0
     },
     {
@@ -48995,7 +49183,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3797",
+      "source_location": "L3861",
       "weight": 1.0
     },
     {
@@ -49004,7 +49192,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3798",
+      "source_location": "L3862",
       "weight": 1.0
     },
     {
@@ -49013,7 +49201,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3820",
+      "source_location": "L3884",
       "weight": 1.0
     },
     {
@@ -49022,7 +49210,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3835",
+      "source_location": "L3899",
       "weight": 1.0
     },
     {
@@ -49031,7 +49219,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3840",
+      "source_location": "L3904",
       "weight": 1.0
     },
     {
@@ -49235,13 +49423,23 @@
       "weight": 1.0
     },
     {
+      "source": "tests_test_services_schedulingservicetests_test_find_overlaps_blocks_group_when_room_disallows_groups",
+      "target": "tests_test_services_local",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L947",
+      "weight": 1.0
+    },
+    {
       "source": "tests_test_services_schedulingservicetests_test_is_within_availability_blocked_by_time_off",
       "target": "tests_test_services_local",
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L945",
+      "source_location": "L970",
       "weight": 1.0
     },
     {
@@ -49251,7 +49449,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L959",
+      "source_location": "L984",
       "weight": 1.0
     },
     {
@@ -49261,7 +49459,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L985",
+      "source_location": "L1049",
       "weight": 1.0
     },
     {
@@ -49271,7 +49469,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1027",
+      "source_location": "L1091",
       "weight": 1.0
     },
     {
@@ -49281,7 +49479,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1094",
+      "source_location": "L1158",
       "weight": 1.0
     },
     {
@@ -49291,7 +49489,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1138",
+      "source_location": "L1202",
       "weight": 1.0
     },
     {
@@ -49301,7 +49499,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1149",
+      "source_location": "L1213",
       "weight": 1.0
     },
     {
@@ -49311,7 +49509,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1154",
+      "source_location": "L1218",
       "weight": 1.0
     },
     {
@@ -49321,7 +49519,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1201",
+      "source_location": "L1265",
       "weight": 1.0
     },
     {
@@ -49331,7 +49529,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1222",
+      "source_location": "L1286",
       "weight": 1.0
     },
     {
@@ -49341,7 +49539,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1250",
+      "source_location": "L1314",
       "weight": 1.0
     },
     {
@@ -49351,7 +49549,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1268",
+      "source_location": "L1332",
       "weight": 1.0
     },
     {
@@ -49361,7 +49559,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1329",
+      "source_location": "L1393",
       "weight": 1.0
     },
     {
@@ -49371,7 +49569,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1334",
+      "source_location": "L1398",
       "weight": 1.0
     },
     {
@@ -49381,7 +49579,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1400",
+      "source_location": "L1464",
       "weight": 1.0
     },
     {
@@ -49391,7 +49589,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1413",
+      "source_location": "L1477",
       "weight": 1.0
     },
     {
@@ -49401,7 +49599,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1445",
+      "source_location": "L1509",
       "weight": 1.0
     },
     {
@@ -49411,7 +49609,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1450",
+      "source_location": "L1514",
       "weight": 1.0
     },
     {
@@ -49421,7 +49619,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1495",
+      "source_location": "L1559",
       "weight": 1.0
     },
     {
@@ -49431,7 +49629,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1500",
+      "source_location": "L1564",
       "weight": 1.0
     },
     {
@@ -49441,7 +49639,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1549",
+      "source_location": "L1613",
       "weight": 1.0
     },
     {
@@ -49451,7 +49649,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1572",
+      "source_location": "L1636",
       "weight": 1.0
     },
     {
@@ -49461,7 +49659,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1606",
+      "source_location": "L1670",
       "weight": 1.0
     },
     {
@@ -49471,7 +49669,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1634",
+      "source_location": "L1698",
       "weight": 1.0
     },
     {
@@ -49481,7 +49679,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1664",
+      "source_location": "L1728",
       "weight": 1.0
     },
     {
@@ -49491,7 +49689,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1682",
+      "source_location": "L1746",
       "weight": 1.0
     },
     {
@@ -49501,7 +49699,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1711",
+      "source_location": "L1775",
       "weight": 1.0
     },
     {
@@ -49511,7 +49709,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1742",
+      "source_location": "L1806",
       "weight": 1.0
     },
     {
@@ -49521,7 +49719,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1776",
+      "source_location": "L1840",
       "weight": 1.0
     },
     {
@@ -49531,7 +49729,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1822",
+      "source_location": "L1886",
       "weight": 1.0
     },
     {
@@ -49541,7 +49739,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1870",
+      "source_location": "L1934",
       "weight": 1.0
     },
     {
@@ -49551,7 +49749,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1917",
+      "source_location": "L1981",
       "weight": 1.0
     },
     {
@@ -49561,31 +49759,11 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1938",
+      "source_location": "L2002",
       "weight": 1.0
     },
     {
       "source": "tests_test_services_reschedulingplanservicetests_test_apply_step_skips_alternatives_for_same_source_only",
-      "target": "tests_test_services_local",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "operations/tests/test_services.py",
-      "source_location": "L1953",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_services_reschedulingplanservicetests_test_apply_step_with_room_override_creates_room_override",
-      "target": "tests_test_services_reschedulingplanservicetests_appointment",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "operations/tests/test_services.py",
-      "source_location": "L2016",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_services_reschedulingplanservicetests_test_apply_step_with_room_override_creates_room_override",
       "target": "tests_test_services_local",
       "relation": "calls",
       "context": "call",
@@ -49595,13 +49773,33 @@
       "weight": 1.0
     },
     {
+      "source": "tests_test_services_reschedulingplanservicetests_test_apply_step_with_room_override_creates_room_override",
+      "target": "tests_test_services_reschedulingplanservicetests_appointment",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L2080",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reschedulingplanservicetests_test_apply_step_with_room_override_creates_room_override",
+      "target": "tests_test_services_local",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L2081",
+      "weight": 1.0
+    },
+    {
       "source": "tests_test_services_reschedulingplanservicetests_test_group_plan_snapshot_includes_participants_and_staff",
       "target": "tests_test_services_reschedulingplanservicetests_appointment",
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2078",
+      "source_location": "L2142",
       "weight": 1.0
     },
     {
@@ -49611,7 +49809,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2116",
+      "source_location": "L2180",
       "weight": 1.0
     },
     {
@@ -49621,7 +49819,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2141",
+      "source_location": "L2205",
       "weight": 1.0
     },
     {
@@ -49631,7 +49829,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2169",
+      "source_location": "L2233",
       "weight": 1.0
     },
     {
@@ -49641,7 +49839,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2200",
+      "source_location": "L2264",
       "weight": 1.0
     },
     {
@@ -49651,7 +49849,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2217",
+      "source_location": "L2281",
       "weight": 1.0
     },
     {
@@ -49661,7 +49859,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2238",
+      "source_location": "L2302",
       "weight": 1.0
     },
     {
@@ -49671,7 +49869,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2262",
+      "source_location": "L2326",
       "weight": 1.0
     },
     {
@@ -49681,7 +49879,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2289",
+      "source_location": "L2353",
       "weight": 1.0
     },
     {
@@ -49691,7 +49889,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2332",
+      "source_location": "L2396",
       "weight": 1.0
     },
     {
@@ -49701,7 +49899,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2337",
+      "source_location": "L2401",
       "weight": 1.0
     },
     {
@@ -49711,7 +49909,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2359",
+      "source_location": "L2423",
       "weight": 1.0
     },
     {
@@ -49721,7 +49919,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2372",
+      "source_location": "L2436",
       "weight": 1.0
     },
     {
@@ -49731,7 +49929,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2385",
+      "source_location": "L2449",
       "weight": 1.0
     },
     {
@@ -49741,7 +49939,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2390",
+      "source_location": "L2454",
       "weight": 1.0
     },
     {
@@ -49751,7 +49949,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2407",
+      "source_location": "L2471",
       "weight": 1.0
     },
     {
@@ -49761,7 +49959,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2412",
+      "source_location": "L2476",
       "weight": 1.0
     },
     {
@@ -49771,7 +49969,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2430",
+      "source_location": "L2494",
       "weight": 1.0
     },
     {
@@ -49781,7 +49979,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2452",
+      "source_location": "L2516",
       "weight": 1.0
     },
     {
@@ -49791,7 +49989,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2466",
+      "source_location": "L2530",
       "weight": 1.0
     },
     {
@@ -49801,7 +49999,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2487",
+      "source_location": "L2551",
       "weight": 1.0
     },
     {
@@ -49811,7 +50009,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2502",
+      "source_location": "L2566",
       "weight": 1.0
     },
     {
@@ -49821,7 +50019,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2508",
+      "source_location": "L2572",
       "weight": 1.0
     },
     {
@@ -49831,7 +50029,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2529",
+      "source_location": "L2593",
       "weight": 1.0
     },
     {
@@ -49841,7 +50039,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2544",
+      "source_location": "L2608",
       "weight": 1.0
     },
     {
@@ -49851,7 +50049,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2628",
+      "source_location": "L2692",
       "weight": 1.0
     },
     {
@@ -49861,7 +50059,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2647",
+      "source_location": "L2711",
       "weight": 1.0
     },
     {
@@ -49871,7 +50069,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2652",
+      "source_location": "L2716",
       "weight": 1.0
     },
     {
@@ -49881,7 +50079,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2770",
+      "source_location": "L2834",
       "weight": 1.0
     },
     {
@@ -49891,7 +50089,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2780",
+      "source_location": "L2844",
       "weight": 1.0
     },
     {
@@ -49901,7 +50099,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2874",
+      "source_location": "L2938",
       "weight": 1.0
     },
     {
@@ -49911,7 +50109,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2885",
+      "source_location": "L2949",
       "weight": 1.0
     },
     {
@@ -49921,7 +50119,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2915",
+      "source_location": "L2979",
       "weight": 1.0
     },
     {
@@ -49931,7 +50129,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3152",
+      "source_location": "L3216",
       "weight": 1.0
     },
     {
@@ -49941,7 +50139,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3243",
+      "source_location": "L3307",
       "weight": 1.0
     },
     {
@@ -49951,7 +50149,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3350",
+      "source_location": "L3414",
       "weight": 1.0
     },
     {
@@ -49961,7 +50159,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3385",
+      "source_location": "L3449",
       "weight": 1.0
     },
     {
@@ -49971,7 +50169,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3561",
+      "source_location": "L3625",
       "weight": 1.0
     },
     {
@@ -49981,7 +50179,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3735",
+      "source_location": "L3799",
       "weight": 1.0
     },
     {
@@ -49991,7 +50189,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3776",
+      "source_location": "L3840",
       "weight": 1.0
     },
     {
@@ -50001,7 +50199,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3804",
+      "source_location": "L3868",
       "weight": 1.0
     },
     {
@@ -98065,7 +98263,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/13-schedule-capacity-v2-contract.md",
-      "source_location": "L105",
+      "source_location": "L109",
       "weight": 1.0
     },
     {
@@ -98074,7 +98272,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/13-schedule-capacity-v2-contract.md",
-      "source_location": "L119",
+      "source_location": "L123",
       "weight": 1.0
     },
     {
@@ -98083,7 +98281,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/13-schedule-capacity-v2-contract.md",
-      "source_location": "L136",
+      "source_location": "L140",
       "weight": 1.0
     },
     {
@@ -98092,7 +98290,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/13-schedule-capacity-v2-contract.md",
-      "source_location": "L144",
+      "source_location": "L148",
       "weight": 1.0
     },
     {
@@ -98101,7 +98299,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/13-schedule-capacity-v2-contract.md",
-      "source_location": "L167",
+      "source_location": "L171",
       "weight": 1.0
     },
     {
@@ -99437,6 +99635,24 @@
       "weight": 1.0
     },
     {
+      "source": "docs_current_state_текущее_состояние_проекта_радость_моя",
+      "target": "docs_current_state_обновление_2026_07_14_calendar_drag_and_drop_api_на_общем_schedule_validation",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1259",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_current_state_текущее_состояние_проекта_радость_моя",
+      "target": "docs_current_state_обновление_2026_07_14_свободные_окна_на_общем_schedule_validation",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1271",
+      "weight": 1.0
+    },
+    {
       "source": "decisions_adr_001_django_postgresql_local_first",
       "target": "decisions_adr_001_django_postgresql_local_first_adr_001_django_postgresql_локальный_first_deployment",
       "relation": "contains",
@@ -99766,7 +99982,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L50",
+      "source_location": "L52",
       "weight": 1.0
     },
     {
@@ -99865,7 +100081,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L144",
+      "source_location": "L146",
       "weight": 1.0
     },
     {
@@ -99874,7 +100090,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L151",
+      "source_location": "L153",
       "weight": 1.0
     },
     {
@@ -102574,7 +102790,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 1.0
     },
     {
@@ -102584,7 +102800,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 1.0
     },
     {
@@ -102594,17 +102810,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 1.0
-    },
-    {
-      "source": "services_scheduling",
-      "target": "operations_models_appointmentstaffassignment",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 1.0
     },
     {
@@ -102614,7 +102820,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 1.0
     },
     {
@@ -102624,7 +102830,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 1.0
     },
     {
@@ -102634,7 +102840,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 1.0
     },
     {
@@ -102644,7 +102850,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 1.0
     },
     {
@@ -102669,22 +102875,12 @@
     },
     {
       "source": "services_scheduling",
-      "target": "operations_schedule_validation_conflict_messages",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L24",
-      "weight": 1.0
-    },
-    {
-      "source": "services_scheduling",
       "target": "operations_models_service",
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L459",
+      "source_location": "L484",
       "weight": 1.0
     },
     {
@@ -106389,12 +106585,22 @@
     },
     {
       "source": "services_scheduling_find_overlaps",
+      "target": "operations_schedule_validation_appointment_group_conflicts",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L125",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling_find_overlaps",
       "target": "operations_models_room_usage_counts",
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L119",
+      "source_location": "L140",
       "weight": 1.0
     },
     {
@@ -106404,7 +106610,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L227",
+      "source_location": "L249",
       "weight": 1.0
     },
     {
@@ -138559,16 +138765,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_datetime",
-      "target": "operations_models_appointment",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138577,43 +138774,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_staffmember",
-      "target": "operations_models_appointment",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_date",
-      "target": "operations_models_appointment",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_massrescheduleresult",
-      "target": "operations_models_appointment",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_representativeconfirmationtarget",
-      "target": "operations_models_appointment",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138622,7 +138783,52 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_datetime",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_staffmember",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_date",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_massrescheduleresult",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_representativeconfirmationtarget",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138631,7 +138837,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138640,16 +138846,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_datetime",
-      "target": "operations_models_appointmentconfirmation",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138658,43 +138855,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_staffmember",
-      "target": "operations_models_appointmentconfirmation",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_date",
-      "target": "operations_models_appointmentconfirmation",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_massrescheduleresult",
-      "target": "operations_models_appointmentconfirmation",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_representativeconfirmationtarget",
-      "target": "operations_models_appointmentconfirmation",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138703,7 +138864,52 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_datetime",
+      "target": "operations_models_appointmentconfirmation",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_staffmember",
+      "target": "operations_models_appointmentconfirmation",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_date",
+      "target": "operations_models_appointmentconfirmation",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_massrescheduleresult",
+      "target": "operations_models_appointmentconfirmation",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_representativeconfirmationtarget",
+      "target": "operations_models_appointmentconfirmation",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138712,7 +138918,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138721,16 +138927,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_datetime",
-      "target": "operations_models_appointmentparticipant",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138739,43 +138936,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_staffmember",
-      "target": "operations_models_appointmentparticipant",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_date",
-      "target": "operations_models_appointmentparticipant",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_massrescheduleresult",
-      "target": "operations_models_appointmentparticipant",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_representativeconfirmationtarget",
-      "target": "operations_models_appointmentparticipant",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138784,97 +138945,61 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_queryset",
-      "target": "operations_models_appointmentparticipant",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_conflictreport",
-      "target": "operations_models_appointmentstaffassignment",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
       "source": "operations_services_scheduling_py_datetime",
-      "target": "operations_models_appointmentstaffassignment",
+      "target": "operations_models_appointmentparticipant",
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_any",
-      "target": "operations_models_appointmentstaffassignment",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
       "source": "operations_services_scheduling_py_staffmember",
-      "target": "operations_models_appointmentstaffassignment",
+      "target": "operations_models_appointmentparticipant",
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
       "source": "operations_services_scheduling_py_date",
-      "target": "operations_models_appointmentstaffassignment",
+      "target": "operations_models_appointmentparticipant",
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
       "source": "services_scheduling_massrescheduleresult",
-      "target": "operations_models_appointmentstaffassignment",
+      "target": "operations_models_appointmentparticipant",
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
       "source": "services_scheduling_representativeconfirmationtarget",
-      "target": "operations_models_appointmentstaffassignment",
+      "target": "operations_models_appointmentparticipant",
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_appointment",
-      "target": "operations_models_appointmentstaffassignment",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
       "source": "operations_services_scheduling_py_queryset",
-      "target": "operations_models_appointmentstaffassignment",
+      "target": "operations_models_appointmentparticipant",
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138883,16 +139008,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_datetime",
-      "target": "operations_models_staffavailability",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138901,43 +139017,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_staffmember",
-      "target": "operations_models_staffavailability",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_date",
-      "target": "operations_models_staffavailability",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_massrescheduleresult",
-      "target": "operations_models_staffavailability",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_representativeconfirmationtarget",
-      "target": "operations_models_staffavailability",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138946,7 +139026,52 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_datetime",
+      "target": "operations_models_staffavailability",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_staffmember",
+      "target": "operations_models_staffavailability",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_date",
+      "target": "operations_models_staffavailability",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_massrescheduleresult",
+      "target": "operations_models_staffavailability",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_representativeconfirmationtarget",
+      "target": "operations_models_staffavailability",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138955,7 +139080,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138964,16 +139089,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_datetime",
-      "target": "operations_models_staffmember",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -138982,43 +139098,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_staffmember",
-      "target": "operations_models_staffmember",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_date",
-      "target": "operations_models_staffmember",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_massrescheduleresult",
-      "target": "operations_models_staffmember",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_representativeconfirmationtarget",
-      "target": "operations_models_staffmember",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -139027,7 +139107,52 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_datetime",
+      "target": "operations_models_staffmember",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_staffmember",
+      "target": "operations_models_staffmember",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_date",
+      "target": "operations_models_staffmember",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_massrescheduleresult",
+      "target": "operations_models_staffmember",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_representativeconfirmationtarget",
+      "target": "operations_models_staffmember",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -139036,7 +139161,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -139045,16 +139170,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_datetime",
-      "target": "operations_models_timeoffrequest",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -139063,43 +139179,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_staffmember",
-      "target": "operations_models_timeoffrequest",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_date",
-      "target": "operations_models_timeoffrequest",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_massrescheduleresult",
-      "target": "operations_models_timeoffrequest",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_representativeconfirmationtarget",
-      "target": "operations_models_timeoffrequest",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -139108,7 +139188,52 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_datetime",
+      "target": "operations_models_timeoffrequest",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_staffmember",
+      "target": "operations_models_timeoffrequest",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_date",
+      "target": "operations_models_timeoffrequest",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_massrescheduleresult",
+      "target": "operations_models_timeoffrequest",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_representativeconfirmationtarget",
+      "target": "operations_models_timeoffrequest",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -139117,7 +139242,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 0.8
     },
     {
@@ -139126,16 +139251,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L459",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_datetime",
-      "target": "operations_models_service",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L459",
+      "source_location": "L484",
       "weight": 0.8
     },
     {
@@ -139144,43 +139260,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L459",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_staffmember",
-      "target": "operations_models_service",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L459",
-      "weight": 0.8
-    },
-    {
-      "source": "operations_services_scheduling_py_date",
-      "target": "operations_models_service",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L459",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_massrescheduleresult",
-      "target": "operations_models_service",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L459",
-      "weight": 0.8
-    },
-    {
-      "source": "services_scheduling_representativeconfirmationtarget",
-      "target": "operations_models_service",
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L459",
+      "source_location": "L484",
       "weight": 0.8
     },
     {
@@ -139189,7 +139269,52 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L459",
+      "source_location": "L484",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_datetime",
+      "target": "operations_models_service",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L484",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_staffmember",
+      "target": "operations_models_service",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L484",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_date",
+      "target": "operations_models_service",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L484",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_massrescheduleresult",
+      "target": "operations_models_service",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L484",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_representativeconfirmationtarget",
+      "target": "operations_models_service",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L484",
       "weight": 0.8
     },
     {
@@ -139198,7 +139323,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L459",
+      "source_location": "L484",
       "weight": 0.8
     },
     {
@@ -155980,7 +156105,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L194",
+      "source_location": "L211",
       "weight": 1.0
     },
     {
@@ -155991,29 +156116,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/services/scheduling.py",
-      "source_location": "L227",
-      "weight": 1.0
-    },
-    {
-      "source": "services_scheduling_mass_reschedule",
-      "target": "operations_schedule_validation_appointment_group_conflicts",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L423",
-      "weight": 1.0
-    },
-    {
-      "source": "services_scheduling_mass_reschedule",
-      "target": "operations_schedule_validation_conflict_messages",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "operations/services/scheduling.py",
-      "source_location": "L431",
+      "source_location": "L249",
       "weight": 1.0
     },
     {
@@ -156897,6 +157000,17 @@
       "weight": 1.0
     },
     {
+      "source": "tests_test_services_schedulingservicetests_test_find_overlaps_blocks_group_when_room_disallows_groups",
+      "target": "time",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L947",
+      "weight": 1.0
+    },
+    {
       "source": "tests_test_services_schedulingservicetests_test_is_within_availability_blocked_by_time_off",
       "target": "time",
       "relation": "calls",
@@ -156904,7 +157018,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L945",
+      "source_location": "L970",
       "weight": 1.0
     },
     {
@@ -156915,7 +157029,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L954",
+      "source_location": "L979",
       "weight": 1.0
     },
     {
@@ -156926,7 +157040,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L967",
+      "source_location": "L992",
       "weight": 1.0
     },
     {
@@ -156937,7 +157051,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L985",
+      "source_location": "L1049",
       "weight": 1.0
     },
     {
@@ -156948,7 +157062,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1027",
+      "source_location": "L1091",
       "weight": 1.0
     },
     {
@@ -156959,7 +157073,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1094",
+      "source_location": "L1158",
       "weight": 1.0
     },
     {
@@ -156970,7 +157084,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1138",
+      "source_location": "L1202",
       "weight": 1.0
     },
     {
@@ -156981,7 +157095,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1149",
+      "source_location": "L1213",
       "weight": 1.0
     },
     {
@@ -156992,7 +157106,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1268",
+      "source_location": "L1332",
       "weight": 1.0
     },
     {
@@ -157003,7 +157117,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1299",
+      "source_location": "L1363",
       "weight": 1.0
     },
     {
@@ -157014,7 +157128,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1329",
+      "source_location": "L1393",
       "weight": 1.0
     },
     {
@@ -157025,7 +157139,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1413",
+      "source_location": "L1477",
       "weight": 1.0
     },
     {
@@ -157036,7 +157150,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1450",
+      "source_location": "L1514",
       "weight": 1.0
     },
     {
@@ -157047,7 +157161,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1500",
+      "source_location": "L1564",
       "weight": 1.0
     },
     {
@@ -157058,7 +157172,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1953",
+      "source_location": "L2017",
       "weight": 1.0
     },
     {
@@ -157069,7 +157183,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2017",
+      "source_location": "L2081",
       "weight": 1.0
     },
     {
@@ -157080,7 +157194,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2310",
+      "source_location": "L2374",
       "weight": 1.0
     },
     {
@@ -157091,7 +157205,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2332",
+      "source_location": "L2396",
       "weight": 1.0
     },
     {
@@ -157102,7 +157216,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2359",
+      "source_location": "L2423",
       "weight": 1.0
     },
     {
@@ -157113,7 +157227,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2385",
+      "source_location": "L2449",
       "weight": 1.0
     },
     {
@@ -157124,7 +157238,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2407",
+      "source_location": "L2471",
       "weight": 1.0
     },
     {
@@ -157135,7 +157249,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2452",
+      "source_location": "L2516",
       "weight": 1.0
     },
     {
@@ -157146,7 +157260,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2487",
+      "source_location": "L2551",
       "weight": 1.0
     },
     {
@@ -157157,7 +157271,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2531",
+      "source_location": "L2595",
       "weight": 1.0
     },
     {
@@ -157168,7 +157282,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2596",
+      "source_location": "L2660",
       "weight": 1.0
     },
     {
@@ -157179,7 +157293,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2652",
+      "source_location": "L2716",
       "weight": 1.0
     },
     {
@@ -157190,7 +157304,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2770",
+      "source_location": "L2834",
       "weight": 1.0
     },
     {
@@ -157201,7 +157315,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2874",
+      "source_location": "L2938",
       "weight": 1.0
     },
     {
@@ -157212,7 +157326,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2885",
+      "source_location": "L2949",
       "weight": 1.0
     },
     {
@@ -157223,7 +157337,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2915",
+      "source_location": "L2979",
       "weight": 1.0
     },
     {
@@ -157234,7 +157348,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3243",
+      "source_location": "L3307",
       "weight": 1.0
     },
     {
@@ -157245,7 +157359,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3561",
+      "source_location": "L3625",
       "weight": 1.0
     },
     {
@@ -157256,7 +157370,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3735",
+      "source_location": "L3799",
       "weight": 1.0
     },
     {
@@ -157267,7 +157381,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3776",
+      "source_location": "L3840",
       "weight": 1.0
     },
     {
@@ -157278,7 +157392,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3804",
+      "source_location": "L3868",
       "weight": 1.0
     },
     {
@@ -159600,6 +159714,129 @@
       "confidence_score": 0.8,
       "source_file": "static/vendor/htmx/htmx.min.js",
       "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling",
+      "target": "operations_models_appointmentstaffassignment",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L13",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling",
+      "target": "operations_schedule_validation_conflict_messages",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L24",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling_conflictreport",
+      "target": "operations_models_appointmentstaffassignment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L13",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_datetime",
+      "target": "operations_models_appointmentstaffassignment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L13",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_any",
+      "target": "operations_models_appointmentstaffassignment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L13",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_staffmember",
+      "target": "operations_models_appointmentstaffassignment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L13",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_date",
+      "target": "operations_models_appointmentstaffassignment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L13",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_massrescheduleresult",
+      "target": "operations_models_appointmentstaffassignment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L13",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_representativeconfirmationtarget",
+      "target": "operations_models_appointmentstaffassignment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L13",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_appointment",
+      "target": "operations_models_appointmentstaffassignment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L13",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_scheduling_py_queryset",
+      "target": "operations_models_appointmentstaffassignment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L13",
+      "weight": 0.8
+    },
+    {
+      "source": "services_scheduling_mass_reschedule",
+      "target": "operations_schedule_validation_appointment_group_conflicts",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L423",
+      "weight": 1.0
+    },
+    {
+      "source": "services_scheduling_mass_reschedule",
+      "target": "operations_schedule_validation_conflict_messages",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "operations/services/scheduling.py",
+      "source_location": "L431",
       "weight": 1.0
     },
     {

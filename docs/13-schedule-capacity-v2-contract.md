@@ -94,13 +94,16 @@
 - `operations/forms.py`, `operations/services/scheduling.py`, `operations/services/rescheduling_plans.py` и `operations/views/scheduling_helpers.py` переключены на общий модуль без изменения поведения.
 - `Appointment.clean()` теперь использует общий schedule validation contract для существующих snapshot-занятий: `AppointmentParticipant` и `AppointmentStaffAssignment` являются источником правды, legacy-поля используются как fallback только при отсутствии snapshot-строк.
 - `operations/api.py::move_conflict_messages()` теперь использует `operations.schedule_validation.appointment_validation_conflicts()` и единый контракт для snapshot-участников, snapshot-назначений, legacy fallback, недоступности специалистов, лимитов кабинета и запрета групп в кабинете.
+- `operations/services/scheduling.py::find_overlaps()` и `find_free_slots()` теперь принимают списки `children`/`staff_members` и используют общий `appointment_group_conflicts()` для подсказок свободных окон, кабинетных лимитов и запрета группового занятия в кабинете.
+- Массовый перенос по отсутствию специалиста больше не фильтрует child/staff conflicts отдельной локальной проверкой после подбора слотов: кандидаты проходят через обновленный `find_free_slots()`.
 - Добавлены focused tests для helper-level и model-level проверки snapshot-участников, snapshot-специалистов, вместимости кабинета и недоступности ассистента.
 - Добавлена API-регрессия drag-and-drop для запрета группового занятия в кабинете с `allow_group_sessions=false`.
+- Добавлены service-регрессии для подсказок свободных окон: кабинет с `allow_group_sessions=false` не предлагает групповое занятие, а слот с несколькими специалистами отсекается, если любой из специалистов недоступен.
 - Миграции не добавлялись.
 
 Осталось в первом кодовом срезе:
 
-- сверить подсказки свободных/занятых окон с тем же контрактом;
+- финально сверить первый кодовый срез по acceptance criteria и выполнить доступный browser smoke, если в сессии есть Browser tool;
 - не менять ledger/payroll/grants/statuses.
 
 ## Acceptance criteria первого кодового среза

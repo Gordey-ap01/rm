@@ -1267,3 +1267,16 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA не выполнялась: после проверки tool discovery callable Browser-инструмент в этой сессии не был доступен. Изменение покрыто API/Django/pytest-регрессиями; живой браузерный smoke нужно выполнить отдельно, если следующая сессия получит Browser tool.
 - Graphify code-index обновлен после API-среза: `graphify update . --no-cluster` переизвлек `138/138` code-файлов и обновил `graphify-out/graph.json` до `3953` nodes / `14224` edges. Semantic docs extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
 - Следующий шаг в этом же контракте: сверить подсказки свободных/занятых окон и сценарии ручного переноса с тем же `operations.schedule_validation`, затем закрыть первый schedule-capacity срез или открыть новый контракт для следующих доменных изменений.
+
+## Обновление 2026-07-14: свободные окна на общем schedule validation
+
+- Продолжен `schedule-capacity-validation-source` без миграций и без изменений ledger/payroll/grants/statuses.
+- `operations/services/scheduling.py::find_overlaps()` теперь использует общий `operations.schedule_validation.appointment_group_conflicts()` вместо собственной SQL-копии для конфликтов получателей, специалистов и кабинетных правил.
+- `find_overlaps()` и `find_free_slots()` принимают списки `children`/`staff_members`, поэтому подсказки свободных окон учитывают групповых получателей, нескольких специалистов, кабинетные лимиты и `allow_group_sessions=false`.
+- `ConflictReport` получил явный признак `room_over_limit` и причины кабинетного нарушения, чтобы запрет группы в пустом кабинете тоже считался конфликтом, даже если нет пересекающегося занятия.
+- Массовый перенос по отсутствию специалиста теперь передает участников занятия в `find_free_slots()` и не держит отдельный пост-фильтр конфликтов после подбора слотов.
+- Добавлены регрессии: групповое занятие не предлагается в кабинете с запретом групп, а слот с несколькими специалистами не предлагается, если любой из специалистов недоступен.
+- Проверки: touched-file Ruff прошел; `manage.py check` прошел; `manage.py makemigrations --check --dry-run` показал `No changes detected`; `pytest operations/tests/test_services.py -q` прошел (`116 passed`); `pytest operations/tests/test_views.py -q` прошел (`231 passed`); полный `pytest -q` прошел (`444 passed`, 1 прежнее предупреждение django-tasks).
+- Browser QA не выполнялась: шаблоны, JS и видимые calendar-тексты не менялись; живой browser smoke остается желательным при доступном Browser tool перед закрытием всего первого schedule-capacity среза.
+- Graphify code-index обновлен после free-slot среза: `graphify update . --no-cluster` переизвлек `138/138` code-файлов и обновил `graphify-out/graph.json` до `3961` nodes / `14242` edges. Semantic docs extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
+- Следующий шаг в этом же контракте: финально сверить acceptance criteria первого `schedule-capacity-validation-source`, обновить Graphify/recovery и закрыть срез коммитом либо открыть новый контракт перед DB/ledger/payroll/grants/status изменениями.
