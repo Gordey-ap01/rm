@@ -26,6 +26,7 @@ from operations.models import (
     Consent,
     Discount,
     Document,
+    FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
     FundingServiceQuota,
     FundingSource,
@@ -411,7 +412,105 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertContains(response, "stale_debit_ledger_without_charge_fact")
         self.assertContains(response, "Debit ledger-проводка")
         self.assertContains(response, reverse("appointment_detail", args=[appointment.pk]))
+        finding = FinancialIntegrityFinding.objects.get()
+        self.assertContains(response, reverse("financial_integrity_finding_detail", args=[finding.pk]))
         self.assertNotContains(response, "Исправить автоматически")
+
+    def test_financial_integrity_finding_detail_shows_sources_and_actions(self):
+        self._financial_integrity_fixture()
+        finding = FinancialIntegrityFinding.objects.get()
+
+        response = self.client.get(reverse("financial_integrity_finding_detail", args=[finding.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, finding.issue_key)
+        self.assertContains(response, finding.code)
+        self.assertContains(response, finding.message)
+        self.assertContains(response, reverse("appointment_detail", args=[finding.appointment_id]))
+        self.assertContains(response, reverse("balance_account_edit", args=[finding.account_id]))
+        self.assertContains(response, reverse("funding_source_edit", args=[finding.funding_source_id]))
+        self.assertContains(response, 'name="action" value="acknowledge"')
+        self.assertContains(response, 'name="action" value="ignore"')
+        self.assertContains(response, reverse("financial_integrity_finding_recheck", args=[finding.pk]))
+        self.assertContains(response, "financial-integrity-payload")
+
+    def test_financial_integrity_finding_detail_handles_missing_source_objects(self):
+        self._financial_integrity_fixture()
+        finding = FinancialIntegrityFinding.objects.get()
+        appointment_url = reverse("appointment_detail", args=[finding.appointment_id])
+        finding.appointment = None
+        finding.appointment_participant = None
+        finding.ledger_entry = None
+        finding.account = None
+        finding.funding_source = None
+        finding.participant_name = "Detached Participant"
+        finding.account_label = "Detached Account"
+        finding.funding_source_name = "Detached Funding"
+        finding.payload = {"source": "detached"}
+        finding.save(
+            update_fields=[
+                "appointment",
+                "appointment_participant",
+                "ledger_entry",
+                "account",
+                "funding_source",
+                "participant_name",
+                "account_label",
+                "funding_source_name",
+                "payload",
+                "updated_at",
+            ]
+        )
+
+        response = self.client.get(reverse("financial_integrity_finding_detail", args=[finding.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, appointment_url)
+        self.assertNotContains(response, reverse("financial_integrity_finding_recheck", args=[finding.pk]))
+        self.assertContains(response, "Detached Participant")
+        self.assertContains(response, "Detached Account")
+        self.assertContains(response, "Detached Funding")
+
+    def test_financial_integrity_finding_recheck_scopes_to_appointment(self):
+        self._financial_integrity_fixture()
+        finding = FinancialIntegrityFinding.objects.get()
+        detail_url = reverse("financial_integrity_finding_detail", args=[finding.pk])
+        run_count = FinancialIntegrityCheckRun.objects.count()
+
+        response = self.client.post(
+            reverse("financial_integrity_finding_recheck", args=[finding.pk]),
+            {"next": detail_url},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], detail_url)
+        self.assertEqual(FinancialIntegrityCheckRun.objects.count(), run_count + 1)
+        run = FinancialIntegrityCheckRun.objects.latest("pk")
+        self.assertEqual(run.status, FinancialIntegrityCheckRun.Status.COMPLETED)
+        self.assertEqual(run.run_type, FinancialIntegrityCheckRun.RunType.MANUAL)
+        self.assertEqual(run.requested_by, self.admin)
+        self.assertEqual(run.candidate_count, 1)
+        self.assertEqual(run.issue_count, 1)
+        finding.refresh_from_db()
+        self.assertEqual(finding.last_seen_run, run)
+        self.assertEqual(finding.status, FinancialIntegrityFinding.Status.OPEN)
+
+    def test_financial_integrity_finding_recheck_without_appointment_does_not_run(self):
+        self._financial_integrity_fixture()
+        finding = FinancialIntegrityFinding.objects.get()
+        finding.appointment = None
+        finding.save(update_fields=["appointment", "updated_at"])
+        detail_url = reverse("financial_integrity_finding_detail", args=[finding.pk])
+        run_count = FinancialIntegrityCheckRun.objects.count()
+
+        response = self.client.post(
+            reverse("financial_integrity_finding_recheck", args=[finding.pk]),
+            {"next": detail_url},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], detail_url)
+        self.assertEqual(FinancialIntegrityCheckRun.objects.count(), run_count)
 
     def test_work_queue_financial_integrity_can_acknowledge_finding(self):
         self._financial_integrity_fixture()

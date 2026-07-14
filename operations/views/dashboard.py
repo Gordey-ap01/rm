@@ -25,6 +25,7 @@ from operations.models import (
     TimeOffRequest,
 )
 from operations.services import (
+    financial_integrity_checks as financial_integrity_checks_svc,
     financial_integrity_triage as financial_integrity_triage_svc,
     rescheduling_plans as plan_svc,
 )
@@ -407,6 +408,115 @@ def financial_integrity_finding_triage_fallback_url() -> str:
     return f"{reverse('work_queue')}#queue-financial-integrity"
 
 
+def financial_integrity_finding_detail_queryset():
+    return FinancialIntegrityFinding.objects.select_related(
+        "appointment",
+        "appointment__service",
+        "appointment_participant",
+        "appointment_participant__child",
+        "ledger_entry",
+        "account",
+        "account__child",
+        "account__funding_source",
+        "funding_source",
+        "first_seen_run",
+        "last_seen_run",
+        "resolved_run",
+        "triaged_by",
+    )
+
+
+def financial_integrity_finding_detail_url(finding: FinancialIntegrityFinding) -> str:
+    return reverse("financial_integrity_finding_detail", args=[finding.pk])
+
+
+def financial_integrity_finding_source_items(
+    finding: FinancialIntegrityFinding,
+) -> list[dict[str, str]]:
+    items = []
+    if finding.appointment_id:
+        items.append(
+            {
+                "label": "Занятие",
+                "value": str(finding.appointment),
+                "href": reverse("appointment_detail", args=[finding.appointment_id]),
+            }
+        )
+    elif finding.appointment_starts_at or finding.appointment_service_name:
+        items.append(
+            {
+                "label": "Занятие",
+                "value": " · ".join(
+                    str(value)
+                    for value in [
+                        finding.appointment_starts_at.strftime("%d.%m.%Y %H:%M")
+                        if finding.appointment_starts_at
+                        else "",
+                        finding.appointment_service_name,
+                    ]
+                    if value
+                ),
+            }
+        )
+    if finding.appointment_participant_id:
+        items.append(
+            {
+                "label": "Участник",
+                "value": str(finding.appointment_participant.child),
+            }
+        )
+    elif finding.participant_name:
+        items.append({"label": "Участник", "value": finding.participant_name})
+    if finding.account_id:
+        items.append(
+            {
+                "label": "Счет",
+                "value": str(finding.account),
+                "href": reverse("balance_account_edit", args=[finding.account_id]),
+            }
+        )
+    elif finding.account_label:
+        items.append({"label": "Счет", "value": finding.account_label})
+    if finding.funding_source_id:
+        items.append(
+            {
+                "label": "Источник",
+                "value": str(finding.funding_source),
+                "href": reverse("funding_source_edit", args=[finding.funding_source_id]),
+            }
+        )
+    elif finding.funding_source_name:
+        items.append({"label": "Источник", "value": finding.funding_source_name})
+    if finding.ledger_entry_id:
+        items.append({"label": "Ledger", "value": f"#{finding.ledger_entry_id}"})
+    elif finding.ledger_entry_type or finding.ledger_amount:
+        items.append(
+            {
+                "label": "Ledger",
+                "value": f"{finding.ledger_entry_type} {finding.ledger_amount}".strip(),
+            }
+        )
+    return items
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def financial_integrity_finding_detail(request, pk: int):
+    finding = get_object_or_404(financial_integrity_finding_detail_queryset(), pk=pk)
+    detail_url = financial_integrity_finding_detail_url(finding)
+    return render(
+        request,
+        "operations/financial_integrity_finding_detail.html",
+        {
+            "finding": finding,
+            "tone": financial_integrity_finding_tone(finding),
+            "source_items": financial_integrity_finding_source_items(finding),
+            "detail_url": detail_url,
+            "work_queue_financial_url": financial_integrity_finding_triage_fallback_url(),
+        },
+    )
+
+
 @login_required
 @user_passes_test(is_admin_user)
 @require_POST
@@ -452,6 +562,34 @@ def financial_integrity_finding_triage(request, pk: int):
         messages.error(request, f"Действие не выполнено: {exc}")
 
     return redirect(safe_next_url(request, financial_integrity_finding_triage_fallback_url()))
+
+
+@login_required
+@user_passes_test(is_admin_user)
+@require_POST
+def financial_integrity_finding_recheck(request, pk: int):
+    finding = get_object_or_404(financial_integrity_finding_detail_queryset(), pk=pk)
+    fallback_url = financial_integrity_finding_detail_url(finding)
+    if not finding.appointment_id:
+        messages.error(request, "Повторная проверка недоступна: занятие не сохранено.")
+        return redirect(safe_next_url(request, fallback_url))
+
+    try:
+        run = financial_integrity_checks_svc.run_financial_integrity_check(
+            appointments=[finding.appointment],
+            requested_by=request.user,
+        )
+    except Exception as exc:
+        messages.error(request, f"Повторная проверка не выполнена: {exc}")
+    else:
+        messages.success(
+            request,
+            (
+                "Повторная проверка занятия завершена: "
+                f"кандидатов {run.candidate_count}, расхождений {run.issue_count}."
+            ),
+        )
+    return redirect(safe_next_url(request, fallback_url))
 
 
 def quick_billing_account(appointment):

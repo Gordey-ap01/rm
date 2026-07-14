@@ -19,7 +19,6 @@
 
 Не выполнено:
 
-- finding detail page;
 - event table for status history;
 - scheduled/background invocation;
 - manager trend report.
@@ -95,7 +94,29 @@
 - Playwright Browser QA fallback прошел на desktop 1280x900 и mobile 390x900: open finding показывает `Принять`/`Игнорировать`, acknowledge меняет статус и показывает `Вернуть`, ignore скрывает только ignored finding, mobile card не имеет horizontal overflow, console/page errors нет. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-triage-actions`; QA data очищены, runserver на 8065 остановлен.
 - `graphify update . --no-cluster` обновил code-index до `4171` nodes / `14961` edges; semantic extraction не запускалась.
 
-Следующий кодовый срез по контракту: `financial-integrity-finding-detail`.
+## Выполнение 2026-07-15: finding detail
+
+Выполнен кодовый срез `financial-integrity-finding-detail`.
+
+- Добавлена отдельная страница `financial_integrity_finding_detail` для persisted `FinancialIntegrityFinding`.
+- Work queue получил ссылку `Разбор` на detail page для каждого active finding.
+- Страница показывает severity/status/code/message, first/last seen, first/last/resolved run, triage state, denormalized snapshot и source links на занятие, счет баланса и источник финансирования, когда FK еще доступны.
+- При удаленных исходных объектах страница использует сохраненный snapshot и не ломается; scoped recheck скрывается, если нет связанного appointment.
+- На detail page доступны те же safe triage actions через существующий service/view: acknowledge, return_to_open, ignore с обязательной причиной, reopen для ignored/resolved.
+- Добавлен scoped recheck POST `financial_integrity_finding_recheck`, который запускает persisted runner только для связанного занятия и возвращает администратора на страницу разбора.
+- Модели, миграции, runner semantics, billing/ledger/payroll/grants/reports/statuses не менялись.
+
+Проверки:
+
+- `ruff check operations/views/dashboard.py operations/urls.py operations/views/__init__.py operations/tests/test_views.py` прошел;
+- `pytest operations/tests/test_views.py::WorkQueueViewTests -q` прошел (`27 passed`);
+- `manage.py check --settings=rehab_center.settings_test` прошел;
+- `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`;
+- полный `pytest -q --tb=short` прошел (`488 passed`, 1 прежнее предупреждение django-tasks);
+- Playwright Browser QA fallback прошел на desktop 1280x900 и mobile 390x900: work queue содержит detail link, detail page показывает source snapshot, actions, payload, acknowledge переключает action set, scoped recheck возвращает на detail page, mobile overflow `0`, console/page errors нет. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-detail`; QA data очищены, runserver на 8066 остановлен.
+- `graphify update . --no-cluster` обновил code-index до `4182` nodes / `15020` edges; semantic extraction не запускалась.
+
+Следующий кодовый срез по контракту: `financial-integrity-runner-operations`.
 
 ## Инварианты
 

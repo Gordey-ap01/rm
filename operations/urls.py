@@ -57,9 +57,19 @@ urlpatterns = [
     ),
     path("work-queue/", views.work_queue, name="work_queue"),
     path(
+        "financial-integrity/findings/<int:pk>/",
+        views.financial_integrity_finding_detail,
+        name="financial_integrity_finding_detail",
+    ),
+    path(
         "financial-integrity/findings/<int:pk>/triage/",
         views.financial_integrity_finding_triage,
         name="financial_integrity_finding_triage",
+    ),
+    path(
+        "financial-integrity/findings/<int:pk>/recheck/",
+        views.financial_integrity_finding_recheck,
+        name="financial_integrity_finding_recheck",
     ),
     path("balances/", views.balances, name="balances"),
     path("recipients/", views.recipient_list, name="recipient_list"),

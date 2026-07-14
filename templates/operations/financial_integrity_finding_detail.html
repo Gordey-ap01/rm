@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Финансовое расхождение{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Финансовое расхождение</h1>
+    <p>{{ finding.get_severity_display }} · {{ finding.get_status_display }} · {{ finding.code }}</p>
+  </div>
+  <div class="header-actions">
+    <a class="button-link secondary" href="{{ work_queue_financial_url }}">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      В очередь
+    </a>
+  </div>
+</section>
+
+<section class="appointment-brief financial-integrity-detail" aria-label="Разбор финансового расхождения">
+  <div class="appointment-brief-head">
+    <div>
+      <span class="eyebrow">{{ finding.issue_key }}</span>
+      <h2>{{ finding.message }}</h2>
+      <p>
+        Найдено: {{ finding.first_seen_at|date:"d.m.Y H:i" }} ·
+        последняя проверка: {{ finding.last_seen_at|date:"d.m.Y H:i" }}
+      </p>
+    </div>
+    <div class="appointment-brief-actions">
+      {% if finding.status == "open" %}
+        <form method="post" action="{% url 'financial_integrity_finding_triage' finding.pk %}" class="mini-form">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ detail_url }}">
+          <input type="hidden" name="action" value="acknowledge">
+          <button type="submit" class="small-action">
+            <i class="bi bi-check2" aria-hidden="true"></i>
+            Принять
+          </button>
+        </form>
+      {% elif finding.status == "acknowledged" %}
+        <form method="post" action="{% url 'financial_integrity_finding_triage' finding.pk %}" class="mini-form">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ detail_url }}">
+          <input type="hidden" name="action" value="return_to_open">
+          <button type="submit" class="secondary-button small-action">
+            <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+            Вернуть
+          </button>
+        </form>
+      {% endif %}
+      {% if finding.status == "open" or finding.status == "acknowledged" %}
+        <form method="post" action="{% url 'financial_integrity_finding_triage' finding.pk %}" class="mini-form financial-triage-form">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ detail_url }}">
+          <input type="hidden" name="action" value="ignore">
+          <input class="triage-note-input" type="text" name="note" placeholder="Причина" aria-label="Причина игнорирования" required>
+          <button type="submit" class="secondary-button small-action">
+            <i class="bi bi-eye-slash" aria-hidden="true"></i>
+            Игнорировать
+          </button>
+        </form>
+      {% elif finding.status == "ignored" or finding.status == "resolved" %}
+        <form method="post" action="{% url 'financial_integrity_finding_triage' finding.pk %}" class="mini-form financial-triage-form">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ detail_url }}">
+          <input type="hidden" name="action" value="reopen">
+          <input class="triage-note-input" type="text" name="note" placeholder="Комментарий" aria-label="Комментарий возврата">
+          <button type="submit" class="secondary-button small-action">
+            <i class="bi bi-arrow-up-circle" aria-hidden="true"></i>
+            Вернуть в очередь
+          </button>
+        </form>
+      {% endif %}
+      {% if finding.appointment_id %}
+        <form method="post" action="{% url 'financial_integrity_finding_recheck' finding.pk %}" class="mini-form">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ detail_url }}">
+          <button type="submit" class="secondary-button small-action">
+            <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+            Перепроверить
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="appointment-brief-grid">
+    <div class="appointment-brief-item is-{{ tone }}">
+      <span>Важность</span>
+      <strong>{{ finding.get_severity_display }}</strong>
+      <small>{{ finding.code }}</small>
+    </div>
+    <div class="appointment-brief-item">
+      <span>Статус</span>
+      <strong>{{ finding.get_status_display }}</strong>
+      <small>{% if finding.triaged_at %}разбор: {{ finding.triaged_at|date:"d.m.Y H:i" }}{% else %}разбор не начат{% endif %}</small>
+    </div>
+    <div class="appointment-brief-item">
+      <span>Последний запуск</span>
+      <strong>{% if finding.last_seen_run_id %}#{{ finding.last_seen_run_id }}{% else %}нет{% endif %}</strong>
+      <small>{% if finding.last_seen_run %}{{ finding.last_seen_run.get_status_display }}{% else %}cache был создан вручную или до run-а{% endif %}</small>
+    </div>
+  </div>
+</section>
+
+<section class="detail-grid">
+  <article class="panel">
+    <h2>Источник</h2>
+    <dl class="facts">
+      {% for item in source_items %}
+        <div>
+          <dt>{{ item.label }}</dt>
+          <dd>
+            {% if item.href %}
+              <a href="{{ item.href }}">{{ item.value }}</a>
+            {% else %}
+              {{ item.value }}
+            {% endif %}
+          </dd>
+        </div>
+      {% empty %}
+        <div><dt>Источник</dt><dd>Ссылки на исходные объекты не сохранены.</dd></div>
+      {% endfor %}
+      <div><dt>Услуга</dt><dd>{{ finding.appointment_service_name|default:"не сохранена" }}</dd></div>
+      <div><dt>Дата занятия</dt><dd>{% if finding.appointment_starts_at %}{{ finding.appointment_starts_at|date:"d.m.Y H:i" }}{% else %}не сохранена{% endif %}</dd></div>
+    </dl>
+  </article>
+
+  <article class="panel">
+    <h2>Разбор</h2>
+    <dl class="facts">
+      <div><dt>Разобрал</dt><dd>{% if finding.triaged_by %}{{ finding.triaged_by }}{% else %}не назначен{% endif %}</dd></div>
+      <div><dt>Дата разбора</dt><dd>{% if finding.triaged_at %}{{ finding.triaged_at|date:"d.m.Y H:i" }}{% else %}не начат{% endif %}</dd></div>
+      <div><dt>Заметка</dt><dd>{{ finding.triage_note|default:"нет заметки" }}</dd></div>
+      <div><dt>Решено</dt><dd>{% if finding.resolved_at %}{{ finding.resolved_at|date:"d.m.Y H:i" }}{% else %}нет{% endif %}</dd></div>
+      <div><dt>Первый запуск</dt><dd>{% if finding.first_seen_run_id %}#{{ finding.first_seen_run_id }}{% else %}нет{% endif %}</dd></div>
+      <div><dt>Запуск решения</dt><dd>{% if finding.resolved_run_id %}#{{ finding.resolved_run_id }}{% else %}нет{% endif %}</dd></div>
+    </dl>
+  </article>
+</section>
+
+<section class="panel">
+  <h2>Данные проверки</h2>
+  <pre class="financial-integrity-payload">{{ finding.payload }}</pre>
+</section>
+{% endblock %}

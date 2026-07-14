@@ -567,6 +567,22 @@ button:disabled {
   background: var(--accent-soft);
 }
 
+.appointment-brief-item.is-info {
+  border-color: rgba(18, 103, 242, .28);
+  background: rgba(18, 103, 242, .08);
+}
+
+.appointment-brief-item.is-warning {
+  border-color: rgba(211, 91, 0, .28);
+  background: var(--warn-soft);
+}
+
+.appointment-brief-item.is-error,
+.appointment-brief-item.is-danger {
+  border-color: rgba(198, 40, 23, .28);
+  background: var(--danger-soft);
+}
+
 .appointment-brief-item.is-cancelled,
 .appointment-brief-item.is-no_show {
   border-color: rgba(198, 40, 23, .28);
@@ -1426,6 +1442,25 @@ th {
   width: min(220px, 42vw);
   min-height: 34px;
   padding: 7px 10px;
+}
+
+.financial-integrity-detail .appointment-brief-actions {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.financial-integrity-payload {
+  max-height: 360px;
+  margin: 0;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 13px;
 }
 
 .inline-form,

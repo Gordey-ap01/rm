@@ -25,6 +25,8 @@ from .confirmations import appointment_confirmation_public, appointment_send_con
 from .consents import consent_create, consent_list
 from .dashboard import (
     dashboard,
+    financial_integrity_finding_detail,
+    financial_integrity_finding_recheck,
     financial_integrity_finding_triage,
     low_balance_accounts,
     needs_attendance_queryset,
@@ -126,6 +128,8 @@ __all__ = [
     "dashboard",
     "document_create",
     "document_list",
+    "financial_integrity_finding_detail",
+    "financial_integrity_finding_recheck",
     "financial_integrity_finding_triage",
     "funding_service_quota_create",
     "funding_service_quota_delete",
