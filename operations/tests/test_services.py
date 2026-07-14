@@ -5,13 +5,14 @@ from __future__ import annotations
 import zipfile
 from datetime import datetime, time, timedelta
 from decimal import Decimal
-from io import BytesIO
+from io import BytesIO, StringIO
 from unittest import mock
 
 from django.contrib.auth.models import User
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
@@ -3686,6 +3687,33 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(run.warning_count, 1)
         self.assertEqual(run.info_count, 0)
         self.assertEqual(FinancialIntegrityFinding.objects.count(), 2)
+
+    def test_run_financial_integrity_check_command_persists_findings(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        LedgerEntry.objects.create(
+            appointment=appointment,
+            account=self.account,
+            entry_type=LedgerEntry.EntryType.DEBIT,
+            amount=Decimal("-1"),
+            reason="Stale command ledger",
+            created_by=self.user,
+        )
+        stdout = StringIO()
+
+        call_command("run_financial_integrity_check", stdout=stdout)
+
+        run = FinancialIntegrityCheckRun.objects.get()
+        finding = FinancialIntegrityFinding.objects.get()
+        self.assertEqual(run.run_type, FinancialIntegrityCheckRun.RunType.MANAGEMENT_COMMAND)
+        self.assertEqual(run.status, FinancialIntegrityCheckRun.Status.COMPLETED)
+        self.assertEqual(run.issue_count, 1)
+        self.assertEqual(run.warning_count, 1)
+        self.assertEqual(
+            finding.code,
+            financial_integrity_svc.FinancialIssueCode.STALE_DEBIT_LEDGER_WITHOUT_CHARGE_FACT,
+        )
+        self.assertIn("Financial integrity check", stdout.getvalue())
+        self.assertIn("1 issues", stdout.getvalue())
 
     def _single_issue(
         self,

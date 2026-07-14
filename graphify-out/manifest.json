@@ -165,8 +165,8 @@
     "semantic_hash": "bf315b84fbd5880aaa7af688dbe0dba4"
   },
   "operations/tests/test_services.py": {
-    "mtime": 1784050265.0267093,
-    "ast_hash": "3de802a4ef26770efb13959ed49d0b63",
+    "mtime": 1784050758.7692268,
+    "ast_hash": "badf7acc9cd2a957eb0a76f0007b8f6b",
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784050521.7092326,
-    "ast_hash": "12a48c6c81cc72a059a7357ed356ab0e",
+    "mtime": 1784050991.9835203,
+    "ast_hash": "3def62757341c6eb667098c8daf77dbb",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784050572.5704567,
-    "ast_hash": "67b2218139b3f2761b5e73df78a1971a",
+    "mtime": 1784051045.7979758,
+    "ast_hash": "5e6f5907f781f0e87b7496461e3f589c",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784050547.3115518,
-    "ast_hash": "e44dea9ee82a29709c978e02fb02f20b",
+    "mtime": 1784051005.1837707,
+    "ast_hash": "f240d2c8dd5c517f2cf74f2965ff25f0",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -960,8 +960,8 @@
     "semantic_hash": ""
   },
   "docs/17-financial-integrity-cache-and-triage-contract.md": {
-    "mtime": 1784050502.168123,
-    "ast_hash": "54be34edb9d2c34a621ede30af7d911d",
+    "mtime": 1784050978.5569997,
+    "ast_hash": "305d6af2b3bd645fc1587cd06386dbbf",
     "semantic_hash": ""
   },
   "operations/migrations/0022_financialintegritycheckrun_financialintegrityfinding_and_more.py": {
@@ -972,6 +972,11 @@
   "operations/services/financial_integrity_checks.py": {
     "mtime": 1784050202.1938965,
     "ast_hash": "d4b156953a0c883c8b6de021c7efb1de",
+    "semantic_hash": ""
+  },
+  "operations/management/commands/run_financial_integrity_check.py": {
+    "mtime": 1784050732.6856225,
+    "ast_hash": "f2a7ca5f1f00fb78b95fdd2935fadd2e",
     "semantic_hash": ""
   }
 }

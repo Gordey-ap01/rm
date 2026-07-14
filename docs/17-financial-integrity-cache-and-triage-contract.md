@@ -32,6 +32,25 @@
 
 Следующий кодовый срез по этому контракту: reader switch для dashboard/work queue на persisted open findings, но только после отдельного acceptance review и с Browser QA, потому что будут меняться views/templates.
 
+## Выполнение 2026-07-15: management command
+
+Добавлен безопасный способ наполнить persisted cache без shell-доступа:
+
+- `operations/management/commands/run_financial_integrity_check.py`;
+- команда вызывает `run_financial_integrity_check(run_type="management_command")`;
+- выводит summary по checked appointments and issue counts;
+- финансовые данные не исправляет, auto-fix/backfill не запускает, dashboard/work queue не переключает.
+
+Проверки:
+
+- `ruff check operations/management/commands/run_financial_integrity_check.py operations/services/financial_integrity_checks.py operations/tests/test_services.py` прошел;
+- `pytest operations/tests/test_services.py -q --tb=short` прошел (`136 passed`, 1 прежнее предупреждение django-tasks);
+- `manage.py check` прошел;
+- `manage.py makemigrations --check --dry-run` показал `No changes detected`;
+- полный `pytest -q --tb=short` прошел (`466 passed`, 1 прежнее предупреждение django-tasks);
+- `git diff --check` показал только стандартные LF->CRLF warnings;
+- `graphify update . --no-cluster` обновил code-index до `4109` nodes / `14604` edges; semantic extraction не запускалась.
+
 ## Подготовительный срез 2026-07-15: issue key foundation
 
 До миграций выполнен безопасный helper-only срез:

@@ -24,6 +24,7 @@
 - Добавлен docs/17-financial-integrity-cache-and-triage-contract.md: DB-backed контракт для persisted financial integrity findings, check runs, triage statuses and runner.
 - Helper-only foundation по docs/17 выполнен: `financial_integrity_issue_key(issue)` строит stable SHA-256 fingerprint для future persisted finding dedupe; service tests прошли: 130 passed; полный pytest прошел: 460 passed; Graphify code-index: 4076 nodes / 14497 edges.
 - DB-backed schema/runner по docs/17 выполнен: добавлены FinancialIntegrityCheckRun/FinancialIntegrityFinding, migration operations.0022, service `financial_integrity_checks.run_financial_integrity_check()`; service tests прошли: 135 passed; полный pytest прошел: 465 passed; Graphify code-index: 4102 nodes / 14589 edges. Dashboard/work queue еще читают синхронный audit, reader switch не начат.
+- Management command `run_financial_integrity_check` добавлена: запускает persisted financial integrity runner and prints summary counts; service tests прошли: 136 passed; полный pytest прошел: 466 passed; Graphify code-index: 4109 nodes / 14604 edges.
 
 Сначала обязательно прочитай:
 1. docs/project-recovery-manifest.md

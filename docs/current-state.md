@@ -1371,3 +1371,11 @@ SMTP для реальной промышленной рассылки еще н
 - Проверки: touched-file Ruff прошел; `pytest operations/tests/test_services.py -q --tb=short` прошел (`135 passed`, 1 прежнее предупреждение django-tasks); `manage.py check` прошел; `manage.py makemigrations --check --dry-run` показал `No changes detected`; полный `pytest -q --tb=short` прошел (`465 passed`, 1 прежнее предупреждение django-tasks); `git diff --check` показал только LF->CRLF warnings.
 - Graphify code-index обновлен после schema/runner среза: `graphify update . --no-cluster` записал `4102` nodes / `14589` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
 - Следующий безопасный шаг по контракту: отдельный reader switch dashboard/work queue на persisted open findings, с acceptance review and Browser QA.
+
+## Обновление 2026-07-15: команда financial-integrity check
+
+- Добавлена management command `run_financial_integrity_check`, которая запускает persisted runner and prints summary counts.
+- Команда сохраняет `FinancialIntegrityCheckRun` с `run_type=management_command` и persisted `FinancialIntegrityFinding` rows through existing service; финансовые данные не исправляет.
+- Dashboard/work queue еще не переключались на persisted findings, templates/JS/UI не менялись, Browser QA не требовалась.
+- Проверки: touched-file Ruff прошел; `pytest operations/tests/test_services.py -q --tb=short` прошел (`136 passed`, 1 прежнее предупреждение django-tasks); `manage.py check` прошел; `manage.py makemigrations --check --dry-run` показал `No changes detected`; полный `pytest -q --tb=short` прошел (`466 passed`, 1 прежнее предупреждение django-tasks).
+- Graphify code-index обновлен после command-среза: `graphify update . --no-cluster` записал `4109` nodes / `14604` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
