@@ -29923,7 +29923,7 @@
       "label": "Инварианты",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L144",
+      "source_location": "L145",
       "_origin": "ast"
     },
     {
@@ -29931,7 +29931,7 @@
       "label": "Статусы и переходы",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L154",
+      "source_location": "L155",
       "_origin": "ast"
     },
     {
@@ -29939,7 +29939,7 @@
       "label": "Audit trail choice",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L179",
+      "source_location": "L180",
       "_origin": "ast"
     },
     {
@@ -29947,7 +29947,7 @@
       "label": "UX/UI контур",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L196",
+      "source_location": "L197",
       "_origin": "ast"
     },
     {
@@ -29955,7 +29955,7 @@
       "label": "Work queue",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L198",
+      "source_location": "L199",
       "_origin": "ast"
     },
     {
@@ -29963,7 +29963,7 @@
       "label": "Finding detail",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L209",
+      "source_location": "L210",
       "_origin": "ast"
     },
     {
@@ -29971,7 +29971,7 @@
       "label": "Runner controls",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L223",
+      "source_location": "L224",
       "_origin": "ast"
     },
     {
@@ -29979,7 +29979,7 @@
       "label": "Вертикальные срезы",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L237",
+      "source_location": "L238",
       "_origin": "ast"
     },
     {
@@ -29987,7 +29987,7 @@
       "label": "Slice 1: audit/admin visibility",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L239",
+      "source_location": "L240",
       "_origin": "ast"
     },
     {
@@ -29995,7 +29995,7 @@
       "label": "Slice 2: triage service",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L255",
+      "source_location": "L256",
       "_origin": "ast"
     },
     {
@@ -30003,7 +30003,7 @@
       "label": "Slice 3: work queue triage actions",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L270",
+      "source_location": "L271",
       "_origin": "ast"
     },
     {
@@ -30011,7 +30011,7 @@
       "label": "Slice 4: finding detail",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L287",
+      "source_location": "L288",
       "_origin": "ast"
     },
     {
@@ -30019,7 +30019,7 @@
       "label": "Slice 5: runner operations",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L302",
+      "source_location": "L303",
       "_origin": "ast"
     },
     {
@@ -30027,7 +30027,7 @@
       "label": "Parallel agents",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L317",
+      "source_location": "L318",
       "_origin": "ast"
     },
     {
@@ -30035,7 +30035,111 @@
       "label": "Open questions before code",
       "file_type": "document",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L327",
+      "source_location": "L328",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_19_financial_integrity_history_and_manager_report_contract",
+      "label": "19-financial-integrity-history-and-manager-report-contract.md",
+      "file_type": "document",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_19_financial_integrity_history_and_manager_report_contract_контракт_среза_financial_integrity_history_and_manager_report",
+      "label": "Контракт среза: financial-integrity-history-and-manager-report",
+      "file_type": "document",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_19_financial_integrity_history_and_manager_report_contract_контекст",
+      "label": "Контекст",
+      "file_type": "document",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L9",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_19_financial_integrity_history_and_manager_report_contract_решение",
+      "label": "Решение",
+      "file_type": "document",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L27",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_19_financial_integrity_history_and_manager_report_contract_предлагаемая_модель",
+      "label": "Предлагаемая модель",
+      "file_type": "document",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L33",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_19_financial_integrity_history_and_manager_report_contract_financialintegrityfindingevent",
+      "label": "FinancialIntegrityFindingEvent",
+      "file_type": "document",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L35",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_19_financial_integrity_history_and_manager_report_contract_event_recording_rules",
+      "label": "Event Recording Rules",
+      "file_type": "document",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L74",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_19_financial_integrity_history_and_manager_report_contract_migration_plan",
+      "label": "Migration Plan",
+      "file_type": "document",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L94",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_19_financial_integrity_history_and_manager_report_contract_manager_report_scope",
+      "label": "Manager Report Scope",
+      "file_type": "document",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L117",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_19_financial_integrity_history_and_manager_report_contract_ux_ui_map",
+      "label": "UX/UI Map",
+      "file_type": "document",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L133",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_19_financial_integrity_history_and_manager_report_contract_acceptance_criteria",
+      "label": "Acceptance Criteria",
+      "file_type": "document",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L152",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_19_financial_integrity_history_and_manager_report_contract_parallel_agents",
+      "label": "Parallel Agents",
+      "file_type": "document",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L180",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_19_financial_integrity_history_and_manager_report_contract_open_questions",
+      "label": "Open Questions",
+      "file_type": "document",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L190",
       "_origin": "ast"
     },
     {
@@ -31423,6 +31527,14 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_current_state_обновление_2026_07_15_financial_integrity_history_report_contract",
+      "label": "Обновление 2026-07-15: financial-integrity history/report contract",
+      "file_type": "document",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1458",
+      "_origin": "ast"
+    },
+    {
       "id": "decisions_adr_001_django_postgresql_local_first",
       "label": "ADR-001-django-postgresql-local-first.md",
       "file_type": "document",
@@ -31763,7 +31875,7 @@
       "label": "Как использовать",
       "file_type": "document",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L72",
+      "source_location": "L74",
       "_origin": "ast"
     },
     {
@@ -31803,7 +31915,7 @@
       "label": "Порядок восстановления контекста",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L43",
+      "source_location": "L44",
       "_origin": "ast"
     },
     {
@@ -31811,7 +31923,7 @@
       "label": "Skills и назначение",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L63",
+      "source_location": "L65",
       "_origin": "ast"
     },
     {
@@ -31819,7 +31931,7 @@
       "label": "Восстановление инструментов",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L76",
+      "source_location": "L78",
       "_origin": "ast"
     },
     {
@@ -31827,7 +31939,7 @@
       "label": "Graphify",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L78",
+      "source_location": "L80",
       "_origin": "ast"
     },
     {
@@ -31835,7 +31947,7 @@
       "label": "Browser QA",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L97",
+      "source_location": "L99",
       "_origin": "ast"
     },
     {
@@ -31843,7 +31955,7 @@
       "label": "Протокол контрольной точки",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L106",
+      "source_location": "L108",
       "_origin": "ast"
     },
     {
@@ -31851,7 +31963,7 @@
       "label": "Текущее состояние восстановления",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L118",
+      "source_location": "L120",
       "_origin": "ast"
     },
     {
@@ -31859,7 +31971,7 @@
       "label": "Ближайшие задачи",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L162",
+      "source_location": "L164",
       "_origin": "ast"
     },
     {
@@ -31867,7 +31979,7 @@
       "label": "Постоянные риски",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L169",
+      "source_location": "L171",
       "_origin": "ast"
     },
     {
@@ -103235,7 +103347,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L144",
+      "source_location": "L145",
       "weight": 1.0
     },
     {
@@ -103244,7 +103356,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L154",
+      "source_location": "L155",
       "weight": 1.0
     },
     {
@@ -103253,7 +103365,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L179",
+      "source_location": "L180",
       "weight": 1.0
     },
     {
@@ -103262,7 +103374,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L196",
+      "source_location": "L197",
       "weight": 1.0
     },
     {
@@ -103271,7 +103383,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L198",
+      "source_location": "L199",
       "weight": 1.0
     },
     {
@@ -103280,7 +103392,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L209",
+      "source_location": "L210",
       "weight": 1.0
     },
     {
@@ -103289,7 +103401,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L223",
+      "source_location": "L224",
       "weight": 1.0
     },
     {
@@ -103298,7 +103410,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L237",
+      "source_location": "L238",
       "weight": 1.0
     },
     {
@@ -103307,7 +103419,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L239",
+      "source_location": "L240",
       "weight": 1.0
     },
     {
@@ -103316,7 +103428,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L255",
+      "source_location": "L256",
       "weight": 1.0
     },
     {
@@ -103325,7 +103437,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L270",
+      "source_location": "L271",
       "weight": 1.0
     },
     {
@@ -103334,7 +103446,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L287",
+      "source_location": "L288",
       "weight": 1.0
     },
     {
@@ -103343,7 +103455,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L302",
+      "source_location": "L303",
       "weight": 1.0
     },
     {
@@ -103352,7 +103464,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L317",
+      "source_location": "L318",
       "weight": 1.0
     },
     {
@@ -103361,7 +103473,115 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/18-financial-integrity-triage-and-runner-contract.md",
-      "source_location": "L327",
+      "source_location": "L328",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_19_financial_integrity_history_and_manager_report_contract",
+      "target": "docs_19_financial_integrity_history_and_manager_report_contract_контракт_среза_financial_integrity_history_and_manager_report",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_19_financial_integrity_history_and_manager_report_contract_контракт_среза_financial_integrity_history_and_manager_report",
+      "target": "docs_19_financial_integrity_history_and_manager_report_contract_контекст",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_19_financial_integrity_history_and_manager_report_contract_контракт_среза_financial_integrity_history_and_manager_report",
+      "target": "docs_19_financial_integrity_history_and_manager_report_contract_решение",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L27",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_19_financial_integrity_history_and_manager_report_contract_контракт_среза_financial_integrity_history_and_manager_report",
+      "target": "docs_19_financial_integrity_history_and_manager_report_contract_предлагаемая_модель",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L33",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_19_financial_integrity_history_and_manager_report_contract_предлагаемая_модель",
+      "target": "docs_19_financial_integrity_history_and_manager_report_contract_financialintegrityfindingevent",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L35",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_19_financial_integrity_history_and_manager_report_contract_контракт_среза_financial_integrity_history_and_manager_report",
+      "target": "docs_19_financial_integrity_history_and_manager_report_contract_event_recording_rules",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L74",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_19_financial_integrity_history_and_manager_report_contract_контракт_среза_financial_integrity_history_and_manager_report",
+      "target": "docs_19_financial_integrity_history_and_manager_report_contract_migration_plan",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L94",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_19_financial_integrity_history_and_manager_report_contract_контракт_среза_financial_integrity_history_and_manager_report",
+      "target": "docs_19_financial_integrity_history_and_manager_report_contract_manager_report_scope",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L117",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_19_financial_integrity_history_and_manager_report_contract_контракт_среза_financial_integrity_history_and_manager_report",
+      "target": "docs_19_financial_integrity_history_and_manager_report_contract_ux_ui_map",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L133",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_19_financial_integrity_history_and_manager_report_contract_контракт_среза_financial_integrity_history_and_manager_report",
+      "target": "docs_19_financial_integrity_history_and_manager_report_contract_acceptance_criteria",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L152",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_19_financial_integrity_history_and_manager_report_contract_контракт_среза_financial_integrity_history_and_manager_report",
+      "target": "docs_19_financial_integrity_history_and_manager_report_contract_parallel_agents",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L180",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_19_financial_integrity_history_and_manager_report_contract_контракт_среза_financial_integrity_history_and_manager_report",
+      "target": "docs_19_financial_integrity_history_and_manager_report_contract_open_questions",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L190",
       "weight": 1.0
     },
     {
@@ -104886,6 +105106,15 @@
       "weight": 1.0
     },
     {
+      "source": "docs_current_state_текущее_состояние_проекта_радость_моя",
+      "target": "docs_current_state_обновление_2026_07_15_financial_integrity_history_report_contract",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1458",
+      "weight": 1.0
+    },
+    {
       "source": "decisions_adr_001_django_postgresql_local_first",
       "target": "decisions_adr_001_django_postgresql_local_first_adr_001_django_postgresql_локальный_first_deployment",
       "relation": "contains",
@@ -105215,7 +105444,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L72",
+      "source_location": "L74",
       "weight": 1.0
     },
     {
@@ -105251,7 +105480,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L43",
+      "source_location": "L44",
       "weight": 1.0
     },
     {
@@ -105260,7 +105489,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L63",
+      "source_location": "L65",
       "weight": 1.0
     },
     {
@@ -105269,7 +105498,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L76",
+      "source_location": "L78",
       "weight": 1.0
     },
     {
@@ -105278,7 +105507,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L78",
+      "source_location": "L80",
       "weight": 1.0
     },
     {
@@ -105287,7 +105516,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L97",
+      "source_location": "L99",
       "weight": 1.0
     },
     {
@@ -105296,7 +105525,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L106",
+      "source_location": "L108",
       "weight": 1.0
     },
     {
@@ -105305,7 +105534,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L118",
+      "source_location": "L120",
       "weight": 1.0
     },
     {
@@ -105314,7 +105543,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L162",
+      "source_location": "L164",
       "weight": 1.0
     },
     {
@@ -105323,7 +105552,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L169",
+      "source_location": "L171",
       "weight": 1.0
     },
     {

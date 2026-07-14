@@ -1454,3 +1454,13 @@ SMTP для реальной промышленной рассылки еще н
 - Проверки: Ruff touched Python прошел; `pytest operations/tests/test_views.py::WorkQueueViewTests -q` прошел (`30 passed`); `manage.py check` прошел; migration dry-run показал `No changes detected`; полный `pytest -q --tb=short` прошел (`491 passed`, 1 прежнее предупреждение django-tasks); Playwright desktop/mobile Browser QA fallback прошел, артефакты `%TEMP%\rmcodex-browser-qa-financial-runner-ops`, runserver 8067 остановлен.
 - Graphify code-index обновлен после runner operations: `graphify update . --no-cluster` записал `4191` nodes / `15044` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
 - Следующий шаг не должен заново делать runner summary. Возможные следующие направления: отдельный docs-only контракт для event table/manager trend report с DB owner, либо возврат к более приоритетной доменной зоне после сверки `current-state` и актуальных требований.
+
+## Обновление 2026-07-15: financial-integrity history/report contract
+
+- Добавлен docs-only контракт `docs/19-financial-integrity-history-and-manager-report-contract.md`.
+- Контракт проектирует будущий DB-owner срез `FinancialIntegrityFindingEvent`: append-only typed events для timeline finding-а и read-only trend report руководителя.
+- Зафиксированы поля event table, индексы, idempotency через `event_key`, nullable FK strategy, snapshot-данные, правила записи событий runner/triage service и запрет noisy `seen_again` на первом срезе.
+- Отдельно зафиксировано: schema/event slice, detail timeline slice и manager report slice должны идти раздельно; UI/report не стартует до отдельного DB-owner commit с миграцией.
+- Код, модели, миграции, runner, billing/ledger/payroll/grant/report/status semantics не менялись.
+- Graphify code-index обновлен после docs/19: `graphify update . --no-cluster` записал `4205` nodes / `15057` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
+- Следующий безопасный шаг по этой линии: DB-owner Slice 1 из docs/19, если утверждено продолжать именно event table; иначе вернуться к более приоритетной доменной зоне.
