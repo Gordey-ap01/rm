@@ -29,6 +29,7 @@ from operations.models import (
     StaffMember,
     TimeOffRequest,
 )
+from operations.services.financial_facts import appointment_charge_fact
 
 
 @dataclass
@@ -201,78 +202,6 @@ class Timesheet:
     pay_lines: list[TimesheetPayLine] = field(default_factory=list)
 
 
-def _billing_decision_label(appointment: Appointment) -> str:
-    participants = list(appointment.participants.all())
-    if not participants:
-        return appointment.get_billing_decision_display()
-    if len(participants) == 1:
-        return participants[0].get_billing_decision_display()
-
-    counts: dict[str, int] = defaultdict(int)
-    for participant in participants:
-        counts[participant.billing_decision] += 1
-    parts = []
-    if counts[Appointment.BillingDecision.CHARGE]:
-        parts.append(f"списать: {counts[Appointment.BillingDecision.CHARGE]}")
-    if counts[Appointment.BillingDecision.DO_NOT_CHARGE]:
-        parts.append(f"не списывать: {counts[Appointment.BillingDecision.DO_NOT_CHARGE]}")
-    if counts[Appointment.BillingDecision.UNDECIDED]:
-        parts.append(f"не решено: {counts[Appointment.BillingDecision.UNDECIDED]}")
-    return ", ".join(parts) if parts else appointment.get_billing_decision_display()
-
-
-def _charged_funding_source(appointment: Appointment) -> tuple[bool, FundingSource | None, str]:
-    participants = list(appointment.participants.all())
-    charged_participants = [
-        participant
-        for participant in participants
-        if participant.billing_decision == Appointment.BillingDecision.CHARGE
-        and participant.billing_account_id
-    ]
-    if charged_participants:
-        participant = sorted(charged_participants, key=lambda item: item.pk)[0]
-        source_ids = {
-            participant.billing_account.funding_source_id for participant in charged_participants
-        }
-        if len(source_ids) == 1:
-            source = participant.billing_account.funding_source
-            return True, source, f"списано участников: {len(charged_participants)}"
-        return True, None, (
-            f"списано участников: {len(charged_participants)}; "
-            "смешанные источники финансирования"
-        )
-
-    if participants:
-        return False, None, "нет решения «Списать» по участникам"
-
-    if (
-        appointment.billing_decision == Appointment.BillingDecision.CHARGE
-        and appointment.billing_account_id
-    ):
-        source = appointment.billing_account.funding_source
-        return True, source, "списано по занятию"
-
-    return False, None, "нет решения «Списать»"
-
-
-def _charged_funding_source_ids(appointment: Appointment) -> set[int]:
-    participants = list(appointment.participants.all())
-    source_ids = {
-        participant.billing_account.funding_source_id
-        for participant in participants
-        if participant.billing_decision == Appointment.BillingDecision.CHARGE
-        and participant.billing_account_id
-    }
-    if participants:
-        return source_ids
-    if (
-        appointment.billing_decision == Appointment.BillingDecision.CHARGE
-        and appointment.billing_account_id
-    ):
-        source_ids.add(appointment.billing_account.funding_source_id)
-    return source_ids
-
-
 def _matching_compensation_rule(
     rules: list[StaffCompensationRule],
     *,
@@ -404,7 +333,10 @@ def timesheet(staff: StaffMember, date_from: date, date_to: date) -> Timesheet:
             bucket["no_show"] += 1
         by_day[day]["minutes"] += max(minutes, 0)
 
-        is_charged, funding_source, note = _charged_funding_source(appointment)
+        charge_fact = appointment_charge_fact(appointment, include_ledger=False)
+        is_charged = charge_fact.is_charged
+        funding_source = charge_fact.funding_source
+        note = charge_fact.note
         rule = None
         amount = Decimal("0")
         rate_label = ""
@@ -445,7 +377,7 @@ def timesheet(staff: StaffMember, date_from: date, date_to: date) -> Timesheet:
                 service_name=appointment.service.name,
                 funding_source=funding_source,
                 status=appointment.get_status_display(),
-                billing_decision=_billing_decision_label(appointment),
+                billing_decision=charge_fact.billing_decision_label,
                 payable=is_charged,
                 rule=rule,
                 amount=amount,
@@ -477,7 +409,10 @@ def timesheet(staff: StaffMember, date_from: date, date_to: date) -> Timesheet:
         elif appointment.status == Appointment.Status.NO_SHOW:
             bucket["no_show"] += 1
         by_day[day]["minutes"] += max(minutes, 0)
-        is_charged, funding_source, note = _charged_funding_source(appointment)
+        charge_fact = appointment_charge_fact(appointment, include_ledger=False)
+        is_charged = charge_fact.is_charged
+        funding_source = charge_fact.funding_source
+        note = charge_fact.note
         rule = None
         amount = Decimal("0")
         rate_label = ""
@@ -517,7 +452,7 @@ def timesheet(staff: StaffMember, date_from: date, date_to: date) -> Timesheet:
                 service_name=appointment.service.name,
                 funding_source=funding_source,
                 status=appointment.get_status_display(),
-                billing_decision=_billing_decision_label(appointment),
+                billing_decision=charge_fact.billing_decision_label,
                 payable=is_charged,
                 rule=rule,
                 amount=amount,
@@ -763,7 +698,13 @@ def _grant_quota_rows(
     charged_assignments: list[AppointmentStaffAssignment] = []
     for assignment in assignments:
         appointment = assignment.appointment
-        if funding.pk not in _charged_funding_source_ids(appointment):
+        if (
+            funding.pk
+            not in appointment_charge_fact(
+                appointment,
+                include_ledger=False,
+            ).funding_source_ids
+        ):
             continue
         charged_assignments.append(assignment)
 

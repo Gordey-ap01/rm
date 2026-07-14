@@ -1297,3 +1297,14 @@ SMTP для реальной промышленной рассылки еще н
 - Не входит в первый срез: изменение `operations/models.py`, миграции, переписывание `billing.apply_decision()` semantics, расходы центра, импорт Excel с записью в БД и UI-редизайн grant/payroll экранов.
 - Первичная проверка кода выявила дублирование `_charged_context()` в payroll и `_charged_funding_source*()` / `_billing_decision_label()` в reports. Это и есть целевая зона первого refactor-only среза.
 - Следующий шаг: реализовать `financial-fact-source-foundation` вертикально: новый helper + переключение payroll/reports + focused parity tests + recovery docs.
+
+## Обновление 2026-07-15: financial-fact-source foundation
+
+- Выполнен первый кодовый срез `financial-fact-source-foundation` без миграций и без изменений `operations/models.py`, `billing.apply_decision()`, ledger semantics, статусов, templates или UI.
+- Добавлен `operations/services/financial_facts.py`: общий read-only `AppointmentChargeFact` для факта "занятие списано", включая списанных участников, единый или смешанный funding source, source ids, single participant/ledger для безопасных случаев, billing label и признак отсутствующей debit-проводки.
+- `operations/services/payroll.py` переключен с локального `ChargedContext` на общий helper. `operations/services/reports.py` использует тот же helper для payable/funding/note в табеле, billing decision label и отбора фактов грантовых квот.
+- Добавлены focused-регрессии на одиночный participant+ledger, mixed funding, legacy fallback без participants, отсутствие legacy double-count при наличии participants и видимый `missing_debit_ledger`.
+- Проверки: touched-file Ruff прошел; `pytest operations/tests/test_services.py -q` прошел (`121 passed`); `pytest operations/tests/test_views.py -q` прошел (`231 passed`); `manage.py check` прошел; `manage.py makemigrations --check --dry-run` показал `No changes detected`; полный `pytest -q` прошел (`449 passed`, 1 прежнее предупреждение django-tasks); `git diff --check` показал только LF->CRLF warnings.
+- Browser QA не выполнялась: templates/views/JS не менялись, срез refactor-only.
+- Graphify code-index обновлен после financial-fact foundation: `graphify update . --no-cluster` переизвлек `140/140` code files и записал `3988` nodes / `14263` edges. Semantic docs extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
+- Следующий безопасный шаг: не расширять этот срез в модели/миграции. Если продолжать финансы, открыть следующий явный контракт для ledger summaries, payroll/grant UI или данных миграций; иначе вернуться к доменной карте приоритетов после интервью.

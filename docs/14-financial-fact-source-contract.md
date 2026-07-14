@@ -2,7 +2,7 @@
 
 Дата: 2026-07-15
 
-Статус: draft, готов к первому refactor-only кодовому срезу без миграций.
+Статус: первый refactor-only кодовый срез `financial-fact-source-foundation` выполнен 2026-07-15 без миграций.
 
 Назначение: после стабилизации базовых правил расписания зафиксировать единый источник истины для финансового факта "занятие списано". Этот факт должен одинаково использоваться в балансе, грантовом отчете, табеле, persisted payroll и управленческих сводках.
 
@@ -95,6 +95,16 @@
 - Одно и то же занятие не дает двойной факт из legacy и participants.
 - `pytest operations/tests/test_services.py -q` и `pytest operations/tests/test_views.py -q` проходят.
 - `manage.py makemigrations --check --dry-run` показывает `No changes detected`.
+
+## Выполнение 2026-07-15
+
+- Добавлен `operations/services/financial_facts.py` с `AppointmentChargeFact` и `appointment_charge_fact()`.
+- `operations/services/payroll.py` больше не держит локальный `ChargedContext`; начисления используют общий факт списания.
+- `operations/services/reports.py` использует общий helper для payable/funding/note, billing label табеля и отбора фактов грантовых квот.
+- Добавлены focused-регрессии на одиночный participant+ledger, mixed funding, legacy fallback без participants, отсутствие legacy double-count при наличии participants и видимый `missing_debit_ledger`.
+- Срез не менял `operations/models.py`, migration chain, `billing.apply_decision()`, статусы, ledger semantics, templates или UI.
+- Проверки: touched-file Ruff прошел; `pytest operations/tests/test_services.py -q` прошел (`121 passed`); `pytest operations/tests/test_views.py -q` прошел (`231 passed`); `manage.py check` прошел; `manage.py makemigrations --check --dry-run` показал `No changes detected`; полный `pytest -q` прошел (`449 passed`, 1 прежнее предупреждение django-tasks); `git diff --check` показал только LF->CRLF warnings.
+- Graphify code-index обновлен: `graphify update . --no-cluster` переизвлек `140/140` code files и записал `3988` nodes / `14263` edges. Semantic docs extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
 
 ## Проверки
 

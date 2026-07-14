@@ -13,17 +13,15 @@ from django.utils import timezone
 
 from operations.models import (
     Appointment,
-    AppointmentParticipant,
     AppointmentStaffAssignment,
-    FundingSource,
     FundingStaffAllocation,
-    LedgerEntry,
     PayrollAccrual,
     PayrollSheet,
     PayrollSheetLine,
     StaffCompensationRule,
     StaffMember,
 )
+from operations.services.financial_facts import appointment_charge_fact
 
 
 @dataclass(frozen=True)
@@ -37,85 +35,6 @@ class PayrollGenerationResult:
     @property
     def touched(self) -> int:
         return self.created + self.updated
-
-
-@dataclass(frozen=True)
-class ChargedContext:
-    is_charged: bool
-    funding_source: FundingSource | None = None
-    ledger_entry: LedgerEntry | None = None
-    appointment_participant: AppointmentParticipant | None = None
-    note: str = ""
-
-
-def _charged_context(appointment: Appointment) -> ChargedContext:
-    participants = list(appointment.participants.all())
-    charged_participants = [
-        participant
-        for participant in participants
-        if participant.billing_decision == Appointment.BillingDecision.CHARGE
-        and participant.billing_account_id
-    ]
-    if charged_participants:
-        charged_participants = sorted(charged_participants, key=lambda item: item.pk)
-        participant = charged_participants[0] if len(charged_participants) == 1 else None
-        ledger_entry = None
-        if participant is not None:
-            ledger_entry = (
-                LedgerEntry.objects.filter(
-                    appointment=appointment,
-                    appointment_participant=participant,
-                    entry_type=LedgerEntry.EntryType.DEBIT,
-                )
-                .select_related("account", "account__funding_source")
-                .first()
-            )
-        source_ids = {
-            participant.billing_account.funding_source_id for participant in charged_participants
-        }
-        funding_source = (
-            charged_participants[0].billing_account.funding_source
-            if len(source_ids) == 1
-            else None
-        )
-        note = f"списано участников: {len(charged_participants)}"
-        if len(source_ids) > 1:
-            note = f"{note}; смешанные источники финансирования"
-        return ChargedContext(
-            is_charged=True,
-            funding_source=funding_source,
-            ledger_entry=ledger_entry,
-            appointment_participant=participant,
-            note=note,
-        )
-
-    if participants:
-        return ChargedContext(
-            is_charged=False,
-            note="нет решения «Списать» по участникам",
-        )
-
-    if (
-        appointment.billing_decision == Appointment.BillingDecision.CHARGE
-        and appointment.billing_account_id
-    ):
-        ledger_entry = (
-            LedgerEntry.objects.filter(
-                appointment=appointment,
-                appointment_participant__isnull=True,
-                entry_type=LedgerEntry.EntryType.DEBIT,
-            )
-            .select_related("account", "account__funding_source")
-            .first()
-        )
-        return ChargedContext(
-            is_charged=True,
-            funding_source=appointment.billing_account.funding_source,
-            ledger_entry=ledger_entry,
-            note="списано по занятию",
-        )
-
-    return ChargedContext(is_charged=False, note="нет решения «Списать»")
 
 
 def _matching_compensation_rule(
@@ -234,7 +153,7 @@ def generate_accruals_for_staff(
         staff_assignment: AppointmentStaffAssignment | None,
         dedupe_key: str,
     ) -> None:
-        context = _charged_context(appointment)
+        context = appointment_charge_fact(appointment)
         if not context.is_charged:
             counters["skipped_no_charge"] += 1
             return

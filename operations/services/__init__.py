@@ -7,6 +7,7 @@
 from . import (
     appointments,
     billing,
+    financial_facts,
     import_preview,
     notifications,
     payroll,
@@ -19,6 +20,7 @@ from . import (
 __all__ = [
     "appointments",
     "billing",
+    "financial_facts",
     "import_preview",
     "notifications",
     "payroll",

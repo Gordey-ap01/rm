@@ -49,6 +49,7 @@ from operations.models import (
 from operations.services import (
     appointments as appt_svc,
     billing as billing_svc,
+    financial_facts as financial_facts_svc,
     import_preview as import_preview_svc,
     notifications as notif_svc,
     payroll as payroll_svc,
@@ -3224,6 +3225,103 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertTrue(ts.pay_lines[0].has_rate)
         self.assertIn("700", ts.pay_lines[0].rate_label)
         self.assertIn("смешанные источники финансирования", ts.pay_lines[0].note)
+
+    def test_financial_fact_links_single_participant_ledger(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        result = billing_svc.apply_decision(
+            appointment,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=self.account,
+            amount=Decimal("-1"),
+            actor=self.user,
+        )
+
+        fact = financial_facts_svc.appointment_charge_fact(appointment)
+
+        participant = appointment.participants.get()
+        self.assertTrue(fact.is_charged)
+        self.assertEqual(fact.funding_source, self.funding)
+        self.assertEqual(fact.funding_source_ids, frozenset({self.funding.pk}))
+        self.assertEqual(fact.appointment_participant, participant)
+        self.assertEqual(fact.ledger_entry, result.entry)
+        self.assertEqual(fact.ledger_entries, (result.entry,))
+        self.assertFalse(fact.has_mixed_funding)
+        self.assertFalse(fact.missing_debit_ledger)
+        self.assertEqual(fact.billing_decision_label, "Списать")
+
+    def test_financial_fact_detects_mixed_group_funding_without_single_source(self):
+        appointment = self._make_mixed_funding_group_charge()
+
+        fact = financial_facts_svc.appointment_charge_fact(appointment)
+
+        self.assertTrue(fact.is_charged)
+        self.assertIsNone(fact.funding_source)
+        self.assertIsNone(fact.appointment_participant)
+        self.assertIsNone(fact.ledger_entry)
+        self.assertEqual(len(fact.charged_participants), 2)
+        self.assertEqual(len(fact.funding_source_ids), 2)
+        self.assertTrue(fact.has_mixed_funding)
+        self.assertTrue(fact.missing_debit_ledger)
+        self.assertIn("смешанные источники финансирования", fact.note)
+
+    def test_financial_fact_uses_legacy_charge_only_without_participants(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        appointment.participants.all().delete()
+        Appointment.objects.filter(pk=appointment.pk).update(
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account=self.account,
+        )
+        result = LedgerEntry.objects.create(
+            appointment=appointment,
+            account=self.account,
+            entry_type=LedgerEntry.EntryType.DEBIT,
+            amount=Decimal("-1"),
+            price_snapshot=appointment.service.default_price,
+            reason="Legacy test charge",
+            created_by=self.user,
+        )
+        appointment.refresh_from_db()
+
+        fact = financial_facts_svc.appointment_charge_fact(appointment)
+
+        self.assertTrue(fact.is_charged)
+        self.assertEqual(fact.funding_source, self.funding)
+        self.assertEqual(fact.funding_source_ids, frozenset({self.funding.pk}))
+        self.assertIsNone(fact.appointment_participant)
+        self.assertEqual(fact.ledger_entry, result)
+        self.assertFalse(fact.missing_debit_ledger)
+        self.assertEqual(fact.note, "списано по занятию")
+
+    def test_financial_fact_exposes_missing_legacy_debit_ledger(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        appointment.participants.all().delete()
+        Appointment.objects.filter(pk=appointment.pk).update(
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account=self.account,
+        )
+        appointment.refresh_from_db()
+        fact = financial_facts_svc.appointment_charge_fact(appointment)
+
+        self.assertTrue(fact.is_charged)
+        self.assertIsNone(fact.ledger_entry)
+        self.assertTrue(fact.missing_debit_ledger)
+
+    def test_financial_fact_ignores_legacy_charge_when_participants_exist(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        appointment.billing_decision = Appointment.BillingDecision.CHARGE
+        appointment.billing_account = self.account
+        appointment.save(update_fields=["billing_decision", "billing_account", "updated_at"])
+        AppointmentParticipant.objects.filter(appointment=appointment).update(
+            billing_decision=Appointment.BillingDecision.UNDECIDED,
+            billing_account=None,
+        )
+
+        fact = financial_facts_svc.appointment_charge_fact(appointment)
+
+        self.assertFalse(fact.is_charged)
+        self.assertEqual(fact.funding_source_ids, frozenset())
+        self.assertEqual(fact.note, "нет решения «Списать» по участникам")
+        self.assertEqual(fact.billing_decision_label, "Не решено")
 
     def test_payroll_generation_is_idempotent_for_charged_assignment(self):
         StaffCompensationRule.objects.create(
