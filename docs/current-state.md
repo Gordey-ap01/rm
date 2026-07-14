@@ -1280,3 +1280,11 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA не выполнялась: шаблоны, JS и видимые calendar-тексты не менялись; живой browser smoke остается желательным при доступном Browser tool перед закрытием всего первого schedule-capacity среза.
 - Graphify code-index обновлен после free-slot среза: `graphify update . --no-cluster` переизвлек `138/138` code-файлов и обновил `graphify-out/graph.json` до `3961` nodes / `14242` edges. Semantic docs extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
 - Следующий шаг в этом же контракте: финально сверить acceptance criteria первого `schedule-capacity-validation-source`, обновить Graphify/recovery и закрыть срез коммитом либо открыть новый контракт перед DB/ledger/payroll/grants/status изменениями.
+
+## Обновление 2026-07-14: закрытие первого schedule-capacity среза
+
+- Выполнен финальный acceptance review первого `schedule-capacity-validation-source` по `docs/13-schedule-capacity-v2-contract.md`.
+- Закрытые backend/service/API зоны: общий `operations.schedule_validation`, `AppointmentForm`, `AppointmentMoveForm`, `Appointment.clean()`, calendar drag-and-drop/API, `find_overlaps()`, `find_free_slots()`, helper-ы подсказок свободных/занятых окон и массовый перенос по отсутствию специалиста.
+- Проверенные инварианты: групповые получатели, несколько специалистов, legacy fallback, лимиты специалистов/получателей кабинета, запрет групп в кабинете, ручной override кабинета, выход специалиста вне графика/отпуска/отгула и подсказки слотов для групп/ассистентов.
+- Первый срез закрыт без миграций и без изменений ledger/payroll/grants/statuses. Следующие изменения в БД, финансах, payroll, грантах, статусах или более глубокой логике расписания должны начинаться с нового явного контракта, а не с продолжения этого среза.
+- Остаточный эксплуатационный пункт: при доступном Browser tool выполнить smoke UI создания/редактирования/ручного переноса, особенно перед будущими изменениями шаблонов или JS календаря.

@@ -17,6 +17,7 @@
 - Model-level validation уже продолжена: Appointment.clean() проверяет существующие snapshot-участники и snapshot-назначения специалистов как источник правды; полный pytest прошел: 440 passed.
 - Calendar drag-and-drop/API уже продолжен: operations/api.py::move_conflict_messages() использует operations.schedule_validation.appointment_validation_conflicts(); API проверяет snapshot-участников/специалистов, legacy fallback, доступность специалистов, лимиты кабинета и запрет групп; полный pytest прошел: 441 passed; Graphify code-index: 3953 nodes / 14224 edges. Browser QA не выполнена, потому что callable Browser tool в сессии не открылся.
 - Подсказки свободных окон уже продолжены: operations/services/scheduling.py::find_overlaps() и find_free_slots() используют общий appointment_group_conflicts() для групповых получателей, нескольких специалистов, кабинетных лимитов и запрета групп; массовый перенос по отсутствию специалиста подбирает кандидатов через обновленный find_free_slots(); полный pytest прошел: 444 passed; Graphify code-index: 3961 nodes / 14242 edges.
+- Первый backend/service/API срез schedule-capacity-validation-source закрыт acceptance review 2026-07-14: общий schedule validation подключен к form/model/API/free-slots/manual-move/shift-helper слоям без миграций и без изменений ledger/payroll/grants/statuses.
 
 Сначала обязательно прочитай:
 1. docs/project-recovery-manifest.md
@@ -37,7 +38,7 @@
 Если доступен Graphify и есть graphify-out/graph.json, сначала используй graphify query как индекс проекта. При расхождениях свежие docs/current-state.md, docs/07-updated-domain-model-after-interview.md, docs/12-project-stage-audit-and-pivot-plan.md, docs/13-schedule-capacity-v2-contract.md и код остаются источником правды.
 
 Следующая задача:
-Завершить первый кодовый срез по docs/13-schedule-capacity-v2-contract.md: schedule-capacity-validation-source. Сначала сделать финальный acceptance review по контракту, обновить Graphify/recovery и закрыть срез коммитом. По умолчанию без миграций. Если появляется необходимость менять БД, ledger, payroll, grants или статусы, остановиться и открыть новый контракт.
+Выбрать и оформить следующий явный контракт перед новыми изменениями БД, ledger, payroll, grants, статусов или более глубокой логики расписания. Не продолжать schedule-capacity-validation-source как бесконечный audit-loop. Остаточный UI пункт: при доступном Browser tool выполнить smoke создания/редактирования/ручного переноса перед будущими изменениями шаблонов или JS календаря.
 
 Критические правила:
 - Не продолжать reschedule UX/control микросрезы без конкретного бага или нового требования.
