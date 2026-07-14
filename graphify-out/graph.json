@@ -4312,7 +4312,7 @@
       "label": "FinancialIssueCode",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L18",
+      "source_location": "L21",
       "_origin": "ast"
     },
     {
@@ -4320,7 +4320,7 @@
       "label": "FinancialIssueSeverity",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L29",
+      "source_location": "L32",
       "_origin": "ast"
     },
     {
@@ -4328,7 +4328,15 @@
       "label": "FinancialIntegrityIssue",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L36",
+      "source_location": "L39",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_financial_integrity_issue_key",
+      "label": "financial_integrity_issue_key()",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L50",
       "_origin": "ast"
     },
     {
@@ -4336,7 +4344,7 @@
       "label": "audit_appointments()",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L47",
+      "source_location": "L65",
       "_origin": "ast"
     },
     {
@@ -4344,7 +4352,7 @@
       "label": "Appointment",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L47",
+      "source_location": "L65",
       "_origin": "ast"
     },
     {
@@ -4352,7 +4360,7 @@
       "label": "_audit_appointment()",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L58",
+      "source_location": "L76",
       "_origin": "ast"
     },
     {
@@ -4360,7 +4368,7 @@
       "label": "_participant_charge_issues()",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L109",
+      "source_location": "L127",
       "_origin": "ast"
     },
     {
@@ -4368,7 +4376,7 @@
       "label": "AppointmentParticipant",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L109",
+      "source_location": "L127",
       "_origin": "ast"
     },
     {
@@ -4376,7 +4384,7 @@
       "label": "_legacy_charge_issue()",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L144",
+      "source_location": "L162",
       "_origin": "ast"
     },
     {
@@ -4384,7 +4392,7 @@
       "label": "_legacy_charge_matches_single_participant()",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L167",
+      "source_location": "L185",
       "_origin": "ast"
     },
     {
@@ -4392,7 +4400,7 @@
       "label": "_ledger_issues()",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L181",
+      "source_location": "L199",
       "_origin": "ast"
     },
     {
@@ -4400,7 +4408,7 @@
       "label": "LedgerEntry",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L181",
+      "source_location": "L199",
       "_origin": "ast"
     },
     {
@@ -4408,7 +4416,7 @@
       "label": "_ledger_matches_charge_fact()",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L230",
+      "source_location": "L248",
       "_origin": "ast"
     },
     {
@@ -4416,7 +4424,7 @@
       "label": "_fact_account()",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L250",
+      "source_location": "L268",
       "_origin": "ast"
     },
     {
@@ -4424,7 +4432,23 @@
       "label": "BalanceAccount",
       "file_type": "code",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L250",
+      "source_location": "L268",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_object_pk",
+      "label": "_object_pk()",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L279",
+      "_origin": "ast"
+    },
+    {
+      "id": "operations_services_financial_integrity_py_any",
+      "label": "Any",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L279",
       "_origin": "ast"
     },
     {
@@ -4436,11 +4460,19 @@
       "_origin": "ast"
     },
     {
-      "id": "services_financial_integrity_rationale_50",
+      "id": "services_financial_integrity_rationale_51",
+      "label": "Return a stable fingerprint for deduplicating persisted financial findings.",
+      "file_type": "rationale",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L51",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_rationale_68",
       "label": "Return financial integrity issues without mutating appointments or ledger.",
       "file_type": "rationale",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L50",
+      "source_location": "L68",
       "_origin": "ast"
     },
     {
@@ -8180,11 +8212,35 @@
       "_origin": "ast"
     },
     {
+      "id": "tests_test_services_reportsservicetests_test_financial_integrity_issue_key_is_stable_for_same_source_objects",
+      "label": ".test_financial_integrity_issue_key_is_stable_for_same_source_objects()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3443",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_services_reportsservicetests_test_financial_integrity_issue_key_distinguishes_participant_context",
+      "label": ".test_financial_integrity_issue_key_distinguishes_participant_context()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3469",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_services_reportsservicetests_test_financial_integrity_issue_key_distinguishes_ledger_context",
+      "label": ".test_financial_integrity_issue_key_distinguishes_ledger_context()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3491",
+      "_origin": "ast"
+    },
+    {
       "id": "tests_test_services_reportsservicetests_single_issue",
       "label": "._single_issue()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3443",
+      "source_location": "L3533",
       "_origin": "ast"
     },
     {
@@ -8192,7 +8248,7 @@
       "label": "FinancialIntegrityIssue",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3443",
+      "source_location": "L3533",
       "_origin": "ast"
     },
     {
@@ -8200,7 +8256,7 @@
       "label": ".test_payroll_generation_is_idempotent_for_charged_assignment()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3452",
+      "source_location": "L3542",
       "_origin": "ast"
     },
     {
@@ -8208,7 +8264,7 @@
       "label": ".test_payroll_generation_ignores_legacy_charge_when_participants_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3487",
+      "source_location": "L3577",
       "_origin": "ast"
     },
     {
@@ -8216,7 +8272,7 @@
       "label": ".test_payroll_generation_includes_legacy_rows_when_assignments_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3513",
+      "source_location": "L3603",
       "_origin": "ast"
     },
     {
@@ -8224,7 +8280,7 @@
       "label": ".test_payroll_generation_prefers_duration_specific_rule()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3560",
+      "source_location": "L3650",
       "_origin": "ast"
     },
     {
@@ -8232,7 +8288,7 @@
       "label": ".test_payroll_generation_uses_grant_allocation_rate()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3595",
+      "source_location": "L3685",
       "_origin": "ast"
     },
     {
@@ -8240,7 +8296,7 @@
       "label": ".test_payroll_generation_does_not_link_single_participant_for_group_charge()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3628",
+      "source_location": "L3718",
       "_origin": "ast"
     },
     {
@@ -8248,7 +8304,7 @@
       "label": ".test_payroll_generation_uses_generic_rule_for_mixed_group_funding()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3657",
+      "source_location": "L3747",
       "_origin": "ast"
     },
     {
@@ -8256,7 +8312,7 @@
       "label": ".test_payroll_sheet_creation_and_approval()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3691",
+      "source_location": "L3781",
       "_origin": "ast"
     },
     {
@@ -8264,7 +8320,7 @@
       "label": ".test_grant_report_sums_initial_topups_charges()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3721",
+      "source_location": "L3811",
       "_origin": "ast"
     },
     {
@@ -8272,7 +8328,7 @@
       "label": ".test_grant_report_counts_group_participant_account_appointments()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3748",
+      "source_location": "L3838",
       "_origin": "ast"
     },
     {
@@ -8280,7 +8336,7 @@
       "label": ".test_grant_report_includes_recipient_allocations()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3794",
+      "source_location": "L3884",
       "_origin": "ast"
     },
     {
@@ -8288,7 +8344,7 @@
       "label": ".test_grant_report_recipient_allocation_filters_service_and_valid_dates()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3826",
+      "source_location": "L3916",
       "_origin": "ast"
     },
     {
@@ -8296,7 +8352,7 @@
       "label": ".test_grant_report_includes_service_quota_and_staff_allocation()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3887",
+      "source_location": "L3977",
       "_origin": "ast"
     },
     {
@@ -8304,7 +8360,7 @@
       "label": ".test_grant_report_quota_ignores_legacy_charge_when_participants_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3923",
+      "source_location": "L4013",
       "_origin": "ast"
     },
     {
@@ -8312,7 +8368,7 @@
       "label": ".test_grant_report_counts_staff_allocation_fact_inside_allocation_dates()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3953",
+      "source_location": "L4043",
       "_origin": "ast"
     },
     {
@@ -8320,7 +8376,7 @@
       "label": ".test_grant_report_counts_quota_fact_inside_quota_dates()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3994",
+      "source_location": "L4084",
       "_origin": "ast"
     },
     {
@@ -8328,7 +8384,7 @@
       "label": ".test_grant_report_direct_allocation_ignores_unallocated_staff_fact()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4042",
+      "source_location": "L4132",
       "_origin": "ast"
     },
     {
@@ -8336,7 +8392,7 @@
       "label": "NotificationsServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4085",
+      "source_location": "L4175",
       "_origin": "ast"
     },
     {
@@ -8344,7 +8400,7 @@
       "label": ".setUp()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4086",
+      "source_location": "L4176",
       "_origin": "ast"
     },
     {
@@ -8352,7 +8408,7 @@
       "label": ".test_send_confirmation_email_marks_sent()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4108",
+      "source_location": "L4198",
       "_origin": "ast"
     },
     {
@@ -8360,7 +8416,7 @@
       "label": ".test_build_confirmation_email_contains_url()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4123",
+      "source_location": "L4213",
       "_origin": "ast"
     },
     {
@@ -8368,7 +8424,7 @@
       "label": ".test_build_confirmation_email_uses_group_participants_and_staff()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4128",
+      "source_location": "L4218",
       "_origin": "ast"
     },
     {
@@ -28947,7 +29003,7 @@
       "label": "Lazyweb / UI research",
       "file_type": "document",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L35",
+      "source_location": "L36",
       "_origin": "ast"
     },
     {
@@ -28955,7 +29011,7 @@
       "label": "Почему это следующий срез",
       "file_type": "document",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L43",
+      "source_location": "L44",
       "_origin": "ast"
     },
     {
@@ -28963,7 +29019,7 @@
       "label": "Текущее состояние",
       "file_type": "document",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L53",
+      "source_location": "L54",
       "_origin": "ast"
     },
     {
@@ -28971,7 +29027,7 @@
       "label": "Инварианты",
       "file_type": "document",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L63",
+      "source_location": "L64",
       "_origin": "ast"
     },
     {
@@ -28979,7 +29035,7 @@
       "label": "Не входит в первый срез",
       "file_type": "document",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L76",
+      "source_location": "L77",
       "_origin": "ast"
     },
     {
@@ -28987,7 +29043,7 @@
       "label": "Первый кодовый срез",
       "file_type": "document",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L86",
+      "source_location": "L87",
       "_origin": "ast"
     },
     {
@@ -28995,7 +29051,7 @@
       "label": "Acceptance criteria первого среза",
       "file_type": "document",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L99",
+      "source_location": "L100",
       "_origin": "ast"
     },
     {
@@ -29003,7 +29059,7 @@
       "label": "Проверки",
       "file_type": "document",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L112",
+      "source_location": "L113",
       "_origin": "ast"
     },
     {
@@ -29011,7 +29067,7 @@
       "label": "Файловые границы",
       "file_type": "document",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L130",
+      "source_location": "L131",
       "_origin": "ast"
     },
     {
@@ -29019,7 +29075,127 @@
       "label": "Параллельные агенты",
       "file_type": "document",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L152",
+      "source_location": "L153",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract",
+      "label": "17-financial-integrity-cache-and-triage-contract.md",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract_контракт_среза_financial_integrity_cache_and_triage",
+      "label": "Контракт среза: financial-integrity-cache-and-triage",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract_подготовительный_срез_2026_07_15_issue_key_foundation",
+      "label": "Подготовительный срез 2026-07-15: issue key foundation",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L9",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract_почему_нужен_отдельный_контракт",
+      "label": "Почему нужен отдельный контракт",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L25",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract_инварианты",
+      "label": "Инварианты",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L38",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract_предлагаемая_доменная_модель",
+      "label": "Предлагаемая доменная модель",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L48",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract_financialintegritycheckrun",
+      "label": "FinancialIntegrityCheckRun",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L50",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract_financialintegrityfinding",
+      "label": "FinancialIntegrityFinding",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L70",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract_financialintegrityfindingevent_опционально",
+      "label": "FinancialIntegrityFindingEvent, опционально",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L102",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract_access_patterns",
+      "label": "Access patterns",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L117",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract_миграционная_стратегия",
+      "label": "Миграционная стратегия",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L126",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract_первый_кодовый_срез_предлагаемый",
+      "label": "Первый кодовый срез, предлагаемый",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L160",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract_опасные_зоны",
+      "label": "Опасные зоны",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L183",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract_parallel_agents",
+      "label": "Parallel agents",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L191",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_17_financial_integrity_cache_and_triage_contract_open_questions",
+      "label": "Open questions",
+      "file_type": "document",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L199",
       "_origin": "ast"
     },
     {
@@ -30311,6 +30487,22 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_current_state_обновление_2026_07_15_контракт_financial_integrity_cache_and_triage",
+      "label": "Обновление 2026-07-15: контракт financial-integrity-cache-and-triage",
+      "file_type": "document",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1347",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_current_state_обновление_2026_07_15_financial_integrity_issue_key_foundation",
+      "label": "Обновление 2026-07-15: financial-integrity issue key foundation",
+      "file_type": "document",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1354",
+      "_origin": "ast"
+    },
+    {
       "id": "decisions_adr_001_django_postgresql_local_first",
       "label": "ADR-001-django-postgresql-local-first.md",
       "file_type": "document",
@@ -30651,7 +30843,7 @@
       "label": "Как использовать",
       "file_type": "document",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L59",
+      "source_location": "L62",
       "_origin": "ast"
     },
     {
@@ -41329,12 +41521,32 @@
     },
     {
       "source": "services_financial_integrity",
+      "target": "hashlib",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "json",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L6",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
       "target": "collections_abc",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L5",
+      "source_location": "L7",
       "weight": 1.0
     },
     {
@@ -41344,7 +41556,17 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L6",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "typing",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L9",
       "weight": 1.0
     },
     {
@@ -41354,7 +41576,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 1.0
     },
     {
@@ -41364,7 +41586,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L15",
+      "source_location": "L18",
       "weight": 1.0
     },
     {
@@ -41373,7 +41595,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L18",
+      "source_location": "L21",
       "weight": 1.0
     },
     {
@@ -41382,7 +41604,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L29",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -41391,7 +41613,26 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L36",
+      "source_location": "L39",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "services_financial_integrity_financial_integrity_issue_key",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L50",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_financial_integrity_issue_key",
+      "target": "services_financial_integrity_financialintegrityissue",
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L50",
       "weight": 1.0
     },
     {
@@ -41400,7 +41641,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L47",
+      "source_location": "L65",
       "weight": 1.0
     },
     {
@@ -41410,7 +41651,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L47",
+      "source_location": "L65",
       "weight": 1.0
     },
     {
@@ -41420,7 +41661,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L47",
+      "source_location": "L65",
       "weight": 1.0
     },
     {
@@ -41429,7 +41670,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L58",
+      "source_location": "L76",
       "weight": 1.0
     },
     {
@@ -41439,7 +41680,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L58",
+      "source_location": "L76",
       "weight": 1.0
     },
     {
@@ -41449,7 +41690,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L58",
+      "source_location": "L76",
       "weight": 1.0
     },
     {
@@ -41458,7 +41699,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L109",
+      "source_location": "L127",
       "weight": 1.0
     },
     {
@@ -41468,7 +41709,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L109",
+      "source_location": "L127",
       "weight": 1.0
     },
     {
@@ -41478,7 +41719,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L109",
+      "source_location": "L127",
       "weight": 1.0
     },
     {
@@ -41488,7 +41729,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L109",
+      "source_location": "L127",
       "weight": 1.0
     },
     {
@@ -41497,7 +41738,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L144",
+      "source_location": "L162",
       "weight": 1.0
     },
     {
@@ -41507,7 +41748,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L144",
+      "source_location": "L162",
       "weight": 1.0
     },
     {
@@ -41517,7 +41758,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L144",
+      "source_location": "L162",
       "weight": 1.0
     },
     {
@@ -41527,7 +41768,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L144",
+      "source_location": "L162",
       "weight": 1.0
     },
     {
@@ -41536,7 +41777,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L167",
+      "source_location": "L185",
       "weight": 1.0
     },
     {
@@ -41546,7 +41787,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L167",
+      "source_location": "L185",
       "weight": 1.0
     },
     {
@@ -41556,7 +41797,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L167",
+      "source_location": "L185",
       "weight": 1.0
     },
     {
@@ -41565,7 +41806,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L181",
+      "source_location": "L199",
       "weight": 1.0
     },
     {
@@ -41575,7 +41816,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L181",
+      "source_location": "L199",
       "weight": 1.0
     },
     {
@@ -41585,7 +41826,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L181",
+      "source_location": "L199",
       "weight": 1.0
     },
     {
@@ -41595,7 +41836,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L181",
+      "source_location": "L199",
       "weight": 1.0
     },
     {
@@ -41605,7 +41846,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L181",
+      "source_location": "L199",
       "weight": 1.0
     },
     {
@@ -41614,7 +41855,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L230",
+      "source_location": "L248",
       "weight": 1.0
     },
     {
@@ -41624,7 +41865,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L230",
+      "source_location": "L248",
       "weight": 1.0
     },
     {
@@ -41634,7 +41875,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L230",
+      "source_location": "L248",
       "weight": 1.0
     },
     {
@@ -41644,7 +41885,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L230",
+      "source_location": "L248",
       "weight": 1.0
     },
     {
@@ -41653,7 +41894,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L250",
+      "source_location": "L268",
       "weight": 1.0
     },
     {
@@ -41663,7 +41904,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L250",
+      "source_location": "L268",
       "weight": 1.0
     },
     {
@@ -41673,7 +41914,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L250",
+      "source_location": "L268",
       "weight": 1.0
     },
     {
@@ -41683,7 +41924,36 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L250",
+      "source_location": "L268",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "services_financial_integrity_object_pk",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L279",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_object_pk",
+      "target": "operations_services_financial_integrity_py_any",
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L279",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_financial_integrity_issue_key",
+      "target": "services_financial_integrity_object_pk",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L55",
       "weight": 1.0
     },
     {
@@ -41693,7 +41963,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L54",
+      "source_location": "L72",
       "weight": 1.0
     },
     {
@@ -41703,7 +41973,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L78",
+      "source_location": "L96",
       "weight": 1.0
     },
     {
@@ -41713,7 +41983,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L79",
+      "source_location": "L97",
       "weight": 1.0
     },
     {
@@ -41723,7 +41993,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L84",
+      "source_location": "L102",
       "weight": 1.0
     },
     {
@@ -41733,7 +42003,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L90",
+      "source_location": "L108",
       "weight": 1.0
     },
     {
@@ -41743,7 +42013,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L105",
+      "source_location": "L123",
       "weight": 1.0
     },
     {
@@ -41753,7 +42023,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L120",
+      "source_location": "L138",
       "weight": 1.0
     },
     {
@@ -41763,7 +42033,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L150",
+      "source_location": "L168",
       "weight": 1.0
     },
     {
@@ -41773,7 +42043,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L152",
+      "source_location": "L170",
       "weight": 1.0
     },
     {
@@ -41783,7 +42053,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L190",
+      "source_location": "L208",
       "weight": 1.0
     },
     {
@@ -41793,7 +42063,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L214",
+      "source_location": "L232",
       "weight": 1.0
     },
     {
@@ -41806,12 +42076,21 @@
       "weight": 1.0
     },
     {
-      "source": "services_financial_integrity_rationale_50",
+      "source": "services_financial_integrity_rationale_51",
+      "target": "services_financial_integrity_financial_integrity_issue_key",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L51",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_rationale_68",
       "target": "services_financial_integrity_audit_appointments",
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L50",
+      "source_location": "L68",
       "weight": 1.0
     },
     {
@@ -50428,11 +50707,38 @@
     },
     {
       "source": "tests_test_services_reportsservicetests",
-      "target": "tests_test_services_reportsservicetests_single_issue",
+      "target": "tests_test_services_reportsservicetests_test_financial_integrity_issue_key_is_stable_for_same_source_objects",
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
       "source_location": "L3443",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests",
+      "target": "tests_test_services_reportsservicetests_test_financial_integrity_issue_key_distinguishes_participant_context",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3469",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests",
+      "target": "tests_test_services_reportsservicetests_test_financial_integrity_issue_key_distinguishes_ledger_context",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3491",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests",
+      "target": "tests_test_services_reportsservicetests_single_issue",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3533",
       "weight": 1.0
     },
     {
@@ -50442,7 +50748,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3443",
+      "source_location": "L3533",
       "weight": 1.0
     },
     {
@@ -50451,7 +50757,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3452",
+      "source_location": "L3542",
       "weight": 1.0
     },
     {
@@ -50460,7 +50766,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3487",
+      "source_location": "L3577",
       "weight": 1.0
     },
     {
@@ -50469,7 +50775,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3513",
+      "source_location": "L3603",
       "weight": 1.0
     },
     {
@@ -50478,7 +50784,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3560",
+      "source_location": "L3650",
       "weight": 1.0
     },
     {
@@ -50487,7 +50793,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3595",
+      "source_location": "L3685",
       "weight": 1.0
     },
     {
@@ -50496,7 +50802,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3628",
+      "source_location": "L3718",
       "weight": 1.0
     },
     {
@@ -50505,7 +50811,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3657",
+      "source_location": "L3747",
       "weight": 1.0
     },
     {
@@ -50514,7 +50820,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3691",
+      "source_location": "L3781",
       "weight": 1.0
     },
     {
@@ -50523,7 +50829,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3721",
+      "source_location": "L3811",
       "weight": 1.0
     },
     {
@@ -50532,7 +50838,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3748",
+      "source_location": "L3838",
       "weight": 1.0
     },
     {
@@ -50541,7 +50847,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3794",
+      "source_location": "L3884",
       "weight": 1.0
     },
     {
@@ -50550,7 +50856,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3826",
+      "source_location": "L3916",
       "weight": 1.0
     },
     {
@@ -50559,7 +50865,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3887",
+      "source_location": "L3977",
       "weight": 1.0
     },
     {
@@ -50568,7 +50874,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3923",
+      "source_location": "L4013",
       "weight": 1.0
     },
     {
@@ -50577,7 +50883,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3953",
+      "source_location": "L4043",
       "weight": 1.0
     },
     {
@@ -50586,7 +50892,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3994",
+      "source_location": "L4084",
       "weight": 1.0
     },
     {
@@ -50595,7 +50901,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4042",
+      "source_location": "L4132",
       "weight": 1.0
     },
     {
@@ -50604,7 +50910,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4085",
+      "source_location": "L4175",
       "weight": 1.0
     },
     {
@@ -50613,7 +50919,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4085",
+      "source_location": "L4175",
       "weight": 1.0
     },
     {
@@ -50622,7 +50928,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4085",
+      "source_location": "L4175",
       "weight": 1.0
     },
     {
@@ -50631,7 +50937,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4086",
+      "source_location": "L4176",
       "weight": 1.0
     },
     {
@@ -50640,7 +50946,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4108",
+      "source_location": "L4198",
       "weight": 1.0
     },
     {
@@ -50649,7 +50955,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4123",
+      "source_location": "L4213",
       "weight": 1.0
     },
     {
@@ -50658,7 +50964,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4128",
+      "source_location": "L4218",
       "weight": 1.0
     },
     {
@@ -51642,13 +51948,43 @@
       "weight": 1.0
     },
     {
+      "source": "tests_test_services_reportsservicetests_test_financial_integrity_issue_key_is_stable_for_same_source_objects",
+      "target": "operations_tests_test_services_py_financialintegrityissue",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3446",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests_test_financial_integrity_issue_key_distinguishes_participant_context",
+      "target": "operations_tests_test_services_py_financialintegrityissue",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3472",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests_test_financial_integrity_issue_key_distinguishes_ledger_context",
+      "target": "operations_tests_test_services_py_financialintegrityissue",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3509",
+      "weight": 1.0
+    },
+    {
       "source": "tests_test_services_reportsservicetests_test_payroll_generation_includes_legacy_rows_when_assignments_exist",
       "target": "tests_test_services_local",
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3531",
+      "source_location": "L3621",
       "weight": 1.0
     },
     {
@@ -51658,7 +51994,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3638",
+      "source_location": "L3728",
       "weight": 1.0
     },
     {
@@ -51668,7 +52004,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3673",
+      "source_location": "L3763",
       "weight": 1.0
     },
     {
@@ -51678,7 +52014,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3849",
+      "source_location": "L3939",
       "weight": 1.0
     },
     {
@@ -51688,7 +52024,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4023",
+      "source_location": "L4113",
       "weight": 1.0
     },
     {
@@ -51698,7 +52034,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4064",
+      "source_location": "L4154",
       "weight": 1.0
     },
     {
@@ -51708,7 +52044,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4092",
+      "source_location": "L4182",
       "weight": 1.0
     },
     {
@@ -100264,7 +100600,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L35",
+      "source_location": "L36",
       "weight": 1.0
     },
     {
@@ -100273,7 +100609,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L43",
+      "source_location": "L44",
       "weight": 1.0
     },
     {
@@ -100282,7 +100618,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L53",
+      "source_location": "L54",
       "weight": 1.0
     },
     {
@@ -100291,7 +100627,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L63",
+      "source_location": "L64",
       "weight": 1.0
     },
     {
@@ -100300,7 +100636,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L76",
+      "source_location": "L77",
       "weight": 1.0
     },
     {
@@ -100309,7 +100645,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L86",
+      "source_location": "L87",
       "weight": 1.0
     },
     {
@@ -100318,7 +100654,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L99",
+      "source_location": "L100",
       "weight": 1.0
     },
     {
@@ -100327,7 +100663,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L112",
+      "source_location": "L113",
       "weight": 1.0
     },
     {
@@ -100336,7 +100672,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L130",
+      "source_location": "L131",
       "weight": 1.0
     },
     {
@@ -100345,7 +100681,133 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/16-financial-integrity-surfacing-contract.md",
-      "source_location": "L152",
+      "source_location": "L153",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_17_financial_integrity_cache_and_triage_contract",
+      "target": "docs_17_financial_integrity_cache_and_triage_contract_контракт_среза_financial_integrity_cache_and_triage",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_17_financial_integrity_cache_and_triage_contract_контракт_среза_financial_integrity_cache_and_triage",
+      "target": "docs_17_financial_integrity_cache_and_triage_contract_подготовительный_срез_2026_07_15_issue_key_foundation",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_17_financial_integrity_cache_and_triage_contract_контракт_среза_financial_integrity_cache_and_triage",
+      "target": "docs_17_financial_integrity_cache_and_triage_contract_почему_нужен_отдельный_контракт",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L25",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_17_financial_integrity_cache_and_triage_contract_контракт_среза_financial_integrity_cache_and_triage",
+      "target": "docs_17_financial_integrity_cache_and_triage_contract_инварианты",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L38",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_17_financial_integrity_cache_and_triage_contract_контракт_среза_financial_integrity_cache_and_triage",
+      "target": "docs_17_financial_integrity_cache_and_triage_contract_предлагаемая_доменная_модель",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L48",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_17_financial_integrity_cache_and_triage_contract_предлагаемая_доменная_модель",
+      "target": "docs_17_financial_integrity_cache_and_triage_contract_financialintegritycheckrun",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L50",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_17_financial_integrity_cache_and_triage_contract_предлагаемая_доменная_модель",
+      "target": "docs_17_financial_integrity_cache_and_triage_contract_financialintegrityfinding",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L70",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_17_financial_integrity_cache_and_triage_contract_предлагаемая_доменная_модель",
+      "target": "docs_17_financial_integrity_cache_and_triage_contract_financialintegrityfindingevent_опционально",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L102",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_17_financial_integrity_cache_and_triage_contract_контракт_среза_financial_integrity_cache_and_triage",
+      "target": "docs_17_financial_integrity_cache_and_triage_contract_access_patterns",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L117",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_17_financial_integrity_cache_and_triage_contract_контракт_среза_financial_integrity_cache_and_triage",
+      "target": "docs_17_financial_integrity_cache_and_triage_contract_миграционная_стратегия",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L126",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_17_financial_integrity_cache_and_triage_contract_контракт_среза_financial_integrity_cache_and_triage",
+      "target": "docs_17_financial_integrity_cache_and_triage_contract_первый_кодовый_срез_предлагаемый",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L160",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_17_financial_integrity_cache_and_triage_contract_контракт_среза_financial_integrity_cache_and_triage",
+      "target": "docs_17_financial_integrity_cache_and_triage_contract_опасные_зоны",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L183",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_17_financial_integrity_cache_and_triage_contract_контракт_среза_financial_integrity_cache_and_triage",
+      "target": "docs_17_financial_integrity_cache_and_triage_contract_parallel_agents",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L191",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_17_financial_integrity_cache_and_triage_contract_контракт_среза_financial_integrity_cache_and_triage",
+      "target": "docs_17_financial_integrity_cache_and_triage_contract_open_questions",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/17-financial-integrity-cache-and-triage-contract.md",
+      "source_location": "L199",
       "weight": 1.0
     },
     {
@@ -101762,6 +102224,24 @@
       "weight": 1.0
     },
     {
+      "source": "docs_current_state_текущее_состояние_проекта_радость_моя",
+      "target": "docs_current_state_обновление_2026_07_15_контракт_financial_integrity_cache_and_triage",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1347",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_current_state_текущее_состояние_проекта_радость_моя",
+      "target": "docs_current_state_обновление_2026_07_15_financial_integrity_issue_key_foundation",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1354",
+      "weight": 1.0
+    },
+    {
       "source": "decisions_adr_001_django_postgresql_local_first",
       "target": "decisions_adr_001_django_postgresql_local_first_adr_001_django_postgresql_локальный_first_deployment",
       "relation": "contains",
@@ -102091,7 +102571,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L59",
+      "source_location": "L62",
       "weight": 1.0
     },
     {
@@ -104439,7 +104919,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 1.0
     },
     {
@@ -104449,7 +104929,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 1.0
     },
     {
@@ -104459,7 +104939,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 1.0
     },
     {
@@ -104469,7 +104949,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 1.0
     },
     {
@@ -104479,7 +104959,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 1.0
     },
     {
@@ -104489,7 +104969,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L15",
+      "source_location": "L18",
       "weight": 1.0
     },
     {
@@ -108799,7 +109279,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L75",
+      "source_location": "L93",
       "weight": 1.0
     },
     {
@@ -135258,7 +135738,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135267,7 +135747,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135276,7 +135756,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135285,7 +135765,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135294,7 +135774,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135303,7 +135783,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135312,7 +135792,16 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_any",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135321,7 +135810,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135330,7 +135819,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135339,7 +135828,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135348,7 +135837,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135357,7 +135846,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135366,7 +135855,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135375,7 +135864,16 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_any",
+      "target": "operations_models_appointmentparticipant",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135384,7 +135882,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135393,7 +135891,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135402,7 +135900,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135411,7 +135909,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135420,7 +135918,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135429,7 +135927,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135438,7 +135936,16 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_any",
+      "target": "operations_models_balanceaccount",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135447,7 +135954,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135456,7 +135963,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135465,7 +135972,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135474,7 +135981,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135483,7 +135990,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135492,7 +135999,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135501,7 +136008,16 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_any",
+      "target": "operations_models_fundingsource",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135510,7 +136026,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135519,7 +136035,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135528,7 +136044,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135537,7 +136053,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135546,7 +136062,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135555,7 +136071,7 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -135564,7 +136080,16 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "operations/services/financial_integrity.py",
-      "source_location": "L8",
+      "source_location": "L11",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_any",
+      "target": "operations_models_ledgerentry",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L11",
       "weight": 0.8
     },
     {
@@ -159880,7 +160405,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3531",
+      "source_location": "L3621",
       "weight": 1.0
     },
     {
@@ -159891,7 +160416,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3849",
+      "source_location": "L3939",
       "weight": 1.0
     },
     {
@@ -159902,7 +160427,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4023",
+      "source_location": "L4113",
       "weight": 1.0
     },
     {
@@ -159913,7 +160438,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4064",
+      "source_location": "L4154",
       "weight": 1.0
     },
     {
@@ -159924,7 +160449,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4092",
+      "source_location": "L4182",
       "weight": 1.0
     },
     {

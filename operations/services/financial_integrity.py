@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Iterable
 from dataclasses import dataclass
+from typing import Any
 
 from operations.models import (
     Appointment,
@@ -42,6 +45,21 @@ class FinancialIntegrityIssue:
     ledger_entry: LedgerEntry | None = None
     account: BalanceAccount | None = None
     funding_source: FundingSource | None = None
+
+
+def financial_integrity_issue_key(issue: FinancialIntegrityIssue) -> str:
+    """Return a stable fingerprint for deduplicating persisted financial findings."""
+
+    payload = {
+        "code": issue.code,
+        "appointment_id": _object_pk(issue.appointment),
+        "participant_id": _object_pk(issue.participant),
+        "ledger_entry_id": _object_pk(issue.ledger_entry),
+        "account_id": _object_pk(issue.account),
+        "funding_source_id": _object_pk(issue.funding_source),
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def audit_appointments(
@@ -256,3 +274,7 @@ def _fact_account(
     if appointment.billing_account_id:
         return appointment.billing_account
     return None
+
+
+def _object_pk(obj: Any) -> int | None:
+    return getattr(obj, "pk", None) if obj is not None else None

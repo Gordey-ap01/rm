@@ -3440,6 +3440,96 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
             )
         )
 
+    def test_financial_integrity_issue_key_is_stable_for_same_source_objects(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        participant = appointment.participants.get()
+        issue = financial_integrity_svc.FinancialIntegrityIssue(
+            code=financial_integrity_svc.FinancialIssueCode.PARTICIPANT_CHARGE_WITHOUT_ACCOUNT,
+            severity=financial_integrity_svc.FinancialIssueSeverity.ERROR,
+            message="First wording",
+            appointment=appointment,
+            participant=participant,
+        )
+        same_source_issue = financial_integrity_svc.FinancialIntegrityIssue(
+            code=issue.code,
+            severity=financial_integrity_svc.FinancialIssueSeverity.WARNING,
+            message="Updated wording",
+            appointment=appointment,
+            participant=participant,
+        )
+
+        issue_key = financial_integrity_svc.financial_integrity_issue_key(issue)
+
+        self.assertEqual(len(issue_key), 64)
+        self.assertEqual(
+            issue_key,
+            financial_integrity_svc.financial_integrity_issue_key(same_source_issue),
+        )
+
+    def test_financial_integrity_issue_key_distinguishes_participant_context(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        participant = appointment.participants.get()
+        issue = financial_integrity_svc.FinancialIntegrityIssue(
+            code=financial_integrity_svc.FinancialIssueCode.PARTICIPANT_CHARGE_WITHOUT_ACCOUNT,
+            severity=financial_integrity_svc.FinancialIssueSeverity.ERROR,
+            message="Participant issue",
+            appointment=appointment,
+            participant=participant,
+        )
+        appointment_issue = financial_integrity_svc.FinancialIntegrityIssue(
+            code=issue.code,
+            severity=issue.severity,
+            message=issue.message,
+            appointment=appointment,
+        )
+
+        self.assertNotEqual(
+            financial_integrity_svc.financial_integrity_issue_key(issue),
+            financial_integrity_svc.financial_integrity_issue_key(appointment_issue),
+        )
+
+    def test_financial_integrity_issue_key_distinguishes_ledger_context(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        first_entry = LedgerEntry.objects.create(
+            appointment=appointment,
+            account=self.account,
+            entry_type=LedgerEntry.EntryType.DEBIT,
+            amount=Decimal("-1"),
+            reason="First stale test ledger",
+            created_by=self.user,
+        )
+        second_entry = LedgerEntry.objects.create(
+            appointment=appointment,
+            account=self.account,
+            entry_type=LedgerEntry.EntryType.DEBIT,
+            amount=Decimal("-1"),
+            reason="Second stale test ledger",
+            created_by=self.user,
+        )
+        first_issue = financial_integrity_svc.FinancialIntegrityIssue(
+            code=financial_integrity_svc.FinancialIssueCode.STALE_DEBIT_LEDGER_WITHOUT_CHARGE_FACT,
+            severity=financial_integrity_svc.FinancialIssueSeverity.WARNING,
+            message="Stale ledger",
+            appointment=appointment,
+            ledger_entry=first_entry,
+            account=self.account,
+            funding_source=self.account.funding_source,
+        )
+        second_issue = financial_integrity_svc.FinancialIntegrityIssue(
+            code=first_issue.code,
+            severity=first_issue.severity,
+            message=first_issue.message,
+            appointment=appointment,
+            ledger_entry=second_entry,
+            account=self.account,
+            funding_source=self.account.funding_source,
+        )
+
+        self.assertNotEqual(
+            financial_integrity_svc.financial_integrity_issue_key(first_issue),
+            financial_integrity_svc.financial_integrity_issue_key(second_issue),
+        )
+
     def _single_issue(
         self,
         issues: list[financial_integrity_svc.FinancialIntegrityIssue],

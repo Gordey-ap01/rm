@@ -1350,3 +1350,12 @@ SMTP для реальной промышленной рассылки еще н
 - Цель: перевести read-only audit из синхронного dashboard/work queue пересчета в production-scale контур с `FinancialIntegrityCheckRun`, persisted finding-ами, triage-статусами и controlled runner.
 - Предлагаемый первый кодовый срез: `financial-integrity-cache-schema-and-runner` - schema + runner service + tests, без переключения dashboard/work queue, без auto-fix/backfill, без изменений `billing.apply_decision()`, ledger posting, payroll, grants, reports or statuses.
 - Важное правило: если этот контракт утверждается, один DB owner должен владеть `operations/models.py` и migration chain; параллельные агенты могут работать только read-only или позже на UI после коммита schema/runner.
+
+## Обновление 2026-07-15: financial-integrity issue key foundation
+
+- До миграций по `docs/17-financial-integrity-cache-and-triage-contract.md` выполнен helper-only срез: `financial_integrity_issue_key(issue)` в `operations/services/financial_integrity.py`.
+- Ключ является SHA-256 fingerprint по stable issue code и связанным object ids: appointment, participant, ledger entry, account, funding source. Message/severity не входят в ключ, чтобы будущий persisted finding не дублировался при изменении текста.
+- Добавлены focused tests: ключ стабилен для тех же source objects, различает participant context и различает ledger context.
+- No DB/model/migration changes, no dashboard/work queue switch, no billing/ledger/payroll/grant/status semantic changes.
+- Проверки: touched-file Ruff прошел; `pytest operations/tests/test_services.py -q --tb=short` прошел (`130 passed`, 1 прежнее предупреждение django-tasks); `manage.py check` прошел; `manage.py makemigrations --check --dry-run` показал `No changes detected`; полный `pytest -q --tb=short` прошел (`460 passed`, 1 прежнее предупреждение django-tasks); `git diff --check` показал только LF->CRLF warnings.
+- Graphify code-index обновлен после helper-only среза: `graphify update . --no-cluster` записал `4076` nodes / `14497` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.

@@ -6,6 +6,26 @@
 
 Назначение: перевести финансовый audit из синхронной проверки dashboard/work queue в production-scale контур с сохраненными finding-ами, triage-статусами и контролируемым запуском проверок, не меняя семантику списаний, ledger, payroll, grants и `billing.apply_decision()`.
 
+## Подготовительный срез 2026-07-15: issue key foundation
+
+До миграций выполнен безопасный helper-only срез:
+
+- добавлен `operations.services.financial_integrity.financial_integrity_issue_key(issue)`;
+- ключ строится как SHA-256 fingerprint по stable issue code и связанным object ids: appointment, participant, ledger entry, account, funding source;
+- message/severity не входят в ключ, чтобы изменение текста или уровня важности не создавало дубликат persisted finding-а;
+- разные participant/ledger contexts дают разные ключи, чтобы не склеивать разные финансовые расхождения;
+- БД, модели, миграции, billing/ledger/payroll/grants/status semantics не менялись.
+
+Проверки:
+
+- `ruff check operations/services/financial_integrity.py operations/tests/test_services.py` прошел;
+- `pytest operations/tests/test_services.py -q --tb=short` прошел (`130 passed`, 1 прежнее предупреждение django-tasks);
+- `manage.py check` прошел;
+- `manage.py makemigrations --check --dry-run` показал `No changes detected`;
+- полный `pytest -q --tb=short` прошел (`460 passed`, 1 прежнее предупреждение django-tasks);
+- `git diff --check` показал только стандартные LF->CRLF warnings;
+- `graphify update . --no-cluster` обновил code-index до `4076` nodes / `14497` edges; semantic extraction не запускалась.
+
 ## Почему нужен отдельный контракт
 
 Срез `dashboard-work-queue-financial-integrity-signal` сознательно считает audit синхронно по candidate appointments с charge/debit ledger. Это безопасно для первого read-only сигнала, но плохо масштабируется на большой истории и не дает руководителю нормальный процесс контроля: кто увидел расхождение, что с ним решили, когда оно исчезло, какие issue-ы повторяются.
