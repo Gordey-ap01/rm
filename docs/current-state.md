@@ -1325,3 +1325,9 @@ SMTP для реальной промышленной рассылки еще н
 - Проверки: touched-file Ruff прошел; `pytest operations/tests/test_services.py -q` прошел (`127 passed`); `manage.py check` прошел; `manage.py makemigrations --check --dry-run` показал `No changes detected`; полный `pytest -q` прошел (`455 passed`, 1 прежнее предупреждение django-tasks).
 - Graphify code-index обновлен после financial-integrity source: `graphify update . --no-cluster` переизвлек `142/142` code files и записал `4026` nodes / `14410` edges. Semantic docs extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
 - Следующий безопасный шаг: перед выводом issue-ов в dashboard/work queue/balances/grant report создать отдельный UI/operations контракт с acceptance и Browser QA; auto-fix/backfill/constraints требуют отдельного миграционного контракта.
+
+## Обновление 2026-07-15: контракт financial-integrity-surfacing
+
+- Добавлен `docs/16-financial-integrity-surfacing-contract.md` как следующий UI/operations контракт.
+- Lazyweb MCP tools (`lazyweb_search`, `lazyweb_health`) через `tool_search` не найдены, поэтому первый UI-срез использует fallback на существующие dashboard/work queue паттерны проекта и требует Browser QA.
+- Первый кодовый срез: `dashboard-work-queue-financial-integrity-signal` - показать financial integrity issue count/card на dashboard и section в work queue без auto-fix, POST actions, миграций или изменения финансовых расчетов.

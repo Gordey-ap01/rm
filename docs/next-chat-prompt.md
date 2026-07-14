@@ -28,6 +28,7 @@
 4. docs/13-schedule-capacity-v2-contract.md
 5. docs/14-financial-fact-source-contract.md
 6. docs/15-financial-integrity-audit-contract.md
+7. docs/16-financial-integrity-surfacing-contract.md
 
 Дальше читай только нужное для задачи:
 - БД, расписание, финансы, гранты, табели: docs/07-updated-domain-model-after-interview.md и docs/decisions/ADR-002-balance-accounts-ledger.md
@@ -42,7 +43,7 @@
 Если доступен Graphify и есть graphify-out/graph.json, сначала используй graphify query как индекс проекта. При расхождениях свежие docs/current-state.md, docs/07-updated-domain-model-after-interview.md, docs/12-project-stage-audit-and-pivot-plan.md, docs/13-schedule-capacity-v2-contract.md и код остаются источником правды.
 
 Следующая задача:
-Выбрать и зафиксировать следующий явный контракт. Если продолжать financial integrity, следующий логичный срез - UI/operations surfacing issue-ов в dashboard/work queue/balances/grant report с Browser QA. Auto-fix/backfill/constraints требуют отдельного миграционного контракта. Не менять operations/models.py, migration chain, billing.apply_decision semantics, payroll/grant semantics, статусы или UI без отдельного контракта.
+Реализовать первый кодовый срез по docs/16-financial-integrity-surfacing-contract.md: dashboard-work-queue-financial-integrity-signal. Lazyweb MCP в текущей сессии не найден, поэтому использовать существующие dashboard/work queue паттерны проекта и выполнить Browser QA. Не менять operations/models.py, migration chain, billing.apply_decision semantics, payroll/grant semantics, статусы или auto-fix/backfill.
 
 Критические правила:
 - Не продолжать reschedule UX/control микросрезы без конкретного бага или нового требования.
