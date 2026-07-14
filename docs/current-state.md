@@ -1343,3 +1343,10 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA через временный Playwright fallback вне репозитория: создана и затем очищена test-runtime фикстура `QAFinancialIntegrity*`; `/` и `/work-queue/#queue-financial-integrity` проверены на desktop 1280x900 и mobile 390x900. Результат: status 200, финансовый dashboard anchor/metric найден, work queue section и issue code найдены, action-ссылки есть, warning card style применен, console/page/http errors нет, document overflow нет. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-integrity-signal`.
 - Graphify code-index обновлен после среза и docs-checkpoint: `graphify update . --no-cluster` записал `4052` nodes / `14461` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
 - Остаточный риск: синхронный audit на dashboard/work queue со временем может стать дорогим на большой истории. Для production-scale нужен отдельный контракт на cached audit snapshot/background task/pagination, а не расширение текущего UI-среза.
+
+## Обновление 2026-07-15: контракт financial-integrity-cache-and-triage
+
+- Добавлен `docs/17-financial-integrity-cache-and-triage-contract.md` как следующий явный контракт перед любыми миграциями financial integrity audit.
+- Цель: перевести read-only audit из синхронного dashboard/work queue пересчета в production-scale контур с `FinancialIntegrityCheckRun`, persisted finding-ами, triage-статусами и controlled runner.
+- Предлагаемый первый кодовый срез: `financial-integrity-cache-schema-and-runner` - schema + runner service + tests, без переключения dashboard/work queue, без auto-fix/backfill, без изменений `billing.apply_decision()`, ledger posting, payroll, grants, reports or statuses.
+- Важное правило: если этот контракт утверждается, один DB owner должен владеть `operations/models.py` и migration chain; параллельные агенты могут работать только read-only или позже на UI после коммита schema/runner.

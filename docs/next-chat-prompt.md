@@ -21,6 +21,7 @@
 - Первый срез по docs/14-financial-fact-source-contract.md выполнен 2026-07-15: добавлен operations/services/financial_facts.py, payroll/reports используют общий AppointmentChargeFact для факта "занятие списано"; полный pytest прошел: 449 passed; Graphify code-index: 3988 nodes / 14263 edges.
 - Первый срез по docs/15-financial-integrity-audit-contract.md выполнен 2026-07-15: добавлен operations/services/financial_integrity.py с read-only audit_appointments() и issue codes для charge/participant/ledger расхождений; полный pytest прошел: 455 passed; Graphify code-index: 4026 nodes / 14410 edges.
 - Первый UI/operations срез по docs/16-financial-integrity-surfacing-contract.md выполнен 2026-07-15: dashboard показывает financial integrity metric/focus-card и учитывает issue-ы в priority_total; work queue имеет summary item "Финансовый контроль" и section #queue-financial-integrity; полный pytest прошел: 457 passed; Playwright Browser QA desktop/mobile прошел; Graphify code-index: 4052 nodes / 14461 edges.
+- Добавлен docs/17-financial-integrity-cache-and-triage-contract.md: следующий возможный DB-backed контракт для persisted financial integrity findings, check runs, triage statuses and runner. Код по нему еще не начат.
 
 Сначала обязательно прочитай:
 1. docs/project-recovery-manifest.md
@@ -30,6 +31,7 @@
 5. docs/14-financial-fact-source-contract.md
 6. docs/15-financial-integrity-audit-contract.md
 7. docs/16-financial-integrity-surfacing-contract.md
+8. docs/17-financial-integrity-cache-and-triage-contract.md
 
 Дальше читай только нужное для задачи:
 - БД, расписание, финансы, гранты, табели: docs/07-updated-domain-model-after-interview.md и docs/decisions/ADR-002-balance-accounts-ledger.md
@@ -44,7 +46,7 @@
 Если доступен Graphify и есть graphify-out/graph.json, сначала используй graphify query как индекс проекта. При расхождениях свежие docs/current-state.md, docs/07-updated-domain-model-after-interview.md, docs/12-project-stage-audit-and-pivot-plan.md, docs/13-schedule-capacity-v2-contract.md и код остаются источником правды.
 
 Следующая задача:
-Не начинать заново `dashboard-work-queue-financial-integrity-signal`: он выполнен и проверен. Перед новым кодом выбрать или создать следующий явный контракт. Возможные безопасные направления: production-scale/cached financial audit surfacing, ledger summary/backfill planning, либо другой user-approved доменный срез. Не менять operations/models.py, migration chain, billing.apply_decision semantics, payroll/grant semantics, статусы или auto-fix/backfill без нового контракта.
+Не начинать заново `dashboard-work-queue-financial-integrity-signal`: он выполнен и проверен. Если пользователь утверждает финансовый cache/triage контракт, следующий кодовый срез: `financial-integrity-cache-schema-and-runner` из docs/17-financial-integrity-cache-and-triage-contract.md. Назначить одного DB owner для operations/models.py и migration chain. Не менять billing.apply_decision semantics, payroll/grant semantics, статусы или auto-fix/backfill без отдельного контракта.
 
 Критические правила:
 - Не продолжать reschedule UX/control микросрезы без конкретного бага или нового требования.
