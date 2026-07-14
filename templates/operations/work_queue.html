@@ -100,6 +100,51 @@
     </div>
   </article>
 
+  <article class="panel" id="queue-financial-integrity">
+    <h2>Финансовый контроль</h2>
+    <div class="task-list">
+      {% for row in financial_integrity_issues %}
+        {% with issue=row.issue %}
+          <div class="task-card status-{{ row.tone }}">
+            <div>
+              <strong>{{ issue.message }}</strong>
+              <p>
+                {{ row.severity_label }} · {{ issue.code }}
+                {% if issue.appointment %}
+                  · {{ issue.appointment.starts_at|date:"d.m H:i" }} · {{ issue.appointment.service }}
+                {% endif %}
+              </p>
+              {% if issue.participant %}
+                <p class="muted">Участник: {{ issue.participant.child }}</p>
+              {% endif %}
+              {% if issue.account %}
+                <p class="muted">
+                  Счет: {{ issue.account }}
+                  {% if issue.funding_source %} · {{ issue.funding_source }}{% endif %}
+                </p>
+              {% elif issue.funding_source %}
+                <p class="muted">Источник: {{ issue.funding_source }}</p>
+              {% endif %}
+              {% if issue.ledger_entry %}
+                <p class="muted">Ledger: {{ issue.ledger_entry.get_entry_type_display }} {{ issue.ledger_entry.amount }}</p>
+              {% endif %}
+            </div>
+            <div class="task-actions">
+              {% if issue.appointment %}
+                <a class="button-link secondary small-action" href="{% url 'appointment_detail' issue.appointment.pk %}">Открыть занятие</a>
+              {% endif %}
+              {% if issue.account %}
+                <a class="button-link secondary small-action" href="{% url 'balance_account_edit' issue.account.pk %}">Открыть счет</a>
+              {% endif %}
+            </div>
+          </div>
+        {% endwith %}
+      {% empty %}
+        <p class="empty-state">Финансовых расхождений в проверке не найдено.</p>
+      {% endfor %}
+    </div>
+  </article>
+
   <article class="panel" id="queue-attendance">
     <h2>Прошли без отметки</h2>
     <div class="task-list">

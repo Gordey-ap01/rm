@@ -66,6 +66,10 @@
     <span class="ops-metric-value">{{ unresolved_billing }}</span>
     <span>без решения списания</span>
   </a>
+  <a class="ops-metric needs-action" href="{% url 'work_queue' %}#queue-financial-integrity">
+    <span class="ops-metric-value">{{ financial_integrity_count }}</span>
+    <span>финансовых расхождений</span>
+  </a>
   <a class="ops-metric needs-action" href="{% url 'work_queue' %}">
     <span class="ops-metric-value">{{ overdue_attendance }}</span>
     <span>прошли без отметки</span>

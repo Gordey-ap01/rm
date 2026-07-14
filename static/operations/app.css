@@ -1383,6 +1383,21 @@ th {
   background: var(--warn-soft);
 }
 
+.task-card.status-warning {
+  border-left-color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.task-card.status-danger {
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.task-card.status-info {
+  border-left-color: #1267f2;
+  background: rgba(18, 103, 242, .08);
+}
+
 .task-card.status-ready {
   border-left-color: #1267f2;
   background: rgba(18, 103, 242, .08);

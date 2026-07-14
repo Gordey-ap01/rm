@@ -170,8 +170,8 @@
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
-    "mtime": 1783988358.5366893,
-    "ast_hash": "13df1288d5a408d4ef36a7a2473c676b",
+    "mtime": 1784046136.412529,
+    "ast_hash": "b329678ad5726157f19c8dcef9cb52c2",
     "semantic_hash": ""
   },
   "operations/urls.py": {
@@ -210,8 +210,8 @@
     "semantic_hash": "2521302cb2028fd14d785298ce216f6a"
   },
   "operations/views/dashboard.py": {
-    "mtime": 1783973456.748455,
-    "ast_hash": "e0af1da02b87f4f34e9bb11bb2aea475",
+    "mtime": 1784046162.9584982,
+    "ast_hash": "b4caece4d1d9071b401da4e0e8cb6deb",
     "semantic_hash": ""
   },
   "operations/views/documents.py": {
@@ -560,8 +560,8 @@
     "semantic_hash": ""
   },
   "templates/operations/dashboard.html": {
-    "mtime": 1783906402.1739376,
-    "ast_hash": "912eff923afb22ca9502f617687def37",
+    "mtime": 1784046094.070989,
+    "ast_hash": "63bb1c399b9b8b7794623e6115461238",
     "semantic_hash": ""
   },
   "templates/operations/document_form.html": {
@@ -645,8 +645,8 @@
     "semantic_hash": ""
   },
   "templates/operations/work_queue.html": {
-    "mtime": 1783910497.4697099,
-    "ast_hash": "2444a049e7413615065cf90c8dfdedbf",
+    "mtime": 1784046094.0719893,
+    "ast_hash": "0ccc0c9730c090e01b533f9ea96c875b",
     "semantic_hash": ""
   },
   "templates/registration/csrf_failure.html": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784045296.1382399,
-    "ast_hash": "9584cecb1fa72fc91a0d31badecea227",
+    "mtime": 1784047378.5838103,
+    "ast_hash": "62775088eaf6e22c7d68afab05f35a17",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784045296.1402369,
-    "ast_hash": "3f109cd00e5a778446fc1b58e3012445",
+    "mtime": 1784047415.7767105,
+    "ast_hash": "50e735d369e79c6e2c9d67b0d825e564",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784045296.13924,
-    "ast_hash": "f25f19d27daf1c476a5de5ff57379d04",
+    "mtime": 1784047396.1738777,
+    "ast_hash": "93ca56eadce3b35508b315108e22d7d0",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -950,8 +950,13 @@
     "semantic_hash": ""
   },
   "docs/15-financial-integrity-audit-contract.md": {
-    "mtime": 1784045296.1362364,
-    "ast_hash": "57304bcd514c3fd1d8cee2e47074d6b8",
+    "mtime": 1784045782.6772273,
+    "ast_hash": "0fa8463f20e014a4e9e8f4814b3ae446",
+    "semantic_hash": ""
+  },
+  "docs/16-financial-integrity-surfacing-contract.md": {
+    "mtime": 1784047355.2271123,
+    "ast_hash": "7a1e954ec4b37bdcbc1473f303a54c94",
     "semantic_hash": ""
   }
 }

@@ -1331,3 +1331,15 @@ SMTP для реальной промышленной рассылки еще н
 - Добавлен `docs/16-financial-integrity-surfacing-contract.md` как следующий UI/operations контракт.
 - Lazyweb MCP tools (`lazyweb_search`, `lazyweb_health`) через `tool_search` не найдены, поэтому первый UI-срез использует fallback на существующие dashboard/work queue паттерны проекта и требует Browser QA.
 - Первый кодовый срез: `dashboard-work-queue-financial-integrity-signal` - показать financial integrity issue count/card на dashboard и section в work queue без auto-fix, POST actions, миграций или изменения финансовых расчетов.
+
+## Обновление 2026-07-15: financial-integrity surfacing в dashboard/work queue
+
+- Выполнен `dashboard-work-queue-financial-integrity-signal` по `docs/16-financial-integrity-surfacing-contract.md`.
+- Dashboard теперь показывает financial integrity metric и focus-card "Проверить финансы"; `priority_total` учитывает issue-ы из read-only `operations.services.financial_integrity`.
+- Work queue получила summary item "Финансовый контроль" и секцию `#queue-financial-integrity` с severity, issue code/message, контекстом занятия/участника/счета/источника и ссылками на занятие/счет.
+- Добавлены CSS-стили `task-card.status-warning/status-danger/status-info`, чтобы финансовые issue-ы визуально соответствовали severity.
+- No DB/model/migration changes, no POST actions, no auto-fix/backfill, no changes to `billing.apply_decision()`, payroll/grant/report semantics or statuses.
+- Проверки: touched-file Ruff прошел; `manage.py check` прошел; `manage.py makemigrations --check --dry-run` показал `No changes detected`; `pytest operations/tests/test_views.py::WorkQueueViewTests -q` прошел (`15 passed`); полный `pytest -q --tb=short` прошел (`457 passed`, 1 прежнее предупреждение django-tasks); `git diff --check` показал только LF->CRLF warnings.
+- Browser QA через временный Playwright fallback вне репозитория: создана и затем очищена test-runtime фикстура `QAFinancialIntegrity*`; `/` и `/work-queue/#queue-financial-integrity` проверены на desktop 1280x900 и mobile 390x900. Результат: status 200, финансовый dashboard anchor/metric найден, work queue section и issue code найдены, action-ссылки есть, warning card style применен, console/page/http errors нет, document overflow нет. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-integrity-signal`.
+- Graphify code-index обновлен после среза и docs-checkpoint: `graphify update . --no-cluster` записал `4052` nodes / `14461` edges. Semantic extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
+- Остаточный риск: синхронный audit на dashboard/work queue со временем может стать дорогим на большой истории. Для production-scale нужен отдельный контракт на cached audit snapshot/background task/pagination, а не расширение текущего UI-среза.

@@ -2,9 +2,36 @@
 
 Дата: 2026-07-15
 
-Статус: draft, готов к первому UI/operations срезу без миграций.
+Статус: первый UI/operations срез выполнен 2026-07-15 без миграций.
 
 Назначение: после read-only `financial_integrity` сервиса показать администратору и руководителю финансовые расхождения в существующем операционном контуре, не исправляя данные автоматически и не меняя финансовую семантику.
+
+## Выполнение 2026-07-15
+
+Выполнен кодовый срез `dashboard-work-queue-financial-integrity-signal`.
+
+- `operations/views/dashboard.py` подключает read-only audit source `operations.services.financial_integrity` и строит candidate queryset по занятиям с charge-решениями или debit ledger-проводками.
+- Dashboard показывает метрику финансовых расхождений и focus-card "Проверить финансы"; `priority_total` учитывает найденные issue-ы.
+- Work queue получила summary item "Финансовый контроль" и секцию `#queue-financial-integrity` с severity, issue code/message, контекстом занятия/участника/счета/источника и ссылками на занятие/счет.
+- В секции нет POST forms, auto-fix, backfill или mutation actions.
+- `static/operations/app.css` получил стили `status-warning`, `status-danger`, `status-info` для визуального разделения severity.
+- Lazyweb callable tools в этой сессии через `tool_search` не найдены; fallback выполнен по существующим dashboard/work queue паттернам проекта.
+- Browser QA выполнен через временный Playwright fallback вне репозитория на `rehab_center.settings_test`: `/` и `/work-queue/#queue-financial-integrity` проверены на desktop 1280x900 и mobile 390x900, status 200, console/page/http errors нет, horizontal overflow нет, warning card style применен. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-integrity-signal`.
+- QA-синтетика `QAFinancialIntegrity*` после проверки удалена из test runtime; технический `qa_admin` оставлен как локальный QA-user.
+
+Проверки:
+
+- `ruff check operations/views/dashboard.py operations/tests/test_views.py` прошел;
+- `manage.py check` прошел;
+- `manage.py makemigrations --check --dry-run` показал `No changes detected`;
+- `pytest operations/tests/test_views.py::WorkQueueViewTests -q` прошел (`15 passed`);
+- полный `pytest -q --tb=short` прошел (`457 passed`, 1 прежнее предупреждение django-tasks);
+- `git diff --check` показал только стандартные LF->CRLF warnings рабочей копии.
+- `graphify update . --no-cluster` обновил code-index до `4052` nodes / `14461` edges; semantic extraction не запускалась, ключи в проектные файлы не записывать.
+
+Не менялись: `operations/models.py`, migration chain, `billing.apply_decision()` semantics, payroll/grant/report calculations, статусы, production-конфиги и реальные данные.
+
+Остаточный риск: audit сейчас считается синхронно на dashboard/work queue по всем candidate appointments с charge/debit ledger. Для большой production-истории следующий контракт должен рассмотреть cached audit snapshot/background task/pagination вместо расширения этого UI-среза.
 
 ## Lazyweb / UI research
 
@@ -108,6 +135,7 @@ Browser QA:
 - `operations/views/dashboard.py`;
 - `templates/operations/dashboard.html`;
 - `templates/operations/work_queue.html`;
+- `static/operations/app.css`;
 - `operations/tests/test_views.py`;
 - recovery docs.
 

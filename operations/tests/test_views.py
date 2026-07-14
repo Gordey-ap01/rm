@@ -294,6 +294,30 @@ class TomorrowViewTests(NewViewsTestBase):
 
 
 class WorkQueueViewTests(NewViewsTestBase):
+    def _financial_integrity_fixture(self):
+        day = timezone.localdate() - timedelta(days=1)
+        start = _local_dt(day, time(10, 0))
+        appointment = Appointment.objects.create(
+            child=self.child,
+            service=self.service,
+            staff_member=self.staff,
+            room=self.room,
+            starts_at=start,
+            ends_at=start + timedelta(minutes=30),
+            status=Appointment.Status.COMPLETED,
+            attendance_status=Appointment.AttendanceStatus.ATTENDED,
+            billing_decision=Appointment.BillingDecision.DO_NOT_CHARGE,
+        )
+        LedgerEntry.objects.create(
+            appointment=appointment,
+            account=self.account,
+            entry_type=LedgerEntry.EntryType.DEBIT,
+            amount=Decimal("-1"),
+            reason="Stale work queue ledger",
+            created_by=self.admin,
+        )
+        return appointment
+
     def test_work_queue_shows_next_action_and_section_links(self):
         day = timezone.localdate() - timedelta(days=1)
         start = _local_dt(day, time(10, 0))
@@ -317,6 +341,41 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertContains(response, "Следующее действие")
         self.assertContains(response, "#queue-billing")
         self.assertContains(response, 'id="queue-billing"')
+
+    def test_dashboard_surfaces_financial_integrity_issues(self):
+        self._financial_integrity_fixture()
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["financial_integrity_count"], 1)
+        self.assertEqual(response.context["financial_integrity_warning_count"], 1)
+        self.assertEqual(response.context["priority_total"], 1)
+        self.assertContains(response, "Проверить финансы")
+        self.assertContains(response, "финансовых расхождений")
+        self.assertContains(response, f'{reverse("work_queue")}#queue-financial-integrity')
+
+    def test_work_queue_surfaces_financial_integrity_issues(self):
+        appointment = self._financial_integrity_fixture()
+
+        response = self.client.get(reverse("work_queue"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["financial_integrity_issue_count"], 1)
+        financial_summary = next(
+            item
+            for item in response.context["queue_summary_items"]
+            if item["href"] == "#queue-financial-integrity"
+        )
+        self.assertEqual(financial_summary["value"], 1)
+        self.assertEqual(financial_summary["tone"], "warning")
+        self.assertContains(response, "#queue-financial-integrity")
+        self.assertContains(response, 'id="queue-financial-integrity"')
+        self.assertContains(response, "Финансовый контроль")
+        self.assertContains(response, "stale_debit_ledger_without_charge_fact")
+        self.assertContains(response, "Debit ledger-проводка")
+        self.assertContains(response, reverse("appointment_detail", args=[appointment.pk]))
+        self.assertNotContains(response, "Исправить автоматически")
 
     def test_group_billing_task_links_to_participant_decisions(self):
         day = timezone.localdate() - timedelta(days=1)

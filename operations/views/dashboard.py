@@ -19,9 +19,13 @@ from operations.models import (
     AppointmentRescheduleStep,
     AppointmentStaffAssignment,
     BalanceAccount,
+    LedgerEntry,
     TimeOffRequest,
 )
-from operations.services import rescheduling_plans as plan_svc
+from operations.services import (
+    financial_integrity as financial_integrity_svc,
+    rescheduling_plans as plan_svc,
+)
 
 from ._common import is_admin_user
 
@@ -100,6 +104,7 @@ def reschedule_plan_focus_url(focus: str) -> str:
 
 
 TERMINAL_RESCHEDULE_PLAN_STATUSES = plan_svc.TERMINAL_PLAN_STATUSES
+FINANCIAL_INTEGRITY_DISPLAY_LIMIT = 40
 
 
 def confirmation_attention_filter() -> Q:
@@ -306,6 +311,100 @@ def low_balance_accounts():
     ]
 
 
+def financial_integrity_candidate_queryset():
+    return (
+        Appointment.objects.filter(
+            Q(billing_decision=Appointment.BillingDecision.CHARGE)
+            | Q(participants__billing_decision=Appointment.BillingDecision.CHARGE)
+            | Q(ledger_entries__entry_type=LedgerEntry.EntryType.DEBIT)
+        )
+        .select_related(
+            "child",
+            "staff_member",
+            "service",
+            "room",
+            "billing_account",
+            "billing_account__funding_source",
+        )
+        .prefetch_related(
+            "participants__child",
+            "participants__billing_account",
+            "participants__billing_account__funding_source",
+            "ledger_entries__account",
+            "ledger_entries__account__funding_source",
+            "ledger_entries__appointment_participant",
+        )
+        .distinct()
+        .order_by("-updated_at", "-pk")
+    )
+
+
+def financial_integrity_issues() -> list[financial_integrity_svc.FinancialIntegrityIssue]:
+    return financial_integrity_svc.audit_appointments(financial_integrity_candidate_queryset())
+
+
+def financial_integrity_issue_tone(
+    issue: financial_integrity_svc.FinancialIntegrityIssue,
+) -> str:
+    if issue.severity == financial_integrity_svc.FinancialIssueSeverity.ERROR:
+        return "danger"
+    if issue.severity == financial_integrity_svc.FinancialIssueSeverity.WARNING:
+        return "warning"
+    return "info"
+
+
+def financial_integrity_summary(
+    issues: list[financial_integrity_svc.FinancialIntegrityIssue],
+) -> dict[str, int | str]:
+    error_count = sum(
+        1
+        for issue in issues
+        if issue.severity == financial_integrity_svc.FinancialIssueSeverity.ERROR
+    )
+    warning_count = sum(
+        1
+        for issue in issues
+        if issue.severity == financial_integrity_svc.FinancialIssueSeverity.WARNING
+    )
+    info_count = sum(
+        1
+        for issue in issues
+        if issue.severity == financial_integrity_svc.FinancialIssueSeverity.INFO
+    )
+    tone = "success"
+    if error_count:
+        tone = "danger"
+    elif warning_count:
+        tone = "warning"
+    elif info_count:
+        tone = "info"
+    return {
+        "total": len(issues),
+        "errors": error_count,
+        "warnings": warning_count,
+        "info": info_count,
+        "tone": tone,
+    }
+
+
+def financial_integrity_issue_rows(
+    issues: list[financial_integrity_svc.FinancialIntegrityIssue],
+) -> list[dict[str, object]]:
+    severity_labels = {
+        financial_integrity_svc.FinancialIssueSeverity.ERROR: "Ошибка",
+        financial_integrity_svc.FinancialIssueSeverity.WARNING: "Проверить",
+        financial_integrity_svc.FinancialIssueSeverity.INFO: "Информация",
+    }
+    return [
+        {
+            "issue": issue,
+            "tone": financial_integrity_issue_tone(issue),
+            "severity_label": severity_labels.get(issue.severity, issue.severity),
+        }
+        for issue in issues[:FINANCIAL_INTEGRITY_DISPLAY_LIMIT]
+    ]
+
+
 def quick_billing_account(appointment):
     participants = list(appointment.participants.all())
     if len(participants) == 1:
@@ -356,6 +455,8 @@ def dashboard_focus_items(
     ready_step_count: int,
     stale_step_count: int,
     failed_step_count: int,
+    financial_integrity_count: int,
+    financial_integrity_tone: str,
 ):
     queue_url = reverse("work_queue")
     items = []
@@ -367,6 +468,16 @@ def dashboard_focus_items(
                 "title": "Решить списания",
                 "detail": "Есть занятия без решения по оплате или участникам.",
                 "href": queue_url,
+            }
+        )
+    if financial_integrity_count:
+        items.append(
+            {
+                "tone": financial_integrity_tone,
+                "value": financial_integrity_count,
+                "title": "Проверить финансы",
+                "detail": "Есть расхождения между списаниями, участниками и ledger.",
+                "href": f"{queue_url}#queue-financial-integrity",
             }
         )
     if overdue_attendance:
@@ -492,6 +603,8 @@ def work_queue_summary_items(
     failed_step_count: int,
     stale_step_count: int,
     nonready_step_count: int,
+    financial_integrity_count: int,
+    financial_integrity_tone: str,
 ):
     chain_attention_count = ready_chain_count + stale_chain_count + failed_chain_count
     chain_tone = "success"
@@ -516,6 +629,13 @@ def work_queue_summary_items(
             "href": "#queue-billing",
             "tone": "warning" if needs_billing_count else "success",
             "detail": "Списать, не списывать или решить по участникам.",
+        },
+        {
+            "label": "Финансовый контроль",
+            "value": financial_integrity_count,
+            "href": "#queue-financial-integrity",
+            "tone": financial_integrity_tone if financial_integrity_count else "success",
+            "detail": "Расхождения между списаниями, участниками и ledger.",
         },
         {
             "label": "Факт посещения",
@@ -606,6 +726,8 @@ def dashboard(request):
     chain_attention_count = chain_counts["ready"] + chain_counts["stale"] + chain_counts["failed"]
     step_counts = reschedule_step_attention_counts()
     reschedule_step_count = step_counts["total"]
+    financial_issues = financial_integrity_issues()
+    financial_summary = financial_integrity_summary(financial_issues)
     priority_total = (
         unresolved_billing
         + awaiting_transfer
@@ -614,6 +736,7 @@ def dashboard(request):
         + time_off_requests
         + chain_attention_count
         + reschedule_step_count
+        + int(financial_summary["total"])
     )
     today_appointments = (
         Appointment.objects.filter(starts_at__date=today)
@@ -651,6 +774,8 @@ def dashboard(request):
         ready_step_count=step_counts["ready"],
         stale_step_count=step_counts["stale"],
         failed_step_count=step_counts["failed"],
+        financial_integrity_count=int(financial_summary["total"]),
+        financial_integrity_tone=str(financial_summary["tone"]),
     )
     return render(
         request,
@@ -673,6 +798,11 @@ def dashboard(request):
             "stale_step_count": step_counts["stale"],
             "failed_step_count": step_counts["failed"],
             "priority_total": priority_total,
+            "financial_integrity_count": financial_summary["total"],
+            "financial_integrity_error_count": financial_summary["errors"],
+            "financial_integrity_warning_count": financial_summary["warnings"],
+            "financial_integrity_info_count": financial_summary["info"],
+            "financial_integrity_tone": financial_summary["tone"],
             "staff_load": staff_load,
             "low_balances": low_balances,
             "tomorrow_appointments": tomorrow_appointments,
@@ -726,6 +856,9 @@ def work_queue(request):
     step_counts = reschedule_step_attention_counts(reschedule_steps_queryset)
     reschedule_steps = list(reschedule_steps_queryset[:40])
     low_balances = low_balance_accounts()
+    financial_issues = financial_integrity_issues()
+    financial_summary = financial_integrity_summary(financial_issues)
+    financial_issue_rows = financial_integrity_issue_rows(financial_issues)
     queue_summary = work_queue_summary_items(
         needs_billing_count=len(needs_billing),
         needs_attendance_count=len(needs_attendance),
@@ -740,6 +873,8 @@ def work_queue(request):
         failed_step_count=step_counts["failed"],
         stale_step_count=step_counts["stale"],
         nonready_step_count=step_counts["total"] - step_counts["ready"],
+        financial_integrity_count=int(financial_summary["total"]),
+        financial_integrity_tone=str(financial_summary["tone"]),
     )
     return render(
         request,
@@ -749,6 +884,11 @@ def work_queue(request):
             "needs_attendance": needs_attendance,
             "needs_transfer": needs_transfer,
             "low_balances": low_balances,
+            "financial_integrity_issues": financial_issue_rows,
+            "financial_integrity_issue_count": financial_summary["total"],
+            "financial_integrity_error_count": financial_summary["errors"],
+            "financial_integrity_warning_count": financial_summary["warnings"],
+            "financial_integrity_info_count": financial_summary["info"],
             "confirmation_tasks": confirmation_tasks,
             "time_off_requests": time_off_requests,
             "reschedule_chains": reschedule_chains,
