@@ -110,8 +110,8 @@
     "semantic_hash": ""
   },
   "operations/services/__init__.py": {
-    "mtime": 1784044115.2779136,
-    "ast_hash": "d043579f1ae72cc8cb21c57a038616cf",
+    "mtime": 1784045417.0614045,
+    "ast_hash": "b9d3d88395f9a46277ca503698c03cc9",
     "semantic_hash": ""
   },
   "operations/services/appointments.py": {
@@ -165,8 +165,8 @@
     "semantic_hash": "bf315b84fbd5880aaa7af688dbe0dba4"
   },
   "operations/tests/test_services.py": {
-    "mtime": 1784044246.0138829,
-    "ast_hash": "dc30f2c27b90ea8e631fac297496e368",
+    "mtime": 1784045474.6048536,
+    "ast_hash": "98963dea97f6560b2d52d7fd419b2fc3",
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784044695.535936,
-    "ast_hash": "606580e163b5793a2d6aee146cabf869",
+    "mtime": 1784045296.1382399,
+    "ast_hash": "9584cecb1fa72fc91a0d31badecea227",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784044695.542489,
-    "ast_hash": "77929b70035f95e2026b5f00f8d5a291",
+    "mtime": 1784045296.1402369,
+    "ast_hash": "3f109cd00e5a778446fc1b58e3012445",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784044695.5394878,
-    "ast_hash": "f27bd8b25a1b0cb271d06547627e3bb7",
+    "mtime": 1784045296.13924,
+    "ast_hash": "f25f19d27daf1c476a5de5ff57379d04",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -940,8 +940,18 @@
     "semantic_hash": ""
   },
   "docs/14-financial-fact-source-contract.md": {
-    "mtime": 1784044695.5332773,
-    "ast_hash": "da334d17fe1263af25998c29539ba31f",
+    "mtime": 1784045145.7756162,
+    "ast_hash": "69df6f55d58521d4dc96b75933c382c8",
+    "semantic_hash": ""
+  },
+  "operations/services/financial_integrity.py": {
+    "mtime": 1784045501.8300252,
+    "ast_hash": "692b769bda5c0ad45b909ca0d659c27c",
+    "semantic_hash": ""
+  },
+  "docs/15-financial-integrity-audit-contract.md": {
+    "mtime": 1784045296.1362364,
+    "ast_hash": "57304bcd514c3fd1d8cee2e47074d6b8",
     "semantic_hash": ""
   }
 }

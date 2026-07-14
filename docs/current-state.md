@@ -1315,3 +1315,13 @@ SMTP для реальной промышленной рассылки еще н
 - Цель следующего среза: read-only audit source для расхождений между `AppointmentChargeFact`, participant billing decisions и ledger, без автоисправлений, миграций, UI и изменений `billing.apply_decision()`.
 - Первый кодовый срез по контракту: `financial-integrity-audit-source` - новый сервис `operations/services/financial_integrity.py` с issue codes/severity/message и focused service tests.
 - Запрещено в этом срезе: `operations/models.py`, migration chain, auto-fix/backfill, payroll/grant semantics, templates/views и Excel write import.
+
+## Обновление 2026-07-15: financial-integrity-audit source
+
+- Выполнен первый read-only кодовый срез `financial-integrity-audit-source` без миграций и без изменений `operations/models.py`, `billing.apply_decision()`, payroll/grant semantics, статусов, templates или UI.
+- Добавлен `operations/services/financial_integrity.py`: `FinancialIntegrityIssue`, stable issue codes/severity и `audit_appointments()` для charge/participant/ledger расхождений.
+- Audit использует `appointment_charge_fact()` как источник факта списания и выявляет participant charge without account, missing debit ledger, stale legacy charge with participants, stale debit ledger without charge fact и mixed funding group как informational issue.
+- Добавлены focused-регрессии в `ReportsServiceTests`.
+- Проверки: touched-file Ruff прошел; `pytest operations/tests/test_services.py -q` прошел (`127 passed`); `manage.py check` прошел; `manage.py makemigrations --check --dry-run` показал `No changes detected`; полный `pytest -q` прошел (`455 passed`, 1 прежнее предупреждение django-tasks).
+- Graphify code-index обновлен после financial-integrity source: `graphify update . --no-cluster` переизвлек `142/142` code files и записал `4026` nodes / `14410` edges. Semantic docs extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
+- Следующий безопасный шаг: перед выводом issue-ов в dashboard/work queue/balances/grant report создать отдельный UI/operations контракт с acceptance и Browser QA; auto-fix/backfill/constraints требуют отдельного миграционного контракта.

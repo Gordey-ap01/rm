@@ -2,7 +2,7 @@
 
 Дата: 2026-07-15
 
-Статус: draft, готов к первому read-only кодовому срезу без миграций.
+Статус: первый read-only кодовый срез `financial-integrity-audit-source` выполнен 2026-07-15 без миграций.
 
 Назначение: после появления общего `AppointmentChargeFact` дать администратору и будущим агентам безопасный способ находить финансовые расхождения до любых автоисправлений, DB constraints, импорта Excel или изменений `billing.apply_decision()`.
 
@@ -86,6 +86,15 @@
 - Mixed funding group возвращает informational issue без блокирующей severity.
 - Сервис не выполняет `.save()`, `.update()`, `.delete()` и не создает ledger/payroll rows.
 - `pytest operations/tests/test_services.py -q`, `manage.py check`, `manage.py makemigrations --check --dry-run` проходят.
+
+## Выполнение 2026-07-15
+
+- Добавлен `operations/services/financial_integrity.py` с read-only `FinancialIntegrityIssue`, stable issue codes/severity и `audit_appointments()`.
+- Сервис использует `appointment_charge_fact()` как источник факта списания и не создает отдельную копию финансовой логики.
+- Покрыты issue-сценарии: valid charge without issue, participant charge without account, missing debit ledger, stale legacy charge with participants, stale debit ledger without charge fact, mixed funding informational issue.
+- Срез не менял `operations/models.py`, migration chain, `billing.apply_decision()`, payroll/grant semantics, статусы, templates или UI.
+- Проверки: touched-file Ruff прошел; `pytest operations/tests/test_services.py -q` прошел (`127 passed`); `manage.py check` прошел; `manage.py makemigrations --check --dry-run` показал `No changes detected`; полный `pytest -q` прошел (`455 passed`, 1 прежнее предупреждение django-tasks).
+- Graphify code-index обновлен: `graphify update . --no-cluster` переизвлек `142/142` code files и записал `4026` nodes / `14410` edges. Semantic docs extraction не запускалась; LLM/API ключи в проектные файлы не записывать.
 
 ## Проверки
 

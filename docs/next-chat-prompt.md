@@ -19,6 +19,7 @@
 - Подсказки свободных окон уже продолжены: operations/services/scheduling.py::find_overlaps() и find_free_slots() используют общий appointment_group_conflicts() для групповых получателей, нескольких специалистов, кабинетных лимитов и запрета групп; массовый перенос по отсутствию специалиста подбирает кандидатов через обновленный find_free_slots(); полный pytest прошел: 444 passed; Graphify code-index: 3961 nodes / 14242 edges.
 - Первый backend/service/API срез schedule-capacity-validation-source закрыт acceptance review 2026-07-14: общий schedule validation подключен к form/model/API/free-slots/manual-move/shift-helper слоям без миграций и без изменений ledger/payroll/grants/statuses.
 - Первый срез по docs/14-financial-fact-source-contract.md выполнен 2026-07-15: добавлен operations/services/financial_facts.py, payroll/reports используют общий AppointmentChargeFact для факта "занятие списано"; полный pytest прошел: 449 passed; Graphify code-index: 3988 nodes / 14263 edges.
+- Первый срез по docs/15-financial-integrity-audit-contract.md выполнен 2026-07-15: добавлен operations/services/financial_integrity.py с read-only audit_appointments() и issue codes для charge/participant/ledger расхождений; полный pytest прошел: 455 passed; Graphify code-index: 4026 nodes / 14410 edges.
 
 Сначала обязательно прочитай:
 1. docs/project-recovery-manifest.md
@@ -41,7 +42,7 @@
 Если доступен Graphify и есть graphify-out/graph.json, сначала используй graphify query как индекс проекта. При расхождениях свежие docs/current-state.md, docs/07-updated-domain-model-after-interview.md, docs/12-project-stage-audit-and-pivot-plan.md, docs/13-schedule-capacity-v2-contract.md и код остаются источником правды.
 
 Следующая задача:
-Реализовать первый кодовый срез по docs/15-financial-integrity-audit-contract.md: financial-integrity-audit-source. По умолчанию без миграций и UI: добавить read-only operations/services/financial_integrity.py, issue dataclass/codes для charge/participant/ledger расхождений, focused service tests и recovery docs. Не менять operations/models.py, migration chain, billing.apply_decision semantics, payroll/grant semantics, статусы или UI без отдельного контракта.
+Выбрать и зафиксировать следующий явный контракт. Если продолжать financial integrity, следующий логичный срез - UI/operations surfacing issue-ов в dashboard/work queue/balances/grant report с Browser QA. Auto-fix/backfill/constraints требуют отдельного миграционного контракта. Не менять operations/models.py, migration chain, billing.apply_decision semantics, payroll/grant semantics, статусы или UI без отдельного контракта.
 
 Критические правила:
 - Не продолжать reschedule UX/control микросрезы без конкретного бага или нового требования.

@@ -50,6 +50,7 @@ from operations.services import (
     appointments as appt_svc,
     billing as billing_svc,
     financial_facts as financial_facts_svc,
+    financial_integrity as financial_integrity_svc,
     import_preview as import_preview_svc,
     notifications as notif_svc,
     payroll as payroll_svc,
@@ -3322,6 +3323,131 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(fact.funding_source_ids, frozenset())
         self.assertEqual(fact.note, "нет решения «Списать» по участникам")
         self.assertEqual(fact.billing_decision_label, "Не решено")
+
+    def test_financial_integrity_audit_has_no_error_for_valid_charge(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        billing_svc.apply_decision(
+            appointment,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=self.account,
+            amount=Decimal("-1"),
+            actor=self.user,
+        )
+
+        issues = financial_integrity_svc.audit_appointments([appointment])
+
+        self.assertEqual(issues, [])
+
+    def test_financial_integrity_audit_flags_participant_charge_without_account(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        participant = appointment.participants.get()
+        AppointmentParticipant.objects.filter(pk=participant.pk).update(
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account=None,
+        )
+
+        issues = financial_integrity_svc.audit_appointments([appointment])
+
+        issue = self._single_issue(
+            issues,
+            financial_integrity_svc.FinancialIssueCode.PARTICIPANT_CHARGE_WITHOUT_ACCOUNT,
+        )
+        self.assertEqual(issue.severity, financial_integrity_svc.FinancialIssueSeverity.ERROR)
+        self.assertEqual(issue.participant.pk, participant.pk)
+
+    def test_financial_integrity_audit_flags_missing_debit_ledger(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        participant = appointment.participants.get()
+        AppointmentParticipant.objects.filter(pk=participant.pk).update(
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account=self.account,
+        )
+
+        issues = financial_integrity_svc.audit_appointments([appointment])
+
+        issue = self._single_issue(
+            issues,
+            financial_integrity_svc.FinancialIssueCode.MISSING_DEBIT_LEDGER,
+        )
+        self.assertEqual(issue.severity, financial_integrity_svc.FinancialIssueSeverity.ERROR)
+        self.assertEqual(issue.participant.pk, participant.pk)
+
+    def test_financial_integrity_audit_flags_stale_legacy_charge(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        Appointment.objects.filter(pk=appointment.pk).update(
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account=self.account,
+        )
+        AppointmentParticipant.objects.filter(appointment=appointment).update(
+            billing_decision=Appointment.BillingDecision.UNDECIDED,
+            billing_account=None,
+        )
+        appointment.refresh_from_db()
+
+        issues = financial_integrity_svc.audit_appointments([appointment])
+
+        issue = self._single_issue(
+            issues,
+            financial_integrity_svc.FinancialIssueCode.STALE_LEGACY_CHARGE_WITH_PARTICIPANTS,
+        )
+        self.assertEqual(issue.severity, financial_integrity_svc.FinancialIssueSeverity.WARNING)
+        self.assertEqual(issue.account, self.account)
+
+    def test_financial_integrity_audit_flags_stale_debit_ledger(self):
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        entry = LedgerEntry.objects.create(
+            appointment=appointment,
+            account=self.account,
+            entry_type=LedgerEntry.EntryType.DEBIT,
+            amount=Decimal("-1"),
+            reason="Stale test ledger",
+            created_by=self.user,
+        )
+
+        issues = financial_integrity_svc.audit_appointments([appointment])
+
+        issue = self._single_issue(
+            issues,
+            financial_integrity_svc.FinancialIssueCode.STALE_DEBIT_LEDGER_WITHOUT_CHARGE_FACT,
+        )
+        self.assertEqual(issue.severity, financial_integrity_svc.FinancialIssueSeverity.WARNING)
+        self.assertEqual(issue.ledger_entry, entry)
+
+    def test_financial_integrity_audit_marks_mixed_funding_as_info(self):
+        appointment = self._make_mixed_funding_group_charge()
+        for participant in appointment.participants.select_related("billing_account"):
+            LedgerEntry.objects.create(
+                appointment=appointment,
+                appointment_participant=participant,
+                account=participant.billing_account,
+                entry_type=LedgerEntry.EntryType.DEBIT,
+                amount=Decimal("-1"),
+                reason="Mixed funding test ledger",
+                created_by=self.user,
+            )
+
+        issues = financial_integrity_svc.audit_appointments([appointment])
+
+        issue = self._single_issue(
+            issues,
+            financial_integrity_svc.FinancialIssueCode.MIXED_FUNDING_GROUP,
+        )
+        self.assertEqual(issue.severity, financial_integrity_svc.FinancialIssueSeverity.INFO)
+        self.assertFalse(
+            any(
+                item.code == financial_integrity_svc.FinancialIssueCode.MISSING_DEBIT_LEDGER
+                for item in issues
+            )
+        )
+
+    def _single_issue(
+        self,
+        issues: list[financial_integrity_svc.FinancialIntegrityIssue],
+        code: str,
+    ) -> financial_integrity_svc.FinancialIntegrityIssue:
+        matching = [issue for issue in issues if issue.code == code]
+        self.assertEqual(len(matching), 1, [issue.code for issue in issues])
+        return matching[0]
 
     def test_payroll_generation_is_idempotent_for_charged_assignment(self):
         StaffCompensationRule.objects.create(

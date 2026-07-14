@@ -4300,6 +4300,150 @@
       "_origin": "ast"
     },
     {
+      "id": "services_financial_integrity",
+      "label": "financial_integrity.py",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_financialissuecode",
+      "label": "FinancialIssueCode",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L18",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_financialissueseverity",
+      "label": "FinancialIssueSeverity",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L29",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_financialintegrityissue",
+      "label": "FinancialIntegrityIssue",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L36",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_audit_appointments",
+      "label": "audit_appointments()",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L47",
+      "_origin": "ast"
+    },
+    {
+      "id": "operations_services_financial_integrity_py_appointment",
+      "label": "Appointment",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L47",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_audit_appointment",
+      "label": "_audit_appointment()",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L58",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_participant_charge_issues",
+      "label": "_participant_charge_issues()",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L109",
+      "_origin": "ast"
+    },
+    {
+      "id": "operations_services_financial_integrity_py_appointmentparticipant",
+      "label": "AppointmentParticipant",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L109",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_legacy_charge_issue",
+      "label": "_legacy_charge_issue()",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L144",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_legacy_charge_matches_single_participant",
+      "label": "_legacy_charge_matches_single_participant()",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L167",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_ledger_issues",
+      "label": "_ledger_issues()",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L181",
+      "_origin": "ast"
+    },
+    {
+      "id": "operations_services_financial_integrity_py_ledgerentry",
+      "label": "LedgerEntry",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L181",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_ledger_matches_charge_fact",
+      "label": "_ledger_matches_charge_fact()",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L230",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_fact_account",
+      "label": "_fact_account()",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L250",
+      "_origin": "ast"
+    },
+    {
+      "id": "operations_services_financial_integrity_py_balanceaccount",
+      "label": "BalanceAccount",
+      "file_type": "code",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L250",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_rationale_1",
+      "label": "Read-only audit for charge, participant and ledger consistency.",
+      "file_type": "rationale",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "services_financial_integrity_rationale_50",
+      "label": "Return financial integrity issues without mutating appointments or ledger.",
+      "file_type": "rationale",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L50",
+      "_origin": "ast"
+    },
+    {
       "id": "services_import_preview",
       "label": "import_preview.py",
       "file_type": "code",
@@ -7016,7 +7160,7 @@
       "label": "_local()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L63",
+      "source_location": "L64",
       "_origin": "ast"
     },
     {
@@ -7024,7 +7168,7 @@
       "label": "_FixturesMixin",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L67",
+      "source_location": "L68",
       "_origin": "ast"
     },
     {
@@ -7032,7 +7176,7 @@
       "label": ".setUpTestData()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L69",
+      "source_location": "L70",
       "_origin": "ast"
     },
     {
@@ -7040,7 +7184,7 @@
       "label": ".setUp()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L118",
+      "source_location": "L119",
       "_origin": "ast"
     },
     {
@@ -7048,7 +7192,7 @@
       "label": "AppointmentServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L122",
+      "source_location": "L123",
       "_origin": "ast"
     },
     {
@@ -7056,7 +7200,7 @@
       "label": ".test_create_with_default_validation()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L123",
+      "source_location": "L124",
       "_origin": "ast"
     },
     {
@@ -7064,7 +7208,7 @@
       "label": ".test_reschedule_creates_new_and_marks_old()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L135",
+      "source_location": "L136",
       "_origin": "ast"
     },
     {
@@ -7072,7 +7216,7 @@
       "label": ".test_reschedule_preserves_partial_snapshot_without_readding_legacy_child()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L159",
+      "source_location": "L160",
       "_origin": "ast"
     },
     {
@@ -7080,7 +7224,7 @@
       "label": ".test_cancel_sets_note_with_reason()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L218",
+      "source_location": "L219",
       "_origin": "ast"
     },
     {
@@ -7088,7 +7232,7 @@
       "label": ".test_cancel_preserves_partial_snapshot_without_readding_legacy_child()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L233",
+      "source_location": "L234",
       "_origin": "ast"
     },
     {
@@ -7096,7 +7240,7 @@
       "label": ".test_record_attendance_completed()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L273",
+      "source_location": "L274",
       "_origin": "ast"
     },
     {
@@ -7104,7 +7248,7 @@
       "label": ".test_record_attendance_updates_participant_snapshot()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L289",
+      "source_location": "L290",
       "_origin": "ast"
     },
     {
@@ -7112,7 +7256,7 @@
       "label": ".test_record_attendance_invalid_action()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L308",
+      "source_location": "L309",
       "_origin": "ast"
     },
     {
@@ -7120,7 +7264,7 @@
       "label": "ScheduleValidationTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L322",
+      "source_location": "L323",
       "_origin": "ast"
     },
     {
@@ -7128,7 +7272,7 @@
       "label": ".test_group_conflicts_use_participant_and_staff_snapshots()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L323",
+      "source_location": "L324",
       "_origin": "ast"
     },
     {
@@ -7136,7 +7280,7 @@
       "label": ".test_room_limit_counts_snapshot_staff_and_recipients()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L363",
+      "source_location": "L364",
       "_origin": "ast"
     },
     {
@@ -7144,7 +7288,7 @@
       "label": ".test_room_limit_allows_capacity_until_configured_limit()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L390",
+      "source_location": "L391",
       "_origin": "ast"
     },
     {
@@ -7152,7 +7296,7 @@
       "label": ".test_model_validation_uses_snapshot_participants_and_staff()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L422",
+      "source_location": "L423",
       "_origin": "ast"
     },
     {
@@ -7160,7 +7304,7 @@
       "label": ".test_model_validation_counts_snapshot_group_room_capacity()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L466",
+      "source_location": "L467",
       "_origin": "ast"
     },
     {
@@ -7168,7 +7312,7 @@
       "label": ".test_model_validation_checks_snapshot_staff_availability()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L517",
+      "source_location": "L518",
       "_origin": "ast"
     },
     {
@@ -7176,7 +7320,7 @@
       "label": "BillingServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L551",
+      "source_location": "L552",
       "_origin": "ast"
     },
     {
@@ -7184,7 +7328,7 @@
       "label": ".setUp()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L552",
+      "source_location": "L553",
       "_origin": "ast"
     },
     {
@@ -7192,7 +7336,7 @@
       "label": ".test_apply_charge_creates_ledger_entry()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L564",
+      "source_location": "L565",
       "_origin": "ast"
     },
     {
@@ -7200,7 +7344,7 @@
       "label": ".test_apply_charge_rejects_session_account_for_another_child()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L579",
+      "source_location": "L580",
       "_origin": "ast"
     },
     {
@@ -7208,7 +7352,7 @@
       "label": ".test_apply_charge_preserves_partial_snapshot_without_readding_legacy_child()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L603",
+      "source_location": "L604",
       "_origin": "ast"
     },
     {
@@ -7216,7 +7360,7 @@
       "label": ".test_apply_decision_rejects_group_without_specific_participant()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L650",
+      "source_location": "L651",
       "_origin": "ast"
     },
     {
@@ -7224,7 +7368,7 @@
       "label": ".test_sync_ledger_for_decision_rejects_group_without_specific_participant()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L674",
+      "source_location": "L675",
       "_origin": "ast"
     },
     {
@@ -7232,7 +7376,7 @@
       "label": ".test_apply_do_not_charge_unlinks_entries()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L698",
+      "source_location": "L699",
       "_origin": "ast"
     },
     {
@@ -7240,7 +7384,7 @@
       "label": ".test_top_up_creates_payment_and_ledger()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L716",
+      "source_location": "L717",
       "_origin": "ast"
     },
     {
@@ -7248,7 +7392,7 @@
       "label": ".test_group_participant_ledger_entry_validates_against_participant_account()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L733",
+      "source_location": "L734",
       "_origin": "ast"
     },
     {
@@ -7256,7 +7400,7 @@
       "label": ".test_ledger_entry_rejects_participant_from_another_appointment()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L766",
+      "source_location": "L767",
       "_origin": "ast"
     },
     {
@@ -7264,7 +7408,7 @@
       "label": ".test_top_up_rejects_non_positive()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L809",
+      "source_location": "L810",
       "_origin": "ast"
     },
     {
@@ -7272,7 +7416,7 @@
       "label": ".test_transfer_within_child()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L813",
+      "source_location": "L814",
       "_origin": "ast"
     },
     {
@@ -7280,7 +7424,7 @@
       "label": ".test_transfer_to_other_child_blocked_by_within_child()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L835",
+      "source_location": "L836",
       "_origin": "ast"
     },
     {
@@ -7288,7 +7432,7 @@
       "label": "SchedulingServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L855",
+      "source_location": "L856",
       "_origin": "ast"
     },
     {
@@ -7296,7 +7440,7 @@
       "label": ".test_find_overlaps_child()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L856",
+      "source_location": "L857",
       "_origin": "ast"
     },
     {
@@ -7304,7 +7448,7 @@
       "label": ".test_find_free_slots_filters_overlaps()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L876",
+      "source_location": "L877",
       "_origin": "ast"
     },
     {
@@ -7312,7 +7456,7 @@
       "label": ".test_find_overlaps_counts_mixed_snapshot_and_legacy_room_usage()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L892",
+      "source_location": "L893",
       "_origin": "ast"
     },
     {
@@ -7320,7 +7464,7 @@
       "label": ".test_find_overlaps_blocks_group_when_room_disallows_groups()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L936",
+      "source_location": "L937",
       "_origin": "ast"
     },
     {
@@ -7328,7 +7472,7 @@
       "label": ".test_is_within_availability_blocked_by_time_off()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L961",
+      "source_location": "L962",
       "_origin": "ast"
     },
     {
@@ -7336,7 +7480,7 @@
       "label": ".test_is_within_availability_uses_staff_window()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L976",
+      "source_location": "L977",
       "_origin": "ast"
     },
     {
@@ -7344,7 +7488,7 @@
       "label": ".test_find_free_slots_respects_staff_availability()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L989",
+      "source_location": "L990",
       "_origin": "ast"
     },
     {
@@ -7352,7 +7496,7 @@
       "label": ".test_find_free_slots_blocks_group_room_rules()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1006",
+      "source_location": "L1007",
       "_origin": "ast"
     },
     {
@@ -7360,7 +7504,7 @@
       "label": ".test_find_free_slots_checks_all_staff_availability()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1027",
+      "source_location": "L1028",
       "_origin": "ast"
     },
     {
@@ -7368,7 +7512,7 @@
       "label": ".test_mass_reschedule_cancels_and_creates_confirmations()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1045",
+      "source_location": "L1046",
       "_origin": "ast"
     },
     {
@@ -7376,7 +7520,7 @@
       "label": ".test_mass_reschedule_uses_group_participants_and_staff_assignments()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1076",
+      "source_location": "L1077",
       "_origin": "ast"
     },
     {
@@ -7384,7 +7528,7 @@
       "label": ".test_mass_reschedule_targets_same_representative_per_group_participant()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1149",
+      "source_location": "L1150",
       "_origin": "ast"
     },
     {
@@ -7392,7 +7536,7 @@
       "label": "ReschedulingPlanServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1197",
+      "source_location": "L1198",
       "_origin": "ast"
     },
     {
@@ -7400,7 +7544,7 @@
       "label": "._appointment()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1198",
+      "source_location": "L1199",
       "_origin": "ast"
     },
     {
@@ -7408,7 +7552,7 @@
       "label": "._reschedule_chain_fixture()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1209",
+      "source_location": "L1210",
       "_origin": "ast"
     },
     {
@@ -7416,7 +7560,7 @@
       "label": ".test_create_plan_persists_valid_steps_without_changing_appointment()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1265",
+      "source_location": "L1266",
       "_origin": "ast"
     },
     {
@@ -7424,7 +7568,7 @@
       "label": ".test_reschedule_chain_schema_keeps_existing_steps_optional()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1286",
+      "source_location": "L1287",
       "_origin": "ast"
     },
     {
@@ -7432,7 +7576,7 @@
       "label": ".test_reschedule_step_dependency_validates_plan_and_self_edge()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1314",
+      "source_location": "L1315",
       "_origin": "ast"
     },
     {
@@ -7440,7 +7584,7 @@
       "label": ".test_create_chain_for_steps_builds_dependencies_without_applying()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1389",
+      "source_location": "L1390",
       "_origin": "ast"
     },
     {
@@ -7448,7 +7592,7 @@
       "label": ".test_create_chain_for_steps_rejects_alternatives_for_same_source()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1464",
+      "source_location": "L1465",
       "_origin": "ast"
     },
     {
@@ -7456,7 +7600,7 @@
       "label": ".test_create_chain_for_steps_rejects_terminal_plan()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1509",
+      "source_location": "L1510",
       "_origin": "ast"
     },
     {
@@ -7464,7 +7608,7 @@
       "label": ".test_create_chain_for_steps_rejects_cycles()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1559",
+      "source_location": "L1560",
       "_origin": "ast"
     },
     {
@@ -7472,7 +7616,7 @@
       "label": ".test_revalidate_chain_marks_ready_without_applying()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1613",
+      "source_location": "L1614",
       "_origin": "ast"
     },
     {
@@ -7480,7 +7624,7 @@
       "label": ".test_revalidate_chain_marks_stale_when_target_window_becomes_busy()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1636",
+      "source_location": "L1637",
       "_origin": "ast"
     },
     {
@@ -7488,7 +7632,7 @@
       "label": ".test_revalidate_chain_blocks_declined_confirmation()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1670",
+      "source_location": "L1671",
       "_origin": "ast"
     },
     {
@@ -7496,7 +7640,7 @@
       "label": ".test_apply_chain_applies_steps_atomically()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1698",
+      "source_location": "L1699",
       "_origin": "ast"
     },
     {
@@ -7504,7 +7648,7 @@
       "label": ".test_apply_chain_requires_ready_chain()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1728",
+      "source_location": "L1729",
       "_origin": "ast"
     },
     {
@@ -7512,7 +7656,7 @@
       "label": ".test_apply_chain_persists_stale_revalidation_without_failed_status()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1746",
+      "source_location": "L1747",
       "_origin": "ast"
     },
     {
@@ -7520,7 +7664,7 @@
       "label": ".test_apply_chain_rolls_back_when_later_step_fails()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1775",
+      "source_location": "L1776",
       "_origin": "ast"
     },
     {
@@ -7528,7 +7672,7 @@
       "label": ".test_revalidate_marks_step_stale_when_window_becomes_busy()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1806",
+      "source_location": "L1807",
       "_origin": "ast"
     },
     {
@@ -7536,7 +7680,7 @@
       "label": ".test_revalidate_plan_rejects_terminal_statuses_without_mutation()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1840",
+      "source_location": "L1841",
       "_origin": "ast"
     },
     {
@@ -7544,7 +7688,7 @@
       "label": ".test_terminal_plan_rejects_step_actions_without_mutation()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1884",
+      "source_location": "L1885",
       "_origin": "ast"
     },
     {
@@ -7552,7 +7696,7 @@
       "label": ".test_terminal_plan_rejects_chain_actions_without_mutation()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1934",
+      "source_location": "L1935",
       "_origin": "ast"
     },
     {
@@ -7560,7 +7704,7 @@
       "label": ".test_apply_valid_step_creates_new_appointment_without_billing_decision()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1981",
+      "source_location": "L1982",
       "_origin": "ast"
     },
     {
@@ -7568,7 +7712,7 @@
       "label": ".test_apply_step_skips_alternatives_for_same_source_only()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2002",
+      "source_location": "L2003",
       "_origin": "ast"
     },
     {
@@ -7576,7 +7720,7 @@
       "label": ".test_apply_step_with_room_override_creates_room_override()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2080",
+      "source_location": "L2081",
       "_origin": "ast"
     },
     {
@@ -7584,7 +7728,7 @@
       "label": ".test_group_plan_snapshot_includes_participants_and_staff()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2142",
+      "source_location": "L2143",
       "_origin": "ast"
     },
     {
@@ -7592,7 +7736,7 @@
       "label": ".test_create_staff_absence_plan_persists_pending_steps_without_cancelling()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2180",
+      "source_location": "L2181",
       "_origin": "ast"
     },
     {
@@ -7600,7 +7744,7 @@
       "label": ".test_mark_review_conflict_resolved_requires_non_active_source()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2205",
+      "source_location": "L2206",
       "_origin": "ast"
     },
     {
@@ -7608,7 +7752,7 @@
       "label": ".test_create_confirmations_for_step_targets_representative_and_specialist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2231",
+      "source_location": "L2232",
       "_origin": "ast"
     },
     {
@@ -7616,7 +7760,7 @@
       "label": ".test_create_confirmations_for_step_does_not_duplicate_existing_targets()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2262",
+      "source_location": "L2263",
       "_origin": "ast"
     },
     {
@@ -7624,7 +7768,7 @@
       "label": ".test_step_confirmation_status_waits_after_confirmations_are_created()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2279",
+      "source_location": "L2280",
       "_origin": "ast"
     },
     {
@@ -7632,7 +7776,7 @@
       "label": ".test_step_confirmation_status_becomes_approved_after_all_confirm()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2300",
+      "source_location": "L2301",
       "_origin": "ast"
     },
     {
@@ -7640,7 +7784,7 @@
       "label": ".test_step_confirmation_status_declined_blocks_apply()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2324",
+      "source_location": "L2325",
       "_origin": "ast"
     },
     {
@@ -7648,7 +7792,7 @@
       "label": "ProgramWizardServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2352",
+      "source_location": "L2353",
       "_origin": "ast"
     },
     {
@@ -7656,7 +7800,7 @@
       "label": ".setUp()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2353",
+      "source_location": "L2354",
       "_origin": "ast"
     },
     {
@@ -7664,7 +7808,7 @@
       "label": "._preview()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2370",
+      "source_location": "L2371",
       "_origin": "ast"
     },
     {
@@ -7672,7 +7816,7 @@
       "label": ".test_suggest_allows_second_specialist_when_room_capacity_allows()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2385",
+      "source_location": "L2386",
       "_origin": "ast"
     },
     {
@@ -7680,7 +7824,7 @@
       "label": ".test_suggest_skips_slot_when_room_capacity_is_full()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2409",
+      "source_location": "L2410",
       "_origin": "ast"
     },
     {
@@ -7688,7 +7832,7 @@
       "label": ".test_auto_suggest_uses_another_staff_and_room_when_primary_is_busy()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2442",
+      "source_location": "L2443",
       "_origin": "ast"
     },
     {
@@ -7696,7 +7840,7 @@
       "label": ".test_auto_suggest_respects_room_capacity_across_rooms()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2464",
+      "source_location": "L2465",
       "_origin": "ast"
     },
     {
@@ -7704,7 +7848,7 @@
       "label": ".test_balance_limit_caps_requested_sessions()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2483",
+      "source_location": "L2484",
       "_origin": "ast"
     },
     {
@@ -7712,7 +7856,7 @@
       "label": ".test_balance_limit_counts_existing_participant_reserves()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2501",
+      "source_location": "L2502",
       "_origin": "ast"
     },
     {
@@ -7720,7 +7864,7 @@
       "label": ".test_balance_limit_treats_charge_without_account_as_unpaid_reserve()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2536",
+      "source_location": "L2537",
       "_origin": "ast"
     },
     {
@@ -7728,7 +7872,7 @@
       "label": ".test_create_schedule_assigns_block_and_sequence()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2572",
+      "source_location": "L2573",
       "_origin": "ast"
     },
     {
@@ -7736,7 +7880,7 @@
       "label": ".test_preview_slots_do_not_overlap_each_other_when_duration_exceeds_step()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2593",
+      "source_location": "L2594",
       "_origin": "ast"
     },
     {
@@ -7744,7 +7888,7 @@
       "label": ".test_create_schedule_rejects_stale_preview_with_local_time()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2608",
+      "source_location": "L2609",
       "_origin": "ast"
     },
     {
@@ -7752,7 +7896,7 @@
       "label": "_minimal_xlsx()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2627",
+      "source_location": "L2628",
       "_origin": "ast"
     },
     {
@@ -7760,7 +7904,7 @@
       "label": "ImportPreviewServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2669",
+      "source_location": "L2670",
       "_origin": "ast"
     },
     {
@@ -7768,7 +7912,7 @@
       "label": ".test_csv_preview_validates_rows_and_existing_recipient()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2670",
+      "source_location": "L2671",
       "_origin": "ast"
     },
     {
@@ -7776,7 +7920,7 @@
       "label": ".test_xlsx_preview_maps_recipient_headers()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2690",
+      "source_location": "L2691",
       "_origin": "ast"
     },
     {
@@ -7784,7 +7928,7 @@
       "label": "ReportsServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2710",
+      "source_location": "L2711",
       "_origin": "ast"
     },
     {
@@ -7792,7 +7936,7 @@
       "label": ".setUp()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2711",
+      "source_location": "L2712",
       "_origin": "ast"
     },
     {
@@ -7800,7 +7944,7 @@
       "label": "._make_mixed_funding_group_charge()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2723",
+      "source_location": "L2724",
       "_origin": "ast"
     },
     {
@@ -7808,7 +7952,7 @@
       "label": "._make_same_funding_group_charge()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2771",
+      "source_location": "L2772",
       "_origin": "ast"
     },
     {
@@ -7816,7 +7960,7 @@
       "label": ".test_tomorrow_overview_returns_summary()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2829",
+      "source_location": "L2830",
       "_origin": "ast"
     },
     {
@@ -7824,7 +7968,7 @@
       "label": ".test_appointment_string_is_group_aware()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2844",
+      "source_location": "L2845",
       "_origin": "ast"
     },
     {
@@ -7832,7 +7976,7 @@
       "label": ".test_tomorrow_overview_excludes_group_after_all_participant_billing_decided()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2862",
+      "source_location": "L2863",
       "_origin": "ast"
     },
     {
@@ -7840,7 +7984,7 @@
       "label": ".test_tomorrow_overview_includes_group_with_undecided_participant()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2902",
+      "source_location": "L2903",
       "_origin": "ast"
     },
     {
@@ -7848,7 +7992,7 @@
       "label": ".test_timesheet_groups_by_day()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2934",
+      "source_location": "L2935",
       "_origin": "ast"
     },
     {
@@ -7856,7 +8000,7 @@
       "label": ".test_timesheet_counts_secondary_staff_assignments()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2949",
+      "source_location": "L2950",
       "_origin": "ast"
     },
     {
@@ -7864,7 +8008,7 @@
       "label": ".test_timesheet_includes_legacy_rows_when_assignments_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2975",
+      "source_location": "L2976",
       "_origin": "ast"
     },
     {
@@ -7872,7 +8016,7 @@
       "label": ".test_timesheet_accrues_pay_only_after_charge_decision()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3000",
+      "source_location": "L3001",
       "_origin": "ast"
     },
     {
@@ -7880,7 +8024,7 @@
       "label": ".test_timesheet_handles_charge_without_compensation_rule()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3025",
+      "source_location": "L3026",
       "_origin": "ast"
     },
     {
@@ -7888,7 +8032,7 @@
       "label": ".test_timesheet_uses_single_participant_billing_label()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3043",
+      "source_location": "L3044",
       "_origin": "ast"
     },
     {
@@ -7896,7 +8040,7 @@
       "label": ".test_timesheet_ignores_legacy_charge_when_participants_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3057",
+      "source_location": "L3058",
       "_origin": "ast"
     },
     {
@@ -7904,7 +8048,7 @@
       "label": ".test_timesheet_summarizes_group_participant_billing_labels()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3079",
+      "source_location": "L3080",
       "_origin": "ast"
     },
     {
@@ -7912,7 +8056,7 @@
       "label": ".test_timesheet_ignores_charge_participant_without_account()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3099",
+      "source_location": "L3100",
       "_origin": "ast"
     },
     {
@@ -7920,7 +8064,7 @@
       "label": ".test_timesheet_prefers_funding_specific_hourly_rule()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3118",
+      "source_location": "L3119",
       "_origin": "ast"
     },
     {
@@ -7928,7 +8072,7 @@
       "label": ".test_timesheet_prefers_duration_specific_rule()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3145",
+      "source_location": "L3146",
       "_origin": "ast"
     },
     {
@@ -7936,7 +8080,7 @@
       "label": ".test_timesheet_uses_grant_allocation_rate()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3174",
+      "source_location": "L3175",
       "_origin": "ast"
     },
     {
@@ -7944,7 +8088,7 @@
       "label": ".test_timesheet_uses_generic_rule_for_mixed_group_funding()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3201",
+      "source_location": "L3202",
       "_origin": "ast"
     },
     {
@@ -7952,7 +8096,7 @@
       "label": ".test_financial_fact_links_single_participant_ledger()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3229",
+      "source_location": "L3230",
       "_origin": "ast"
     },
     {
@@ -7960,7 +8104,7 @@
       "label": ".test_financial_fact_detects_mixed_group_funding_without_single_source()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3252",
+      "source_location": "L3253",
       "_origin": "ast"
     },
     {
@@ -7968,7 +8112,7 @@
       "label": ".test_financial_fact_uses_legacy_charge_only_without_participants()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3267",
+      "source_location": "L3268",
       "_origin": "ast"
     },
     {
@@ -7976,7 +8120,7 @@
       "label": ".test_financial_fact_exposes_missing_legacy_debit_ledger()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3295",
+      "source_location": "L3296",
       "_origin": "ast"
     },
     {
@@ -7984,7 +8128,71 @@
       "label": ".test_financial_fact_ignores_legacy_charge_when_participants_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3309",
+      "source_location": "L3310",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_services_reportsservicetests_test_financial_integrity_audit_has_no_error_for_valid_charge",
+      "label": ".test_financial_integrity_audit_has_no_error_for_valid_charge()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3327",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_services_reportsservicetests_test_financial_integrity_audit_flags_participant_charge_without_account",
+      "label": ".test_financial_integrity_audit_flags_participant_charge_without_account()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3341",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_services_reportsservicetests_test_financial_integrity_audit_flags_missing_debit_ledger",
+      "label": ".test_financial_integrity_audit_flags_missing_debit_ledger()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3358",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_services_reportsservicetests_test_financial_integrity_audit_flags_stale_legacy_charge",
+      "label": ".test_financial_integrity_audit_flags_stale_legacy_charge()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3375",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_services_reportsservicetests_test_financial_integrity_audit_flags_stale_debit_ledger",
+      "label": ".test_financial_integrity_audit_flags_stale_debit_ledger()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3396",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_services_reportsservicetests_test_financial_integrity_audit_marks_mixed_funding_as_info",
+      "label": ".test_financial_integrity_audit_marks_mixed_funding_as_info()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3416",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_services_reportsservicetests_single_issue",
+      "label": "._single_issue()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3443",
+      "_origin": "ast"
+    },
+    {
+      "id": "financialintegrityissue",
+      "label": "FinancialIntegrityIssue",
+      "file_type": "code",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3443",
       "_origin": "ast"
     },
     {
@@ -7992,7 +8200,7 @@
       "label": ".test_payroll_generation_is_idempotent_for_charged_assignment()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3326",
+      "source_location": "L3452",
       "_origin": "ast"
     },
     {
@@ -8000,7 +8208,7 @@
       "label": ".test_payroll_generation_ignores_legacy_charge_when_participants_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3361",
+      "source_location": "L3487",
       "_origin": "ast"
     },
     {
@@ -8008,7 +8216,7 @@
       "label": ".test_payroll_generation_includes_legacy_rows_when_assignments_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3387",
+      "source_location": "L3513",
       "_origin": "ast"
     },
     {
@@ -8016,7 +8224,7 @@
       "label": ".test_payroll_generation_prefers_duration_specific_rule()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3434",
+      "source_location": "L3560",
       "_origin": "ast"
     },
     {
@@ -8024,7 +8232,7 @@
       "label": ".test_payroll_generation_uses_grant_allocation_rate()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3469",
+      "source_location": "L3595",
       "_origin": "ast"
     },
     {
@@ -8032,7 +8240,7 @@
       "label": ".test_payroll_generation_does_not_link_single_participant_for_group_charge()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3502",
+      "source_location": "L3628",
       "_origin": "ast"
     },
     {
@@ -8040,7 +8248,7 @@
       "label": ".test_payroll_generation_uses_generic_rule_for_mixed_group_funding()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3531",
+      "source_location": "L3657",
       "_origin": "ast"
     },
     {
@@ -8048,7 +8256,7 @@
       "label": ".test_payroll_sheet_creation_and_approval()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3565",
+      "source_location": "L3691",
       "_origin": "ast"
     },
     {
@@ -8056,7 +8264,7 @@
       "label": ".test_grant_report_sums_initial_topups_charges()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3595",
+      "source_location": "L3721",
       "_origin": "ast"
     },
     {
@@ -8064,7 +8272,7 @@
       "label": ".test_grant_report_counts_group_participant_account_appointments()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3622",
+      "source_location": "L3748",
       "_origin": "ast"
     },
     {
@@ -8072,7 +8280,7 @@
       "label": ".test_grant_report_includes_recipient_allocations()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3668",
+      "source_location": "L3794",
       "_origin": "ast"
     },
     {
@@ -8080,7 +8288,7 @@
       "label": ".test_grant_report_recipient_allocation_filters_service_and_valid_dates()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3700",
+      "source_location": "L3826",
       "_origin": "ast"
     },
     {
@@ -8088,7 +8296,7 @@
       "label": ".test_grant_report_includes_service_quota_and_staff_allocation()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3761",
+      "source_location": "L3887",
       "_origin": "ast"
     },
     {
@@ -8096,7 +8304,7 @@
       "label": ".test_grant_report_quota_ignores_legacy_charge_when_participants_exist()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3797",
+      "source_location": "L3923",
       "_origin": "ast"
     },
     {
@@ -8104,7 +8312,7 @@
       "label": ".test_grant_report_counts_staff_allocation_fact_inside_allocation_dates()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3827",
+      "source_location": "L3953",
       "_origin": "ast"
     },
     {
@@ -8112,7 +8320,7 @@
       "label": ".test_grant_report_counts_quota_fact_inside_quota_dates()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3868",
+      "source_location": "L3994",
       "_origin": "ast"
     },
     {
@@ -8120,7 +8328,7 @@
       "label": ".test_grant_report_direct_allocation_ignores_unallocated_staff_fact()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3916",
+      "source_location": "L4042",
       "_origin": "ast"
     },
     {
@@ -8128,7 +8336,7 @@
       "label": "NotificationsServiceTests",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3959",
+      "source_location": "L4085",
       "_origin": "ast"
     },
     {
@@ -8136,7 +8344,7 @@
       "label": ".setUp()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3960",
+      "source_location": "L4086",
       "_origin": "ast"
     },
     {
@@ -8144,7 +8352,7 @@
       "label": ".test_send_confirmation_email_marks_sent()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3982",
+      "source_location": "L4108",
       "_origin": "ast"
     },
     {
@@ -8152,7 +8360,7 @@
       "label": ".test_build_confirmation_email_contains_url()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3997",
+      "source_location": "L4123",
       "_origin": "ast"
     },
     {
@@ -8160,7 +8368,7 @@
       "label": ".test_build_confirmation_email_uses_group_participants_and_staff()",
       "file_type": "code",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4002",
+      "source_location": "L4128",
       "_origin": "ast"
     },
     {
@@ -28543,6 +28751,94 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_15_financial_integrity_audit_contract",
+      "label": "15-financial-integrity-audit-contract.md",
+      "file_type": "document",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_15_financial_integrity_audit_contract_контракт_среза_financial_integrity_audit",
+      "label": "Контракт среза: financial-integrity-audit",
+      "file_type": "document",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_15_financial_integrity_audit_contract_почему_это_следующий_срез",
+      "label": "Почему это следующий срез",
+      "file_type": "document",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L9",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_15_financial_integrity_audit_contract_текущее_состояние",
+      "label": "Текущее состояние",
+      "file_type": "document",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L22",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_15_financial_integrity_audit_contract_инварианты",
+      "label": "Инварианты",
+      "file_type": "document",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L34",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_15_financial_integrity_audit_contract_не_входит_в_первый_срез",
+      "label": "Не входит в первый срез",
+      "file_type": "document",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L47",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_15_financial_integrity_audit_contract_первый_кодовый_срез",
+      "label": "Первый кодовый срез",
+      "file_type": "document",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L57",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_15_financial_integrity_audit_contract_acceptance_criteria_первого_среза",
+      "label": "Acceptance criteria первого среза",
+      "file_type": "document",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L79",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_15_financial_integrity_audit_contract_проверки",
+      "label": "Проверки",
+      "file_type": "document",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L90",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_15_financial_integrity_audit_contract_файловые_границы",
+      "label": "Файловые границы",
+      "file_type": "document",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L105",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_15_financial_integrity_audit_contract_параллельные_агенты",
+      "label": "Параллельные агенты",
+      "file_type": "document",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L124",
+      "_origin": "ast"
+    },
+    {
       "id": "docs_critical_stack_ux_review_2026_06_10",
       "label": "CRITICAL_STACK_UX_REVIEW_2026-06-10.md",
       "file_type": "document",
@@ -29799,6 +30095,14 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_current_state_обновление_2026_07_15_контракт_financial_integrity_audit",
+      "label": "Обновление 2026-07-15: контракт financial-integrity-audit",
+      "file_type": "document",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1312",
+      "_origin": "ast"
+    },
+    {
       "id": "decisions_adr_001_django_postgresql_local_first",
       "label": "ADR-001-django-postgresql-local-first.md",
       "file_type": "document",
@@ -30139,7 +30443,7 @@
       "label": "Как использовать",
       "file_type": "document",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L55",
+      "source_location": "L56",
       "_origin": "ast"
     },
     {
@@ -30179,7 +30483,7 @@
       "label": "Порядок восстановления контекста",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L39",
+      "source_location": "L40",
       "_origin": "ast"
     },
     {
@@ -30187,7 +30491,7 @@
       "label": "Skills и назначение",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L55",
+      "source_location": "L57",
       "_origin": "ast"
     },
     {
@@ -30195,7 +30499,7 @@
       "label": "Восстановление инструментов",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L68",
+      "source_location": "L70",
       "_origin": "ast"
     },
     {
@@ -30203,7 +30507,7 @@
       "label": "Graphify",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L70",
+      "source_location": "L72",
       "_origin": "ast"
     },
     {
@@ -30211,7 +30515,7 @@
       "label": "Browser QA",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L89",
+      "source_location": "L91",
       "_origin": "ast"
     },
     {
@@ -30219,7 +30523,7 @@
       "label": "Протокол контрольной точки",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L98",
+      "source_location": "L100",
       "_origin": "ast"
     },
     {
@@ -30227,7 +30531,7 @@
       "label": "Текущее состояние восстановления",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L110",
+      "source_location": "L112",
       "_origin": "ast"
     },
     {
@@ -30235,7 +30539,7 @@
       "label": "Ближайшие задачи",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L151",
+      "source_location": "L154",
       "_origin": "ast"
     },
     {
@@ -30243,7 +30547,7 @@
       "label": "Постоянные риски",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L158",
+      "source_location": "L161",
       "_origin": "ast"
     },
     {
@@ -40816,6 +41120,493 @@
       "weight": 1.0
     },
     {
+      "source": "services_financial_integrity",
+      "target": "collections_abc",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "dataclasses",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L6",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "operations_models",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "operations_services_financial_facts",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L15",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "services_financial_integrity_financialissuecode",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L18",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "services_financial_integrity_financialissueseverity",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L29",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "services_financial_integrity_financialintegrityissue",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L36",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "services_financial_integrity_audit_appointments",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L47",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_audit_appointments",
+      "target": "operations_services_financial_integrity_py_appointment",
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L47",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_audit_appointments",
+      "target": "services_financial_integrity_financialintegrityissue",
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L47",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "services_financial_integrity_audit_appointment",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L58",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_audit_appointment",
+      "target": "operations_services_financial_integrity_py_appointment",
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L58",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_audit_appointment",
+      "target": "services_financial_integrity_financialintegrityissue",
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L58",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "services_financial_integrity_participant_charge_issues",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L109",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_participant_charge_issues",
+      "target": "operations_services_financial_integrity_py_appointment",
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L109",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_participant_charge_issues",
+      "target": "operations_services_financial_integrity_py_appointmentparticipant",
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L109",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_participant_charge_issues",
+      "target": "services_financial_integrity_financialintegrityissue",
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L109",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "services_financial_integrity_legacy_charge_issue",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L144",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_legacy_charge_issue",
+      "target": "operations_services_financial_integrity_py_appointment",
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L144",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_legacy_charge_issue",
+      "target": "operations_services_financial_integrity_py_appointmentparticipant",
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L144",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_legacy_charge_issue",
+      "target": "services_financial_integrity_financialintegrityissue",
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L144",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "services_financial_integrity_legacy_charge_matches_single_participant",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L167",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_legacy_charge_matches_single_participant",
+      "target": "operations_services_financial_integrity_py_appointment",
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L167",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_legacy_charge_matches_single_participant",
+      "target": "operations_services_financial_integrity_py_appointmentparticipant",
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L167",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "services_financial_integrity_ledger_issues",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L181",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_ledger_issues",
+      "target": "operations_services_financial_integrity_py_appointment",
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L181",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_ledger_issues",
+      "target": "operations_services_financial_integrity_py_appointmentparticipant",
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L181",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_ledger_issues",
+      "target": "operations_services_financial_integrity_py_ledgerentry",
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L181",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_ledger_issues",
+      "target": "services_financial_integrity_financialintegrityissue",
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L181",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "services_financial_integrity_ledger_matches_charge_fact",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L230",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_ledger_matches_charge_fact",
+      "target": "operations_services_financial_integrity_py_appointment",
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L230",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_ledger_matches_charge_fact",
+      "target": "operations_services_financial_integrity_py_appointmentparticipant",
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L230",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_ledger_matches_charge_fact",
+      "target": "operations_services_financial_integrity_py_ledgerentry",
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L230",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "services_financial_integrity_fact_account",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L250",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_fact_account",
+      "target": "operations_services_financial_integrity_py_appointment",
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L250",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_fact_account",
+      "target": "operations_services_financial_integrity_py_appointmentparticipant",
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L250",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_fact_account",
+      "target": "operations_services_financial_integrity_py_balanceaccount",
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L250",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_audit_appointments",
+      "target": "services_financial_integrity_audit_appointment",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L54",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_audit_appointment",
+      "target": "services_financial_integrity_participant_charge_issues",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L78",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_audit_appointment",
+      "target": "services_financial_integrity_legacy_charge_issue",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L79",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_audit_appointment",
+      "target": "services_financial_integrity_financialintegrityissue",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L84",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_audit_appointment",
+      "target": "services_financial_integrity_fact_account",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L90",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_audit_appointment",
+      "target": "services_financial_integrity_ledger_issues",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L105",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_participant_charge_issues",
+      "target": "services_financial_integrity_financialintegrityissue",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L120",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_legacy_charge_issue",
+      "target": "services_financial_integrity_legacy_charge_matches_single_participant",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L150",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_legacy_charge_issue",
+      "target": "services_financial_integrity_financialintegrityissue",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L152",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_ledger_issues",
+      "target": "services_financial_integrity_financialintegrityissue",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L190",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_ledger_issues",
+      "target": "services_financial_integrity_ledger_matches_charge_fact",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L214",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_rationale_1",
+      "target": "services_financial_integrity",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_rationale_50",
+      "target": "services_financial_integrity_audit_appointments",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L50",
+      "weight": 1.0
+    },
+    {
       "source": "services_import_preview",
       "target": "csv",
       "relation": "imports",
@@ -48146,7 +48937,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L63",
+      "source_location": "L64",
       "weight": 1.0
     },
     {
@@ -48155,7 +48946,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L67",
+      "source_location": "L68",
       "weight": 1.0
     },
     {
@@ -48164,7 +48955,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L69",
+      "source_location": "L70",
       "weight": 1.0
     },
     {
@@ -48173,7 +48964,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L118",
+      "source_location": "L119",
       "weight": 1.0
     },
     {
@@ -48182,7 +48973,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L122",
+      "source_location": "L123",
       "weight": 1.0
     },
     {
@@ -48191,7 +48982,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L122",
+      "source_location": "L123",
       "weight": 1.0
     },
     {
@@ -48200,7 +48991,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L122",
+      "source_location": "L123",
       "weight": 1.0
     },
     {
@@ -48209,7 +49000,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L123",
+      "source_location": "L124",
       "weight": 1.0
     },
     {
@@ -48218,7 +49009,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L135",
+      "source_location": "L136",
       "weight": 1.0
     },
     {
@@ -48227,7 +49018,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L159",
+      "source_location": "L160",
       "weight": 1.0
     },
     {
@@ -48236,7 +49027,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L218",
+      "source_location": "L219",
       "weight": 1.0
     },
     {
@@ -48245,7 +49036,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L233",
+      "source_location": "L234",
       "weight": 1.0
     },
     {
@@ -48254,7 +49045,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L273",
+      "source_location": "L274",
       "weight": 1.0
     },
     {
@@ -48263,7 +49054,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L289",
+      "source_location": "L290",
       "weight": 1.0
     },
     {
@@ -48272,7 +49063,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L308",
+      "source_location": "L309",
       "weight": 1.0
     },
     {
@@ -48281,7 +49072,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L322",
+      "source_location": "L323",
       "weight": 1.0
     },
     {
@@ -48290,7 +49081,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L322",
+      "source_location": "L323",
       "weight": 1.0
     },
     {
@@ -48299,7 +49090,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L322",
+      "source_location": "L323",
       "weight": 1.0
     },
     {
@@ -48308,7 +49099,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L323",
+      "source_location": "L324",
       "weight": 1.0
     },
     {
@@ -48317,7 +49108,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L363",
+      "source_location": "L364",
       "weight": 1.0
     },
     {
@@ -48326,7 +49117,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L390",
+      "source_location": "L391",
       "weight": 1.0
     },
     {
@@ -48335,7 +49126,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L422",
+      "source_location": "L423",
       "weight": 1.0
     },
     {
@@ -48344,7 +49135,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L466",
+      "source_location": "L467",
       "weight": 1.0
     },
     {
@@ -48353,7 +49144,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L517",
+      "source_location": "L518",
       "weight": 1.0
     },
     {
@@ -48362,7 +49153,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L551",
+      "source_location": "L552",
       "weight": 1.0
     },
     {
@@ -48371,7 +49162,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L551",
+      "source_location": "L552",
       "weight": 1.0
     },
     {
@@ -48380,7 +49171,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L551",
+      "source_location": "L552",
       "weight": 1.0
     },
     {
@@ -48389,7 +49180,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L552",
+      "source_location": "L553",
       "weight": 1.0
     },
     {
@@ -48398,7 +49189,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L564",
+      "source_location": "L565",
       "weight": 1.0
     },
     {
@@ -48407,7 +49198,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L579",
+      "source_location": "L580",
       "weight": 1.0
     },
     {
@@ -48416,7 +49207,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L603",
+      "source_location": "L604",
       "weight": 1.0
     },
     {
@@ -48425,7 +49216,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L650",
+      "source_location": "L651",
       "weight": 1.0
     },
     {
@@ -48434,7 +49225,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L674",
+      "source_location": "L675",
       "weight": 1.0
     },
     {
@@ -48443,7 +49234,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L698",
+      "source_location": "L699",
       "weight": 1.0
     },
     {
@@ -48452,7 +49243,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L716",
+      "source_location": "L717",
       "weight": 1.0
     },
     {
@@ -48461,7 +49252,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L733",
+      "source_location": "L734",
       "weight": 1.0
     },
     {
@@ -48470,7 +49261,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L766",
+      "source_location": "L767",
       "weight": 1.0
     },
     {
@@ -48479,7 +49270,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L809",
+      "source_location": "L810",
       "weight": 1.0
     },
     {
@@ -48488,7 +49279,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L813",
+      "source_location": "L814",
       "weight": 1.0
     },
     {
@@ -48497,7 +49288,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L835",
+      "source_location": "L836",
       "weight": 1.0
     },
     {
@@ -48506,7 +49297,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L855",
+      "source_location": "L856",
       "weight": 1.0
     },
     {
@@ -48515,7 +49306,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L855",
+      "source_location": "L856",
       "weight": 1.0
     },
     {
@@ -48524,7 +49315,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L855",
+      "source_location": "L856",
       "weight": 1.0
     },
     {
@@ -48533,7 +49324,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L856",
+      "source_location": "L857",
       "weight": 1.0
     },
     {
@@ -48542,7 +49333,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L876",
+      "source_location": "L877",
       "weight": 1.0
     },
     {
@@ -48551,7 +49342,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L892",
+      "source_location": "L893",
       "weight": 1.0
     },
     {
@@ -48560,7 +49351,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L936",
+      "source_location": "L937",
       "weight": 1.0
     },
     {
@@ -48569,7 +49360,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L961",
+      "source_location": "L962",
       "weight": 1.0
     },
     {
@@ -48578,7 +49369,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L976",
+      "source_location": "L977",
       "weight": 1.0
     },
     {
@@ -48587,7 +49378,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L989",
+      "source_location": "L990",
       "weight": 1.0
     },
     {
@@ -48596,7 +49387,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1006",
+      "source_location": "L1007",
       "weight": 1.0
     },
     {
@@ -48605,7 +49396,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1027",
+      "source_location": "L1028",
       "weight": 1.0
     },
     {
@@ -48614,7 +49405,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1045",
+      "source_location": "L1046",
       "weight": 1.0
     },
     {
@@ -48623,7 +49414,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1076",
+      "source_location": "L1077",
       "weight": 1.0
     },
     {
@@ -48632,7 +49423,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1149",
+      "source_location": "L1150",
       "weight": 1.0
     },
     {
@@ -48641,7 +49432,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1197",
+      "source_location": "L1198",
       "weight": 1.0
     },
     {
@@ -48650,7 +49441,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1197",
+      "source_location": "L1198",
       "weight": 1.0
     },
     {
@@ -48659,7 +49450,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1197",
+      "source_location": "L1198",
       "weight": 1.0
     },
     {
@@ -48668,7 +49459,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1198",
+      "source_location": "L1199",
       "weight": 1.0
     },
     {
@@ -48677,7 +49468,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1209",
+      "source_location": "L1210",
       "weight": 1.0
     },
     {
@@ -48686,7 +49477,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1265",
+      "source_location": "L1266",
       "weight": 1.0
     },
     {
@@ -48695,7 +49486,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1286",
+      "source_location": "L1287",
       "weight": 1.0
     },
     {
@@ -48704,7 +49495,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1314",
+      "source_location": "L1315",
       "weight": 1.0
     },
     {
@@ -48713,7 +49504,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1389",
+      "source_location": "L1390",
       "weight": 1.0
     },
     {
@@ -48722,7 +49513,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1464",
+      "source_location": "L1465",
       "weight": 1.0
     },
     {
@@ -48731,7 +49522,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1509",
+      "source_location": "L1510",
       "weight": 1.0
     },
     {
@@ -48740,7 +49531,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1559",
+      "source_location": "L1560",
       "weight": 1.0
     },
     {
@@ -48749,7 +49540,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1613",
+      "source_location": "L1614",
       "weight": 1.0
     },
     {
@@ -48758,7 +49549,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1636",
+      "source_location": "L1637",
       "weight": 1.0
     },
     {
@@ -48767,7 +49558,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1670",
+      "source_location": "L1671",
       "weight": 1.0
     },
     {
@@ -48776,7 +49567,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1698",
+      "source_location": "L1699",
       "weight": 1.0
     },
     {
@@ -48785,7 +49576,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1728",
+      "source_location": "L1729",
       "weight": 1.0
     },
     {
@@ -48794,7 +49585,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1746",
+      "source_location": "L1747",
       "weight": 1.0
     },
     {
@@ -48803,7 +49594,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1775",
+      "source_location": "L1776",
       "weight": 1.0
     },
     {
@@ -48812,7 +49603,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1806",
+      "source_location": "L1807",
       "weight": 1.0
     },
     {
@@ -48821,7 +49612,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1840",
+      "source_location": "L1841",
       "weight": 1.0
     },
     {
@@ -48830,7 +49621,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1884",
+      "source_location": "L1885",
       "weight": 1.0
     },
     {
@@ -48839,7 +49630,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1934",
+      "source_location": "L1935",
       "weight": 1.0
     },
     {
@@ -48848,7 +49639,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1981",
+      "source_location": "L1982",
       "weight": 1.0
     },
     {
@@ -48857,7 +49648,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2002",
+      "source_location": "L2003",
       "weight": 1.0
     },
     {
@@ -48866,7 +49657,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2080",
+      "source_location": "L2081",
       "weight": 1.0
     },
     {
@@ -48875,7 +49666,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2142",
+      "source_location": "L2143",
       "weight": 1.0
     },
     {
@@ -48884,7 +49675,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2180",
+      "source_location": "L2181",
       "weight": 1.0
     },
     {
@@ -48893,7 +49684,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2205",
+      "source_location": "L2206",
       "weight": 1.0
     },
     {
@@ -48902,7 +49693,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2231",
+      "source_location": "L2232",
       "weight": 1.0
     },
     {
@@ -48911,7 +49702,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2262",
+      "source_location": "L2263",
       "weight": 1.0
     },
     {
@@ -48920,7 +49711,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2279",
+      "source_location": "L2280",
       "weight": 1.0
     },
     {
@@ -48929,7 +49720,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2300",
+      "source_location": "L2301",
       "weight": 1.0
     },
     {
@@ -48938,7 +49729,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2324",
+      "source_location": "L2325",
       "weight": 1.0
     },
     {
@@ -48947,7 +49738,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2352",
+      "source_location": "L2353",
       "weight": 1.0
     },
     {
@@ -48956,7 +49747,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2352",
+      "source_location": "L2353",
       "weight": 1.0
     },
     {
@@ -48965,7 +49756,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2352",
+      "source_location": "L2353",
       "weight": 1.0
     },
     {
@@ -48974,7 +49765,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2353",
+      "source_location": "L2354",
       "weight": 1.0
     },
     {
@@ -48983,7 +49774,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2370",
+      "source_location": "L2371",
       "weight": 1.0
     },
     {
@@ -48992,7 +49783,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2385",
+      "source_location": "L2386",
       "weight": 1.0
     },
     {
@@ -49001,7 +49792,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2409",
+      "source_location": "L2410",
       "weight": 1.0
     },
     {
@@ -49010,7 +49801,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2442",
+      "source_location": "L2443",
       "weight": 1.0
     },
     {
@@ -49019,7 +49810,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2464",
+      "source_location": "L2465",
       "weight": 1.0
     },
     {
@@ -49028,7 +49819,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2483",
+      "source_location": "L2484",
       "weight": 1.0
     },
     {
@@ -49037,7 +49828,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2501",
+      "source_location": "L2502",
       "weight": 1.0
     },
     {
@@ -49046,7 +49837,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2536",
+      "source_location": "L2537",
       "weight": 1.0
     },
     {
@@ -49055,7 +49846,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2572",
+      "source_location": "L2573",
       "weight": 1.0
     },
     {
@@ -49064,7 +49855,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2593",
+      "source_location": "L2594",
       "weight": 1.0
     },
     {
@@ -49073,7 +49864,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2608",
+      "source_location": "L2609",
       "weight": 1.0
     },
     {
@@ -49082,7 +49873,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2627",
+      "source_location": "L2628",
       "weight": 1.0
     },
     {
@@ -49091,7 +49882,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2669",
+      "source_location": "L2670",
       "weight": 1.0
     },
     {
@@ -49100,7 +49891,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2669",
+      "source_location": "L2670",
       "weight": 1.0
     },
     {
@@ -49109,7 +49900,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2670",
+      "source_location": "L2671",
       "weight": 1.0
     },
     {
@@ -49118,7 +49909,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2690",
+      "source_location": "L2691",
       "weight": 1.0
     },
     {
@@ -49127,7 +49918,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2710",
+      "source_location": "L2711",
       "weight": 1.0
     },
     {
@@ -49136,7 +49927,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2710",
+      "source_location": "L2711",
       "weight": 1.0
     },
     {
@@ -49145,7 +49936,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2710",
+      "source_location": "L2711",
       "weight": 1.0
     },
     {
@@ -49154,7 +49945,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2711",
+      "source_location": "L2712",
       "weight": 1.0
     },
     {
@@ -49163,7 +49954,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2723",
+      "source_location": "L2724",
       "weight": 1.0
     },
     {
@@ -49172,7 +49963,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2771",
+      "source_location": "L2772",
       "weight": 1.0
     },
     {
@@ -49181,7 +49972,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2829",
+      "source_location": "L2830",
       "weight": 1.0
     },
     {
@@ -49190,7 +49981,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2844",
+      "source_location": "L2845",
       "weight": 1.0
     },
     {
@@ -49199,7 +49990,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2862",
+      "source_location": "L2863",
       "weight": 1.0
     },
     {
@@ -49208,7 +49999,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2902",
+      "source_location": "L2903",
       "weight": 1.0
     },
     {
@@ -49217,7 +50008,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2934",
+      "source_location": "L2935",
       "weight": 1.0
     },
     {
@@ -49226,7 +50017,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2949",
+      "source_location": "L2950",
       "weight": 1.0
     },
     {
@@ -49235,7 +50026,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2975",
+      "source_location": "L2976",
       "weight": 1.0
     },
     {
@@ -49244,7 +50035,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3000",
+      "source_location": "L3001",
       "weight": 1.0
     },
     {
@@ -49253,7 +50044,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3025",
+      "source_location": "L3026",
       "weight": 1.0
     },
     {
@@ -49262,7 +50053,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3043",
+      "source_location": "L3044",
       "weight": 1.0
     },
     {
@@ -49271,7 +50062,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3057",
+      "source_location": "L3058",
       "weight": 1.0
     },
     {
@@ -49280,7 +50071,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3079",
+      "source_location": "L3080",
       "weight": 1.0
     },
     {
@@ -49289,7 +50080,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3099",
+      "source_location": "L3100",
       "weight": 1.0
     },
     {
@@ -49298,7 +50089,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3118",
+      "source_location": "L3119",
       "weight": 1.0
     },
     {
@@ -49307,7 +50098,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3145",
+      "source_location": "L3146",
       "weight": 1.0
     },
     {
@@ -49316,7 +50107,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3174",
+      "source_location": "L3175",
       "weight": 1.0
     },
     {
@@ -49325,7 +50116,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3201",
+      "source_location": "L3202",
       "weight": 1.0
     },
     {
@@ -49334,7 +50125,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3229",
+      "source_location": "L3230",
       "weight": 1.0
     },
     {
@@ -49343,7 +50134,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3252",
+      "source_location": "L3253",
       "weight": 1.0
     },
     {
@@ -49352,7 +50143,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3267",
+      "source_location": "L3268",
       "weight": 1.0
     },
     {
@@ -49361,7 +50152,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3295",
+      "source_location": "L3296",
       "weight": 1.0
     },
     {
@@ -49370,7 +50161,80 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3309",
+      "source_location": "L3310",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests",
+      "target": "tests_test_services_reportsservicetests_test_financial_integrity_audit_has_no_error_for_valid_charge",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3327",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests",
+      "target": "tests_test_services_reportsservicetests_test_financial_integrity_audit_flags_participant_charge_without_account",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3341",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests",
+      "target": "tests_test_services_reportsservicetests_test_financial_integrity_audit_flags_missing_debit_ledger",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3358",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests",
+      "target": "tests_test_services_reportsservicetests_test_financial_integrity_audit_flags_stale_legacy_charge",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3375",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests",
+      "target": "tests_test_services_reportsservicetests_test_financial_integrity_audit_flags_stale_debit_ledger",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3396",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests",
+      "target": "tests_test_services_reportsservicetests_test_financial_integrity_audit_marks_mixed_funding_as_info",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3416",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests",
+      "target": "tests_test_services_reportsservicetests_single_issue",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3443",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests_single_issue",
+      "target": "financialintegrityissue",
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3443",
       "weight": 1.0
     },
     {
@@ -49379,7 +50243,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3326",
+      "source_location": "L3452",
       "weight": 1.0
     },
     {
@@ -49388,7 +50252,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3361",
+      "source_location": "L3487",
       "weight": 1.0
     },
     {
@@ -49397,7 +50261,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3387",
+      "source_location": "L3513",
       "weight": 1.0
     },
     {
@@ -49406,7 +50270,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3434",
+      "source_location": "L3560",
       "weight": 1.0
     },
     {
@@ -49415,7 +50279,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3469",
+      "source_location": "L3595",
       "weight": 1.0
     },
     {
@@ -49424,7 +50288,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3502",
+      "source_location": "L3628",
       "weight": 1.0
     },
     {
@@ -49433,7 +50297,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3531",
+      "source_location": "L3657",
       "weight": 1.0
     },
     {
@@ -49442,7 +50306,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3565",
+      "source_location": "L3691",
       "weight": 1.0
     },
     {
@@ -49451,7 +50315,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3595",
+      "source_location": "L3721",
       "weight": 1.0
     },
     {
@@ -49460,7 +50324,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3622",
+      "source_location": "L3748",
       "weight": 1.0
     },
     {
@@ -49469,7 +50333,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3668",
+      "source_location": "L3794",
       "weight": 1.0
     },
     {
@@ -49478,7 +50342,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3700",
+      "source_location": "L3826",
       "weight": 1.0
     },
     {
@@ -49487,7 +50351,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3761",
+      "source_location": "L3887",
       "weight": 1.0
     },
     {
@@ -49496,7 +50360,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3797",
+      "source_location": "L3923",
       "weight": 1.0
     },
     {
@@ -49505,7 +50369,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3827",
+      "source_location": "L3953",
       "weight": 1.0
     },
     {
@@ -49514,7 +50378,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3868",
+      "source_location": "L3994",
       "weight": 1.0
     },
     {
@@ -49523,7 +50387,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3916",
+      "source_location": "L4042",
       "weight": 1.0
     },
     {
@@ -49532,7 +50396,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3959",
+      "source_location": "L4085",
       "weight": 1.0
     },
     {
@@ -49541,7 +50405,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3959",
+      "source_location": "L4085",
       "weight": 1.0
     },
     {
@@ -49550,7 +50414,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3959",
+      "source_location": "L4085",
       "weight": 1.0
     },
     {
@@ -49559,7 +50423,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3960",
+      "source_location": "L4086",
       "weight": 1.0
     },
     {
@@ -49568,7 +50432,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3982",
+      "source_location": "L4108",
       "weight": 1.0
     },
     {
@@ -49577,7 +50441,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3997",
+      "source_location": "L4123",
       "weight": 1.0
     },
     {
@@ -49586,7 +50450,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L4002",
+      "source_location": "L4128",
       "weight": 1.0
     },
     {
@@ -49596,7 +50460,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L128",
+      "source_location": "L129",
       "weight": 1.0
     },
     {
@@ -49606,7 +50470,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L140",
+      "source_location": "L141",
       "weight": 1.0
     },
     {
@@ -49616,7 +50480,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L181",
+      "source_location": "L182",
       "weight": 1.0
     },
     {
@@ -49626,7 +50490,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L223",
+      "source_location": "L224",
       "weight": 1.0
     },
     {
@@ -49636,7 +50500,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L248",
+      "source_location": "L249",
       "weight": 1.0
     },
     {
@@ -49646,7 +50510,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L278",
+      "source_location": "L279",
       "weight": 1.0
     },
     {
@@ -49656,7 +50520,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L294",
+      "source_location": "L295",
       "weight": 1.0
     },
     {
@@ -49666,7 +50530,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L313",
+      "source_location": "L314",
       "weight": 1.0
     },
     {
@@ -49676,7 +50540,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L329",
+      "source_location": "L330",
       "weight": 1.0
     },
     {
@@ -49686,7 +50550,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L369",
+      "source_location": "L370",
       "weight": 1.0
     },
     {
@@ -49696,7 +50560,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L404",
+      "source_location": "L405",
       "weight": 1.0
     },
     {
@@ -49706,7 +50570,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L428",
+      "source_location": "L429",
       "weight": 1.0
     },
     {
@@ -49716,7 +50580,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L481",
+      "source_location": "L482",
       "weight": 1.0
     },
     {
@@ -49726,7 +50590,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L524",
+      "source_location": "L525",
       "weight": 1.0
     },
     {
@@ -49736,7 +50600,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L553",
+      "source_location": "L554",
       "weight": 1.0
     },
     {
@@ -49746,7 +50610,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L558",
+      "source_location": "L559",
       "weight": 1.0
     },
     {
@@ -49756,7 +50620,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L793",
+      "source_location": "L794",
       "weight": 1.0
     },
     {
@@ -49766,7 +50630,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L861",
+      "source_location": "L862",
       "weight": 1.0
     },
     {
@@ -49776,7 +50640,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L881",
+      "source_location": "L882",
       "weight": 1.0
     },
     {
@@ -49786,7 +50650,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L902",
+      "source_location": "L903",
       "weight": 1.0
     },
     {
@@ -49796,7 +50660,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L948",
+      "source_location": "L949",
       "weight": 1.0
     },
     {
@@ -49806,7 +50670,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L971",
+      "source_location": "L972",
       "weight": 1.0
     },
     {
@@ -49816,7 +50680,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L985",
+      "source_location": "L986",
       "weight": 1.0
     },
     {
@@ -49826,7 +50690,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1050",
+      "source_location": "L1051",
       "weight": 1.0
     },
     {
@@ -49836,7 +50700,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1092",
+      "source_location": "L1093",
       "weight": 1.0
     },
     {
@@ -49846,7 +50710,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1159",
+      "source_location": "L1160",
       "weight": 1.0
     },
     {
@@ -49856,7 +50720,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1203",
+      "source_location": "L1204",
       "weight": 1.0
     },
     {
@@ -49866,7 +50730,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1214",
+      "source_location": "L1215",
       "weight": 1.0
     },
     {
@@ -49876,7 +50740,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1219",
+      "source_location": "L1220",
       "weight": 1.0
     },
     {
@@ -49886,7 +50750,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1266",
+      "source_location": "L1267",
       "weight": 1.0
     },
     {
@@ -49896,7 +50760,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1287",
+      "source_location": "L1288",
       "weight": 1.0
     },
     {
@@ -49906,7 +50770,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1315",
+      "source_location": "L1316",
       "weight": 1.0
     },
     {
@@ -49916,7 +50780,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1333",
+      "source_location": "L1334",
       "weight": 1.0
     },
     {
@@ -49926,7 +50790,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1394",
+      "source_location": "L1395",
       "weight": 1.0
     },
     {
@@ -49936,7 +50800,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1399",
+      "source_location": "L1400",
       "weight": 1.0
     },
     {
@@ -49946,7 +50810,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1465",
+      "source_location": "L1466",
       "weight": 1.0
     },
     {
@@ -49956,7 +50820,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1478",
+      "source_location": "L1479",
       "weight": 1.0
     },
     {
@@ -49966,7 +50830,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1510",
+      "source_location": "L1511",
       "weight": 1.0
     },
     {
@@ -49976,7 +50840,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1515",
+      "source_location": "L1516",
       "weight": 1.0
     },
     {
@@ -49986,7 +50850,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1560",
+      "source_location": "L1561",
       "weight": 1.0
     },
     {
@@ -49996,7 +50860,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1565",
+      "source_location": "L1566",
       "weight": 1.0
     },
     {
@@ -50006,7 +50870,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1614",
+      "source_location": "L1615",
       "weight": 1.0
     },
     {
@@ -50016,7 +50880,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1637",
+      "source_location": "L1638",
       "weight": 1.0
     },
     {
@@ -50026,7 +50890,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1671",
+      "source_location": "L1672",
       "weight": 1.0
     },
     {
@@ -50036,7 +50900,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1699",
+      "source_location": "L1700",
       "weight": 1.0
     },
     {
@@ -50046,7 +50910,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1729",
+      "source_location": "L1730",
       "weight": 1.0
     },
     {
@@ -50056,7 +50920,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1747",
+      "source_location": "L1748",
       "weight": 1.0
     },
     {
@@ -50066,7 +50930,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1776",
+      "source_location": "L1777",
       "weight": 1.0
     },
     {
@@ -50076,7 +50940,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1807",
+      "source_location": "L1808",
       "weight": 1.0
     },
     {
@@ -50086,7 +50950,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1841",
+      "source_location": "L1842",
       "weight": 1.0
     },
     {
@@ -50096,7 +50960,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1887",
+      "source_location": "L1888",
       "weight": 1.0
     },
     {
@@ -50106,7 +50970,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1935",
+      "source_location": "L1936",
       "weight": 1.0
     },
     {
@@ -50116,7 +50980,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1982",
+      "source_location": "L1983",
       "weight": 1.0
     },
     {
@@ -50126,7 +50990,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2003",
+      "source_location": "L2004",
       "weight": 1.0
     },
     {
@@ -50136,27 +51000,27 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2018",
+      "source_location": "L2019",
       "weight": 1.0
     },
     {
       "source": "tests_test_services_reschedulingplanservicetests_test_apply_step_with_room_override_creates_room_override",
       "target": "tests_test_services_reschedulingplanservicetests_appointment",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "operations/tests/test_services.py",
-      "source_location": "L2081",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_services_reschedulingplanservicetests_test_apply_step_with_room_override_creates_room_override",
-      "target": "tests_test_services_local",
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
       "source_location": "L2082",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reschedulingplanservicetests_test_apply_step_with_room_override_creates_room_override",
+      "target": "tests_test_services_local",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L2083",
       "weight": 1.0
     },
     {
@@ -50166,7 +51030,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2143",
+      "source_location": "L2144",
       "weight": 1.0
     },
     {
@@ -50176,7 +51040,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2181",
+      "source_location": "L2182",
       "weight": 1.0
     },
     {
@@ -50186,7 +51050,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2206",
+      "source_location": "L2207",
       "weight": 1.0
     },
     {
@@ -50196,7 +51060,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2234",
+      "source_location": "L2235",
       "weight": 1.0
     },
     {
@@ -50206,7 +51070,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2265",
+      "source_location": "L2266",
       "weight": 1.0
     },
     {
@@ -50216,7 +51080,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2282",
+      "source_location": "L2283",
       "weight": 1.0
     },
     {
@@ -50226,7 +51090,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2303",
+      "source_location": "L2304",
       "weight": 1.0
     },
     {
@@ -50236,7 +51100,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2327",
+      "source_location": "L2328",
       "weight": 1.0
     },
     {
@@ -50246,7 +51110,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2354",
+      "source_location": "L2355",
       "weight": 1.0
     },
     {
@@ -50256,7 +51120,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2397",
+      "source_location": "L2398",
       "weight": 1.0
     },
     {
@@ -50266,7 +51130,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2402",
+      "source_location": "L2403",
       "weight": 1.0
     },
     {
@@ -50276,7 +51140,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2424",
+      "source_location": "L2425",
       "weight": 1.0
     },
     {
@@ -50286,7 +51150,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2437",
+      "source_location": "L2438",
       "weight": 1.0
     },
     {
@@ -50296,7 +51160,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2450",
+      "source_location": "L2451",
       "weight": 1.0
     },
     {
@@ -50306,7 +51170,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2455",
+      "source_location": "L2456",
       "weight": 1.0
     },
     {
@@ -50316,7 +51180,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2472",
+      "source_location": "L2473",
       "weight": 1.0
     },
     {
@@ -50326,7 +51190,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2477",
+      "source_location": "L2478",
       "weight": 1.0
     },
     {
@@ -50336,7 +51200,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2495",
+      "source_location": "L2496",
       "weight": 1.0
     },
     {
@@ -50346,7 +51210,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2517",
+      "source_location": "L2518",
       "weight": 1.0
     },
     {
@@ -50356,7 +51220,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2531",
+      "source_location": "L2532",
       "weight": 1.0
     },
     {
@@ -50366,7 +51230,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2552",
+      "source_location": "L2553",
       "weight": 1.0
     },
     {
@@ -50376,7 +51240,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2567",
+      "source_location": "L2568",
       "weight": 1.0
     },
     {
@@ -50386,7 +51250,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2573",
+      "source_location": "L2574",
       "weight": 1.0
     },
     {
@@ -50396,7 +51260,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2594",
+      "source_location": "L2595",
       "weight": 1.0
     },
     {
@@ -50406,7 +51270,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2609",
+      "source_location": "L2610",
       "weight": 1.0
     },
     {
@@ -50416,7 +51280,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2693",
+      "source_location": "L2694",
       "weight": 1.0
     },
     {
@@ -50426,7 +51290,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2712",
+      "source_location": "L2713",
       "weight": 1.0
     },
     {
@@ -50436,7 +51300,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2717",
+      "source_location": "L2718",
       "weight": 1.0
     },
     {
@@ -50446,7 +51310,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2835",
+      "source_location": "L2836",
       "weight": 1.0
     },
     {
@@ -50456,7 +51320,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2845",
+      "source_location": "L2846",
       "weight": 1.0
     },
     {
@@ -50466,7 +51330,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2939",
+      "source_location": "L2940",
       "weight": 1.0
     },
     {
@@ -50476,7 +51340,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2950",
+      "source_location": "L2951",
       "weight": 1.0
     },
     {
@@ -50486,7 +51350,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2980",
+      "source_location": "L2981",
       "weight": 1.0
     },
     {
@@ -50496,7 +51360,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3217",
+      "source_location": "L3218",
       "weight": 1.0
     },
     {
@@ -50506,7 +51370,67 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3253",
+      "source_location": "L3254",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests_test_financial_integrity_audit_flags_participant_charge_without_account",
+      "target": "tests_test_services_reportsservicetests_single_issue",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3351",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests_test_financial_integrity_audit_flags_missing_debit_ledger",
+      "target": "tests_test_services_reportsservicetests_single_issue",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3368",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests_test_financial_integrity_audit_flags_stale_legacy_charge",
+      "target": "tests_test_services_reportsservicetests_single_issue",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3389",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests_test_financial_integrity_audit_flags_stale_debit_ledger",
+      "target": "tests_test_services_reportsservicetests_single_issue",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3409",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests_test_financial_integrity_audit_marks_mixed_funding_as_info",
+      "target": "tests_test_services_reportsservicetests_make_mixed_funding_group_charge",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3417",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services_reportsservicetests_test_financial_integrity_audit_marks_mixed_funding_as_info",
+      "target": "tests_test_services_reportsservicetests_single_issue",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L3431",
       "weight": 1.0
     },
     {
@@ -50516,7 +51440,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3405",
+      "source_location": "L3531",
       "weight": 1.0
     },
     {
@@ -50526,7 +51450,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3512",
+      "source_location": "L3638",
       "weight": 1.0
     },
     {
@@ -50536,7 +51460,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3547",
+      "source_location": "L3673",
       "weight": 1.0
     },
     {
@@ -50546,7 +51470,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3723",
+      "source_location": "L3849",
       "weight": 1.0
     },
     {
@@ -50556,7 +51480,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3897",
+      "source_location": "L4023",
       "weight": 1.0
     },
     {
@@ -50566,7 +51490,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3938",
+      "source_location": "L4064",
       "weight": 1.0
     },
     {
@@ -50576,7 +51500,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3966",
+      "source_location": "L4092",
       "weight": 1.0
     },
     {
@@ -98788,6 +99712,96 @@
       "weight": 1.0
     },
     {
+      "source": "docs_15_financial_integrity_audit_contract",
+      "target": "docs_15_financial_integrity_audit_contract_контракт_среза_financial_integrity_audit",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_15_financial_integrity_audit_contract_контракт_среза_financial_integrity_audit",
+      "target": "docs_15_financial_integrity_audit_contract_почему_это_следующий_срез",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_15_financial_integrity_audit_contract_контракт_среза_financial_integrity_audit",
+      "target": "docs_15_financial_integrity_audit_contract_текущее_состояние",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L22",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_15_financial_integrity_audit_contract_контракт_среза_financial_integrity_audit",
+      "target": "docs_15_financial_integrity_audit_contract_инварианты",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L34",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_15_financial_integrity_audit_contract_контракт_среза_financial_integrity_audit",
+      "target": "docs_15_financial_integrity_audit_contract_не_входит_в_первый_срез",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L47",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_15_financial_integrity_audit_contract_контракт_среза_financial_integrity_audit",
+      "target": "docs_15_financial_integrity_audit_contract_первый_кодовый_срез",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L57",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_15_financial_integrity_audit_contract_контракт_среза_financial_integrity_audit",
+      "target": "docs_15_financial_integrity_audit_contract_acceptance_criteria_первого_среза",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L79",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_15_financial_integrity_audit_contract_контракт_среза_financial_integrity_audit",
+      "target": "docs_15_financial_integrity_audit_contract_проверки",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L90",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_15_financial_integrity_audit_contract_контракт_среза_financial_integrity_audit",
+      "target": "docs_15_financial_integrity_audit_contract_файловые_границы",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L105",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_15_financial_integrity_audit_contract_контракт_среза_financial_integrity_audit",
+      "target": "docs_15_financial_integrity_audit_contract_параллельные_агенты",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/15-financial-integrity-audit-contract.md",
+      "source_location": "L124",
+      "weight": 1.0
+    },
+    {
       "source": "docs_critical_stack_ux_review_2026_06_10",
       "target": "docs_critical_stack_ux_review_2026_06_10_критический_срез_проекта_rmcodex",
       "relation": "contains",
@@ -100165,6 +101179,15 @@
       "weight": 1.0
     },
     {
+      "source": "docs_current_state_текущее_состояние_проекта_радость_моя",
+      "target": "docs_current_state_обновление_2026_07_15_контракт_financial_integrity_audit",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1312",
+      "weight": 1.0
+    },
+    {
       "source": "decisions_adr_001_django_postgresql_local_first",
       "target": "decisions_adr_001_django_postgresql_local_first_adr_001_django_postgresql_локальный_first_deployment",
       "relation": "contains",
@@ -100494,7 +101517,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L55",
+      "source_location": "L56",
       "weight": 1.0
     },
     {
@@ -100530,7 +101553,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L39",
+      "source_location": "L40",
       "weight": 1.0
     },
     {
@@ -100539,7 +101562,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L55",
+      "source_location": "L57",
       "weight": 1.0
     },
     {
@@ -100548,7 +101571,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L68",
+      "source_location": "L70",
       "weight": 1.0
     },
     {
@@ -100557,7 +101580,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L70",
+      "source_location": "L72",
       "weight": 1.0
     },
     {
@@ -100566,7 +101589,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L89",
+      "source_location": "L91",
       "weight": 1.0
     },
     {
@@ -100575,7 +101598,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L98",
+      "source_location": "L100",
       "weight": 1.0
     },
     {
@@ -100584,7 +101607,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L110",
+      "source_location": "L112",
       "weight": 1.0
     },
     {
@@ -100593,7 +101616,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L151",
+      "source_location": "L154",
       "weight": 1.0
     },
     {
@@ -100602,7 +101625,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L158",
+      "source_location": "L161",
       "weight": 1.0
     },
     {
@@ -102833,6 +103856,66 @@
       "confidence": "EXTRACTED",
       "source_file": "operations/services/financial_facts.py",
       "source_location": "L7",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "operations_models_appointment",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "operations_models_appointmentparticipant",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "operations_models_balanceaccount",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "operations_models_fundingsource",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "operations_models_ledgerentry",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity",
+      "target": "services_financial_facts_appointment_charge_fact",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L15",
       "weight": 1.0
     },
     {
@@ -106717,6 +107800,16 @@
     },
     {
       "source": "services_init",
+      "target": "services_financial_integrity",
+      "relation": "imports_from",
+      "context": "submodule_import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/__init__.py",
+      "source_location": "L7",
+      "weight": 1.0
+    },
+    {
+      "source": "services_init",
       "target": "services_import_preview",
       "relation": "imports_from",
       "context": "submodule_import",
@@ -106828,6 +107921,16 @@
     {
       "source": "tests_test_services",
       "target": "services_financial_facts",
+      "relation": "imports_from",
+      "context": "submodule_import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L49",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_services",
+      "target": "services_financial_integrity",
       "relation": "imports_from",
       "context": "submodule_import",
       "confidence": "EXTRACTED",
@@ -107093,6 +108196,16 @@
       "confidence": "EXTRACTED",
       "source_file": "operations/services/appointments.py",
       "source_location": "L109",
+      "weight": 1.0
+    },
+    {
+      "source": "services_financial_integrity_audit_appointment",
+      "target": "services_financial_facts_appointment_charge_fact",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L75",
       "weight": 1.0
     },
     {
@@ -133546,6 +134659,321 @@
       "weight": 0.8
     },
     {
+      "source": "services_financial_integrity_financialissuecode",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "services_financial_integrity_financialissueseverity",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "services_financial_integrity_financialintegrityissue",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_appointment",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_appointmentparticipant",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_ledgerentry",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_balanceaccount",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "services_financial_integrity_financialissuecode",
+      "target": "operations_models_appointmentparticipant",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "services_financial_integrity_financialissueseverity",
+      "target": "operations_models_appointmentparticipant",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "services_financial_integrity_financialintegrityissue",
+      "target": "operations_models_appointmentparticipant",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_appointment",
+      "target": "operations_models_appointmentparticipant",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_appointmentparticipant",
+      "target": "operations_models_appointmentparticipant",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_ledgerentry",
+      "target": "operations_models_appointmentparticipant",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_balanceaccount",
+      "target": "operations_models_appointmentparticipant",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "services_financial_integrity_financialissuecode",
+      "target": "operations_models_balanceaccount",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "services_financial_integrity_financialissueseverity",
+      "target": "operations_models_balanceaccount",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "services_financial_integrity_financialintegrityissue",
+      "target": "operations_models_balanceaccount",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_appointment",
+      "target": "operations_models_balanceaccount",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_appointmentparticipant",
+      "target": "operations_models_balanceaccount",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_ledgerentry",
+      "target": "operations_models_balanceaccount",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_balanceaccount",
+      "target": "operations_models_balanceaccount",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "services_financial_integrity_financialissuecode",
+      "target": "operations_models_fundingsource",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "services_financial_integrity_financialissueseverity",
+      "target": "operations_models_fundingsource",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "services_financial_integrity_financialintegrityissue",
+      "target": "operations_models_fundingsource",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_appointment",
+      "target": "operations_models_fundingsource",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_appointmentparticipant",
+      "target": "operations_models_fundingsource",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_ledgerentry",
+      "target": "operations_models_fundingsource",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_balanceaccount",
+      "target": "operations_models_fundingsource",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "services_financial_integrity_financialissuecode",
+      "target": "operations_models_ledgerentry",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "services_financial_integrity_financialissueseverity",
+      "target": "operations_models_ledgerentry",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "services_financial_integrity_financialintegrityissue",
+      "target": "operations_models_ledgerentry",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_appointment",
+      "target": "operations_models_ledgerentry",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_appointmentparticipant",
+      "target": "operations_models_ledgerentry",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_ledgerentry",
+      "target": "operations_models_ledgerentry",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
+      "source": "operations_services_financial_integrity_py_balanceaccount",
+      "target": "operations_models_ledgerentry",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/services/financial_integrity.py",
+      "source_location": "L8",
+      "weight": 0.8
+    },
+    {
       "source": "services_import_preview_importcolumn",
       "target": "operations_models_child",
       "relation": "uses",
@@ -141502,6 +142930,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_appointment",
       "relation": "uses",
@@ -141592,6 +143029,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_appointmentconfirmation",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_appointmentconfirmation",
       "relation": "uses",
@@ -141682,6 +143128,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_appointmentparticipant",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_appointmentparticipant",
       "relation": "uses",
@@ -141772,6 +143227,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_appointmentreschedulechain",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_appointmentreschedulechain",
       "relation": "uses",
@@ -141862,6 +143326,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_appointmentrescheduleplan",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_appointmentrescheduleplan",
       "relation": "uses",
@@ -141952,6 +143425,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_appointmentreschedulestep",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_appointmentreschedulestep",
       "relation": "uses",
@@ -142042,6 +143524,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_appointmentreschedulestepdependency",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_appointmentreschedulestepdependency",
       "relation": "uses",
@@ -142132,6 +143623,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_appointmentroomoverride",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_appointmentroomoverride",
       "relation": "uses",
@@ -142222,6 +143722,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_appointmentstaffassignment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_appointmentstaffassignment",
       "relation": "uses",
@@ -142312,6 +143821,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_balanceaccount",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_balanceaccount",
       "relation": "uses",
@@ -142402,6 +143920,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_child",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_child",
       "relation": "uses",
@@ -142492,6 +144019,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_fundingservicequota",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_fundingservicequota",
       "relation": "uses",
@@ -142582,6 +144118,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_fundingsource",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_fundingsource",
       "relation": "uses",
@@ -142672,6 +144217,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_fundingstaffallocation",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_fundingstaffallocation",
       "relation": "uses",
@@ -142762,6 +144316,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_grantrecipientallocation",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_grantrecipientallocation",
       "relation": "uses",
@@ -142852,6 +144415,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_ledgerentry",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_ledgerentry",
       "relation": "uses",
@@ -142942,6 +144514,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_parentguardian",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_parentguardian",
       "relation": "uses",
@@ -143032,6 +144613,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_payment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_payment",
       "relation": "uses",
@@ -143122,6 +144712,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_payrollaccrual",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_payrollaccrual",
       "relation": "uses",
@@ -143212,6 +144811,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_payrollsheet",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_payrollsheet",
       "relation": "uses",
@@ -143302,6 +144910,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_programblock",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_programblock",
       "relation": "uses",
@@ -143392,6 +145009,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_room",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_room",
       "relation": "uses",
@@ -143482,6 +145108,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_service",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_service",
       "relation": "uses",
@@ -143572,6 +145207,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_staffavailability",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_staffavailability",
       "relation": "uses",
@@ -143662,6 +145306,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_staffcompensationrule",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_staffcompensationrule",
       "relation": "uses",
@@ -143752,6 +145405,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_staffmember",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_staffmember",
       "relation": "uses",
@@ -143842,6 +145504,15 @@
       "weight": 0.8
     },
     {
+      "source": "financialintegrityissue",
+      "target": "operations_models_timeoffrequest",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_services_notificationsservicetests",
       "target": "operations_models_timeoffrequest",
       "relation": "uses",
@@ -143924,6 +145595,15 @@
     },
     {
       "source": "tests_test_services_reportsservicetests",
+      "target": "operations_models_treatmentprogram",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_services.py",
+      "source_location": "L19",
+      "weight": 0.8
+    },
+    {
+      "source": "financialintegrityissue",
       "target": "operations_models_treatmentprogram",
       "relation": "uses",
       "confidence": "INFERRED",
@@ -156953,7 +158633,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L128",
+      "source_location": "L129",
       "weight": 1.0
     },
     {
@@ -156964,7 +158644,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L140",
+      "source_location": "L141",
       "weight": 1.0
     },
     {
@@ -156975,7 +158655,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L181",
+      "source_location": "L182",
       "weight": 1.0
     },
     {
@@ -156986,7 +158666,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L223",
+      "source_location": "L224",
       "weight": 1.0
     },
     {
@@ -156997,7 +158677,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L248",
+      "source_location": "L249",
       "weight": 1.0
     },
     {
@@ -157008,7 +158688,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L278",
+      "source_location": "L279",
       "weight": 1.0
     },
     {
@@ -157019,7 +158699,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L294",
+      "source_location": "L295",
       "weight": 1.0
     },
     {
@@ -157030,7 +158710,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L313",
+      "source_location": "L314",
       "weight": 1.0
     },
     {
@@ -157041,7 +158721,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L329",
+      "source_location": "L330",
       "weight": 1.0
     },
     {
@@ -157052,7 +158732,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L369",
+      "source_location": "L370",
       "weight": 1.0
     },
     {
@@ -157063,7 +158743,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L404",
+      "source_location": "L405",
       "weight": 1.0
     },
     {
@@ -157074,7 +158754,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L428",
+      "source_location": "L429",
       "weight": 1.0
     },
     {
@@ -157085,7 +158765,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L481",
+      "source_location": "L482",
       "weight": 1.0
     },
     {
@@ -157096,7 +158776,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L524",
+      "source_location": "L525",
       "weight": 1.0
     },
     {
@@ -157107,7 +158787,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L558",
+      "source_location": "L559",
       "weight": 1.0
     },
     {
@@ -157118,7 +158798,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L756",
+      "source_location": "L757",
       "weight": 1.0
     },
     {
@@ -157129,7 +158809,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L793",
+      "source_location": "L794",
       "weight": 1.0
     },
     {
@@ -157140,7 +158820,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L798",
+      "source_location": "L799",
       "weight": 1.0
     },
     {
@@ -157151,7 +158831,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L861",
+      "source_location": "L862",
       "weight": 1.0
     },
     {
@@ -157162,7 +158842,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L881",
+      "source_location": "L882",
       "weight": 1.0
     },
     {
@@ -157173,7 +158853,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L902",
+      "source_location": "L903",
       "weight": 1.0
     },
     {
@@ -157184,7 +158864,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L948",
+      "source_location": "L949",
       "weight": 1.0
     },
     {
@@ -157195,7 +158875,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L971",
+      "source_location": "L972",
       "weight": 1.0
     },
     {
@@ -157206,7 +158886,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L980",
+      "source_location": "L981",
       "weight": 1.0
     },
     {
@@ -157217,7 +158897,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L993",
+      "source_location": "L994",
       "weight": 1.0
     },
     {
@@ -157228,7 +158908,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1050",
+      "source_location": "L1051",
       "weight": 1.0
     },
     {
@@ -157239,7 +158919,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1092",
+      "source_location": "L1093",
       "weight": 1.0
     },
     {
@@ -157250,7 +158930,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1159",
+      "source_location": "L1160",
       "weight": 1.0
     },
     {
@@ -157261,7 +158941,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1203",
+      "source_location": "L1204",
       "weight": 1.0
     },
     {
@@ -157272,7 +158952,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1214",
+      "source_location": "L1215",
       "weight": 1.0
     },
     {
@@ -157283,7 +158963,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1333",
+      "source_location": "L1334",
       "weight": 1.0
     },
     {
@@ -157294,7 +158974,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1364",
+      "source_location": "L1365",
       "weight": 1.0
     },
     {
@@ -157305,7 +158985,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1394",
+      "source_location": "L1395",
       "weight": 1.0
     },
     {
@@ -157316,7 +158996,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1478",
+      "source_location": "L1479",
       "weight": 1.0
     },
     {
@@ -157327,7 +159007,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1515",
+      "source_location": "L1516",
       "weight": 1.0
     },
     {
@@ -157338,7 +159018,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L1565",
+      "source_location": "L1566",
       "weight": 1.0
     },
     {
@@ -157349,7 +159029,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2018",
+      "source_location": "L2019",
       "weight": 1.0
     },
     {
@@ -157360,7 +159040,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2082",
+      "source_location": "L2083",
       "weight": 1.0
     },
     {
@@ -157371,7 +159051,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2375",
+      "source_location": "L2376",
       "weight": 1.0
     },
     {
@@ -157382,7 +159062,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2397",
+      "source_location": "L2398",
       "weight": 1.0
     },
     {
@@ -157393,7 +159073,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2424",
+      "source_location": "L2425",
       "weight": 1.0
     },
     {
@@ -157404,7 +159084,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2450",
+      "source_location": "L2451",
       "weight": 1.0
     },
     {
@@ -157415,7 +159095,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2472",
+      "source_location": "L2473",
       "weight": 1.0
     },
     {
@@ -157426,7 +159106,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2517",
+      "source_location": "L2518",
       "weight": 1.0
     },
     {
@@ -157437,7 +159117,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2552",
+      "source_location": "L2553",
       "weight": 1.0
     },
     {
@@ -157448,7 +159128,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2596",
+      "source_location": "L2597",
       "weight": 1.0
     },
     {
@@ -157459,7 +159139,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2661",
+      "source_location": "L2662",
       "weight": 1.0
     },
     {
@@ -157470,7 +159150,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2717",
+      "source_location": "L2718",
       "weight": 1.0
     },
     {
@@ -157481,7 +159161,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2835",
+      "source_location": "L2836",
       "weight": 1.0
     },
     {
@@ -157492,7 +159172,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2939",
+      "source_location": "L2940",
       "weight": 1.0
     },
     {
@@ -157503,7 +159183,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2950",
+      "source_location": "L2951",
       "weight": 1.0
     },
     {
@@ -157514,7 +159194,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L2980",
+      "source_location": "L2981",
       "weight": 1.0
     },
     {
@@ -157525,7 +159205,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3405",
+      "source_location": "L3531",
       "weight": 1.0
     },
     {
@@ -157536,7 +159216,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3723",
+      "source_location": "L3849",
       "weight": 1.0
     },
     {
@@ -157547,7 +159227,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3897",
+      "source_location": "L4023",
       "weight": 1.0
     },
     {
@@ -157558,7 +159238,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3938",
+      "source_location": "L4064",
       "weight": 1.0
     },
     {
@@ -157569,7 +159249,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_services.py",
-      "source_location": "L3966",
+      "source_location": "L4092",
       "weight": 1.0
     },
     {
