@@ -9,6 +9,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Q, Sum
+from django.forms.models import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone
 
 from .models import (
@@ -19,9 +20,13 @@ from .models import (
     AppointmentRoomOverride,
     AppointmentStaffAssignment,
     BalanceAccount,
+    CenterExpense,
+    CenterExpenseCategory,
     Child,
     Consent,
+    Counterparty,
     Document,
+    ExpenseFundingSplit,
     FundingServiceQuota,
     FundingSource,
     FundingStaffAllocation,
@@ -2306,6 +2311,116 @@ class PaymentForm(forms.ModelForm):
             "paid_at": DATE_INPUT,
             "comment": forms.Textarea(attrs={"rows": 3}),
         }
+
+
+class CenterExpenseForm(forms.ModelForm):
+    class Meta:
+        model = CenterExpense
+        fields = (
+            "expense_date",
+            "category",
+            "title",
+            "description",
+            "counterparty",
+            "total_amount",
+            "notes",
+        )
+        labels = {
+            "expense_date": "Дата расхода",
+            "category": "Категория",
+            "title": "Название",
+            "description": "Описание",
+            "counterparty": "Контрагент",
+            "total_amount": "Сумма",
+            "notes": "Примечания",
+        }
+        widgets = {
+            "expense_date": DATE_INPUT,
+            "description": forms.Textarea(attrs={"rows": 3}),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, readonly: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        category_filter = Q(is_active=True)
+        if self.instance and self.instance.category_id:
+            category_filter |= Q(pk=self.instance.category_id)
+        self.fields["category"].queryset = CenterExpenseCategory.objects.filter(
+            category_filter
+        ).order_by("sort_order", "name")
+
+        counterparty_filter = Q(archived_at__isnull=True)
+        if self.instance and self.instance.counterparty_id:
+            counterparty_filter |= Q(pk=self.instance.counterparty_id)
+        self.fields["counterparty"].queryset = Counterparty.all_objects.filter(
+            counterparty_filter
+        ).order_by("name")
+        self.fields["counterparty"].required = False
+
+        if readonly:
+            for field in self.fields.values():
+                field.disabled = True
+
+
+class ExpenseFundingSplitForm(forms.ModelForm):
+    class Meta:
+        model = ExpenseFundingSplit
+        fields = ("funding_source", "amount", "notes")
+        labels = {
+            "funding_source": "Источник финансирования",
+            "amount": "Сумма",
+            "notes": "Примечания",
+        }
+        widgets = {
+            "notes": forms.Textarea(attrs={"rows": 2}),
+        }
+
+    def __init__(self, *args, readonly: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        source_filter = Q(archived_at__isnull=True)
+        if self.instance and self.instance.funding_source_id:
+            source_filter |= Q(pk=self.instance.funding_source_id)
+        self.fields["funding_source"].queryset = FundingSource.all_objects.filter(
+            source_filter
+        ).order_by("name")
+
+        if readonly:
+            for field in self.fields.values():
+                field.disabled = True
+
+
+class BaseExpenseFundingSplitFormSet(BaseInlineFormSet):
+    def clean(self):
+        seen_source_ids: set[int] = set()
+        split_total = Decimal("0")
+        for form in self.forms:
+            if not hasattr(form, "cleaned_data") or not form.cleaned_data:
+                continue
+            if form.cleaned_data.get("DELETE"):
+                continue
+            funding_source = form.cleaned_data.get("funding_source")
+            amount = form.cleaned_data.get("amount")
+            if funding_source:
+                if funding_source.pk in seen_source_ids:
+                    raise forms.ValidationError(
+                        "Один источник финансирования нельзя указать дважды в одном расходе."
+                    )
+                seen_source_ids.add(funding_source.pk)
+            if amount:
+                split_total += amount
+        self.split_total = split_total
+        super().clean()
+
+
+ExpenseFundingSplitFormSet = inlineformset_factory(
+    CenterExpense,
+    ExpenseFundingSplit,
+    form=ExpenseFundingSplitForm,
+    formset=BaseExpenseFundingSplitFormSet,
+    fields=("funding_source", "amount", "notes"),
+    extra=2,
+    can_delete=True,
+)
 
 
 class TimeSheetFilterForm(forms.Form):

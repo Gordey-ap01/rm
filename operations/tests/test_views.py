@@ -21,11 +21,15 @@ from operations.models import (
     AppointmentRoomOverride,
     AppointmentStaffAssignment,
     BalanceAccount,
+    CenterExpense,
+    CenterExpenseCategory,
     Certificate,
     Child,
     Consent,
+    Counterparty,
     Discount,
     Document,
+    ExpenseFundingSplit,
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
     FinancialIntegrityFindingEvent,
@@ -99,6 +103,14 @@ class NewViewsTestBase(TestCase):
         cls.funding_grant = FundingSource.objects.create(
             name="Грант",
             source_type=FundingSource.SourceType.GRANT,
+        )
+        cls.expense_category = CenterExpenseCategory.objects.create(
+            name="Хозяйственные расходы",
+            expense_type=CenterExpenseCategory.ExpenseType.HOUSEHOLD,
+        )
+        cls.counterparty = Counterparty.objects.create(
+            name="Поставщик материалов",
+            counterparty_type=Counterparty.CounterpartyType.VENDOR,
         )
         cls.account = BalanceAccount.objects.create(
             child=cls.child,
@@ -2961,6 +2973,148 @@ class FundingSourceViewTests(NewViewsTestBase):
         self.assertRedirects(restore_response, reverse("funding_source_list"))
         self.funding_grant.refresh_from_db()
         self.assertIsNone(self.funding_grant.archived_at)
+
+
+class CenterExpenseViewTests(NewViewsTestBase):
+    def _expense_post_data(
+        self,
+        *,
+        title: str = "Покупка материалов",
+        first_source=None,
+        second_source=None,
+        first_amount: str = "700.00",
+        second_amount: str = "300.00",
+    ):
+        first_source = first_source or self.funding
+        second_source = second_source or self.funding_grant
+        return {
+            "expense_date": timezone.localdate().isoformat(),
+            "category": self.expense_category.pk,
+            "title": title,
+            "description": "Расход для занятий",
+            "counterparty": self.counterparty.pk,
+            "total_amount": "1000.00",
+            "notes": "",
+            "funding_splits-TOTAL_FORMS": "2",
+            "funding_splits-INITIAL_FORMS": "0",
+            "funding_splits-MIN_NUM_FORMS": "0",
+            "funding_splits-MAX_NUM_FORMS": "1000",
+            "funding_splits-0-funding_source": first_source.pk,
+            "funding_splits-0-amount": first_amount,
+            "funding_splits-0-notes": "",
+            "funding_splits-1-funding_source": second_source.pk,
+            "funding_splits-1-amount": second_amount,
+            "funding_splits-1-notes": "",
+        }
+
+    def test_center_expense_list_renders(self):
+        expense = CenterExpense.objects.create(
+            category=self.expense_category,
+            counterparty=self.counterparty,
+            title="Канцтовары",
+            total_amount=Decimal("500.00"),
+        )
+        ExpenseFundingSplit.objects.create(
+            expense=expense,
+            funding_source=self.funding,
+            amount=Decimal("500.00"),
+        )
+
+        response = self.client.get(reverse("center_expense_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("expense_summary_items", response.context)
+        self.assertIn("expense_next_action", response.context)
+        self.assertContains(response, "Расходы центра")
+        self.assertContains(response, "Реестр расходов")
+        self.assertContains(response, 'id="center-expense-list"')
+        self.assertContains(response, reverse("center_expense_create"))
+        self.assertContains(response, "Канцтовары")
+        self.assertContains(response, "распределен")
+        self.assertContains(response, 'data-label="Распределение"')
+
+    def test_center_expense_create_saves_draft_with_funding_splits(self):
+        ledger_count = LedgerEntry.objects.count()
+
+        response = self.client.post(
+            reverse("center_expense_create"),
+            self._expense_post_data(),
+        )
+
+        expense = CenterExpense.objects.get(title="Покупка материалов")
+        self.assertRedirects(response, reverse("center_expense_edit", args=[expense.pk]))
+        self.assertEqual(expense.status, CenterExpense.Status.DRAFT)
+        self.assertEqual(expense.created_by, self.admin)
+        self.assertEqual(expense.funding_splits.count(), 2)
+        self.assertEqual(expense.funding_split_total, Decimal("1000.00"))
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
+
+    def test_center_expense_create_rejects_duplicate_funding_source(self):
+        response = self.client.post(
+            reverse("center_expense_create"),
+            self._expense_post_data(
+                first_source=self.funding,
+                second_source=self.funding,
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(CenterExpense.objects.filter(title="Покупка материалов").exists())
+        self.assertContains(response, "Один источник финансирования нельзя указать дважды")
+
+    def test_center_expense_edit_updates_draft(self):
+        expense = CenterExpense.objects.create(
+            category=self.expense_category,
+            counterparty=self.counterparty,
+            title="Старое название",
+            total_amount=Decimal("1000.00"),
+        )
+
+        response = self.client.post(
+            reverse("center_expense_edit", args=[expense.pk]),
+            self._expense_post_data(title="Новое название"),
+        )
+
+        self.assertRedirects(response, reverse("center_expense_list"))
+        expense.refresh_from_db()
+        self.assertEqual(expense.title, "Новое название")
+        self.assertEqual(expense.funding_splits.count(), 2)
+
+    def test_center_expense_edit_shows_existing_split_control(self):
+        expense = CenterExpense.objects.create(
+            category=self.expense_category,
+            counterparty=self.counterparty,
+            title="Распределенный расход",
+            total_amount=Decimal("1000.00"),
+        )
+        ExpenseFundingSplit.objects.create(
+            expense=expense,
+            funding_source=self.funding,
+            amount=Decimal("1000.00"),
+        )
+
+        response = self.client.get(reverse("center_expense_edit", args=[expense.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Сумма распределения совпадает с суммой расхода.")
+
+    def test_center_expense_edit_blocks_non_draft(self):
+        expense = CenterExpense.objects.create(
+            category=self.expense_category,
+            counterparty=self.counterparty,
+            title="Утвержденный расход",
+            total_amount=Decimal("1000.00"),
+            status=CenterExpense.Status.APPROVED,
+        )
+
+        response = self.client.post(
+            reverse("center_expense_edit", args=[expense.pk]),
+            self._expense_post_data(title="Попытка правки"),
+        )
+
+        self.assertRedirects(response, reverse("center_expense_edit", args=[expense.pk]))
+        expense.refresh_from_db()
+        self.assertEqual(expense.title, "Утвержденный расход")
 
 
 class StaffCompensationRuleViewTests(NewViewsTestBase):

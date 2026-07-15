@@ -36,6 +36,7 @@ from .dashboard import (
     work_queue,
 )
 from .documents import document_create, document_list
+from .expenses import center_expense_create, center_expense_edit, center_expense_list
 from .funding_sources import (
     funding_source_archive,
     funding_source_create,
@@ -123,6 +124,9 @@ __all__ = [
     "balance_account_delete",
     "balance_account_edit",
     "balances",
+    "center_expense_create",
+    "center_expense_edit",
+    "center_expense_list",
     "consent_create",
     "consent_list",
     "csrf_failure",

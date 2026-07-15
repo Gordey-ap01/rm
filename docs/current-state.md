@@ -1550,3 +1550,15 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA не требовалась: рабочие templates/JS/product UI не менялись, только модели, admin и сервис.
 - Graphify code-index after expenses foundation schema: `4353` nodes / `15919` edges; semantic extraction was not rerun and no API key was written to project files.
 - Следующий безопасный срез по docs/21: `expenses-basic-ui` для списка/формы черновика и split-строк или read-only manager report после UI foundation. Не начинать contracts/assets/import write-path до отдельного среза.
+
+## Обновление 2026-07-15: expenses-basic-ui
+
+- Выполнен UI-срез расходов поверх `docs/21-expenses-assets-contracts-contract.md`; БД, модели и миграции в этом срезе не менялись.
+- Добавлены маршруты `/expenses/`, `/expenses/new/`, `/expenses/<id>/edit/`, список расходов с фильтрами/summary, форма черновика и inline formset `ExpenseFundingSplitFormSet`.
+- Добавлена ссылка "Расходы" в основной навигации. Черновик можно создавать и редактировать; non-draft расход защищен от редактирования через этот UI.
+- Форма отклоняет duplicate `FundingSource` в split-строках и показывает расхождение суммы расхода и суммы распределения.
+- UI не создает `LedgerEntry`, `BalanceAccount`, `Payment` и не меняет payroll, billing decisions, grant semantics или статусы занятий.
+- Проверки прошли: Ruff, `manage.py check`, migration dry-run `No changes detected`, focused expenses UI tests (`12 passed`), full `pytest -q --tb=short` (`513 passed`, 1 прежнее предупреждение django-tasks).
+- Browser QA desktop/mobile прошла; артефакты: `%TEMP%\rmcodex-browser-qa-expenses-basic-ui`; локальный runserver на `8074` остановлен.
+- Graphify code-index after expenses basic UI: `4386` nodes / `16432` edges; semantic extraction was not rerun and no API key was written to project files.
+- Следующий безопасный срез по docs/21: `expenses-manager-report` как read-only отчет руководителя или небольшой product UI для категорий/контрагентов перед отчетом. Не начинать approve/pay, assets, contracts или Excel import write-path без отдельного контракта.

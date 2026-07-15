@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Расходы центра{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Расходы центра</h1>
+    <p>Черновики хозяйственных, административных и проектных расходов без списаний по балансам получателей.</p>
+  </div>
+  <a class="button-link" href="{% url 'center_expense_create' %}">Добавить расход</a>
+</section>
+
+<section class="directory-overview">
+  <a class="directory-next-action is-{{ expense_next_action.tone }}" href="{{ expense_next_action.href }}">
+    <span>{{ expense_next_action.label }}</span>
+    <strong>{{ expense_next_action.title }}</strong>
+    <small>{{ expense_next_action.detail }}</small>
+  </a>
+  <div class="directory-summary-grid" aria-label="Сводка расходов центра">
+    {% for item in expense_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="directory-layout">
+  <div class="directory-main">
+    <section class="panel directory-panel" id="center-expense-list">
+      <div class="directory-panel-head">
+        <div>
+          <h2>Реестр расходов</h2>
+          <p>Распределение показывает, за счет какого источника планируется покрыть расход. Утверждение и оплата включаются отдельным шагом.</p>
+        </div>
+      </div>
+
+      <form class="expense-filter-form" method="get">
+        <label>
+          <span>Поиск</span>
+          <input type="search" name="q" value="{{ filters.q }}" placeholder="Название или контрагент">
+        </label>
+        <label>
+          <span>Статус</span>
+          <select name="status">
+            <option value="">Все статусы</option>
+            {% for value, label in status_choices %}
+              <option value="{{ value }}"{% if value == filters.status %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>Категория</span>
+          <select name="category">
+            <option value="">Все категории</option>
+            {% for category in categories %}
+              <option value="{{ category.pk }}"{% if category.pk|stringformat:"s" == filters.category %} selected{% endif %}>{{ category.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>Источник</span>
+          <select name="funding_source">
+            <option value="">Все источники</option>
+            {% for source in funding_sources %}
+              <option value="{{ source.pk }}"{% if source.pk|stringformat:"s" == filters.funding_source %} selected{% endif %}>{{ source.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div class="expense-filter-actions">
+          <button type="submit">Показать</button>
+          <a class="button-link secondary" href="{% url 'center_expense_list' %}">Сбросить</a>
+        </div>
+      </form>
+
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table expense-table">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Расход</th>
+              <th>Контрагент</th>
+              <th>Сумма</th>
+              <th>Распределение</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for expense in expenses %}
+            <tr{% if expense.status == "cancelled" %} class="muted-row"{% endif %}>
+              <td data-label="Дата">{{ expense.expense_date|date:"d.m.Y" }}</td>
+              <td data-label="Расход">
+                <strong>{{ expense.title }}</strong>
+                <div class="muted">{{ expense.category.name }}</div>
+                {% if expense.description %}<div class="muted">{{ expense.description|truncatechars:110 }}</div>{% endif %}
+              </td>
+              <td data-label="Контрагент">
+                {% if expense.counterparty %}
+                  {{ expense.counterparty.name }}
+                {% else %}
+                  <span class="muted">не указан</span>
+                {% endif %}
+              </td>
+              <td data-label="Сумма"><strong>{{ expense.ui_total_display }}</strong></td>
+              <td data-label="Распределение">
+                <span class="status-pill {{ expense.ui_allocation_class }}">{{ expense.ui_allocation_label }}</span>
+                <div class="muted">{{ expense.ui_split_total_display }} из {{ expense.ui_total_display }}</div>
+                {% if expense.ui_funding_splits %}
+                  <div class="expense-split-list">
+                    {% for split in expense.ui_funding_splits %}
+                      <span>{{ split.funding_source.name }}: {{ split.amount }}</span>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </td>
+              <td data-label="Статус">
+                {% if expense.status == "draft" %}
+                  <span class="status-pill muted-pill">{{ expense.get_status_display }}</span>
+                {% elif expense.status == "paid" %}
+                  <span class="status-pill">{{ expense.get_status_display }}</span>
+                {% elif expense.status == "cancelled" %}
+                  <span class="status-pill danger-pill">{{ expense.get_status_display }}</span>
+                {% else %}
+                  <span class="status-pill warning-pill">{{ expense.get_status_display }}</span>
+                {% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'center_expense_edit' expense.pk %}">Открыть</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" data-label="Расходы">
+                <div class="empty-state">Расходы центра еще не созданы.</div>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="directory-sidebar" aria-label="Контроль расходов центра">
+    <section class="panel directory-control-panel">
+      <h2>Контроль</h2>
+      <ul class="directory-check-list">
+        <li>
+          <strong>Расходы центра</strong>
+          <span>Это отдельный контур учета: он не уменьшает счета занятий и рублей получателей.</span>
+        </li>
+        <li>
+          <strong>Источники</strong>
+          <span>Сумму можно распределить между грантом, фондом, спонсором или личным проектным источником.</span>
+        </li>
+        <li>
+          <strong>Черновики</strong>
+          <span>Пока доступно создание и редактирование черновиков. Утверждение и оплата будут отдельным безопасным шагом.</span>
+        </li>
+        <li>
+          <strong>Проверка суммы</strong>
+          <span>Перед оплатой распределение должно совпасть с общей суммой расхода.</span>
+        </li>
+      </ul>
+    </section>
+  </aside>
+</section>
+{% endblock %}

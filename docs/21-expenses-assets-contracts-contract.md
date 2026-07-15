@@ -2,7 +2,7 @@
 
 Дата: 2026-07-15
 
-Статус: accepted for current expenses foundation. Docs-only контракт создан 2026-07-15; первый кодовый срез `expenses-foundation-schema` выполнен 2026-07-15.
+Статус: accepted for current expenses foundation. Docs-only контракт создан 2026-07-15; кодовые срезы `expenses-foundation-schema` и `expenses-basic-ui` выполнены 2026-07-15.
 
 Назначение: зафиксировать следующую крупную финансовую зону после расписания, балансов, грантов, зарплат и financial-integrity эпика. Срез нужен для единого контура руководителя: видеть не только оказанные услуги и начисления специалистам, но и расходы центра, оборудование, источники покрытия расходов, доноров/контрагентов и договоры.
 
@@ -391,19 +391,24 @@ Acceptance:
 
 ### Срез 2: `expenses-basic-ui`
 
+Статус: выполнен 2026-07-15.
+
 Состав:
 
-- список расходов с фильтрами период/статус/категория/источник;
-- форма создания/редактирования черновика;
-- inline formset для split-строк;
-- detail page с источниками покрытия и предупреждением о расхождении сумм.
+- список расходов с фильтрами статус/категория/источник/поиск - реализован;
+- форма создания/редактирования черновика - реализована;
+- inline formset для split-строк - реализован;
+- summary карточки и предупреждение о расхождении сумм - реализованы;
+- ссылка "Расходы" в основной навигации - реализована.
 
 Acceptance:
 
-- администратор видит и редактирует черновик;
-- утвержденный/оплаченный расход защищен от простого изменения суммы;
-- mobile layout без горизонтального overflow;
-- Browser QA desktop/mobile.
+- администратор видит и редактирует черновик - выполнено;
+- утвержденный/оплаченный расход защищен от простого изменения через UI - выполнено;
+- duplicate `FundingSource` в split-строках отклоняется формой - выполнено;
+- UI не создает `LedgerEntry`, `BalanceAccount`, `Payment` и не меняет payroll/billing/grant semantics - выполнено;
+- mobile layout без горизонтального overflow - выполнено;
+- Browser QA desktop/mobile - выполнено.
 
 ### Срез 3: `expenses-manager-report`
 
@@ -526,10 +531,9 @@ Acceptance:
 
 ## Следующий безопасный шаг
 
-Если приоритет подтвержден, начинать со среза `expenses-foundation-schema`:
+После `expenses-foundation-schema` и `expenses-basic-ui` следующий безопасный шаг:
 
-- только additive models/migration;
-- не трогать `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, billing decisions;
-- сразу добавить service-level validation и tests;
-- после этого обновить recovery docs и Graphify;
-- UI расходов начинать отдельным срезом после schema commit.
+- `expenses-manager-report` как read-only отчет руководителя по категориям и источникам;
+- или небольшой product UI для справочников категорий/контрагентов, если без него отчет неудобно наполнять данными.
+
+Пока не начинать approve/pay write-path, assets registry, contracts registry или Excel import write-path без отдельного контракта/среза. Не менять `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, `billing.apply_decision()` и grant semantics в рамках отчета расходов.

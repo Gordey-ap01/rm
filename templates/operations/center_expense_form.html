@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>{{ title }}</h1>
+    {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
+  </div>
+  <a class="button-link secondary" href="{{ cancel_url }}">Назад</a>
+</section>
+
+{% if is_locked %}
+  <div class="alert alert-warning" role="alert">
+    Редактирование доступно только для черновиков. Этот расход открыт для просмотра.
+  </div>
+{% endif %}
+
+<form method="post" class="object-form-layout">
+  {% csrf_token %}
+  <section class="object-form-main">
+    <section class="panel form-panel">
+      <div class="object-form-head">
+        <div>
+          <h2>Параметры расхода</h2>
+          <p>Заполните дату, категорию, контрагента и общую сумму. Документы и оплату подключим следующим финансовым срезом.</p>
+        </div>
+      </div>
+      <div class="form-grid">
+        {% if form.non_field_errors %}
+          <div class="form-error form-wide">{{ form.non_field_errors }}</div>
+        {% endif %}
+        {% for field in form %}
+          <label class="field {% if field.name == 'description' or field.name == 'notes' %}form-wide{% endif %}">
+            <span>{{ field.label }}</span>
+            {{ field }}
+            {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+            {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+          </label>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel form-panel expense-split-panel">
+      <div class="object-form-head">
+        <div>
+          <h2>Распределение по источникам</h2>
+          <p>Укажите, какая часть расхода относится к гранту, фонду, спонсору или другому источнику финансирования.</p>
+        </div>
+      </div>
+
+      {{ formset.management_form }}
+      {% if formset.non_form_errors %}
+        <div class="form-error">{{ formset.non_form_errors }}</div>
+      {% endif %}
+      <div class="table-wrap">
+        <table class="directory-table expense-split-table">
+          <thead>
+            <tr>
+              <th>Источник</th>
+              <th>Сумма</th>
+              <th>Примечание</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for split_form in formset.forms %}
+            <tr>
+              {% for hidden in split_form.hidden_fields %}{{ hidden }}{% endfor %}
+              <td data-label="Источник">
+                {{ split_form.funding_source }}
+                {% if split_form.funding_source.errors %}<span class="form-error">{{ split_form.funding_source.errors }}</span>{% endif %}
+                {% if split_form.non_field_errors %}<span class="form-error">{{ split_form.non_field_errors }}</span>{% endif %}
+              </td>
+              <td data-label="Сумма">
+                {{ split_form.amount }}
+                {% if split_form.amount.errors %}<span class="form-error">{{ split_form.amount.errors }}</span>{% endif %}
+              </td>
+              <td data-label="Примечание">
+                {{ split_form.notes }}
+                {% if split_form.notes.errors %}<span class="form-error">{{ split_form.notes.errors }}</span>{% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                {% if split_form.instance.pk %}
+                  <label class="expense-delete-check">
+                    {{ split_form.DELETE }}
+                    <span>Удалить</span>
+                  </label>
+                {% else %}
+                  <span class="muted">новая строка</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+
+  <aside class="object-form-sidebar" aria-label="Контроль расхода">
+    <section class="panel object-form-control">
+      <h2>Контроль</h2>
+      <ul class="object-form-check-list">
+        {% for item in expense_form_control_items %}
+          <li{% if item.tone %} class="is-{{ item.tone }}"{% endif %}>
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.detail }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="form-actions object-form-actions">
+        {% if not is_locked %}<button type="submit">Сохранить</button>{% endif %}
+        <a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>
+      </div>
+    </section>
+  </aside>
+</form>
+{% endblock %}

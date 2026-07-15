@@ -77,6 +77,13 @@ urlpatterns = [
         name="financial_integrity_finding_recheck",
     ),
     path("balances/", views.balances, name="balances"),
+    path("expenses/", views.center_expense_list, name="center_expense_list"),
+    path("expenses/new/", views.center_expense_create, name="center_expense_create"),
+    path(
+        "expenses/<int:pk>/edit/",
+        views.center_expense_edit,
+        name="center_expense_edit",
+    ),
     path("recipients/", views.recipient_list, name="recipient_list"),
     path("imports/recipients/", views.recipient_import_preview, name="recipient_import_preview"),
     path("recipients/new/", views.recipient_create, name="recipient_create"),

@@ -63,7 +63,7 @@
 Если доступен Graphify и есть graphify-out/graph.json, сначала используй graphify query как индекс проекта. При расхождениях свежие docs/current-state.md, docs/07-updated-domain-model-after-interview.md, docs/12-project-stage-audit-and-pivot-plan.md, docs/13-schedule-capacity-v2-contract.md и код остаются источником правды.
 
 Следующая задача:
-Не начинать заново financial-integrity event/timeline/report работу и не начинать заново `group-payroll-policy-foundation`: они выполнены. Текущий новый docs-only контракт - `docs/21-expenses-assets-contracts-contract.md`. Следующий безопасный кодовый шаг, если продолжаем этот приоритет: `expenses-foundation-schema` одним DB-owner, additive models/migration + service validation + tests, без изменений `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, billing decisions и grant semantics.
+Не начинать заново financial-integrity event/timeline/report работу, `group-payroll-policy-foundation`, `expenses-foundation-schema` или `expenses-basic-ui`: они выполнены. Текущий активный контракт - `docs/21-expenses-assets-contracts-contract.md`. Следующий безопасный шаг, если продолжаем этот приоритет: `expenses-manager-report` read-only или небольшой product UI для категорий/контрагентов перед отчетом. Не начинать approve/pay/assets/contracts/import write-path без отдельного контракта.
 
 Критические правила:
 - Не продолжать reschedule UX/control микросрезы без конкретного бага или нового требования.
@@ -154,3 +154,16 @@
 - Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused expenses/auditlog tests `13 passed`, full pytest `507 passed`. Browser QA не требовалась, потому что product UI/templates/JS не менялись.
 - Graphify code-index after foundation: `4353` nodes / `15919` edges; semantic extraction was not rerun and no API key was written to project files.
 - Следующий безопасный срез: `expenses-basic-ui` или read-only manager report поверх новой схемы. Не начинать contracts/assets/import write-path до отдельного среза.
+
+## Последнее уточнение 2026-07-15: expenses-basic-ui выполнен
+
+После текста промпта выше считать актуальным:
+
+- `expenses-basic-ui` выполнен по `docs/21-expenses-assets-contracts-contract.md` без изменений БД/моделей/миграций.
+- Добавлены `/expenses/`, `/expenses/new/`, `/expenses/<id>/edit/`, `operations.views.expenses`, `CenterExpenseForm`, `ExpenseFundingSplitFormSet`, шаблоны списка/формы и ссылка "Расходы" в навигации.
+- Черновик расхода можно создавать и редактировать; non-draft расход защищен от редактирования через этот UI.
+- Split-строки проверяют duplicate `FundingSource` и показывают расхождение суммы расхода и суммы распределения.
+- `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing decisions, grant semantics и статусы занятий не менялись.
+- Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused expense UI tests `12 passed`, full pytest `513 passed`, Browser QA desktop/mobile.
+- Graphify code-index after UI: `4386` nodes / `16432` edges; semantic extraction was not rerun and no API key was written to project files.
+- Следующий безопасный срез: `expenses-manager-report` read-only или небольшой product UI для категорий/контрагентов перед отчетом. Не начинать approve/pay/assets/contracts/import write-path до отдельного контракта.
