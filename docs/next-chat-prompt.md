@@ -47,9 +47,11 @@
 9. docs/18-financial-integrity-triage-and-runner-contract.md
 10. docs/19-financial-integrity-history-and-manager-report-contract.md
 11. docs/20-group-payroll-policy-contract.md
+12. docs/21-expenses-assets-contracts-contract.md
 
 Дальше читай только нужное для задачи:
 - БД, расписание, финансы, гранты, табели: docs/07-updated-domain-model-after-interview.md и docs/decisions/ADR-002-balance-accounts-ledger.md
+- расходы центра, оборудование, контрагенты, договоры, донорская отчетность, Excel import write-path: docs/21-expenses-assets-contracts-contract.md
 - параллельная работа агентов: docs/08-parallel-agent-execution-plan.md
 - переносы, занятые окна, отсутствие специалиста и каскадные сдвиги: docs/09-cascade-reschedule-domain-slice.md
 - атомарные цепочки переноса: docs/10-reschedule-chain-dependencies-contract.md
@@ -61,7 +63,7 @@
 Если доступен Graphify и есть graphify-out/graph.json, сначала используй graphify query как индекс проекта. При расхождениях свежие docs/current-state.md, docs/07-updated-domain-model-after-interview.md, docs/12-project-stage-audit-and-pivot-plan.md, docs/13-schedule-capacity-v2-contract.md и код остаются источником правды.
 
 Следующая задача:
-Не начинать заново `dashboard-work-queue-financial-integrity-signal`, `financial-integrity-cache-schema-and-runner`, `run_financial_integrity_check`, `financial-integrity-cache-reader`, контракт docs/18, `financial-integrity-audit-admin-visibility`, `financial-integrity-triage-service`, `financial-integrity-work-queue-triage-actions`, `financial-integrity-finding-detail`, `financial-integrity-runner-operations`, docs/19 или `financial-integrity-event-schema-service`: они выполнены. Следующий безопасный шаг по этой линии: detail timeline UI на existing finding detail page или read-only manager trend report, но не оба сразу; либо возврат к более приоритетной доменной зоне после сверки `current-state`. Не менять billing.apply_decision semantics, payroll/grant semantics, статусы appointment/payment или auto-fix/backfill вне docs/19 и без одного DB owner для миграций.
+Не начинать заново financial-integrity event/timeline/report работу и не начинать заново `group-payroll-policy-foundation`: они выполнены. Текущий новый docs-only контракт - `docs/21-expenses-assets-contracts-contract.md`. Следующий безопасный кодовый шаг, если продолжаем этот приоритет: `expenses-foundation-schema` одним DB-owner, additive models/migration + service validation + tests, без изменений `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, billing decisions и grant semantics.
 
 Критические правила:
 - Не продолжать reschedule UX/control микросрезы без конкретного бага или нового требования.
@@ -126,3 +128,15 @@
 - Проверки прошли: Ruff, Django check, migration dry-run, focused service/view tests, full pytest `500 passed`, Playwright Browser QA desktop/mobile. Артефакты: `%TEMP%\rmcodex-browser-qa-group-payroll-policy`; QA data очищены, runserver 8070 остановлен.
 - Graphify code-index after foundation: `4275` nodes / `15347` edges; semantic extraction was not rerun and no API key was written to project files.
 - Следующий шаг не должен заново делать group payroll foundation. Возможные следующие направления: отдельный контракт на grant payroll beyond per-session, управленческие отчеты payroll/grants, расходы/договоры или Excel import after model stabilization.
+
+## Последнее уточнение 2026-07-15: expenses-assets-contracts contract
+
+После текста промпта выше считать актуальным:
+
+- Добавлен docs-only контракт `docs/21-expenses-assets-contracts-contract.md`.
+- Контракт задает следующую финансовую зону: расходы центра, распределение расходов по источникам, оборудование, контрагенты, договоры и будущий Excel import preview.
+- Важная граница: расходы центра не являются `Payment` и не должны списываться через `BalanceAccount`/`LedgerEntry` получателей.
+- Предложены сущности `Counterparty`, `CenterExpenseCategory`, `CenterExpense`, `ExpenseFundingSplit`, позднее `EquipmentAsset`, `ContractTemplate`, `DonationContract`, `ServiceContract`.
+- Код, модели, миграции, billing/ledger/payroll/grant/status semantics не менялись.
+- Следующий безопасный кодовый шаг: `expenses-foundation-schema` одним DB-owner, additive models/migration + service validation + tests. Не параллелить `operations/models.py` и migration chain; UI расходов начинать отдельным срезом после schema commit.
+- Graphify code-index after contract: `4308` nodes / `15379` edges; semantic extraction was not rerun and no API key was written to project files.

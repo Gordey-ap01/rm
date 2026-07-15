@@ -28531,7 +28531,7 @@
       "label": "Главный вывод по текущей модели",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L138",
+      "source_location": "L139",
       "_origin": "ast"
     },
     {
@@ -28539,7 +28539,7 @@
       "label": "Целевая модель расписания",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L151",
+      "source_location": "L152",
       "_origin": "ast"
     },
     {
@@ -28547,7 +28547,7 @@
       "label": "`Appointment`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L155",
+      "source_location": "L156",
       "_origin": "ast"
     },
     {
@@ -28555,7 +28555,7 @@
       "label": "`AppointmentParticipant`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L179",
+      "source_location": "L180",
       "_origin": "ast"
     },
     {
@@ -28563,7 +28563,7 @@
       "label": "`AppointmentStaffAssignment`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L210",
+      "source_location": "L211",
       "_origin": "ast"
     },
     {
@@ -28571,7 +28571,7 @@
       "label": "`AppointmentRoomOverride`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L233",
+      "source_location": "L234",
       "_origin": "ast"
     },
     {
@@ -28579,7 +28579,7 @@
       "label": "Кабинеты и вместимость",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L250",
+      "source_location": "L251",
       "_origin": "ast"
     },
     {
@@ -28587,7 +28587,7 @@
       "label": "`Room`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L254",
+      "source_location": "L255",
       "_origin": "ast"
     },
     {
@@ -28595,7 +28595,7 @@
       "label": "`ServiceRoomRule`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L275",
+      "source_location": "L276",
       "_origin": "ast"
     },
     {
@@ -28603,7 +28603,7 @@
       "label": "Представители",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L290",
+      "source_location": "L291",
       "_origin": "ast"
     },
     {
@@ -28611,7 +28611,7 @@
       "label": "`RecipientRepresentative`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L294",
+      "source_location": "L295",
       "_origin": "ast"
     },
     {
@@ -28619,7 +28619,7 @@
       "label": "Программы, каскады, блоки, серии",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L323",
+      "source_location": "L324",
       "_origin": "ast"
     },
     {
@@ -28627,7 +28627,7 @@
       "label": "`TreatmentProgram`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L327",
+      "source_location": "L328",
       "_origin": "ast"
     },
     {
@@ -28635,7 +28635,7 @@
       "label": "`ProgramBlock`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L333",
+      "source_location": "L334",
       "_origin": "ast"
     },
     {
@@ -28643,7 +28643,7 @@
       "label": "`AppointmentSeries`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L351",
+      "source_location": "L352",
       "_origin": "ast"
     },
     {
@@ -28651,7 +28651,7 @@
       "label": "Переносы и отмены",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L367",
+      "source_location": "L368",
       "_origin": "ast"
     },
     {
@@ -28659,7 +28659,7 @@
       "label": "Балансы и списания",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L386",
+      "source_location": "L387",
       "_origin": "ast"
     },
     {
@@ -28667,7 +28667,7 @@
       "label": "`LedgerEntry`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L392",
+      "source_location": "L393",
       "_origin": "ast"
     },
     {
@@ -28675,7 +28675,7 @@
       "label": "`BalanceTransfer`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L410",
+      "source_location": "L411",
       "_origin": "ast"
     },
     {
@@ -28683,7 +28683,7 @@
       "label": "Зарплата и расчетные листы",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L427",
+      "source_location": "L428",
       "_origin": "ast"
     },
     {
@@ -28691,7 +28691,7 @@
       "label": "`StaffCompensationRule`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L431",
+      "source_location": "L432",
       "_origin": "ast"
     },
     {
@@ -28699,7 +28699,7 @@
       "label": "`PayrollAccrual`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L465",
+      "source_location": "L466",
       "_origin": "ast"
     },
     {
@@ -28707,7 +28707,7 @@
       "label": "`PayrollSheet`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L487",
+      "source_location": "L488",
       "_origin": "ast"
     },
     {
@@ -28715,7 +28715,7 @@
       "label": "`PayrollSheetLine`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L501",
+      "source_location": "L502",
       "_origin": "ast"
     },
     {
@@ -28723,7 +28723,7 @@
       "label": "Гранты",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L520",
+      "source_location": "L521",
       "_origin": "ast"
     },
     {
@@ -28731,7 +28731,7 @@
       "label": "`FundingServiceQuota`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L524",
+      "source_location": "L525",
       "_origin": "ast"
     },
     {
@@ -28739,7 +28739,7 @@
       "label": "`FundingStaffAllocation`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L543",
+      "source_location": "L544",
       "_origin": "ast"
     },
     {
@@ -28747,7 +28747,7 @@
       "label": "`GrantRecipientAllocation`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L565",
+      "source_location": "L566",
       "_origin": "ast"
     },
     {
@@ -28755,7 +28755,7 @@
       "label": "Финансовая аналитика центра, расходы и оборудование",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L582",
+      "source_location": "L583",
       "_origin": "ast"
     },
     {
@@ -28763,7 +28763,7 @@
       "label": "`CenterExpenseCategory`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L586",
+      "source_location": "L587",
       "_origin": "ast"
     },
     {
@@ -28771,7 +28771,7 @@
       "label": "`CenterExpense`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L597",
+      "source_location": "L598",
       "_origin": "ast"
     },
     {
@@ -28779,7 +28779,7 @@
       "label": "`ExpenseFundingSplit`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L609",
+      "source_location": "L610",
       "_origin": "ast"
     },
     {
@@ -28787,7 +28787,7 @@
       "label": "`EquipmentAsset`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L620",
+      "source_location": "L621",
       "_origin": "ast"
     },
     {
@@ -28795,7 +28795,7 @@
       "label": "Доноры и договоры",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L632",
+      "source_location": "L633",
       "_origin": "ast"
     },
     {
@@ -28803,7 +28803,7 @@
       "label": "`Counterparty`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L636",
+      "source_location": "L637",
       "_origin": "ast"
     },
     {
@@ -28811,7 +28811,7 @@
       "label": "`ContractTemplate`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L654",
+      "source_location": "L655",
       "_origin": "ast"
     },
     {
@@ -28819,7 +28819,7 @@
       "label": "`DonationContract`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L664",
+      "source_location": "L665",
       "_origin": "ast"
     },
     {
@@ -28827,7 +28827,7 @@
       "label": "Аудит",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L681",
+      "source_location": "L682",
       "_origin": "ast"
     },
     {
@@ -28835,7 +28835,7 @@
       "label": "`AuditEvent`",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L687",
+      "source_location": "L688",
       "_origin": "ast"
     },
     {
@@ -28843,7 +28843,7 @@
       "label": "Индексы и ограничения",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L711",
+      "source_location": "L712",
       "_origin": "ast"
     },
     {
@@ -28851,7 +28851,7 @@
       "label": "Безопасный миграционный план",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L738",
+      "source_location": "L739",
       "_origin": "ast"
     },
     {
@@ -28859,7 +28859,7 @@
       "label": "Шаг 1. Добавить новые таблицы без удаления старых полей",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L740",
+      "source_location": "L741",
       "_origin": "ast"
     },
     {
@@ -28867,7 +28867,7 @@
       "label": "Шаг 2. Backfill текущих данных",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L755",
+      "source_location": "L756",
       "_origin": "ast"
     },
     {
@@ -28875,7 +28875,7 @@
       "label": "Шаг 3. Переключить сервисы расписания",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L774",
+      "source_location": "L775",
       "_origin": "ast"
     },
     {
@@ -28883,7 +28883,7 @@
       "label": "Шаг 4. Переключить UI создания занятия",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L788",
+      "source_location": "L789",
       "_origin": "ast"
     },
     {
@@ -28891,7 +28891,7 @@
       "label": "Шаг 5. Переключить списания",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L808",
+      "source_location": "L809",
       "_origin": "ast"
     },
     {
@@ -28899,7 +28899,7 @@
       "label": "Шаг 6. Добавить зарплату",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L820",
+      "source_location": "L821",
       "_origin": "ast"
     },
     {
@@ -28907,7 +28907,7 @@
       "label": "Шаг 7. Добавить грантовые квоты",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L834",
+      "source_location": "L835",
       "_origin": "ast"
     },
     {
@@ -28915,7 +28915,7 @@
       "label": "Шаг 8. Расходы, оборудование, договоры",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L849",
+      "source_location": "L850",
       "_origin": "ast"
     },
     {
@@ -28923,7 +28923,7 @@
       "label": "Что нельзя делать параллельно",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L860",
+      "source_location": "L861",
       "_origin": "ast"
     },
     {
@@ -28931,7 +28931,7 @@
       "label": "Рекомендуемый первый вертикальный срез",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L868",
+      "source_location": "L869",
       "_origin": "ast"
     },
     {
@@ -28939,7 +28939,7 @@
       "label": "Дополнение 2026-06-24: инвариант списания участника",
       "file_type": "document",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L889",
+      "source_location": "L890",
       "_origin": "ast"
     },
     {
@@ -30631,6 +30631,254 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_21_expenses_assets_contracts_contract",
+      "label": "21-expenses-assets-contracts-contract.md",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_контракт_среза_expenses_assets_contracts",
+      "label": "Контракт среза: expenses-assets-contracts",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_контекст",
+      "label": "Контекст",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L9",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_инварианты",
+      "label": "Инварианты",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L33",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_не_цели_первого_среза",
+      "label": "Не цели первого среза",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L46",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_целевая_доменная_модель",
+      "label": "Целевая доменная модель",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L57",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_counterparty",
+      "label": "`Counterparty`",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L59",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_centerexpensecategory",
+      "label": "`CenterExpenseCategory`",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L95",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_centerexpense",
+      "label": "`CenterExpense`",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L124",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_expensefundingsplit",
+      "label": "`ExpenseFundingSplit`",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L154",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_equipmentasset",
+      "label": "`EquipmentAsset`",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L176",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_contracttemplate",
+      "label": "`ContractTemplate`",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L200",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_donationcontract",
+      "label": "`DonationContract`",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L228",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_servicecontract",
+      "label": "`ServiceContract`",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L255",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_индексы_и_ограничения",
+      "label": "Индексы и ограничения",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L280",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_ux_ui_карта",
+      "label": "UX/UI карта",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L311",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_администратор_внести_расход",
+      "label": "Администратор: внести расход",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L313",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_руководитель_посмотреть_расходы",
+      "label": "Руководитель: посмотреть расходы",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L328",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_руководитель_отчет_спонсору_фонду",
+      "label": "Руководитель: отчет спонсору/фонду",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L342",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_администратор_вести_договор",
+      "label": "Администратор: вести договор",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L355",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_рекомендуемые_вертикальные_срезы",
+      "label": "Рекомендуемые вертикальные срезы",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L369",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_срез_1_expenses_foundation_schema",
+      "label": "Срез 1: `expenses-foundation-schema`",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L371",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_срез_2_expenses_basic_ui",
+      "label": "Срез 2: `expenses-basic-ui`",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L390",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_срез_3_expenses_manager_report",
+      "label": "Срез 3: `expenses-manager-report`",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L406",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_срез_4_assets_registry",
+      "label": "Срез 4: `assets-registry`",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L421",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_срез_5_contracts_registry",
+      "label": "Срез 5: `contracts-registry`",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L435",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_срез_6_contracts_generation_and_import_preview",
+      "label": "Срез 6: `contracts-generation-and-import-preview`",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L452",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_миграционные_риски",
+      "label": "Миграционные риски",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L466",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_разделение_агентов",
+      "label": "Разделение агентов",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L487",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_открытые_вопросы",
+      "label": "Открытые вопросы",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L508",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_21_expenses_assets_contracts_contract_следующий_безопасный_шаг",
+      "label": "Следующий безопасный шаг",
+      "file_type": "document",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L525",
+      "_origin": "ast"
+    },
+    {
       "id": "docs_critical_stack_ux_review_2026_06_10",
       "label": "CRITICAL_STACK_UX_REVIEW_2026-06-10.md",
       "file_type": "document",
@@ -32063,6 +32311,14 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_current_state_обновление_2026_07_15_контракт_expenses_assets_contracts",
+      "label": "Обновление 2026-07-15: контракт expenses-assets-contracts",
+      "file_type": "document",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1530",
+      "_origin": "ast"
+    },
+    {
       "id": "decisions_adr_001_django_postgresql_local_first",
       "label": "ADR-001-django-postgresql-local-first.md",
       "file_type": "document",
@@ -32403,7 +32659,7 @@
       "label": "Как использовать",
       "file_type": "document",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L76",
+      "source_location": "L78",
       "_origin": "ast"
     },
     {
@@ -32411,7 +32667,7 @@
       "label": "Последнее уточнение 2026-07-15",
       "file_type": "document",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L81",
+      "source_location": "L83",
       "_origin": "ast"
     },
     {
@@ -32419,7 +32675,7 @@
       "label": "Последнее уточнение 2026-07-15: manager trend report закрыт",
       "file_type": "document",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L91",
+      "source_location": "L93",
       "_origin": "ast"
     },
     {
@@ -32427,7 +32683,7 @@
       "label": "Последнее уточнение 2026-07-15: group payroll policy contract",
       "file_type": "document",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L103",
+      "source_location": "L105",
       "_origin": "ast"
     },
     {
@@ -32435,7 +32691,15 @@
       "label": "Последнее уточнение 2026-07-15: group payroll policy foundation выполнен",
       "file_type": "document",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L115",
+      "source_location": "L117",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_next_chat_prompt_последнее_уточнение_2026_07_15_expenses_assets_contracts_contract",
+      "label": "Последнее уточнение 2026-07-15: expenses-assets-contracts contract",
+      "file_type": "document",
+      "source_file": "docs/next-chat-prompt.md",
+      "source_location": "L132",
       "_origin": "ast"
     },
     {
@@ -32475,7 +32739,7 @@
       "label": "Порядок восстановления контекста",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L45",
+      "source_location": "L46",
       "_origin": "ast"
     },
     {
@@ -32483,7 +32747,7 @@
       "label": "Skills и назначение",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L67",
+      "source_location": "L69",
       "_origin": "ast"
     },
     {
@@ -32491,7 +32755,7 @@
       "label": "Восстановление инструментов",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L80",
+      "source_location": "L82",
       "_origin": "ast"
     },
     {
@@ -32499,7 +32763,7 @@
       "label": "Graphify",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L82",
+      "source_location": "L84",
       "_origin": "ast"
     },
     {
@@ -32507,7 +32771,7 @@
       "label": "Browser QA",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L101",
+      "source_location": "L103",
       "_origin": "ast"
     },
     {
@@ -32515,7 +32779,7 @@
       "label": "Протокол контрольной точки",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L110",
+      "source_location": "L112",
       "_origin": "ast"
     },
     {
@@ -32523,7 +32787,7 @@
       "label": "Текущее состояние восстановления",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L122",
+      "source_location": "L124",
       "_origin": "ast"
     },
     {
@@ -32531,7 +32795,7 @@
       "label": "Ближайшие задачи",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L166",
+      "source_location": "L168",
       "_origin": "ast"
     },
     {
@@ -32539,7 +32803,7 @@
       "label": "Постоянные риски",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L173",
+      "source_location": "L175",
       "_origin": "ast"
     },
     {
@@ -102889,7 +103153,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L138",
+      "source_location": "L139",
       "weight": 1.0
     },
     {
@@ -102898,7 +103162,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L151",
+      "source_location": "L152",
       "weight": 1.0
     },
     {
@@ -102907,7 +103171,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L155",
+      "source_location": "L156",
       "weight": 1.0
     },
     {
@@ -102916,7 +103180,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L179",
+      "source_location": "L180",
       "weight": 1.0
     },
     {
@@ -102925,7 +103189,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L210",
+      "source_location": "L211",
       "weight": 1.0
     },
     {
@@ -102934,7 +103198,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L233",
+      "source_location": "L234",
       "weight": 1.0
     },
     {
@@ -102943,7 +103207,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L250",
+      "source_location": "L251",
       "weight": 1.0
     },
     {
@@ -102952,7 +103216,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L254",
+      "source_location": "L255",
       "weight": 1.0
     },
     {
@@ -102961,7 +103225,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L275",
+      "source_location": "L276",
       "weight": 1.0
     },
     {
@@ -102970,7 +103234,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L290",
+      "source_location": "L291",
       "weight": 1.0
     },
     {
@@ -102979,7 +103243,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L294",
+      "source_location": "L295",
       "weight": 1.0
     },
     {
@@ -102988,7 +103252,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L323",
+      "source_location": "L324",
       "weight": 1.0
     },
     {
@@ -102997,7 +103261,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L327",
+      "source_location": "L328",
       "weight": 1.0
     },
     {
@@ -103006,7 +103270,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L333",
+      "source_location": "L334",
       "weight": 1.0
     },
     {
@@ -103015,7 +103279,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L351",
+      "source_location": "L352",
       "weight": 1.0
     },
     {
@@ -103024,7 +103288,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L367",
+      "source_location": "L368",
       "weight": 1.0
     },
     {
@@ -103033,7 +103297,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L386",
+      "source_location": "L387",
       "weight": 1.0
     },
     {
@@ -103042,7 +103306,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L392",
+      "source_location": "L393",
       "weight": 1.0
     },
     {
@@ -103051,7 +103315,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L410",
+      "source_location": "L411",
       "weight": 1.0
     },
     {
@@ -103060,7 +103324,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L427",
+      "source_location": "L428",
       "weight": 1.0
     },
     {
@@ -103069,7 +103333,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L431",
+      "source_location": "L432",
       "weight": 1.0
     },
     {
@@ -103078,7 +103342,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L465",
+      "source_location": "L466",
       "weight": 1.0
     },
     {
@@ -103087,7 +103351,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L487",
+      "source_location": "L488",
       "weight": 1.0
     },
     {
@@ -103096,7 +103360,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L501",
+      "source_location": "L502",
       "weight": 1.0
     },
     {
@@ -103105,7 +103369,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L520",
+      "source_location": "L521",
       "weight": 1.0
     },
     {
@@ -103114,7 +103378,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L524",
+      "source_location": "L525",
       "weight": 1.0
     },
     {
@@ -103123,7 +103387,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L543",
+      "source_location": "L544",
       "weight": 1.0
     },
     {
@@ -103132,7 +103396,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L565",
+      "source_location": "L566",
       "weight": 1.0
     },
     {
@@ -103141,7 +103405,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L582",
+      "source_location": "L583",
       "weight": 1.0
     },
     {
@@ -103150,7 +103414,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L586",
+      "source_location": "L587",
       "weight": 1.0
     },
     {
@@ -103159,7 +103423,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L597",
+      "source_location": "L598",
       "weight": 1.0
     },
     {
@@ -103168,7 +103432,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L609",
+      "source_location": "L610",
       "weight": 1.0
     },
     {
@@ -103177,7 +103441,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L620",
+      "source_location": "L621",
       "weight": 1.0
     },
     {
@@ -103186,7 +103450,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L632",
+      "source_location": "L633",
       "weight": 1.0
     },
     {
@@ -103195,7 +103459,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L636",
+      "source_location": "L637",
       "weight": 1.0
     },
     {
@@ -103204,7 +103468,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L654",
+      "source_location": "L655",
       "weight": 1.0
     },
     {
@@ -103213,7 +103477,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L664",
+      "source_location": "L665",
       "weight": 1.0
     },
     {
@@ -103222,7 +103486,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L681",
+      "source_location": "L682",
       "weight": 1.0
     },
     {
@@ -103231,7 +103495,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L687",
+      "source_location": "L688",
       "weight": 1.0
     },
     {
@@ -103240,7 +103504,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L711",
+      "source_location": "L712",
       "weight": 1.0
     },
     {
@@ -103249,7 +103513,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L738",
+      "source_location": "L739",
       "weight": 1.0
     },
     {
@@ -103258,7 +103522,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L740",
+      "source_location": "L741",
       "weight": 1.0
     },
     {
@@ -103267,7 +103531,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L755",
+      "source_location": "L756",
       "weight": 1.0
     },
     {
@@ -103276,7 +103540,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L774",
+      "source_location": "L775",
       "weight": 1.0
     },
     {
@@ -103285,7 +103549,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L788",
+      "source_location": "L789",
       "weight": 1.0
     },
     {
@@ -103294,7 +103558,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L808",
+      "source_location": "L809",
       "weight": 1.0
     },
     {
@@ -103303,7 +103567,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L820",
+      "source_location": "L821",
       "weight": 1.0
     },
     {
@@ -103312,7 +103576,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L834",
+      "source_location": "L835",
       "weight": 1.0
     },
     {
@@ -103321,7 +103585,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L849",
+      "source_location": "L850",
       "weight": 1.0
     },
     {
@@ -103330,7 +103594,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L860",
+      "source_location": "L861",
       "weight": 1.0
     },
     {
@@ -103339,7 +103603,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L868",
+      "source_location": "L869",
       "weight": 1.0
     },
     {
@@ -103348,7 +103612,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/07-updated-domain-model-after-interview.md",
-      "source_location": "L889",
+      "source_location": "L890",
       "weight": 1.0
     },
     {
@@ -105134,6 +105398,276 @@
       "weight": 1.0
     },
     {
+      "source": "docs_21_expenses_assets_contracts_contract",
+      "target": "docs_21_expenses_assets_contracts_contract_контракт_среза_expenses_assets_contracts",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_контракт_среза_expenses_assets_contracts",
+      "target": "docs_21_expenses_assets_contracts_contract_контекст",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_контракт_среза_expenses_assets_contracts",
+      "target": "docs_21_expenses_assets_contracts_contract_инварианты",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L33",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_контракт_среза_expenses_assets_contracts",
+      "target": "docs_21_expenses_assets_contracts_contract_не_цели_первого_среза",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L46",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_контракт_среза_expenses_assets_contracts",
+      "target": "docs_21_expenses_assets_contracts_contract_целевая_доменная_модель",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L57",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_целевая_доменная_модель",
+      "target": "docs_21_expenses_assets_contracts_contract_counterparty",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L59",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_целевая_доменная_модель",
+      "target": "docs_21_expenses_assets_contracts_contract_centerexpensecategory",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L95",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_целевая_доменная_модель",
+      "target": "docs_21_expenses_assets_contracts_contract_centerexpense",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L124",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_целевая_доменная_модель",
+      "target": "docs_21_expenses_assets_contracts_contract_expensefundingsplit",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L154",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_целевая_доменная_модель",
+      "target": "docs_21_expenses_assets_contracts_contract_equipmentasset",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L176",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_целевая_доменная_модель",
+      "target": "docs_21_expenses_assets_contracts_contract_contracttemplate",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L200",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_целевая_доменная_модель",
+      "target": "docs_21_expenses_assets_contracts_contract_donationcontract",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L228",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_целевая_доменная_модель",
+      "target": "docs_21_expenses_assets_contracts_contract_servicecontract",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L255",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_контракт_среза_expenses_assets_contracts",
+      "target": "docs_21_expenses_assets_contracts_contract_индексы_и_ограничения",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L280",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_контракт_среза_expenses_assets_contracts",
+      "target": "docs_21_expenses_assets_contracts_contract_ux_ui_карта",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L311",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_ux_ui_карта",
+      "target": "docs_21_expenses_assets_contracts_contract_администратор_внести_расход",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L313",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_ux_ui_карта",
+      "target": "docs_21_expenses_assets_contracts_contract_руководитель_посмотреть_расходы",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L328",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_ux_ui_карта",
+      "target": "docs_21_expenses_assets_contracts_contract_руководитель_отчет_спонсору_фонду",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L342",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_ux_ui_карта",
+      "target": "docs_21_expenses_assets_contracts_contract_администратор_вести_договор",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L355",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_контракт_среза_expenses_assets_contracts",
+      "target": "docs_21_expenses_assets_contracts_contract_рекомендуемые_вертикальные_срезы",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L369",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_рекомендуемые_вертикальные_срезы",
+      "target": "docs_21_expenses_assets_contracts_contract_срез_1_expenses_foundation_schema",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L371",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_рекомендуемые_вертикальные_срезы",
+      "target": "docs_21_expenses_assets_contracts_contract_срез_2_expenses_basic_ui",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L390",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_рекомендуемые_вертикальные_срезы",
+      "target": "docs_21_expenses_assets_contracts_contract_срез_3_expenses_manager_report",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L406",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_рекомендуемые_вертикальные_срезы",
+      "target": "docs_21_expenses_assets_contracts_contract_срез_4_assets_registry",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L421",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_рекомендуемые_вертикальные_срезы",
+      "target": "docs_21_expenses_assets_contracts_contract_срез_5_contracts_registry",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L435",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_рекомендуемые_вертикальные_срезы",
+      "target": "docs_21_expenses_assets_contracts_contract_срез_6_contracts_generation_and_import_preview",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L452",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_контракт_среза_expenses_assets_contracts",
+      "target": "docs_21_expenses_assets_contracts_contract_миграционные_риски",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L466",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_контракт_среза_expenses_assets_contracts",
+      "target": "docs_21_expenses_assets_contracts_contract_разделение_агентов",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L487",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_контракт_среза_expenses_assets_contracts",
+      "target": "docs_21_expenses_assets_contracts_contract_открытые_вопросы",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L508",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_21_expenses_assets_contracts_contract_контракт_среза_expenses_assets_contracts",
+      "target": "docs_21_expenses_assets_contracts_contract_следующий_безопасный_шаг",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/21-expenses-assets-contracts-contract.md",
+      "source_location": "L525",
+      "weight": 1.0
+    },
+    {
       "source": "docs_critical_stack_ux_review_2026_06_10",
       "target": "docs_critical_stack_ux_review_2026_06_10_критический_срез_проекта_rmcodex",
       "relation": "contains",
@@ -106709,6 +107243,15 @@
       "weight": 1.0
     },
     {
+      "source": "docs_current_state_текущее_состояние_проекта_радость_моя",
+      "target": "docs_current_state_обновление_2026_07_15_контракт_expenses_assets_contracts",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1530",
+      "weight": 1.0
+    },
+    {
       "source": "decisions_adr_001_django_postgresql_local_first",
       "target": "decisions_adr_001_django_postgresql_local_first_adr_001_django_postgresql_локальный_first_deployment",
       "relation": "contains",
@@ -107038,7 +107581,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L76",
+      "source_location": "L78",
       "weight": 1.0
     },
     {
@@ -107047,7 +107590,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L81",
+      "source_location": "L83",
       "weight": 1.0
     },
     {
@@ -107056,7 +107599,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L91",
+      "source_location": "L93",
       "weight": 1.0
     },
     {
@@ -107065,7 +107608,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L103",
+      "source_location": "L105",
       "weight": 1.0
     },
     {
@@ -107074,7 +107617,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L115",
+      "source_location": "L117",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_next_chat_prompt_промпт_для_следующего_чата_по_проекту_радость_моя",
+      "target": "docs_next_chat_prompt_последнее_уточнение_2026_07_15_expenses_assets_contracts_contract",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/next-chat-prompt.md",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -107110,7 +107662,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L45",
+      "source_location": "L46",
       "weight": 1.0
     },
     {
@@ -107119,7 +107671,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L67",
+      "source_location": "L69",
       "weight": 1.0
     },
     {
@@ -107128,7 +107680,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L80",
+      "source_location": "L82",
       "weight": 1.0
     },
     {
@@ -107137,7 +107689,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L82",
+      "source_location": "L84",
       "weight": 1.0
     },
     {
@@ -107146,7 +107698,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L101",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
@@ -107155,7 +107707,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L110",
+      "source_location": "L112",
       "weight": 1.0
     },
     {
@@ -107164,7 +107716,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L122",
+      "source_location": "L124",
       "weight": 1.0
     },
     {
@@ -107173,7 +107725,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L166",
+      "source_location": "L168",
       "weight": 1.0
     },
     {
@@ -107182,7 +107734,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L173",
+      "source_location": "L175",
       "weight": 1.0
     },
     {

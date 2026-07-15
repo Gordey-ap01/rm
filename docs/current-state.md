@@ -1526,3 +1526,14 @@ SMTP для реальной промышленной рассылки еще н
 - Playwright Browser QA fallback прошел на desktop 1365x900 and mobile 390x844: compensation list/form, timesheet and payroll sheet visible; group policy, `× 2` multiplier and payroll units visible; HTTP 4xx/5xx, console/page errors and horizontal overflow absent. Артефакты: `%TEMP%\rmcodex-browser-qa-group-payroll-policy`; QA data очищены, runserver 8070 остановлен.
 - Graphify code-index after group payroll policy foundation: `4275` nodes / `15347` edges; semantic extraction was not rerun and no API key was written to project files.
 - Следующий шаг по payroll не должен заново делать group policy foundation. Возможные следующие срезы: управленческая полировка отчетов по payroll/grant, отдельный контракт на грантовую salary policy beyond per-session, либо возврат к расходам/договорам/импорту после сверки приоритетов.
+
+## Обновление 2026-07-15: контракт expenses-assets-contracts
+
+- Добавлен docs-only контракт `docs/21-expenses-assets-contracts-contract.md` как следующий финансовый доменный контракт после закрытия group payroll foundation.
+- Контракт фиксирует, что расходы центра нельзя смешивать с `BalanceAccount`, `LedgerEntry` и `Payment`: текущие счета/ledger остаются контуром балансов получателей, а расходы центра должны идти отдельными сущностями и split-строками по `FundingSource`.
+- Предложены целевые сущности: `Counterparty`, `CenterExpenseCategory`, `CenterExpense`, `ExpenseFundingSplit`, позднее `EquipmentAsset`, `ContractTemplate`, `DonationContract`, `ServiceContract`.
+- Зафиксированы вертикальные срезы: `expenses-foundation-schema`, `expenses-basic-ui`, `expenses-manager-report`, `assets-registry`, `contracts-registry`, `contracts-generation-and-import-preview`.
+- Код, модели, миграции, billing/ledger/payroll/grant/status semantics не менялись в этом docs-only срезе.
+- Обновлен устаревший статус в `docs/08-parallel-agent-execution-plan.md`: возможность выбрать принцип начисления зарплаты для группы теперь считается выполненной через `StaffCompensationRule.group_pay_policy` и snapshots в `PayrollAccrual`.
+- Следующий безопасный кодовый шаг, если продолжаем эту линию: `expenses-foundation-schema` одним DB-owner, additive models/migration + service validation + tests. Не менять `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, `billing.apply_decision()` или grant semantics.
+- Graphify code-index after expenses/assets/contracts contract: `4308` nodes / `15379` edges; semantic extraction was not rerun and no API key was written to project files.

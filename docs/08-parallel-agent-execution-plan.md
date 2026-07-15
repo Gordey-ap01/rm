@@ -362,7 +362,7 @@ Acceptance criteria:
 
 - руководитель задает ставку по услуге и длительности — частично выполнено;
 - руководитель задает отдельные грантовые ставки — выполнено через `funding_source` и `FundingStaffAllocation.session_pay_amount`;
-- для группы можно выбрать принцип начисления — не выполнено;
+- для группы можно выбрать принцип начисления — выполнено через `StaffCompensationRule.session_scope`, `StaffCompensationRule.group_pay_policy`, `StaffCompensationRule.group_fixed_amount` и snapshot-поля `PayrollAccrual`;
 - расчетный лист формируется за произвольный период — выполнено;
 - грантовая квота распределяется по специалистам — выполнено в модели, отчете и UI.
 

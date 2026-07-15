@@ -795,18 +795,18 @@
     "semantic_hash": ""
   },
   "docs/07-updated-domain-model-after-interview.md": {
-    "mtime": 1782566877.994115,
-    "ast_hash": "83d1b2a66e1be6d170f04df55a5cec98",
+    "mtime": 1784116929.1310883,
+    "ast_hash": "81d7bf922d005813882781a0f45e6c5b",
     "semantic_hash": ""
   },
   "docs/08-parallel-agent-execution-plan.md": {
-    "mtime": 1782944521.249096,
-    "ast_hash": "9487b592e7b1a1794092aaa111594c76",
+    "mtime": 1784116921.310948,
+    "ast_hash": "5ad2f19ff3ba0bc9029bb5ee5825b887",
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784098903.7022078,
-    "ast_hash": "63d0d89c48bdf64949bb7972b3863123",
+    "mtime": 1784117119.4324467,
+    "ast_hash": "7aa8ecb486dc4c61bcb886b3679f9a61",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784098937.7195568,
-    "ast_hash": "7aac279ba67303fa5cfd690e99acb477",
+    "mtime": 1784117138.8596766,
+    "ast_hash": "dec36ce9a6cddb4c1dc7d68bb8f86e34",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784098921.3159351,
-    "ast_hash": "1c9d32acc83e085395c806528a477090",
+    "mtime": 1784117130.5502703,
+    "ast_hash": "7b724c54ae4a8e20a8b2bf4c979bef2d",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1027,6 +1027,11 @@
   "operations/services/compensation.py": {
     "mtime": 1784097998.7754922,
     "ast_hash": "99b4dd1b1b0dd406dc392e64428a276f",
+    "semantic_hash": ""
+  },
+  "docs/21-expenses-assets-contracts-contract.md": {
+    "mtime": 1784116892.0174172,
+    "ast_hash": "e3e1d759da3e0593535192599e5cac8f",
     "semantic_hash": ""
   }
 }
