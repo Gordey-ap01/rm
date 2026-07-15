@@ -85,6 +85,13 @@ urlpatterns = [
         views.center_expense_edit,
         name="center_expense_edit",
     ),
+    path("assets/", views.equipment_asset_list, name="equipment_asset_list"),
+    path("assets/new/", views.equipment_asset_create, name="equipment_asset_create"),
+    path(
+        "assets/<int:pk>/edit/",
+        views.equipment_asset_edit,
+        name="equipment_asset_edit",
+    ),
     path("recipients/", views.recipient_list, name="recipient_list"),
     path("imports/recipients/", views.recipient_import_preview, name="recipient_import_preview"),
     path("recipients/new/", views.recipient_create, name="recipient_create"),

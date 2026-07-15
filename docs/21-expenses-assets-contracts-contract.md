@@ -2,7 +2,7 @@
 
 Дата: 2026-07-15
 
-Статус: accepted for current expenses foundation. Docs-only контракт создан 2026-07-15; кодовые срезы `expenses-foundation-schema`, `expenses-basic-ui` и `expenses-manager-report` выполнены 2026-07-15.
+Статус: accepted for current expenses foundation. Docs-only контракт создан 2026-07-15; кодовые срезы `expenses-foundation-schema`, `expenses-basic-ui`, `expenses-manager-report` и `assets-registry` выполнены 2026-07-15/16.
 
 Назначение: зафиксировать следующую крупную финансовую зону после расписания, балансов, грантов, зарплат и financial-integrity эпика. Срез нужен для единого контура руководителя: видеть не только оказанные услуги и начисления специалистам, но и расходы центра, оборудование, источники покрытия расходов, доноров/контрагентов и договоры.
 
@@ -431,17 +431,23 @@ Acceptance:
 
 ### Срез 4: `assets-registry`
 
+Статус: выполнен 2026-07-16.
+
 Состав:
 
-- модели/формы для `EquipmentAsset`;
-- связь с расходом покупки;
-- список активов и фильтры статус/тип.
+- модель/формы для `EquipmentAsset` - реализованы;
+- связь с расходом покупки категории equipment - реализована;
+- список активов и фильтры статус/тип/поиск - реализованы;
+- admin/auditlog registration - реализованы.
 
 Acceptance:
 
-- можно связать актив с расходом категории equipment;
-- списание/архивирование актива не удаляет расход;
-- inventory number уникален, если задан.
+- можно связать актив с расходом категории equipment - выполнено;
+- non-equipment расход не принимается как расход покупки - выполнено;
+- списание/архивирование актива не удаляет расход - выполнено;
+- inventory number уникален, если задан - выполнено;
+- реестр не создает `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing или grant факты - выполнено;
+- Browser QA desktop/mobile - выполнено.
 
 ### Срез 5: `contracts-registry`
 
@@ -535,9 +541,9 @@ Acceptance:
 
 ## Следующий безопасный шаг
 
-После `expenses-foundation-schema`, `expenses-basic-ui` и `expenses-manager-report` следующий безопасный шаг:
+После `expenses-foundation-schema`, `expenses-basic-ui`, `expenses-manager-report` и `assets-registry` следующий безопасный шаг:
 
-- `assets-registry` как отдельный additive DB/UI срез для оборудования;
+- `contracts-registry` как отдельный additive DB/UI срез для шаблонов и реестра договоров;
 - или небольшой product UI для справочников категорий/контрагентов, если администратору неудобно наполнять расходы через admin.
 
-Пока не начинать approve/pay write-path, contracts registry или Excel import write-path без отдельного контракта/среза. `assets-registry` допустим только как отдельный следующий срез с одним DB-owner. Не менять `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, `billing.apply_decision()` и grant semantics в рамках расходов центра.
+Пока не начинать approve/pay write-path или Excel import write-path без отдельного контракта/среза. `contracts-registry` допустим только как отдельный следующий срез с одним DB-owner. Не менять `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, `billing.apply_decision()` и grant semantics в рамках расходов центра.

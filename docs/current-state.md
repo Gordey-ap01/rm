@@ -1575,3 +1575,16 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA desktop/mobile прошла; артефакты: `%TEMP%\rmcodex-browser-qa-expenses-manager-report`; локальный runserver на `8075` остановлен.
 - Graphify user env для Gemini/Google API настроен вне репозитория; ключ в файлах проекта не найден. Code-index after expenses manager report: `4421` nodes / `16565` edges; semantic extraction was not rerun in this slice.
 - Следующий безопасный срез по docs/21: `assets-registry` отдельным DB-owner или небольшой product UI для справочников категорий/контрагентов. Не начинать approve/pay, contracts или Excel import write-path без отдельного контракта.
+
+## Обновление 2026-07-16: assets-registry
+
+- Выполнен additive DB/UI срез `assets-registry` по `docs/21-expenses-assets-contracts-contract.md`.
+- Добавлена модель `EquipmentAsset` и migration `operations.0026_equipmentasset`; существующие `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, billing decisions, grant semantics и статусы занятий не менялись.
+- Поля актива: название, тип, инвентарный номер, дата покупки, nullable `purchase_expense`, стоимость, статус, местонахождение, ответственный специалист, примечания.
+- Constraints: стоимость null или > 0; `inventory_number` уникален, если заполнен. Валидация запрещает привязку расхода покупки не из категории `equipment`.
+- Добавлены admin/auditlog registration, `EquipmentAssetForm`, маршруты `/assets/`, `/assets/new/`, `/assets/<id>/edit/`, шаблоны списка/формы и пункт навигации "Оборудование".
+- Списание/архивирование актива меняет только статус и не удаляет связанный расход покупки; реестр не создает ledger/payment/payroll/billing/grant факты.
+- Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused asset/admin/view tests (`11 passed`), full `pytest -q --tb=short` (`528 passed`, 1 прежнее предупреждение django-tasks).
+- Browser QA desktop/mobile прошла; артефакты: `%TEMP%\rmcodex-browser-qa-assets-registry`; локальный runserver на `8076` остановлен.
+- Graphify code-index after assets registry: `4461` nodes / `16971` edges; semantic extraction was not rerun in this slice.
+- Следующий безопасный срез по docs/21: `contracts-registry` отдельным DB-owner или небольшой product UI для категорий/контрагентов. Не начинать approve/pay или Excel import write-path без отдельного контракта.

@@ -3407,6 +3407,97 @@ class ExpenseFundingSplit(TimeStampedModel):
             raise ValidationError({"amount": "Сумма распределения должна быть положительной."})
 
 
+class EquipmentAsset(TimeStampedModel):
+    class AssetType(models.TextChoices):
+        THERAPY_EQUIPMENT = "therapy_equipment", "Реабилитационное оборудование"
+        THERAPY_TOOL = "therapy_tool", "Инструменты для занятий"
+        FURNITURE = "furniture", "Мебель"
+        IT = "it", "ИТ и оргтехника"
+        HOUSEHOLD = "household", "Хозяйственный инвентарь"
+        OTHER = "other", "Прочее"
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "В работе"
+        IN_REPAIR = "in_repair", "В ремонте"
+        WRITTEN_OFF = "written_off", "Списан"
+        LOST = "lost", "Утерян"
+        ARCHIVED = "archived", "Архив"
+
+    name = models.CharField("название", max_length=200)
+    asset_type = models.CharField(
+        "тип",
+        max_length=40,
+        choices=AssetType.choices,
+        default=AssetType.OTHER,
+    )
+    inventory_number = models.CharField("инвентарный номер", max_length=80, blank=True)
+    purchase_date = models.DateField("дата покупки", null=True, blank=True)
+    purchase_expense = models.ForeignKey(
+        CenterExpense,
+        verbose_name="расход покупки",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="equipment_assets",
+    )
+    total_amount = models.DecimalField("стоимость", max_digits=12, decimal_places=2, null=True, blank=True)
+    status = models.CharField(
+        "статус",
+        max_length=30,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
+    location = models.CharField("местонахождение", max_length=200, blank=True)
+    responsible_staff = models.ForeignKey(
+        StaffMember,
+        verbose_name="ответственный специалист",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="equipment_assets",
+    )
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "оборудование"
+        verbose_name_plural = "оборудование"
+        ordering = ["status", "asset_type", "name"]
+        indexes = [
+            models.Index(fields=["status", "asset_type"]),
+            models.Index(fields=["purchase_expense"]),
+            models.Index(fields=["responsible_staff", "status"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(total_amount__isnull=True) | Q(total_amount__gt=0),
+                name="equipment_asset_total_amount_positive_or_null",
+            ),
+            models.UniqueConstraint(
+                fields=["inventory_number"],
+                condition=~Q(inventory_number=""),
+                name="unique_non_empty_equipment_inventory_number",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        if self.inventory_number:
+            return f"{self.name} ({self.inventory_number})"
+        return self.name
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.total_amount is not None and self.total_amount <= 0:
+            errors["total_amount"] = "Стоимость должна быть положительной."
+        if (
+            self.purchase_expense_id
+            and self.purchase_expense.category.expense_type
+            != CenterExpenseCategory.ExpenseType.EQUIPMENT
+        ):
+            errors["purchase_expense"] = "Расход покупки должен относиться к категории оборудования."
+        if errors:
+            raise ValidationError(errors)
+
+
 class Discount(TimeStampedModel):
     child = models.ForeignKey(
         Child, verbose_name="получатель", on_delete=models.CASCADE, related_name="discounts"

@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Оборудование{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Оборудование</h1>
+    <p>Реестр оборудования и значимого инвентаря с ответственными, местонахождением и связью с расходом покупки.</p>
+  </div>
+  <a class="button-link" href="{% url 'equipment_asset_create' %}">Добавить актив</a>
+</section>
+
+<section class="directory-overview">
+  <a class="directory-next-action is-{{ asset_next_action.tone }}" href="{{ asset_next_action.href }}">
+    <span>{{ asset_next_action.label }}</span>
+    <strong>{{ asset_next_action.title }}</strong>
+    <small>{{ asset_next_action.detail }}</small>
+  </a>
+  <div class="directory-summary-grid" aria-label="Сводка оборудования">
+    {% for item in asset_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="directory-layout">
+  <div class="directory-main">
+    <section class="panel directory-panel" id="equipment-asset-list">
+      <div class="directory-panel-head">
+        <div>
+          <h2>Реестр активов</h2>
+          <p>Статус актива меняется в карточке. Списание или архивирование не удаляет связанный расход покупки.</p>
+        </div>
+      </div>
+
+      <form class="expense-filter-form" method="get">
+        <label>
+          <span>Поиск</span>
+          <input type="search" name="q" value="{{ filters.q }}" placeholder="Название, номер, кабинет">
+        </label>
+        <label>
+          <span>Статус</span>
+          <select name="status">
+            <option value="">Все статусы</option>
+            {% for value, label in status_choices %}
+              <option value="{{ value }}"{% if value == filters.status %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>Тип</span>
+          <select name="asset_type">
+            <option value="">Все типы</option>
+            {% for value, label in asset_type_choices %}
+              <option value="{{ value }}"{% if value == filters.asset_type %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div class="expense-filter-actions">
+          <button type="submit">Показать</button>
+          <a class="button-link secondary" href="{% url 'equipment_asset_list' %}">Сбросить</a>
+        </div>
+      </form>
+
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table asset-table">
+          <thead>
+            <tr>
+              <th>Актив</th>
+              <th>Инв. номер</th>
+              <th>Место</th>
+              <th>Ответственный</th>
+              <th>Стоимость</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for asset in assets %}
+            <tr{% if asset.status == "written_off" or asset.status == "lost" or asset.status == "archived" %} class="muted-row"{% endif %}>
+              <td data-label="Актив">
+                <strong>{{ asset.name }}</strong>
+                <div class="muted">{{ asset.get_asset_type_display }}</div>
+                {% if asset.purchase_expense %}
+                  <div class="muted">Расход: <a href="{{ asset.ui_purchase_expense_url }}">{{ asset.purchase_expense.title }}</a></div>
+                {% endif %}
+              </td>
+              <td data-label="Инв. номер">
+                {% if asset.inventory_number %}{{ asset.inventory_number }}{% else %}<span class="muted">не указан</span>{% endif %}
+              </td>
+              <td data-label="Место">
+                {% if asset.location %}{{ asset.location }}{% else %}<span class="muted">не указано</span>{% endif %}
+              </td>
+              <td data-label="Ответственный">
+                {% if asset.responsible_staff %}{{ asset.responsible_staff.full_name }}{% else %}<span class="muted">не назначен</span>{% endif %}
+              </td>
+              <td data-label="Стоимость"><strong>{{ asset.ui_amount_display }}</strong></td>
+              <td data-label="Статус">
+                {% if asset.status == "active" %}
+                  <span class="status-pill">{{ asset.get_status_display }}</span>
+                {% elif asset.status == "in_repair" %}
+                  <span class="status-pill warning-pill">{{ asset.get_status_display }}</span>
+                {% elif asset.status == "written_off" or asset.status == "lost" %}
+                  <span class="status-pill danger-pill">{{ asset.get_status_display }}</span>
+                {% else %}
+                  <span class="status-pill muted-pill">{{ asset.get_status_display }}</span>
+                {% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'equipment_asset_edit' asset.pk %}">Открыть</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" data-label="Оборудование">
+                <div class="empty-state">Оборудование еще не добавлено.</div>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="directory-sidebar" aria-label="Контроль оборудования">
+    <section class="panel directory-control-panel">
+      <h2>Контроль</h2>
+      <ul class="directory-check-list">
+        <li>
+          <strong>Связь с расходом</strong>
+          <span>Актив можно связать с расходом покупки категории оборудования. Расход при этом остается в финансовом реестре.</span>
+        </li>
+        <li>
+          <strong>Инвентарный номер</strong>
+          <span>Если номер указан, система не даст создать второй актив с тем же номером.</span>
+        </li>
+        <li>
+          <strong>Списание</strong>
+          <span>Списание или архивирование меняет только статус актива и не удаляет расход покупки.</span>
+        </li>
+      </ul>
+    </section>
+  </aside>
+</section>
+{% endblock %}

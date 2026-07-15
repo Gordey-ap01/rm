@@ -29,6 +29,7 @@ from operations.models import (
     Counterparty,
     Discount,
     Document,
+    EquipmentAsset,
     ExpenseFundingSplit,
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
@@ -107,6 +108,10 @@ class NewViewsTestBase(TestCase):
         cls.expense_category = CenterExpenseCategory.objects.create(
             name="Хозяйственные расходы",
             expense_type=CenterExpenseCategory.ExpenseType.HOUSEHOLD,
+        )
+        cls.equipment_expense_category = CenterExpenseCategory.objects.create(
+            name="Оборудование",
+            expense_type=CenterExpenseCategory.ExpenseType.EQUIPMENT,
         )
         cls.counterparty = Counterparty.objects.create(
             name="Поставщик материалов",
@@ -3212,6 +3217,112 @@ class CenterExpenseViewTests(NewViewsTestBase):
         self.assertRedirects(response, reverse("center_expense_edit", args=[expense.pk]))
         expense.refresh_from_db()
         self.assertEqual(expense.title, "Утвержденный расход")
+
+
+class EquipmentAssetViewTests(NewViewsTestBase):
+    def _equipment_expense(self, title: str = "Покупка оборудования") -> CenterExpense:
+        return CenterExpense.objects.create(
+            category=self.equipment_expense_category,
+            counterparty=self.counterparty,
+            title=title,
+            total_amount=Decimal("2500.00"),
+        )
+
+    def _asset_post_data(self, *, purchase_expense=None, status=EquipmentAsset.Status.ACTIVE):
+        purchase_expense = purchase_expense or self._equipment_expense()
+        return {
+            "name": "Балансировочная платформа",
+            "asset_type": EquipmentAsset.AssetType.THERAPY_EQUIPMENT,
+            "inventory_number": "ASSET-001",
+            "purchase_date": timezone.localdate().isoformat(),
+            "purchase_expense": purchase_expense.pk,
+            "total_amount": "2500.00",
+            "status": status,
+            "location": "Кабинет ЛФК",
+            "responsible_staff": self.staff.pk,
+            "notes": "Для занятий ЛФК",
+        }
+
+    def test_equipment_asset_list_renders(self):
+        expense = self._equipment_expense()
+        EquipmentAsset.objects.create(
+            name="Балансировочная платформа",
+            asset_type=EquipmentAsset.AssetType.THERAPY_EQUIPMENT,
+            inventory_number="ASSET-001",
+            purchase_expense=expense,
+            total_amount=Decimal("2500.00"),
+            location="Кабинет ЛФК",
+            responsible_staff=self.staff,
+        )
+
+        response = self.client.get(reverse("equipment_asset_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("asset_summary_items", response.context)
+        self.assertIn("asset_next_action", response.context)
+        self.assertContains(response, "Оборудование")
+        self.assertContains(response, "Реестр активов")
+        self.assertContains(response, "Балансировочная платформа")
+        self.assertContains(response, reverse("equipment_asset_create"))
+        self.assertContains(response, 'id="equipment-asset-list"')
+
+    def test_equipment_asset_create_links_equipment_expense(self):
+        ledger_count = LedgerEntry.objects.count()
+        expense = self._equipment_expense()
+
+        response = self.client.post(
+            reverse("equipment_asset_create"),
+            self._asset_post_data(purchase_expense=expense),
+        )
+
+        asset = EquipmentAsset.objects.get(inventory_number="ASSET-001")
+        self.assertRedirects(response, reverse("equipment_asset_edit", args=[asset.pk]))
+        self.assertEqual(asset.purchase_expense, expense)
+        self.assertEqual(asset.responsible_staff, self.staff)
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
+
+    def test_equipment_asset_create_rejects_non_equipment_expense(self):
+        household_expense = CenterExpense.objects.create(
+            category=self.expense_category,
+            counterparty=self.counterparty,
+            title="Хозяйственный расход",
+            total_amount=Decimal("1000.00"),
+        )
+
+        response = self.client.post(
+            reverse("equipment_asset_create"),
+            self._asset_post_data(purchase_expense=household_expense),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(EquipmentAsset.objects.filter(inventory_number="ASSET-001").exists())
+        self.assertContains(response, "Выберите корректный вариант")
+
+    def test_equipment_asset_edit_status_does_not_delete_expense(self):
+        expense = self._equipment_expense()
+        asset = EquipmentAsset.objects.create(
+            name="Балансировочная платформа",
+            asset_type=EquipmentAsset.AssetType.THERAPY_EQUIPMENT,
+            inventory_number="ASSET-001",
+            purchase_expense=expense,
+            total_amount=Decimal("2500.00"),
+            responsible_staff=self.staff,
+        )
+        ledger_count = LedgerEntry.objects.count()
+
+        response = self.client.post(
+            reverse("equipment_asset_edit", args=[asset.pk]),
+            self._asset_post_data(
+                purchase_expense=expense,
+                status=EquipmentAsset.Status.WRITTEN_OFF,
+            ),
+        )
+
+        self.assertRedirects(response, reverse("equipment_asset_list"))
+        asset.refresh_from_db()
+        self.assertEqual(asset.status, EquipmentAsset.Status.WRITTEN_OFF)
+        self.assertTrue(CenterExpense.objects.filter(pk=expense.pk).exists())
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
 
 
 class StaffCompensationRuleViewTests(NewViewsTestBase):

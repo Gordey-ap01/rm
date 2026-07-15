@@ -11,6 +11,7 @@ from operations.models import (
     CenterExpense,
     CenterExpenseCategory,
     Counterparty,
+    EquipmentAsset,
     ExpenseFundingSplit,
     FundingSource,
     LedgerEntry,
@@ -145,6 +146,83 @@ class CenterExpenseValidationTests(TestCase):
 
         with self.assertRaises(ValidationError):
             split.full_clean()
+
+
+class EquipmentAssetValidationTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.equipment_category = CenterExpenseCategory.objects.create(
+            name="Equipment",
+            expense_type=CenterExpenseCategory.ExpenseType.EQUIPMENT,
+        )
+        cls.household_category = CenterExpenseCategory.objects.create(
+            name="Household",
+            expense_type=CenterExpenseCategory.ExpenseType.HOUSEHOLD,
+        )
+
+    def _expense(self, category: CenterExpenseCategory) -> CenterExpense:
+        return CenterExpense.objects.create(
+            category=category,
+            title="Asset purchase",
+            total_amount=Decimal("1000.00"),
+        )
+
+    def test_asset_can_link_equipment_expense(self):
+        expense = self._expense(self.equipment_category)
+        asset = EquipmentAsset(
+            name="Balance trainer",
+            asset_type=EquipmentAsset.AssetType.THERAPY_EQUIPMENT,
+            inventory_number="INV-001",
+            purchase_expense=expense,
+            total_amount=Decimal("1000.00"),
+        )
+
+        asset.full_clean()
+        asset.save()
+
+        self.assertEqual(asset.purchase_expense, expense)
+
+    def test_asset_rejects_non_equipment_purchase_expense(self):
+        expense = self._expense(self.household_category)
+        asset = EquipmentAsset(
+            name="Wrong link",
+            purchase_expense=expense,
+            total_amount=Decimal("1000.00"),
+        )
+
+        with self.assertRaises(ValidationError):
+            asset.full_clean()
+
+    def test_inventory_number_is_unique_when_filled(self):
+        EquipmentAsset.objects.create(name="First asset", inventory_number="INV-UNIQUE")
+        duplicate = EquipmentAsset(name="Second asset", inventory_number="INV-UNIQUE")
+
+        with self.assertRaises(ValidationError):
+            duplicate.full_clean()
+
+    def test_blank_inventory_number_can_repeat(self):
+        EquipmentAsset.objects.create(name="First asset")
+        duplicate = EquipmentAsset(name="Second asset")
+
+        duplicate.full_clean()
+        duplicate.save()
+
+        self.assertEqual(EquipmentAsset.objects.filter(inventory_number="").count(), 2)
+
+    def test_writeoff_does_not_delete_expense_or_create_ledger(self):
+        expense = self._expense(self.equipment_category)
+        ledger_count = LedgerEntry.objects.count()
+        asset = EquipmentAsset.objects.create(
+            name="Trainer",
+            purchase_expense=expense,
+            total_amount=Decimal("1000.00"),
+        )
+
+        asset.status = EquipmentAsset.Status.WRITTEN_OFF
+        asset.save()
+
+        self.assertTrue(CenterExpense.objects.filter(pk=expense.pk).exists())
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
 
 
 class CenterExpenseReportTests(TestCase):

@@ -63,7 +63,7 @@
 Если доступен Graphify и есть graphify-out/graph.json, сначала используй graphify query как индекс проекта. При расхождениях свежие docs/current-state.md, docs/07-updated-domain-model-after-interview.md, docs/12-project-stage-audit-and-pivot-plan.md, docs/13-schedule-capacity-v2-contract.md и код остаются источником правды.
 
 Следующая задача:
-Не начинать заново financial-integrity event/timeline/report работу, `group-payroll-policy-foundation`, `expenses-foundation-schema`, `expenses-basic-ui` или `expenses-manager-report`: они выполнены. Текущий активный контракт - `docs/21-expenses-assets-contracts-contract.md`. Следующий безопасный шаг, если продолжаем этот приоритет: `assets-registry` отдельным DB-owner или небольшой product UI для категорий/контрагентов. Не начинать approve/pay/contracts/import write-path без отдельного контракта.
+Не начинать заново financial-integrity event/timeline/report работу, `group-payroll-policy-foundation`, `expenses-foundation-schema`, `expenses-basic-ui`, `expenses-manager-report` или `assets-registry`: они выполнены. Текущий активный контракт - `docs/21-expenses-assets-contracts-contract.md`. Следующий безопасный шаг, если продолжаем этот приоритет: `contracts-registry` отдельным DB-owner или небольшой product UI для категорий/контрагентов. Не начинать approve/pay/import write-path без отдельного контракта.
 
 Критические правила:
 - Не продолжать reschedule UX/control микросрезы без конкретного бага или нового требования.
@@ -181,3 +181,15 @@
 - Gemini/Google API key сохранен только в user-level Windows env, не в проектных файлах; точный ключ в репозитории не найден.
 - Graphify code-index after report: `4421` nodes / `16565` edges; semantic extraction was not rerun in this slice.
 - Следующий безопасный срез: `assets-registry` одним DB-owner или небольшой product UI категорий/контрагентов. Не начинать approve/pay/contracts/import write-path до отдельного контракта.
+
+## Последнее уточнение 2026-07-16: assets-registry выполнен
+
+После текста промпта выше считать актуальным:
+
+- `assets-registry` выполнен по `docs/21-expenses-assets-contracts-contract.md`.
+- Добавлены `EquipmentAsset`, migration `operations.0026_equipmentasset`, admin/auditlog registration, `EquipmentAssetForm`, `/assets/`, `/assets/new/`, `/assets/<id>/edit/`, шаблоны и навигация "Оборудование".
+- Актив можно связать только с расходом покупки категории `equipment`; non-empty inventory number уникален; списание/архивирование меняет только статус и не удаляет расход покупки.
+- `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing decisions, grant semantics и статусы занятий не менялись.
+- Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused tests `11 passed`, full pytest `528 passed`, Browser QA desktop/mobile.
+- Graphify code-index after assets: `4461` nodes / `16971` edges; semantic extraction was not rerun in this slice.
+- Следующий безопасный срез: `contracts-registry` одним DB-owner или небольшой product UI категорий/контрагентов. Не начинать approve/pay/import write-path до отдельного контракта.

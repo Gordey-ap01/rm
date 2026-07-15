@@ -18,6 +18,7 @@ from .models import (
     Consent,
     Counterparty,
     Document,
+    EquipmentAsset,
     ExpenseFundingSplit,
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
@@ -248,6 +249,23 @@ class ExpenseFundingSplitAdmin(admin.ModelAdmin):
     search_fields = ("expense__title", "funding_source__name", "notes")
     list_filter = ("funding_source",)
     autocomplete_fields = ("expense", "funding_source")
+
+
+@admin.register(EquipmentAsset)
+class EquipmentAssetAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "asset_type",
+        "inventory_number",
+        "status",
+        "location",
+        "responsible_staff",
+        "purchase_date",
+        "total_amount",
+    )
+    search_fields = ("name", "inventory_number", "location", "notes", "purchase_expense__title")
+    list_filter = ("status", "asset_type", "purchase_date")
+    autocomplete_fields = ("purchase_expense", "responsible_staff")
 
 
 class FundingStaffAllocationInline(admin.TabularInline):

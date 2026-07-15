@@ -19,6 +19,7 @@ from operations.models import (
     CenterExpenseCategory,
     Child,
     Counterparty,
+    EquipmentAsset,
     ExpenseFundingSplit,
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
@@ -85,6 +86,7 @@ class AuditLogTests(TestCase):
             CenterExpenseCategory,
             Child,
             Counterparty,
+            EquipmentAsset,
             ExpenseFundingSplit,
             FundingSource,
             FinancialIntegrityCheckRun,
@@ -108,6 +110,7 @@ class AuditLogTests(TestCase):
         self.assertIn(CenterExpenseCategory, admin.site._registry)
         self.assertIn(CenterExpense, admin.site._registry)
         self.assertIn(ExpenseFundingSplit, admin.site._registry)
+        self.assertIn(EquipmentAsset, admin.site._registry)
 
     def test_financial_integrity_finding_update_is_logged(self):
         now = timezone.now()

@@ -14,6 +14,7 @@ from .appointments import (
     appointment_move,
     appointment_participant_program,
 )
+from .assets import equipment_asset_create, equipment_asset_edit, equipment_asset_list
 from .balances import balance_account_create, balance_account_delete, balance_account_edit, balances
 from .compensation_rules import (
     staff_compensation_rule_create,
@@ -139,6 +140,9 @@ __all__ = [
     "dashboard",
     "document_create",
     "document_list",
+    "equipment_asset_create",
+    "equipment_asset_edit",
+    "equipment_asset_list",
     "financial_integrity_finding_detail",
     "financial_integrity_finding_recheck",
     "financial_integrity_finding_triage",

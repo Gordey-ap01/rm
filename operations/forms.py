@@ -26,6 +26,7 @@ from .models import (
     Consent,
     Counterparty,
     Document,
+    EquipmentAsset,
     ExpenseFundingSplit,
     FundingServiceQuota,
     FundingSource,
@@ -2421,6 +2422,61 @@ ExpenseFundingSplitFormSet = inlineformset_factory(
     extra=2,
     can_delete=True,
 )
+
+
+class EquipmentAssetForm(forms.ModelForm):
+    class Meta:
+        model = EquipmentAsset
+        fields = (
+            "name",
+            "asset_type",
+            "inventory_number",
+            "purchase_date",
+            "purchase_expense",
+            "total_amount",
+            "status",
+            "location",
+            "responsible_staff",
+            "notes",
+        )
+        labels = {
+            "name": "Название",
+            "asset_type": "Тип",
+            "inventory_number": "Инвентарный номер",
+            "purchase_date": "Дата покупки",
+            "purchase_expense": "Расход покупки",
+            "total_amount": "Стоимость",
+            "status": "Статус",
+            "location": "Местонахождение",
+            "responsible_staff": "Ответственный",
+            "notes": "Примечания",
+        }
+        widgets = {
+            "purchase_date": DATE_INPUT,
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        expense_filter = Q(
+            category__expense_type=CenterExpenseCategory.ExpenseType.EQUIPMENT
+        ) & ~Q(status=CenterExpense.Status.CANCELLED)
+        if self.instance and self.instance.purchase_expense_id:
+            expense_filter |= Q(pk=self.instance.purchase_expense_id)
+        self.fields["purchase_expense"].queryset = (
+            CenterExpense.objects.select_related("category")
+            .filter(expense_filter)
+            .order_by("-expense_date", "title")
+        )
+        self.fields["purchase_expense"].required = False
+
+        staff_filter = Q(archived_at__isnull=True)
+        if self.instance and self.instance.responsible_staff_id:
+            staff_filter |= Q(pk=self.instance.responsible_staff_id)
+        self.fields["responsible_staff"].queryset = StaffMember.all_objects.filter(
+            staff_filter
+        ).order_by("full_name")
+        self.fields["responsible_staff"].required = False
 
 
 class TimeSheetFilterForm(forms.Form):
