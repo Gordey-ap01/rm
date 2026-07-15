@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784071033.3958626,
-    "ast_hash": "d505cd4ec57f113444ca7ef3196e6cff",
+    "mtime": 1784097560.2713327,
+    "ast_hash": "08565f1af62d3ed40e2ae3948a6d92ee",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784071053.7855685,
-    "ast_hash": "c7b0e81593a9d65eece5a59ffe145318",
+    "mtime": 1784097575.922258,
+    "ast_hash": "8119875afd0abaaee676051a29fe7aac",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784071039.3777466,
-    "ast_hash": "01858090a0997df9eefe6c3c1115b046",
+    "mtime": 1784097546.3906524,
+    "ast_hash": "37c4090c6ccf7b41bf498940f4474bf7",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -995,8 +995,8 @@
     "semantic_hash": ""
   },
   "docs/19-financial-integrity-history-and-manager-report-contract.md": {
-    "mtime": 1784071016.0852385,
-    "ast_hash": "41a2aee8780b4fd031b7926ecf86566a",
+    "mtime": 1784090062.6830878,
+    "ast_hash": "d1297d13b66a447d2cc7ceab9dfd0ef3",
     "semantic_hash": ""
   },
   "operations/migrations/0023_financialintegrityfindingevent.py": {
@@ -1012,6 +1012,11 @@
   "templates/operations/financial_integrity_report.html": {
     "mtime": 1784089074.4445345,
     "ast_hash": "240c496290c7ee438889c4e1fa244d8f",
+    "semantic_hash": ""
+  },
+  "docs/20-group-payroll-policy-contract.md": {
+    "mtime": 1784097511.8509007,
+    "ast_hash": "945197cf0c5dca49bdf3534698ce900f",
     "semantic_hash": ""
   }
 }

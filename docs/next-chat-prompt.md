@@ -46,6 +46,7 @@
 8. docs/17-financial-integrity-cache-and-triage-contract.md
 9. docs/18-financial-integrity-triage-and-runner-contract.md
 10. docs/19-financial-integrity-history-and-manager-report-contract.md
+11. docs/20-group-payroll-policy-contract.md
 
 Дальше читай только нужное для задачи:
 - БД, расписание, финансы, гранты, табели: docs/07-updated-domain-model-after-interview.md и docs/decisions/ADR-002-balance-accounts-ledger.md
@@ -98,3 +99,15 @@
 - Проверки прошли: Ruff touched Python, focused `WorkQueueViewTests` (`33 passed`), Django check, migration dry-run `No changes detected`, full pytest (`495 passed`), Playwright Browser QA fallback desktop/mobile.
 - Graphify code-index after manager report: `4236` nodes / `15294` edges; semantic extraction was not rerun.
 - Docs/19 implementation line complete: event schema/service, detail timeline UI and manager trend report are all done. Следующий шаг должен быть новый контракт/новая доменная зона или конкретный bug/new requirement, а не повтор financial-integrity report/timeline/event work.
+
+## Последнее уточнение 2026-07-15: group payroll policy contract
+
+После текста промпта выше считать актуальным:
+
+- Добавлен docs-only контракт `docs/20-group-payroll-policy-contract.md`.
+- Это следующий безопасный payroll/DB контракт для оставшегося gap Stage 6: "для группы можно выбрать принцип начисления".
+- Контракт предлагает additive поля `StaffCompensationRule.session_scope`, `group_pay_policy`, `group_fixed_amount`, snapshot-поля в `PayrollAccrual` и общий compensation helper для табеля и persisted payroll.
+- Код, модели, миграции, payroll/report formulas, ledger/billing/grant/status semantics и UI пока не менялись.
+- `FundingStaffAllocation.session_pay_amount` в первом срезе остается per-session override; не умножать грантовую ставку на детей группы без отдельного грантового контракта.
+- Следующий безопасный срез: `group-payroll-policy-foundation` одним DB/payroll owner. Не параллелить `operations/models.py`, `operations/migrations/*`, `operations/services/payroll.py`, `operations/services/reports.py` и future shared compensation helper.
+- Graphify code-index after contract: `4256` nodes / `15313` edges; semantic extraction was not rerun and no API key was written to project files.

@@ -26,6 +26,7 @@
 | `docs/17-financial-integrity-cache-and-triage-contract.md` | Контракт persisted cache для financial integrity: check runs, finding-и, active reader, triage fields и runner. | Перед изменениями `FinancialIntegrityCheckRun`, `FinancialIntegrityFinding`, runner-а или cached reader UI. |
 | `docs/18-financial-integrity-triage-and-runner-contract.md` | Контракт следующего triage/operations этапа: finding actions, detail page, auditlog/event choice, scheduled/manual runner policy. | Перед любыми POST triage actions, finding detail, ignore/reopen policy or scheduled/background runner changes. |
 | `docs/19-financial-integrity-history-and-manager-report-contract.md` | Контракт будущего DB-owner среза: typed `FinancialIntegrityFindingEvent`, timeline finding-а и read-only trend report руководителя. | Перед любыми изменениями event table, timeline, manager financial-integrity report или миграциями этой зоны. |
+| `docs/20-group-payroll-policy-contract.md` | Контракт следующего payroll/DB среза: принцип начисления зарплаты на групповых занятиях, snapshots in payroll accruals and parity between timesheet and persisted payroll. | Перед любыми изменениями group payroll policy, `StaffCompensationRule`, `PayrollAccrual`, payroll/timesheet formulas or payroll UI. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -53,14 +54,15 @@
 8. Если задача затрагивает financial integrity persisted cache, runner or active cached reader, прочитать `docs/17-financial-integrity-cache-and-triage-contract.md`.
 9. Если задача затрагивает triage actions, ignore/reopen policy, finding detail, auditlog/event history or scheduled/background runner, прочитать `docs/18-financial-integrity-triage-and-runner-contract.md`.
 10. Если задача затрагивает `FinancialIntegrityFindingEvent`, timeline finding-а, manager financial-integrity report или миграции этой зоны, прочитать `docs/19-financial-integrity-history-and-manager-report-contract.md`.
-11. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
-12. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
-13. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
-14. Если задача затрагивает терминальные статусы или перепроверку планов переноса, прочитать `docs/11-plan-terminal-status-contract.md`.
-15. Если задача затрагивает параллельную работу, прочитать `docs/08-parallel-agent-execution-plan.md`.
-16. Если задача UX/UI, прочитать `docs/03-ux-ui-and-implementation-plan.md` и соответствующие шаблоны/JS.
-17. Если задача по коду, читать только релевантные файлы: модели, сервисы, формы, views, шаблоны и тесты вокруг изменяемого сценария.
-18. Перед широким поиском по проекту сначала выполнить `graphify query "<вопрос>" --budget 500-1500`, если граф доступен и актуален.
+11. Если задача затрагивает принцип начисления зарплаты в группах, `StaffCompensationRule`, `PayrollAccrual`, табель или persisted payroll formulas, прочитать `docs/20-group-payroll-policy-contract.md`.
+12. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
+13. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
+14. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
+15. Если задача затрагивает терминальные статусы или перепроверку планов переноса, прочитать `docs/11-plan-terminal-status-contract.md`.
+16. Если задача затрагивает параллельную работу, прочитать `docs/08-parallel-agent-execution-plan.md`.
+17. Если задача UX/UI, прочитать `docs/03-ux-ui-and-implementation-plan.md` и соответствующие шаблоны/JS.
+18. Если задача по коду, читать только релевантные файлы: модели, сервисы, формы, views, шаблоны и тесты вокруг изменяемого сценария.
+19. Перед широким поиском по проекту сначала выполнить `graphify query "<вопрос>" --budget 500-1500`, если граф доступен и актуален.
 
 ## Skills и назначение
 
@@ -243,3 +245,4 @@ Browser QA - это проверка живого интерфейса в бра
 - Graphify code-index after financial integrity detail timeline UI: `4229` nodes / `15275` edges; semantic extraction was not rerun and no API key was written to project files.
 - Latest financial integrity manager trend report 2026-07-15: `/financial-integrity/report/` is implemented as a read-only manager screen over persisted `FinancialIntegrityCheckRun`, `FinancialIntegrityFinding` and `FinancialIntegrityFindingEvent`. It supports 7/30/90/custom periods, summary cards, active age buckets, code dynamics, current code/status structure, active finding links and latest runs; dashboard and work queue link to it. GET does not run audit and does not write events/runs or financial data. Verification: touched-file Ruff, focused `WorkQueueViewTests` (`33 passed`), Django check, migration dry-run `No changes detected`, full pytest (`495 passed`, 1 existing django-tasks warning), and Playwright Browser QA fallback passed on desktop 1365x900 and mobile 390x844; artifacts are in `%TEMP%\rmcodex-browser-qa-financial-report`; runserver on 8069 was stopped. Docs/19 implementation line is now complete; do not restart event schema/service, detail timeline or manager report without a concrete bug/new requirement.
 - Graphify code-index after financial integrity manager trend report: `4236` nodes / `15294` edges; semantic extraction was not rerun and no API key was written to project files.
+- Latest group payroll policy contract 2026-07-15: `docs/20-group-payroll-policy-contract.md` added as proposed docs-only contract for the remaining Stage 6 gap "для группы можно выбрать принцип начисления". It proposes additive `StaffCompensationRule` group policy/session scope fields, `PayrollAccrual` snapshots, shared compensation helper for timesheet and persisted payroll, tests and Browser QA requirements. No code/model/migration/payroll semantic changes yet. Next safe implementation requires one DB/payroll owner; do not parallelize `operations/models.py`, migrations, `operations/services/payroll.py` or `operations/services/reports.py`. Graphify code-index after contract: `4256` nodes / `15313` edges; semantic extraction was not rerun and no API key was written to project files.

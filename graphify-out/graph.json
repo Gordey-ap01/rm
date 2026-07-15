@@ -30367,6 +30367,134 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_19_financial_integrity_history_and_manager_report_contract_implementation_2026_07_15_manager_trend_report",
+      "label": "Implementation 2026-07-15: Manager Trend Report",
+      "file_type": "document",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L249",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract",
+      "label": "20-group-payroll-policy-contract.md",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract_контракт_среза_group_payroll_policy",
+      "label": "Контракт среза: group-payroll-policy",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract_контекст",
+      "label": "Контекст",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L9",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract_инварианты",
+      "label": "Инварианты",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L29",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract_решение",
+      "label": "Решение",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L39",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract_предлагаемые_изменения_модели",
+      "label": "Предлагаемые изменения модели",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L47",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract_staffcompensationrule",
+      "label": "StaffCompensationRule",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L49",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract_payrollaccrual",
+      "label": "PayrollAccrual",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L85",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract_fundingstaffallocation",
+      "label": "FundingStaffAllocation",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L98",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract_общий_helper_расчета",
+      "label": "Общий helper расчета",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L106",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract_первый_кодовый_срез",
+      "label": "Первый кодовый срез",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L140",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract_acceptance_criteria",
+      "label": "Acceptance Criteria",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L163",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract_проверки",
+      "label": "Проверки",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L218",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract_риски",
+      "label": "Риски",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L238",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_20_group_payroll_policy_contract_параллельные_агенты",
+      "label": "Параллельные агенты",
+      "file_type": "document",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L246",
+      "_origin": "ast"
+    },
+    {
       "id": "docs_critical_stack_ux_review_2026_06_10",
       "label": "CRITICAL_STACK_UX_REVIEW_2026-06-10.md",
       "file_type": "document",
@@ -31775,6 +31903,22 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_current_state_обновление_2026_07_15_financial_integrity_manager_trend_report",
+      "label": "Обновление 2026-07-15: financial-integrity manager trend report",
+      "file_type": "document",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1492",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_current_state_обновление_2026_07_15_group_payroll_policy_contract",
+      "label": "Обновление 2026-07-15: group payroll policy contract",
+      "file_type": "document",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1505",
+      "_origin": "ast"
+    },
+    {
       "id": "decisions_adr_001_django_postgresql_local_first",
       "label": "ADR-001-django-postgresql-local-first.md",
       "file_type": "document",
@@ -32115,7 +32259,7 @@
       "label": "Как использовать",
       "file_type": "document",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L75",
+      "source_location": "L76",
       "_origin": "ast"
     },
     {
@@ -32123,7 +32267,23 @@
       "label": "Последнее уточнение 2026-07-15",
       "file_type": "document",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L80",
+      "source_location": "L81",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_next_chat_prompt_последнее_уточнение_2026_07_15_manager_trend_report_закрыт",
+      "label": "Последнее уточнение 2026-07-15: manager trend report закрыт",
+      "file_type": "document",
+      "source_file": "docs/next-chat-prompt.md",
+      "source_location": "L91",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_next_chat_prompt_последнее_уточнение_2026_07_15_group_payroll_policy_contract",
+      "label": "Последнее уточнение 2026-07-15: group payroll policy contract",
+      "file_type": "document",
+      "source_file": "docs/next-chat-prompt.md",
+      "source_location": "L103",
       "_origin": "ast"
     },
     {
@@ -32163,7 +32323,7 @@
       "label": "Порядок восстановления контекста",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L44",
+      "source_location": "L45",
       "_origin": "ast"
     },
     {
@@ -32171,7 +32331,7 @@
       "label": "Skills и назначение",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L65",
+      "source_location": "L67",
       "_origin": "ast"
     },
     {
@@ -32179,7 +32339,7 @@
       "label": "Восстановление инструментов",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L78",
+      "source_location": "L80",
       "_origin": "ast"
     },
     {
@@ -32187,7 +32347,7 @@
       "label": "Graphify",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L80",
+      "source_location": "L82",
       "_origin": "ast"
     },
     {
@@ -32195,7 +32355,7 @@
       "label": "Browser QA",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L99",
+      "source_location": "L101",
       "_origin": "ast"
     },
     {
@@ -32203,7 +32363,7 @@
       "label": "Протокол контрольной точки",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L108",
+      "source_location": "L110",
       "_origin": "ast"
     },
     {
@@ -32211,7 +32371,7 @@
       "label": "Текущее состояние восстановления",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L120",
+      "source_location": "L122",
       "_origin": "ast"
     },
     {
@@ -32219,7 +32379,7 @@
       "label": "Ближайшие задачи",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L164",
+      "source_location": "L166",
       "_origin": "ast"
     },
     {
@@ -32227,7 +32387,7 @@
       "label": "Постоянные риски",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L171",
+      "source_location": "L173",
       "_origin": "ast"
     },
     {
@@ -104380,6 +104540,141 @@
       "weight": 1.0
     },
     {
+      "source": "docs_19_financial_integrity_history_and_manager_report_contract_контракт_среза_financial_integrity_history_and_manager_report",
+      "target": "docs_19_financial_integrity_history_and_manager_report_contract_implementation_2026_07_15_manager_trend_report",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/19-financial-integrity-history-and-manager-report-contract.md",
+      "source_location": "L249",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_20_group_payroll_policy_contract",
+      "target": "docs_20_group_payroll_policy_contract_контракт_среза_group_payroll_policy",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_20_group_payroll_policy_contract_контракт_среза_group_payroll_policy",
+      "target": "docs_20_group_payroll_policy_contract_контекст",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_20_group_payroll_policy_contract_контракт_среза_group_payroll_policy",
+      "target": "docs_20_group_payroll_policy_contract_инварианты",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L29",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_20_group_payroll_policy_contract_контракт_среза_group_payroll_policy",
+      "target": "docs_20_group_payroll_policy_contract_решение",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L39",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_20_group_payroll_policy_contract_контракт_среза_group_payroll_policy",
+      "target": "docs_20_group_payroll_policy_contract_предлагаемые_изменения_модели",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L47",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_20_group_payroll_policy_contract_предлагаемые_изменения_модели",
+      "target": "docs_20_group_payroll_policy_contract_staffcompensationrule",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L49",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_20_group_payroll_policy_contract_предлагаемые_изменения_модели",
+      "target": "docs_20_group_payroll_policy_contract_payrollaccrual",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L85",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_20_group_payroll_policy_contract_предлагаемые_изменения_модели",
+      "target": "docs_20_group_payroll_policy_contract_fundingstaffallocation",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L98",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_20_group_payroll_policy_contract_контракт_среза_group_payroll_policy",
+      "target": "docs_20_group_payroll_policy_contract_общий_helper_расчета",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L106",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_20_group_payroll_policy_contract_контракт_среза_group_payroll_policy",
+      "target": "docs_20_group_payroll_policy_contract_первый_кодовый_срез",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L140",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_20_group_payroll_policy_contract_контракт_среза_group_payroll_policy",
+      "target": "docs_20_group_payroll_policy_contract_acceptance_criteria",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L163",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_20_group_payroll_policy_contract_контракт_среза_group_payroll_policy",
+      "target": "docs_20_group_payroll_policy_contract_проверки",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L218",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_20_group_payroll_policy_contract_контракт_среза_group_payroll_policy",
+      "target": "docs_20_group_payroll_policy_contract_риски",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L238",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_20_group_payroll_policy_contract_контракт_среза_group_payroll_policy",
+      "target": "docs_20_group_payroll_policy_contract_параллельные_агенты",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/20-group-payroll-policy-contract.md",
+      "source_location": "L246",
+      "weight": 1.0
+    },
+    {
       "source": "docs_critical_stack_ux_review_2026_06_10",
       "target": "docs_critical_stack_ux_review_2026_06_10_критический_срез_проекта_rmcodex",
       "relation": "contains",
@@ -105928,6 +106223,24 @@
       "weight": 1.0
     },
     {
+      "source": "docs_current_state_текущее_состояние_проекта_радость_моя",
+      "target": "docs_current_state_обновление_2026_07_15_financial_integrity_manager_trend_report",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1492",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_current_state_текущее_состояние_проекта_радость_моя",
+      "target": "docs_current_state_обновление_2026_07_15_group_payroll_policy_contract",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1505",
+      "weight": 1.0
+    },
+    {
       "source": "decisions_adr_001_django_postgresql_local_first",
       "target": "decisions_adr_001_django_postgresql_local_first_adr_001_django_postgresql_локальный_first_deployment",
       "relation": "contains",
@@ -106257,7 +106570,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L75",
+      "source_location": "L76",
       "weight": 1.0
     },
     {
@@ -106266,7 +106579,25 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/next-chat-prompt.md",
-      "source_location": "L80",
+      "source_location": "L81",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_next_chat_prompt_промпт_для_следующего_чата_по_проекту_радость_моя",
+      "target": "docs_next_chat_prompt_последнее_уточнение_2026_07_15_manager_trend_report_закрыт",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/next-chat-prompt.md",
+      "source_location": "L91",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_next_chat_prompt_промпт_для_следующего_чата_по_проекту_радость_моя",
+      "target": "docs_next_chat_prompt_последнее_уточнение_2026_07_15_group_payroll_policy_contract",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/next-chat-prompt.md",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
@@ -106302,7 +106633,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L44",
+      "source_location": "L45",
       "weight": 1.0
     },
     {
@@ -106311,7 +106642,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L65",
+      "source_location": "L67",
       "weight": 1.0
     },
     {
@@ -106320,7 +106651,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L78",
+      "source_location": "L80",
       "weight": 1.0
     },
     {
@@ -106329,7 +106660,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L80",
+      "source_location": "L82",
       "weight": 1.0
     },
     {
@@ -106338,7 +106669,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L99",
+      "source_location": "L101",
       "weight": 1.0
     },
     {
@@ -106347,7 +106678,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L108",
+      "source_location": "L110",
       "weight": 1.0
     },
     {
@@ -106356,7 +106687,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L120",
+      "source_location": "L122",
       "weight": 1.0
     },
     {
@@ -106365,7 +106696,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L164",
+      "source_location": "L166",
       "weight": 1.0
     },
     {
@@ -106374,7 +106705,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L171",
+      "source_location": "L173",
       "weight": 1.0
     },
     {

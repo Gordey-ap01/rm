@@ -1501,3 +1501,14 @@ SMTP для реальной промышленной рассылки еще н
 - Playwright Browser QA fallback прошел на desktop 1365x900 и mobile 390x844: report открыт после login, summary/tables/detail links/period links видны, HTTP 4xx/5xx, console/page errors и horizontal overflow не найдены. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-report`; runserver 8069 остановлен.
 - Graphify code-index after manager report: `4236` nodes / `15294` edges; semantic extraction was not rerun.
 - Docs/19 line now complete: event schema/service, detail timeline UI and manager trend report are all implemented. Следующий шаг не должен заново начинать financial-integrity report/timeline/event work; брать новый контракт или конкретный bug/new requirement.
+
+## Обновление 2026-07-15: group payroll policy contract
+
+- Добавлен docs-only контракт `docs/20-group-payroll-policy-contract.md`.
+- Контракт закрывает следующий найденный Stage 6 gap после финансового integrity-эпика: для группового занятия руководитель должен выбирать принцип начисления зарплаты специалисту.
+- Зафиксировано текущее состояние: `StaffCompensationRule`, `FundingStaffAllocation.session_pay_amount`, `PayrollAccrual` и `PayrollSheet` уже есть; табель и persisted payroll начисляют после факта `списать`; но group pay policy и snapshots принципа расчета еще отсутствуют.
+- Предложен additive DB/payroll путь: `StaffCompensationRule.session_scope`, `group_pay_policy`, `group_fixed_amount`; snapshot-поля в `PayrollAccrual`; общий compensation helper для `reports.timesheet()` и `payroll.generate_accruals_for_staff()`.
+- Важно: `FundingStaffAllocation.session_pay_amount` в первом срезе остается per-session override. Нельзя молча умножать грантовую ставку на число детей в группе без отдельного грантового контракта, потому что это меняет смысл квоты и отчета спонсору.
+- Код, модели, миграции, payroll/report formulas, ledger/billing/grant/status semantics и UI не менялись.
+- Следующий безопасный срез: `group-payroll-policy-foundation`, но только с одним DB/payroll owner. Не параллелить `operations/models.py`, `operations/migrations/*`, `operations/services/payroll.py`, `operations/services/reports.py` и будущий shared compensation helper.
+- Graphify code-index after group payroll policy contract: `4256` nodes / `15313` edges; semantic extraction was not rerun and no API key was written to project files.
