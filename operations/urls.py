@@ -78,6 +78,7 @@ urlpatterns = [
     ),
     path("balances/", views.balances, name="balances"),
     path("expenses/", views.center_expense_list, name="center_expense_list"),
+    path("expenses/report/", views.center_expense_report, name="center_expense_report"),
     path("expenses/new/", views.center_expense_create, name="center_expense_create"),
     path(
         "expenses/<int:pk>/edit/",

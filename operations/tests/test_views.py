@@ -3033,6 +3033,103 @@ class CenterExpenseViewTests(NewViewsTestBase):
         self.assertContains(response, "распределен")
         self.assertContains(response, 'data-label="Распределение"')
 
+    def test_center_expense_report_renders(self):
+        expense = CenterExpense.objects.create(
+            category=self.expense_category,
+            counterparty=self.counterparty,
+            title="Отчетный расход",
+            total_amount=Decimal("1000.00"),
+        )
+        ExpenseFundingSplit.objects.create(
+            expense=expense,
+            funding_source=self.funding,
+            amount=Decimal("1000.00"),
+        )
+
+        response = self.client.get(reverse("center_expense_report"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("report", response.context)
+        self.assertIn("expense_report_summary_items", response.context)
+        self.assertIn("expense_report_attention_items", response.context)
+        self.assertContains(response, "Отчет руководителя")
+        self.assertContains(response, "Расходы центра")
+        self.assertContains(response, "Категории")
+        self.assertContains(response, "Источники покрытия")
+        self.assertContains(response, "Отчетный расход")
+        self.assertContains(response, reverse("center_expense_list"))
+
+    def test_center_expense_report_filters_period_without_writes(self):
+        inside = CenterExpense.objects.create(
+            expense_date=timezone.localdate(),
+            category=self.expense_category,
+            counterparty=self.counterparty,
+            title="В периоде",
+            total_amount=Decimal("1000.00"),
+        )
+        outside = CenterExpense.objects.create(
+            expense_date=timezone.localdate() - timedelta(days=5),
+            category=self.expense_category,
+            counterparty=self.counterparty,
+            title="Вне периода",
+            total_amount=Decimal("500.00"),
+        )
+        ExpenseFundingSplit.objects.create(
+            expense=inside,
+            funding_source=self.funding,
+            amount=Decimal("1000.00"),
+        )
+        ExpenseFundingSplit.objects.create(
+            expense=outside,
+            funding_source=self.funding,
+            amount=Decimal("500.00"),
+        )
+        ledger_count = LedgerEntry.objects.count()
+
+        response = self.client.get(
+            reverse("center_expense_report"),
+            {
+                "date_from": timezone.localdate().isoformat(),
+                "date_to": timezone.localdate().isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["report"].summary.expense_count, 1)
+        self.assertContains(response, "В периоде")
+        self.assertNotContains(response, "Вне периода")
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
+
+    def test_center_expense_report_filters_funding_source_by_split_amount(self):
+        mixed = CenterExpense.objects.create(
+            category=self.expense_category,
+            counterparty=self.counterparty,
+            title="Смешанное покрытие",
+            total_amount=Decimal("1000.00"),
+        )
+        ExpenseFundingSplit.objects.create(
+            expense=mixed,
+            funding_source=self.funding,
+            amount=Decimal("400.00"),
+        )
+        ExpenseFundingSplit.objects.create(
+            expense=mixed,
+            funding_source=self.funding_grant,
+            amount=Decimal("600.00"),
+        )
+
+        response = self.client.get(
+            reverse("center_expense_report"),
+            {"funding_source": self.funding.pk},
+        )
+
+        report = response.context["report"]
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(report.summary.total_amount, Decimal("1000.00"))
+        self.assertEqual(report.summary.allocated_amount, Decimal("400.00"))
+        self.assertEqual(len(report.funding_rows), 1)
+        self.assertContains(response, "Смешанное покрытие")
+
     def test_center_expense_create_saves_draft_with_funding_splits(self):
         ledger_count = LedgerEntry.objects.count()
 

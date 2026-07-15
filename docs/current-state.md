@@ -1562,3 +1562,16 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA desktop/mobile прошла; артефакты: `%TEMP%\rmcodex-browser-qa-expenses-basic-ui`; локальный runserver на `8074` остановлен.
 - Graphify code-index after expenses basic UI: `4386` nodes / `16432` edges; semantic extraction was not rerun and no API key was written to project files.
 - Следующий безопасный срез по docs/21: `expenses-manager-report` как read-only отчет руководителя или небольшой product UI для категорий/контрагентов перед отчетом. Не начинать approve/pay, assets, contracts или Excel import write-path без отдельного контракта.
+
+## Обновление 2026-07-15: expenses-manager-report
+
+- Выполнен read-only отчет руководителя по расходам центра поверх `docs/21-expenses-assets-contracts-contract.md`; БД, модели и миграции не менялись.
+- Добавлен сервис `operations.services.expense_reports.build_expense_report()` и маршрут `/expenses/report/`.
+- Отчет показывает период, категории, источники покрытия, статусы, расходы с расхождением split-сумм и первые строки расходов периода.
+- Фильтры: даты, статус, категория, `FundingSource`. Отчет по одному источнику считает только split-долю выбранного источника, а не полную сумму расхода.
+- Отмененные расходы скрыты по умолчанию и попадают в отчет только при явном выборе статуса.
+- Отчет не создает `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing или grant факты и не показывает персональные данные получателей/представителей.
+- Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused expenses/report tests (`18 passed`), full `pytest -q --tb=short` (`519 passed`, 1 прежнее предупреждение django-tasks).
+- Browser QA desktop/mobile прошла; артефакты: `%TEMP%\rmcodex-browser-qa-expenses-manager-report`; локальный runserver на `8075` остановлен.
+- Graphify user env для Gemini/Google API настроен вне репозитория; ключ в файлах проекта не найден. Code-index after expenses manager report: `4421` nodes / `16565` edges; semantic extraction was not rerun in this slice.
+- Следующий безопасный срез по docs/21: `assets-registry` отдельным DB-owner или небольшой product UI для справочников категорий/контрагентов. Не начинать approve/pay, contracts или Excel import write-path без отдельного контракта.

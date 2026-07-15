@@ -63,7 +63,7 @@
 Если доступен Graphify и есть graphify-out/graph.json, сначала используй graphify query как индекс проекта. При расхождениях свежие docs/current-state.md, docs/07-updated-domain-model-after-interview.md, docs/12-project-stage-audit-and-pivot-plan.md, docs/13-schedule-capacity-v2-contract.md и код остаются источником правды.
 
 Следующая задача:
-Не начинать заново financial-integrity event/timeline/report работу, `group-payroll-policy-foundation`, `expenses-foundation-schema` или `expenses-basic-ui`: они выполнены. Текущий активный контракт - `docs/21-expenses-assets-contracts-contract.md`. Следующий безопасный шаг, если продолжаем этот приоритет: `expenses-manager-report` read-only или небольшой product UI для категорий/контрагентов перед отчетом. Не начинать approve/pay/assets/contracts/import write-path без отдельного контракта.
+Не начинать заново financial-integrity event/timeline/report работу, `group-payroll-policy-foundation`, `expenses-foundation-schema`, `expenses-basic-ui` или `expenses-manager-report`: они выполнены. Текущий активный контракт - `docs/21-expenses-assets-contracts-contract.md`. Следующий безопасный шаг, если продолжаем этот приоритет: `assets-registry` отдельным DB-owner или небольшой product UI для категорий/контрагентов. Не начинать approve/pay/contracts/import write-path без отдельного контракта.
 
 Критические правила:
 - Не продолжать reschedule UX/control микросрезы без конкретного бага или нового требования.
@@ -167,3 +167,17 @@
 - Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused expense UI tests `12 passed`, full pytest `513 passed`, Browser QA desktop/mobile.
 - Graphify code-index after UI: `4386` nodes / `16432` edges; semantic extraction was not rerun and no API key was written to project files.
 - Следующий безопасный срез: `expenses-manager-report` read-only или небольшой product UI для категорий/контрагентов перед отчетом. Не начинать approve/pay/assets/contracts/import write-path до отдельного контракта.
+
+## Последнее уточнение 2026-07-15: expenses-manager-report выполнен
+
+После текста промпта выше считать актуальным:
+
+- `expenses-manager-report` выполнен по `docs/21-expenses-assets-contracts-contract.md` без изменений БД/моделей/миграций.
+- Добавлены `operations.services.expense_reports`, `/expenses/report/`, шаблон отчета, ссылка из реестра расходов.
+- Отчет показывает период, категории, источники покрытия, статусы, расходы с расхождением split-сумм и строки расходов периода.
+- Фильтр по `FundingSource` считает только split-долю выбранного источника, не полную сумму расхода.
+- `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing decisions, grant semantics и статусы занятий не менялись.
+- Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused tests `18 passed`, full pytest `519 passed`, Browser QA desktop/mobile.
+- Gemini/Google API key сохранен только в user-level Windows env, не в проектных файлах; точный ключ в репозитории не найден.
+- Graphify code-index after report: `4421` nodes / `16565` edges; semantic extraction was not rerun in this slice.
+- Следующий безопасный срез: `assets-registry` одним DB-owner или небольшой product UI категорий/контрагентов. Не начинать approve/pay/contracts/import write-path до отдельного контракта.

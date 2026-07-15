@@ -1589,6 +1589,14 @@ th {
   align-items: end;
 }
 
+.expense-report-filter {
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
+}
+
+.expense-report-filter .financial-report-filter-actions {
+  grid-column: 1 / -1;
+}
+
 .financial-report-filter label {
   display: block;
   margin-bottom: 5px;

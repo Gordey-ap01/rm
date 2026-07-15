@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
@@ -14,7 +15,7 @@ from operations.models import (
     FundingSource,
     LedgerEntry,
 )
-from operations.services import expenses as expenses_svc
+from operations.services import expense_reports as expense_reports_svc, expenses as expenses_svc
 
 
 class CenterExpenseValidationTests(TestCase):
@@ -144,3 +145,132 @@ class CenterExpenseValidationTests(TestCase):
 
         with self.assertRaises(ValidationError):
             split.full_clean()
+
+
+class CenterExpenseReportTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.today = timezone.localdate()
+        cls.category = CenterExpenseCategory.objects.create(
+            name="Materials",
+            expense_type=CenterExpenseCategory.ExpenseType.INVENTORY,
+        )
+        cls.other_category = CenterExpenseCategory.objects.create(
+            name="Rent",
+            expense_type=CenterExpenseCategory.ExpenseType.RENT,
+        )
+        cls.counterparty = Counterparty.objects.create(
+            name="Vendor",
+            counterparty_type=Counterparty.CounterpartyType.VENDOR,
+        )
+        cls.grant = FundingSource.objects.create(
+            name="Grant",
+            source_type=FundingSource.SourceType.GRANT,
+        )
+        cls.sponsor = FundingSource.objects.create(
+            name="Sponsor",
+            source_type=FundingSource.SourceType.SPONSOR,
+        )
+
+    def _expense(
+        self,
+        *,
+        amount: str = "1000.00",
+        expense_date=None,
+        category=None,
+        status: str = CenterExpense.Status.DRAFT,
+        title: str = "Expense",
+    ) -> CenterExpense:
+        return CenterExpense.objects.create(
+            expense_date=expense_date or self.today,
+            category=category or self.category,
+            counterparty=self.counterparty,
+            title=title,
+            total_amount=Decimal(amount),
+            status=status,
+        )
+
+    def test_report_uses_period_and_split_amounts(self):
+        inside = self._expense()
+        ExpenseFundingSplit.objects.create(
+            expense=inside,
+            funding_source=self.grant,
+            amount=Decimal("400.00"),
+        )
+        ExpenseFundingSplit.objects.create(
+            expense=inside,
+            funding_source=self.sponsor,
+            amount=Decimal("600.00"),
+        )
+        outside = self._expense(
+            amount="500.00",
+            expense_date=self.today - timedelta(days=10),
+            title="Outside period",
+        )
+        ExpenseFundingSplit.objects.create(
+            expense=outside,
+            funding_source=self.grant,
+            amount=Decimal("500.00"),
+        )
+
+        report = expense_reports_svc.build_expense_report(
+            date_from=self.today,
+            date_to=self.today,
+        )
+
+        self.assertEqual(report.summary.expense_count, 1)
+        self.assertEqual(report.summary.total_amount, Decimal("1000.00"))
+        self.assertEqual(report.summary.allocated_amount, Decimal("1000.00"))
+        self.assertEqual(report.category_rows[0].total_amount, Decimal("1000.00"))
+        funding = {row.funding_source: row.amount for row in report.funding_rows}
+        self.assertEqual(funding[self.grant], Decimal("400.00"))
+        self.assertEqual(funding[self.sponsor], Decimal("600.00"))
+
+    def test_report_by_funding_source_counts_selected_split_only(self):
+        mixed = self._expense()
+        ExpenseFundingSplit.objects.create(
+            expense=mixed,
+            funding_source=self.grant,
+            amount=Decimal("400.00"),
+        )
+        ExpenseFundingSplit.objects.create(
+            expense=mixed,
+            funding_source=self.sponsor,
+            amount=Decimal("600.00"),
+        )
+        sponsor_only = self._expense(amount="500.00", title="Sponsor only")
+        ExpenseFundingSplit.objects.create(
+            expense=sponsor_only,
+            funding_source=self.sponsor,
+            amount=Decimal("500.00"),
+        )
+
+        report = expense_reports_svc.build_expense_report(
+            date_from=self.today,
+            date_to=self.today,
+            funding_source_id=self.grant.pk,
+        )
+
+        self.assertEqual(report.summary.expense_count, 1)
+        self.assertEqual(report.summary.total_amount, Decimal("1000.00"))
+        self.assertEqual(report.summary.allocated_amount, Decimal("400.00"))
+        self.assertEqual(len(report.funding_rows), 1)
+        self.assertEqual(report.funding_rows[0].funding_source, self.grant)
+        self.assertEqual(report.category_rows[0].allocated_amount, Decimal("400.00"))
+
+    def test_report_marks_unbalanced_expenses(self):
+        expense = self._expense()
+        ExpenseFundingSplit.objects.create(
+            expense=expense,
+            funding_source=self.grant,
+            amount=Decimal("300.00"),
+        )
+
+        report = expense_reports_svc.build_expense_report(
+            date_from=self.today,
+            date_to=self.today,
+        )
+
+        self.assertEqual(report.summary.unbalanced_count, 1)
+        self.assertEqual(report.summary.unallocated_amount, Decimal("700.00"))
+        self.assertEqual(report.unbalanced_expenses, [expense])

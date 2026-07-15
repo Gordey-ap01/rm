@@ -2,7 +2,7 @@
 
 Дата: 2026-07-15
 
-Статус: accepted for current expenses foundation. Docs-only контракт создан 2026-07-15; кодовые срезы `expenses-foundation-schema` и `expenses-basic-ui` выполнены 2026-07-15.
+Статус: accepted for current expenses foundation. Docs-only контракт создан 2026-07-15; кодовые срезы `expenses-foundation-schema`, `expenses-basic-ui` и `expenses-manager-report` выполнены 2026-07-15.
 
 Назначение: зафиксировать следующую крупную финансовую зону после расписания, балансов, грантов, зарплат и financial-integrity эпика. Срез нужен для единого контура руководителя: видеть не только оказанные услуги и начисления специалистам, но и расходы центра, оборудование, источники покрытия расходов, доноров/контрагентов и договоры.
 
@@ -412,18 +412,22 @@ Acceptance:
 
 ### Срез 3: `expenses-manager-report`
 
+Статус: выполнен 2026-07-15.
+
 Состав:
 
-- read-only отчет руководителя по категориям и источникам;
-- отчет по одному `FundingSource`;
-- ссылки на расходы и документы.
+- read-only отчет руководителя по категориям и источникам - реализован;
+- отчет по одному `FundingSource` с учетом split-долей - реализован;
+- ссылки на расходы и реестр документов - реализованы.
 
 Acceptance:
 
-- итоги по источникам учитывают split-доли;
-- отчет за период не включает расходы вне периода;
-- расходы без полной раскладки явно помечены;
-- нет лишних персональных данных.
+- итоги по источникам учитывают split-доли - выполнено;
+- отчет за период не включает расходы вне периода - выполнено;
+- расходы без полной раскладки явно помечены - выполнено;
+- отчет не создает `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing или grant факты - выполнено;
+- нет лишних персональных данных получателей/представителей - выполнено;
+- Browser QA desktop/mobile - выполнено.
 
 ### Срез 4: `assets-registry`
 
@@ -531,9 +535,9 @@ Acceptance:
 
 ## Следующий безопасный шаг
 
-После `expenses-foundation-schema` и `expenses-basic-ui` следующий безопасный шаг:
+После `expenses-foundation-schema`, `expenses-basic-ui` и `expenses-manager-report` следующий безопасный шаг:
 
-- `expenses-manager-report` как read-only отчет руководителя по категориям и источникам;
-- или небольшой product UI для справочников категорий/контрагентов, если без него отчет неудобно наполнять данными.
+- `assets-registry` как отдельный additive DB/UI срез для оборудования;
+- или небольшой product UI для справочников категорий/контрагентов, если администратору неудобно наполнять расходы через admin.
 
-Пока не начинать approve/pay write-path, assets registry, contracts registry или Excel import write-path без отдельного контракта/среза. Не менять `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, `billing.apply_decision()` и grant semantics в рамках отчета расходов.
+Пока не начинать approve/pay write-path, contracts registry или Excel import write-path без отдельного контракта/среза. `assets-registry` допустим только как отдельный следующий срез с одним DB-owner. Не менять `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, `billing.apply_decision()` и grant semantics в рамках расходов центра.

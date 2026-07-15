@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from decimal import Decimal
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -10,9 +12,11 @@ from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 
 from operations.forms import CenterExpenseForm, ExpenseFundingSplitFormSet
 from operations.models import CenterExpense, CenterExpenseCategory, FundingSource
+from operations.services import expense_reports as expense_reports_svc
 
 from ._common import is_admin_user
 
@@ -29,6 +33,48 @@ def _positive_int_or_none(value: str | None) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _parse_date_or_default(value: str | None, default: date) -> date:
+    if not value:
+        return default
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return default
+
+
+def _expense_report_default_period() -> tuple[date, date]:
+    today = timezone.localdate()
+    return today.replace(day=1), today
+
+
+def _expense_report_period_links(filters: dict[str, str]) -> list[dict[str, str]]:
+    today = timezone.localdate()
+    periods = [
+        ("month", "Месяц", today.replace(day=1), today),
+        ("quarter", "90 дней", today - timedelta(days=89), today),
+        ("year", "Год", today.replace(month=1, day=1), today),
+    ]
+    links = []
+    for value, label, date_from, date_to in periods:
+        query = {
+            "period": value,
+            "date_from": date_from.isoformat(),
+            "date_to": date_to.isoformat(),
+            "status": filters.get("status", ""),
+            "category": filters.get("category", ""),
+            "funding_source": filters.get("funding_source", ""),
+        }
+        links.append(
+            {
+                "value": value,
+                "label": label,
+                "href": "?" + urlencode({key: val for key, val in query.items() if val}),
+                "active": filters.get("period") == value,
+            }
+        )
+    return links
 
 
 def _decorate_expense_allocations(expenses: list[CenterExpense]) -> None:
@@ -126,6 +172,81 @@ def expense_summary_items(expenses: list[CenterExpense]) -> list[dict[str, str]]
             "label": "Проверить",
             "value": str(unallocated_count),
             "hint": "не сходится распределение",
+        },
+    ]
+
+
+def expense_report_summary_items(
+    report: expense_reports_svc.ExpenseReport,
+) -> list[dict[str, str]]:
+    return [
+        {
+            "label": "Расходов",
+            "value": str(report.summary.expense_count),
+            "hint": "В выбранном периоде без отмененных, если статус не задан.",
+            "tone": "info",
+        },
+        {
+            "label": "Сумма расходов",
+            "value": _format_money(report.summary.total_amount),
+            "hint": "Полная сумма связанных расходов.",
+            "tone": "info",
+        },
+        {
+            "label": "Покрыто источниками",
+            "value": _format_money(report.summary.allocated_amount),
+            "hint": "Сумма split-долей по текущему фильтру.",
+            "tone": "success",
+        },
+        {
+            "label": "Проверить",
+            "value": str(report.summary.unbalanced_count),
+            "hint": (
+                f"Не распределено: {_format_money(report.summary.unallocated_amount)}; "
+                f"сверх суммы: {_format_money(report.summary.overallocated_amount)}."
+            ),
+            "tone": "warning" if report.summary.unbalanced_count else "success",
+        },
+    ]
+
+
+def expense_report_attention_items(
+    report: expense_reports_svc.ExpenseReport,
+) -> list[dict[str, str]]:
+    if not report.expenses:
+        return [
+            {
+                "tone": "info",
+                "title": "Нет расходов за период",
+                "detail": "Измените даты или фильтры, либо добавьте первый черновик расхода.",
+            }
+        ]
+    if report.summary.unbalanced_count:
+        return [
+            {
+                "tone": "warning",
+                "title": "Есть расходы с неполной раскладкой",
+                "detail": (
+                    f"Расходов с расхождением: {report.summary.unbalanced_count}. "
+                    "Перед утверждением или оплатой нужно выровнять split-суммы."
+                ),
+            },
+            {
+                "tone": "info",
+                "title": "Отчет только читает данные",
+                "detail": "Эта страница не создает проводки, оплаты, начисления зарплаты или списания занятий.",
+            },
+        ]
+    return [
+        {
+            "tone": "success",
+            "title": "Раскладка сходится",
+            "detail": "Все расходы в текущем фильтре распределены по источникам без расхождения сумм.",
+        },
+        {
+            "tone": "info",
+            "title": "Отчет только читает данные",
+            "detail": "Эта страница не создает проводки, оплаты, начисления зарплаты или списания занятий.",
         },
     ]
 
@@ -271,6 +392,48 @@ def center_expense_list(request):
                 "category": request.GET.get("category", ""),
                 "funding_source": request.GET.get("funding_source", ""),
             },
+        },
+    )
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def center_expense_report(request):
+    default_from, default_to = _expense_report_default_period()
+    date_from = _parse_date_or_default(request.GET.get("date_from"), default_from)
+    date_to = _parse_date_or_default(request.GET.get("date_to"), default_to)
+    status = request.GET.get("status", "")
+    if status not in {choice[0] for choice in CenterExpense.Status.choices}:
+        status = ""
+    category_id = _positive_int_or_none(request.GET.get("category"))
+    funding_source_id = _positive_int_or_none(request.GET.get("funding_source"))
+    filters = {
+        "period": request.GET.get("period", "month"),
+        "date_from": date_from.isoformat(),
+        "date_to": date_to.isoformat(),
+        "status": status,
+        "category": str(category_id or ""),
+        "funding_source": str(funding_source_id or ""),
+    }
+    report = expense_reports_svc.build_expense_report(
+        date_from=date_from,
+        date_to=date_to,
+        status=status,
+        funding_source_id=funding_source_id,
+        category_id=category_id,
+    )
+    return render(
+        request,
+        "operations/center_expense_report.html",
+        {
+            "report": report,
+            "expense_report_summary_items": expense_report_summary_items(report),
+            "expense_report_attention_items": expense_report_attention_items(report),
+            "period_links": _expense_report_period_links(filters),
+            "categories": CenterExpenseCategory.objects.order_by("sort_order", "name"),
+            "funding_sources": FundingSource.all_objects.order_by("archived_at", "name"),
+            "status_choices": CenterExpense.Status.choices,
+            "filters": filters,
         },
     )
 

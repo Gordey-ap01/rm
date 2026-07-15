@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}Отчет по расходам центра{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Отчет руководителя</p>
+    <h1>Расходы центра</h1>
+    <p>Сводка по категориям, источникам покрытия и расходам с расхождением сумм.</p>
+  </div>
+  <div class="header-actions">
+    <a class="button-link secondary" href="{% url 'center_expense_list' %}">Реестр расходов</a>
+    <a class="button-link" href="{% url 'center_expense_create' %}">Добавить расход</a>
+  </div>
+</section>
+
+<section class="panel financial-report-filter-panel">
+  <form method="get" class="financial-report-filter expense-report-filter">
+    <div>
+      <label for="expense-report-date-from">С даты</label>
+      <input id="expense-report-date-from" type="date" name="date_from" value="{{ filters.date_from }}">
+    </div>
+    <div>
+      <label for="expense-report-date-to">По дату</label>
+      <input id="expense-report-date-to" type="date" name="date_to" value="{{ filters.date_to }}">
+    </div>
+    <div>
+      <label for="expense-report-status">Статус</label>
+      <select id="expense-report-status" name="status">
+        <option value="">Все кроме отмененных</option>
+        {% for value, label in status_choices %}
+          <option value="{{ value }}"{% if value == filters.status %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="expense-report-category">Категория</label>
+      <select id="expense-report-category" name="category">
+        <option value="">Все категории</option>
+        {% for category in categories %}
+          <option value="{{ category.pk }}"{% if category.pk|stringformat:"s" == filters.category %} selected{% endif %}>{{ category.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="expense-report-funding-source">Источник</label>
+      <select id="expense-report-funding-source" name="funding_source">
+        <option value="">Все источники</option>
+        {% for source in funding_sources %}
+          <option value="{{ source.pk }}"{% if source.pk|stringformat:"s" == filters.funding_source %} selected{% endif %}>{{ source.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="financial-report-filter-actions">
+      <button type="submit">
+        <i class="bi bi-funnel" aria-hidden="true"></i>
+        Показать
+      </button>
+      <a class="button-link secondary" href="{% url 'center_expense_report' %}">Сбросить</a>
+      <div class="financial-report-periods" aria-label="Быстрый период">
+        {% for link in period_links %}
+          <a class="panel-link {% if link.active %}is-active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
+        {% endfor %}
+      </div>
+    </div>
+  </form>
+</section>
+
+<section class="financial-report-overview">
+  <article class="panel financial-report-summary-panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Сводка периода</h2>
+        <p>{{ report.date_from|date:"d.m.Y" }}...{{ report.date_to|date:"d.m.Y" }}</p>
+      </div>
+    </div>
+    <div class="financial-report-summary-grid">
+      {% for item in expense_report_summary_items %}
+        <div class="is-{{ item.tone }}">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+          <small>{{ item.hint }}</small>
+        </div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel grant-control-panel">
+    <h2>Контроль отчета</h2>
+    <div class="appointment-form-alerts">
+      {% for item in expense_report_attention_items %}
+        <div class="appointment-attention-item is-{{ item.tone }}">
+          <strong>{{ item.title }}</strong>
+          <span>{{ item.detail }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="financial-report-grid">
+  <article class="panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Категории</h2>
+        <p>Полная сумма расходов и покрытие split-долями по текущему фильтру.</p>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 financial-report-table expense-report-table">
+        <thead>
+          <tr>
+            <th>Категория</th>
+            <th class="text-end">Расходов</th>
+            <th class="text-end">Сумма</th>
+            <th class="text-end">Покрыто</th>
+            <th class="text-end">Не распределено</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report.category_rows %}
+            <tr>
+              <td data-label="Категория">{{ row.category.name }}</td>
+              <td class="text-end" data-label="Расходов">{{ row.expense_count }}</td>
+              <td class="text-end" data-label="Сумма">{{ row.total_amount }} ₽</td>
+              <td class="text-end" data-label="Покрыто">{{ row.allocated_amount }} ₽</td>
+              <td class="text-end{% if row.unallocated_amount %} text-warning fw-semibold{% endif %}" data-label="Не распределено">{{ row.unallocated_amount }} ₽</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="empty-state">За выбранный период расходов нет.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Источники покрытия</h2>
+        <p>Суммы считаются по строкам распределения, а не по полной сумме расхода.</p>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 financial-report-table expense-report-table">
+        <thead>
+          <tr>
+            <th>Источник</th>
+            <th>Тип</th>
+            <th class="text-end">Расходов</th>
+            <th class="text-end">Сумма</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report.funding_rows %}
+            <tr>
+              <td data-label="Источник">{{ row.funding_source.name }}</td>
+              <td data-label="Тип">{{ row.funding_source.get_source_type_display }}</td>
+              <td class="text-end" data-label="Расходов">{{ row.expense_count }}</td>
+              <td class="text-end fw-semibold" data-label="Сумма">{{ row.amount }} ₽</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="empty-state">Распределения по источникам пока нет.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<section class="financial-report-grid">
+  <article class="panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Статусы</h2>
+        <p>Отмененные расходы видны только при явном выборе статуса.</p>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 financial-report-table expense-report-table">
+        <thead>
+          <tr>
+            <th>Статус</th>
+            <th class="text-end">Расходов</th>
+            <th class="text-end">Сумма</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report.status_rows %}
+            <tr>
+              <td data-label="Статус">{{ row.label }}</td>
+              <td class="text-end" data-label="Расходов">{{ row.expense_count }}</td>
+              <td class="text-end" data-label="Сумма">{{ row.total_amount }} ₽</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="3" class="empty-state">Нет расходов для разреза по статусам.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Расхождения</h2>
+        <p>Расходы, где сумма split-строк не равна общей сумме.</p>
+      </div>
+    </div>
+    <div class="task-list expense-report-issue-list">
+      {% for expense in report.unbalanced_expenses %}
+        <div class="task-card status-warning">
+          <div>
+            <strong>{{ expense.title }}</strong>
+            <p>{{ expense.expense_date|date:"d.m.Y" }} · {{ expense.category.name }} · {{ expense.total_amount }} ₽</p>
+            <p class="muted">Распределено: {{ expense.report_split_total }} ₽; расхождение: {{ expense.report_unallocated_amount }} ₽.</p>
+          </div>
+          <div class="task-actions">
+            <a class="button-link secondary small-action" href="{% url 'center_expense_edit' expense.pk %}">Открыть</a>
+          </div>
+        </div>
+      {% empty %}
+        <p class="empty-state">Расхождений по текущему фильтру нет.</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="timesheet-table-head">
+    <div>
+      <h2>Расходы периода</h2>
+      <p>Первые {{ report.expenses|length }} строк по дате расхода.</p>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 financial-report-table expense-report-table">
+      <thead>
+        <tr>
+          <th>Дата</th>
+          <th>Расход</th>
+          <th>Контрагент</th>
+          <th class="text-end">Сумма</th>
+          <th class="text-end">Покрыто</th>
+          <th>Статус</th>
+          <th class="text-end">Ссылки</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for expense in report.expenses %}
+          <tr{% if expense.report_is_unbalanced %} class="table-warning"{% endif %}>
+            <td data-label="Дата">{{ expense.expense_date|date:"d.m.Y" }}</td>
+            <td data-label="Расход">
+              <strong>{{ expense.title }}</strong>
+              <div class="muted">{{ expense.category.name }}</div>
+            </td>
+            <td data-label="Контрагент">
+              {% if expense.counterparty %}{{ expense.counterparty.name }}{% else %}<span class="muted">не указан</span>{% endif %}
+            </td>
+            <td class="text-end" data-label="Сумма">{{ expense.total_amount }} ₽</td>
+            <td class="text-end" data-label="Покрыто">{{ expense.report_selected_split_total }} ₽</td>
+            <td data-label="Статус">{{ expense.get_status_display }}</td>
+            <td class="text-end" data-label="Ссылки">
+              <a class="small-action" href="{% url 'center_expense_edit' expense.pk %}">Расход</a>
+              {% if expense.document_id %}
+                <a class="small-action" href="{% url 'document_list' %}">Документы</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="empty-state">За выбранный период расходов нет.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

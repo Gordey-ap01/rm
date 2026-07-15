@@ -36,7 +36,12 @@ from .dashboard import (
     work_queue,
 )
 from .documents import document_create, document_list
-from .expenses import center_expense_create, center_expense_edit, center_expense_list
+from .expenses import (
+    center_expense_create,
+    center_expense_edit,
+    center_expense_list,
+    center_expense_report,
+)
 from .funding_sources import (
     funding_source_archive,
     funding_source_create,
@@ -127,6 +132,7 @@ __all__ = [
     "center_expense_create",
     "center_expense_edit",
     "center_expense_list",
+    "center_expense_report",
     "consent_create",
     "consent_list",
     "csrf_failure",
