@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Финансовый контроль{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Отчет руководителя</p>
+    <h1>Финансовый контроль</h1>
+    <p>
+      Динамика расхождений по сохраненным проверкам и событиям разбора.
+      Отчет ничего не исправляет и не запускает новую проверку.
+    </p>
+  </div>
+  <div class="header-actions">
+    <a class="button-link secondary" href="{{ report.work_queue_financial_url }}">
+      <i class="bi bi-list-check" aria-hidden="true"></i>
+      В очередь
+    </a>
+  </div>
+</section>
+
+<section class="panel financial-report-filter-panel">
+  <form method="get" class="financial-report-filter">
+    <div>
+      <label for="financial-report-date-from">С даты</label>
+      <input id="financial-report-date-from" type="date" name="date_from" value="{{ report.period.date_from|date:'Y-m-d' }}">
+    </div>
+    <div>
+      <label for="financial-report-date-to">По дату</label>
+      <input id="financial-report-date-to" type="date" name="date_to" value="{{ report.period.date_to|date:'Y-m-d' }}">
+    </div>
+    <div class="financial-report-filter-actions">
+      <button type="submit">
+        <i class="bi bi-funnel" aria-hidden="true"></i>
+        Показать
+      </button>
+      <div class="financial-report-periods" aria-label="Быстрый период">
+        {% for link in report.period.period_links %}
+          <a class="panel-link {% if report.period.selected_period == link.value %}is-active{% endif %}" href="?period={{ link.value }}">{{ link.label }}</a>
+        {% endfor %}
+      </div>
+    </div>
+  </form>
+</section>
+
+<section class="financial-report-overview">
+  <article class="panel financial-report-summary-panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Сводка периода</h2>
+        <p>{{ report.period.date_from|date:"d.m.Y" }}...{{ report.period.date_to|date:"d.m.Y" }}</p>
+      </div>
+    </div>
+    <div class="financial-report-summary-grid">
+      {% for item in report.summary_items %}
+        <div class="is-{{ item.tone }}">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+          <small>{{ item.hint }}</small>
+        </div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel financial-report-age-panel">
+    <h2>Возраст активных</h2>
+    <div class="financial-report-age-list">
+      {% for bucket in report.age_buckets %}
+        <div class="is-{{ bucket.tone }}">
+          <strong>{{ bucket.count }}</strong>
+          <span>{{ bucket.label }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="financial-report-grid">
+  <article class="panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Динамика по кодам</h2>
+        <p>События за выбранный период.</p>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 financial-report-table">
+        <thead>
+          <tr>
+            <th>Код</th>
+            <th class="text-end">Всего</th>
+            <th class="text-end">Новые</th>
+            <th class="text-end">Решено</th>
+            <th class="text-end">Скрыто</th>
+            <th class="text-end">Повторно</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report.period_code_rows %}
+            <tr>
+              <td data-label="Код">{{ row.code }}</td>
+              <td class="text-end" data-label="Всего">{{ row.total }}</td>
+              <td class="text-end" data-label="Новые">{{ row.created }}</td>
+              <td class="text-end" data-label="Решено">{{ row.resolved }}</td>
+              <td class="text-end" data-label="Скрыто">{{ row.ignored }}</td>
+              <td class="text-end" data-label="Повторно">{{ row.reopened }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="empty-state">За выбранный период событий нет.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Текущая структура</h2>
+        <p>Все сохраненные finding по кодам и статусам.</p>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 financial-report-table">
+        <thead>
+          <tr>
+            <th>Код</th>
+            <th class="text-end">Активные</th>
+            <th class="text-end">Открыто</th>
+            <th class="text-end">В работе</th>
+            <th class="text-end">Решено</th>
+            <th class="text-end">Скрыто</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report.active_code_rows %}
+            <tr>
+              <td data-label="Код">{{ row.code }}</td>
+              <td class="text-end fw-semibold" data-label="Активные">{{ row.active }}</td>
+              <td class="text-end" data-label="Открыто">{{ row.open }}</td>
+              <td class="text-end" data-label="В работе">{{ row.acknowledged }}</td>
+              <td class="text-end" data-label="Решено">{{ row.resolved }}</td>
+              <td class="text-end" data-label="Скрыто">{{ row.ignored }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="empty-state">Сохраненных расхождений пока нет.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<section class="financial-report-grid">
+  <article class="panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Активные расхождения</h2>
+        <p>Первые {{ report.recent_active_findings|length }} по важности.</p>
+      </div>
+    </div>
+    <div class="task-list">
+      {% for finding in report.recent_active_findings %}
+        <div class="task-card status-{% if finding.severity == 'error' %}danger{% elif finding.severity == 'warning' %}warning{% else %}info{% endif %}">
+          <div>
+            <strong>{{ finding.message }}</strong>
+            <p>{{ finding.get_severity_display }} · {{ finding.get_status_display }} · {{ finding.code }}</p>
+            <p class="muted">
+              {% if finding.appointment_starts_at %}{{ finding.appointment_starts_at|date:"d.m H:i" }}{% endif %}
+              {% if finding.appointment_service_name %} · {{ finding.appointment_service_name }}{% endif %}
+              {% if finding.account_label %} · {{ finding.account_label }}{% endif %}
+            </p>
+          </div>
+          <div class="task-actions">
+            <a class="button-link secondary small-action" href="{% url 'financial_integrity_finding_detail' finding.pk %}">Разбор</a>
+          </div>
+        </div>
+      {% empty %}
+        <p class="empty-state">Активных финансовых расхождений нет.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Последние запуски</h2>
+        <p>Только сохраненные проверки за выбранный период.</p>
+      </div>
+    </div>
+    <div class="compact-timeline">
+      {% for run in report.latest_runs %}
+        <div class="timeline-item financial-report-run is-{{ run.status }}">
+          <span>#{{ run.pk }}</span>
+          <strong>{{ run.get_status_display }} · {{ run.get_run_type_display }}</strong>
+          <small>
+            {{ run.started_at|date:"d.m.Y H:i" }} · проверено {{ run.candidate_count }} · расхождений {{ run.issue_count }}
+            {% if run.status == "failed" and run.error_message %} · {{ run.error_message }}{% endif %}
+          </small>
+        </div>
+      {% empty %}
+        <p class="empty-state">За выбранный период запусков проверки нет.</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+{% endblock %}

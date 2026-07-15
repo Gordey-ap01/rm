@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Case, Count, IntegerField, Q, Value, When
+from django.db.models import Case, Count, IntegerField, Max, Q, Sum, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
 from operations.forms import default_charge_amount
@@ -112,6 +113,10 @@ def reschedule_plan_focus_url(focus: str) -> str:
 TERMINAL_RESCHEDULE_PLAN_STATUSES = plan_svc.TERMINAL_PLAN_STATUSES
 FINANCIAL_INTEGRITY_DISPLAY_LIMIT = 40
 FINANCIAL_INTEGRITY_EVENT_DISPLAY_LIMIT = 20
+FINANCIAL_INTEGRITY_REPORT_CODE_LIMIT = 12
+FINANCIAL_INTEGRITY_REPORT_ACTIVE_LIMIT = 20
+FINANCIAL_INTEGRITY_REPORT_RUN_LIMIT = 8
+FINANCIAL_INTEGRITY_REPORT_PERIODS = (7, 30, 90)
 FINANCIAL_INTEGRITY_ACTIVE_STATUSES = (
     FinancialIntegrityFinding.Status.OPEN,
     FinancialIntegrityFinding.Status.ACKNOWLEDGED,
@@ -475,6 +480,246 @@ def financial_integrity_event_rows(
     ]
 
 
+def financial_integrity_report_period(request) -> dict[str, object]:
+    today = timezone.localdate()
+    date_from_param = request.GET.get("date_from", "").strip()
+    date_to_param = request.GET.get("date_to", "").strip()
+    period_param = request.GET.get("period", "30")
+
+    if date_from_param or date_to_param:
+        date_to = parse_date(date_to_param) if date_to_param else today
+        date_from = parse_date(date_from_param) if date_from_param else None
+        if date_to is None:
+            date_to = today
+        if date_from is None:
+            date_from = date_to - timedelta(days=29)
+        selected_period = "custom"
+    else:
+        try:
+            days = int(period_param)
+        except ValueError:
+            days = 30
+        if days not in FINANCIAL_INTEGRITY_REPORT_PERIODS:
+            days = 30
+        date_to = today
+        date_from = today - timedelta(days=days - 1)
+        selected_period = str(days)
+
+    if date_from > date_to:
+        date_from, date_to = date_to, date_from
+
+    tz = timezone.get_current_timezone()
+    starts_at = timezone.make_aware(datetime.combine(date_from, time.min), tz)
+    ends_at = timezone.make_aware(datetime.combine(date_to + timedelta(days=1), time.min), tz)
+    return {
+        "date_from": date_from,
+        "date_to": date_to,
+        "starts_at": starts_at,
+        "ends_at": ends_at,
+        "selected_period": selected_period,
+        "period_links": [
+            {"label": f"{days} дней", "value": str(days)}
+            for days in FINANCIAL_INTEGRITY_REPORT_PERIODS
+        ],
+    }
+
+
+def financial_integrity_active_age_buckets(
+    active_findings,
+    *,
+    now=None,
+) -> list[dict[str, object]]:
+    now = now or timezone.now()
+    one_day = now - timedelta(days=1)
+    three_days = now - timedelta(days=3)
+    seven_days = now - timedelta(days=7)
+    return [
+        {
+            "label": "до 1 дня",
+            "count": active_findings.filter(first_seen_at__gte=one_day).count(),
+            "tone": "success",
+        },
+        {
+            "label": "1-3 дня",
+            "count": active_findings.filter(
+                first_seen_at__lt=one_day,
+                first_seen_at__gte=three_days,
+            ).count(),
+            "tone": "info",
+        },
+        {
+            "label": "3-7 дней",
+            "count": active_findings.filter(
+                first_seen_at__lt=three_days,
+                first_seen_at__gte=seven_days,
+            ).count(),
+            "tone": "warning",
+        },
+        {
+            "label": "больше 7 дней",
+            "count": active_findings.filter(first_seen_at__lt=seven_days).count(),
+            "tone": "danger",
+        },
+    ]
+
+
+def financial_integrity_report_context(request) -> dict[str, object]:
+    period = financial_integrity_report_period(request)
+    event_qs = FinancialIntegrityFindingEvent.objects.filter(
+        event_at__gte=period["starts_at"],
+        event_at__lt=period["ends_at"],
+    )
+    run_qs = FinancialIntegrityCheckRun.objects.filter(
+        started_at__gte=period["starts_at"],
+        started_at__lt=period["ends_at"],
+    )
+    active_findings = financial_integrity_active_findings_queryset()
+    active_summary = financial_integrity_summary(active_findings)
+    event_counts = event_qs.aggregate(
+        created=Count(
+            "pk",
+            filter=Q(event_type=FinancialIntegrityFindingEvent.EventType.CREATED),
+        ),
+        resolved=Count(
+            "pk",
+            filter=Q(event_type=FinancialIntegrityFindingEvent.EventType.RESOLVED),
+        ),
+        ignored=Count(
+            "pk",
+            filter=Q(event_type=FinancialIntegrityFindingEvent.EventType.IGNORED),
+        ),
+        reopened=Count(
+            "pk",
+            filter=Q(event_type=FinancialIntegrityFindingEvent.EventType.REOPENED),
+        ),
+    )
+    run_counts = run_qs.aggregate(
+        total=Count("pk"),
+        failed=Count(
+            "pk",
+            filter=Q(status=FinancialIntegrityCheckRun.Status.FAILED),
+        ),
+        checked=Sum("candidate_count"),
+        issues=Sum("issue_count"),
+    )
+    run_counts["checked"] = run_counts["checked"] or 0
+    run_counts["issues"] = run_counts["issues"] or 0
+
+    summary_items = [
+        {
+            "label": "Активные сейчас",
+            "value": active_summary["total"],
+            "hint": (
+                f"Ошибок {active_summary['errors']}, "
+                f"предупреждений {active_summary['warnings']}, "
+                f"инфо {active_summary['info']}."
+            ),
+            "tone": active_summary["tone"],
+        },
+        {
+            "label": "Новые за период",
+            "value": event_counts["created"],
+            "hint": "По событиям created.",
+            "tone": "warning" if event_counts["created"] else "success",
+        },
+        {
+            "label": "Решено",
+            "value": event_counts["resolved"],
+            "hint": "По событиям resolved.",
+            "tone": "success",
+        },
+        {
+            "label": "Скрыто",
+            "value": event_counts["ignored"],
+            "hint": "По событиям ignored.",
+            "tone": "info",
+        },
+        {
+            "label": "Повторно открыто",
+            "value": event_counts["reopened"],
+            "hint": "Возврат resolved/ignored в работу.",
+            "tone": "danger" if event_counts["reopened"] else "success",
+        },
+        {
+            "label": "Запуски проверок",
+            "value": run_counts["total"],
+            "hint": (
+                f"Проверено занятий: {run_counts['checked']}; "
+                f"расхождений в запусках: {run_counts['issues']}."
+            ),
+            "tone": "danger" if run_counts["failed"] else "info",
+        },
+    ]
+
+    period_code_rows = list(
+        event_qs.exclude(code="")
+        .values("code")
+        .annotate(
+            total=Count("pk"),
+            created=Count(
+                "pk",
+                filter=Q(event_type=FinancialIntegrityFindingEvent.EventType.CREATED),
+            ),
+            resolved=Count(
+                "pk",
+                filter=Q(event_type=FinancialIntegrityFindingEvent.EventType.RESOLVED),
+            ),
+            ignored=Count(
+                "pk",
+                filter=Q(event_type=FinancialIntegrityFindingEvent.EventType.IGNORED),
+            ),
+            reopened=Count(
+                "pk",
+                filter=Q(event_type=FinancialIntegrityFindingEvent.EventType.REOPENED),
+            ),
+        )
+        .order_by("-total", "code")[:FINANCIAL_INTEGRITY_REPORT_CODE_LIMIT]
+    )
+    active_code_rows = list(
+        FinancialIntegrityFinding.objects.values("code")
+        .annotate(
+            total=Count("pk"),
+            active=Count("pk", filter=Q(status__in=FINANCIAL_INTEGRITY_ACTIVE_STATUSES)),
+            open=Count("pk", filter=Q(status=FinancialIntegrityFinding.Status.OPEN)),
+            acknowledged=Count(
+                "pk",
+                filter=Q(status=FinancialIntegrityFinding.Status.ACKNOWLEDGED),
+            ),
+            resolved=Count("pk", filter=Q(status=FinancialIntegrityFinding.Status.RESOLVED)),
+            ignored=Count("pk", filter=Q(status=FinancialIntegrityFinding.Status.IGNORED)),
+            errors=Count(
+                "pk",
+                filter=Q(severity=FinancialIntegrityFinding.Severity.ERROR),
+            ),
+            warnings=Count(
+                "pk",
+                filter=Q(severity=FinancialIntegrityFinding.Severity.WARNING),
+            ),
+            latest_seen=Max("last_seen_at"),
+        )
+        .order_by("-active", "-total", "code")[:FINANCIAL_INTEGRITY_REPORT_CODE_LIMIT]
+    )
+    recent_active_findings = list(active_findings[:FINANCIAL_INTEGRITY_REPORT_ACTIVE_LIMIT])
+    latest_runs = list(
+        run_qs.select_related("requested_by").order_by("-started_at", "-pk")[
+            :FINANCIAL_INTEGRITY_REPORT_RUN_LIMIT
+        ]
+    )
+    return {
+        "period": period,
+        "summary_items": summary_items,
+        "active_summary": active_summary,
+        "event_counts": event_counts,
+        "run_counts": run_counts,
+        "age_buckets": financial_integrity_active_age_buckets(active_findings),
+        "period_code_rows": period_code_rows,
+        "active_code_rows": active_code_rows,
+        "recent_active_findings": recent_active_findings,
+        "latest_runs": latest_runs,
+        "work_queue_financial_url": financial_integrity_finding_triage_fallback_url(),
+    }
+
+
 def financial_integrity_finding_triage_fallback_url() -> str:
     return f"{reverse('work_queue')}#queue-financial-integrity"
 
@@ -568,6 +813,16 @@ def financial_integrity_finding_source_items(
             }
         )
     return items
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def financial_integrity_report(request):
+    return render(
+        request,
+        "operations/financial_integrity_report.html",
+        {"report": financial_integrity_report_context(request)},
+    )
 
 
 @login_required

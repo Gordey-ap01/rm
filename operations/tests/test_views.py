@@ -365,6 +365,7 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertContains(response, "Проверить финансы")
         self.assertContains(response, "финансовых расхождений")
         self.assertContains(response, f'{reverse("work_queue")}#queue-financial-integrity')
+        self.assertContains(response, reverse("financial_integrity_report"))
 
     def test_dashboard_uses_persisted_financial_findings_without_live_audit(self):
         appointment = self._financial_integrity_fixture()
@@ -415,6 +416,7 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertContains(response, reverse("appointment_detail", args=[appointment.pk]))
         finding = FinancialIntegrityFinding.objects.get()
         self.assertContains(response, reverse("financial_integrity_finding_detail", args=[finding.pk]))
+        self.assertContains(response, reverse("financial_integrity_report"))
         self.assertNotContains(response, "Исправить автоматически")
 
     def test_work_queue_shows_financial_integrity_run_hint_without_runs(self):
@@ -455,6 +457,57 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertEqual(response.context["financial_integrity_latest_run"], run)
         self.assertEqual(response.context["financial_integrity_latest_run_tone"], "danger")
         self.assertContains(response, "QA runner failure")
+
+    def test_financial_integrity_report_is_read_only_and_counts_period(self):
+        self._financial_integrity_fixture()
+        finding = FinancialIntegrityFinding.objects.get()
+        run_count = FinancialIntegrityCheckRun.objects.count()
+        event_count = FinancialIntegrityFindingEvent.objects.count()
+
+        response = self.client.get(reverse("financial_integrity_report"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(FinancialIntegrityCheckRun.objects.count(), run_count)
+        self.assertEqual(FinancialIntegrityFindingEvent.objects.count(), event_count)
+        report = response.context["report"]
+        self.assertEqual(report["active_summary"]["total"], 1)
+        self.assertEqual(report["event_counts"]["created"], 1)
+        self.assertEqual(report["run_counts"]["total"], 1)
+        self.assertEqual(report["run_counts"]["checked"], 1)
+        self.assertEqual(report["run_counts"]["issues"], 1)
+        self.assertEqual(report["period"]["selected_period"], "30")
+        self.assertContains(response, "financial-report-summary-grid")
+        self.assertContains(response, reverse("financial_integrity_finding_detail", args=[finding.pk]))
+        self.assertContains(response, f'{reverse("work_queue")}#queue-financial-integrity')
+
+    def test_financial_integrity_report_custom_period_keeps_current_active_snapshot(self):
+        self._financial_integrity_fixture()
+        date_from = timezone.localdate() - timedelta(days=90)
+        date_to = timezone.localdate() - timedelta(days=60)
+
+        response = self.client.get(
+            reverse("financial_integrity_report"),
+            {
+                "date_from": date_from.isoformat(),
+                "date_to": date_to.isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        report = response.context["report"]
+        self.assertEqual(report["period"]["selected_period"], "custom")
+        self.assertEqual(report["event_counts"]["created"], 0)
+        self.assertEqual(report["run_counts"]["total"], 0)
+        self.assertEqual(report["active_summary"]["total"], 1)
+
+    def test_financial_integrity_report_requires_admin(self):
+        self._financial_integrity_fixture()
+        user = User.objects.create_user("financial-report-non-admin", password="x")
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("financial_integrity_report"))
+
+        self.assertEqual(response.status_code, 302)
 
     def test_financial_integrity_finding_detail_shows_sources_and_actions(self):
         self._financial_integrity_fixture()

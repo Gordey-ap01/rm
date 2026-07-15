@@ -86,3 +86,15 @@
 - Проверки прошли: Ruff touched Python, focused `WorkQueueViewTests` (`30 passed`), Django check, migration dry-run `No changes detected`, full pytest (`492 passed`), Playwright Browser QA fallback desktop/mobile.
 - Следующий безопасный шаг по docs/19: read-only manager trend report. Не начинать заново detail timeline UI, event schema/service, runner operations, finding detail или предыдущие financial-integrity срезы.
 - Graphify code-index after financial-integrity detail timeline UI: `4229` nodes / `15275` edges; semantic extraction was not rerun.
+
+## Последнее уточнение 2026-07-15: manager trend report закрыт
+
+После текста промпта выше считать актуальным:
+
+- `financial-integrity-manager-trend-report` выполнен: `/financial-integrity/report/` показывает read-only отчет руководителя по persisted `FinancialIntegrityCheckRun`, `FinancialIntegrityFinding` и `FinancialIntegrityFindingEvent`.
+- Отчет поддерживает 7/30/90/custom periods, summary active/new/resolved/ignored/reopened/runs, возраст активных расхождений, code dynamics, current code/status structure, recent active findings, latest runs и ссылки на finding detail/work queue.
+- Dashboard quick actions и work queue financial section ведут в отчет.
+- GET отчета не запускает audit, не создает events/runs и не меняет billing/ledger/payroll/grants/status semantics.
+- Проверки прошли: Ruff touched Python, focused `WorkQueueViewTests` (`33 passed`), Django check, migration dry-run `No changes detected`, full pytest (`495 passed`), Playwright Browser QA fallback desktop/mobile.
+- Graphify code-index after manager report: `4236` nodes / `15294` edges; semantic extraction was not rerun.
+- Docs/19 implementation line complete: event schema/service, detail timeline UI and manager trend report are all done. Следующий шаг должен быть новый контракт/новая доменная зона или конкретный bug/new requirement, а не повтор financial-integrity report/timeline/event work.

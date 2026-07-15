@@ -1488,3 +1488,16 @@ SMTP для реальной промышленной рассылки еще н
 - Playwright Browser QA fallback прошел на desktop 1365x900 и mobile 390x844: history block виден, 2 события, note visible, payload visible, overflow `0`, console/page errors и 4xx/5xx responses нет. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-timeline`; QA data очищены, runserver 8068 остановлен.
 - Следующий безопасный срез по docs/19: read-only manager trend report. Detail timeline UI заново не начинать.
 - Graphify code-index after financial-integrity detail timeline UI: `4229` nodes / `15275` edges; semantic extraction was not rerun.
+
+## Обновление 2026-07-15: financial-integrity manager trend report
+
+- Выполнен UI/report-срез по `docs/19-financial-integrity-history-and-manager-report-contract.md` без миграций и без изменения финансовой семантики.
+- Добавлен read-only экран руководителя `/financial-integrity/report/` (`financial_integrity_report`) для persisted financial integrity данных: `FinancialIntegrityCheckRun`, `FinancialIntegrityFinding`, `FinancialIntegrityFindingEvent`.
+- Отчет поддерживает период 7/30/90 дней и custom `date_from`/`date_to`; default - 30 дней.
+- Экран показывает summary active/new/resolved/ignored/reopened/runs, возраст активных расхождений, динамику по issue code за период, текущую структуру по статусам, последние активные findings и последние runs.
+- Dashboard quick actions и work queue financial section теперь ведут в отчет; отчет ведет обратно в `#queue-financial-integrity` и на detail finding-а.
+- GET отчета не запускает audit, не создает events/runs, не меняет ledger, billing, payroll, grants, statuses или `billing.apply_decision()`.
+- Проверки: Ruff touched Python прошел; `pytest operations/tests/test_views.py::WorkQueueViewTests -q --tb=short` прошел (`33 passed`); `manage.py check --settings=rehab_center.settings_test` прошел; `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`; полный `pytest -q --tb=short` прошел (`495 passed`, 1 прежнее предупреждение django-tasks).
+- Playwright Browser QA fallback прошел на desktop 1365x900 и mobile 390x844: report открыт после login, summary/tables/detail links/period links видны, HTTP 4xx/5xx, console/page errors и horizontal overflow не найдены. Артефакты: `%TEMP%\rmcodex-browser-qa-financial-report`; runserver 8069 остановлен.
+- Graphify code-index after manager report: `4236` nodes / `15294` edges; semantic extraction was not rerun.
+- Docs/19 line now complete: event schema/service, detail timeline UI and manager trend report are all implemented. Следующий шаг не должен заново начинать financial-integrity report/timeline/event work; брать новый контракт или конкретный bug/new requirement.

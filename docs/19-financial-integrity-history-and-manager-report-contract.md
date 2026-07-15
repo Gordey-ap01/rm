@@ -245,3 +245,25 @@ No two agents may edit `operations/models.py`, `operations/migrations/*`, `opera
 3. Должны ли ignored findings попадать в отдельный архив руководителя на первом report-срезе?
 4. Нужен ли `seen_again` event на каждом запуске после реальных замеров, или достаточно `last_seen_at/last_seen_run`?
 5. Какой период отчета руководителя считать default: 7 дней, 30 дней или текущий месяц?
+
+## Implementation 2026-07-15: Manager Trend Report
+
+Implemented the first read-only manager report slice without migrations or financial semantic changes.
+
+- Added `/financial-integrity/report/` (`financial_integrity_report`) for admin users.
+- The report reads only persisted `FinancialIntegrityCheckRun`, `FinancialIntegrityFinding` and `FinancialIntegrityFindingEvent`.
+- Default period is 30 days; quick periods are 7/30/90 days; custom `date_from`/`date_to` is supported.
+- Summary covers current active findings, created/resolved/ignored/reopened events, run counts, checked appointments and issue counts.
+- The screen shows active age buckets, code-level period dynamics, current code/status structure, recent active findings and latest runs.
+- Dashboard quick actions and work queue financial section link to the report.
+- GET report does not run a financial audit, does not create events and does not change ledger/billing/payroll/grants/status data.
+- Verification passed: Ruff on touched Python files, focused `WorkQueueViewTests` (`33 passed`), Django check, migration dry-run `No changes detected`, full pytest (`495 passed`, one existing django-tasks warning), Playwright desktop/mobile QA on 1365x900 and 390x844 with no console/page/http errors and no horizontal overflow.
+- Graphify code-index after this slice: `4236` nodes / `15294` edges; semantic extraction was not rerun.
+
+Docs/19 acceptance status:
+
+- Schema/event slice: complete.
+- Detail timeline slice: complete.
+- Manager report slice: complete.
+
+Next work should leave this financial-integrity report line unless a concrete bug or new manager requirement appears. Do not start auto-fix/backfill, export, or new financial semantics from this report screen without a new contract.
