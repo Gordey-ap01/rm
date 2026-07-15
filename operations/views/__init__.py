@@ -24,6 +24,15 @@ from .compensation_rules import (
 )
 from .confirmations import appointment_confirmation_public, appointment_send_confirmation
 from .consents import consent_create, consent_list
+from .contracts import (
+    contract_list,
+    contract_template_create,
+    contract_template_edit,
+    donation_contract_create,
+    donation_contract_edit,
+    service_contract_create,
+    service_contract_edit,
+)
 from .dashboard import (
     dashboard,
     financial_integrity_finding_detail,
@@ -136,10 +145,15 @@ __all__ = [
     "center_expense_report",
     "consent_create",
     "consent_list",
+    "contract_list",
+    "contract_template_create",
+    "contract_template_edit",
     "csrf_failure",
     "dashboard",
     "document_create",
     "document_list",
+    "donation_contract_create",
+    "donation_contract_edit",
     "equipment_asset_create",
     "equipment_asset_edit",
     "equipment_asset_list",
@@ -194,6 +208,8 @@ __all__ = [
     "safe_next_url",
     "schedule",
     "service_archive",
+    "service_contract_create",
+    "service_contract_edit",
     "service_create",
     "service_edit",
     "service_list",

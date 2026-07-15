@@ -92,6 +92,37 @@ urlpatterns = [
         views.equipment_asset_edit,
         name="equipment_asset_edit",
     ),
+    path("contracts/", views.contract_list, name="contract_list"),
+    path(
+        "contracts/templates/new/",
+        views.contract_template_create,
+        name="contract_template_create",
+    ),
+    path(
+        "contracts/templates/<int:pk>/edit/",
+        views.contract_template_edit,
+        name="contract_template_edit",
+    ),
+    path(
+        "contracts/donations/new/",
+        views.donation_contract_create,
+        name="donation_contract_create",
+    ),
+    path(
+        "contracts/donations/<int:pk>/edit/",
+        views.donation_contract_edit,
+        name="donation_contract_edit",
+    ),
+    path(
+        "contracts/services/new/",
+        views.service_contract_create,
+        name="service_contract_create",
+    ),
+    path(
+        "contracts/services/<int:pk>/edit/",
+        views.service_contract_edit,
+        name="service_contract_edit",
+    ),
     path("recipients/", views.recipient_list, name="recipient_list"),
     path("imports/recipients/", views.recipient_import_preview, name="recipient_import_preview"),
     path("recipients/new/", views.recipient_create, name="recipient_create"),

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>{{ title }}</h1>
+    {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
+  </div>
+  <a class="button-link secondary" href="{{ cancel_url }}">Назад</a>
+</section>
+
+<form method="post" enctype="multipart/form-data" class="object-form-layout">
+  {% csrf_token %}
+  <section class="object-form-main">
+    <section class="panel form-panel">
+      <div class="object-form-head">
+        <div>
+          <h2>Параметры договора</h2>
+          <p>Структурные поля сохраняются отдельно от файла. Файл можно оставить пустым на этапе черновика.</p>
+        </div>
+      </div>
+      <div class="form-grid">
+        {% if form.non_field_errors %}
+          <div class="form-error form-wide">{{ form.non_field_errors }}</div>
+        {% endif %}
+        {% for field in form %}
+          <label class="field {% if field.name == 'notes' %}form-wide{% endif %}">
+            <span>{{ field.label }}</span>
+            {{ field }}
+            {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+            {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+          </label>
+        {% endfor %}
+      </div>
+    </section>
+  </section>
+
+  <aside class="object-form-sidebar" aria-label="Контроль договора">
+    <section class="panel object-form-control">
+      <h2>Контроль</h2>
+      <ul class="object-form-check-list">
+        {% for item in control_items %}
+          <li>
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.detail }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="form-actions object-form-actions">
+        <button type="submit">Сохранить</button>
+        <a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>
+      </div>
+    </section>
+  </aside>
+</form>
+{% endblock %}

@@ -18,7 +18,9 @@ from operations.models import (
     CenterExpense,
     CenterExpenseCategory,
     Child,
+    ContractTemplate,
     Counterparty,
+    DonationContract,
     EquipmentAsset,
     ExpenseFundingSplit,
     FinancialIntegrityCheckRun,
@@ -29,6 +31,7 @@ from operations.models import (
     LedgerEntry,
     ParentGuardian,
     PayrollAccrual,
+    ServiceContract,
     StaffCompensationRule,
     StaffMember,
 )
@@ -85,7 +88,9 @@ class AuditLogTests(TestCase):
             CenterExpense,
             CenterExpenseCategory,
             Child,
+            ContractTemplate,
             Counterparty,
+            DonationContract,
             EquipmentAsset,
             ExpenseFundingSplit,
             FundingSource,
@@ -95,6 +100,7 @@ class AuditLogTests(TestCase):
             GrantRecipientAllocation,
             LedgerEntry,
             PayrollAccrual,
+            ServiceContract,
             StaffCompensationRule,
             StaffMember,
         ):
@@ -111,6 +117,9 @@ class AuditLogTests(TestCase):
         self.assertIn(CenterExpense, admin.site._registry)
         self.assertIn(ExpenseFundingSplit, admin.site._registry)
         self.assertIn(EquipmentAsset, admin.site._registry)
+        self.assertIn(ContractTemplate, admin.site._registry)
+        self.assertIn(DonationContract, admin.site._registry)
+        self.assertIn(ServiceContract, admin.site._registry)
 
     def test_financial_integrity_finding_update_is_logged(self):
         now = timezone.now()

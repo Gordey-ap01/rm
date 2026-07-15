@@ -193,3 +193,17 @@
 - Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused tests `11 passed`, full pytest `528 passed`, Browser QA desktop/mobile.
 - Graphify code-index after assets: `4461` nodes / `16971` edges; semantic extraction was not rerun in this slice.
 - Следующий безопасный срез: `contracts-registry` одним DB-owner или небольшой product UI категорий/контрагентов. Не начинать approve/pay/import write-path до отдельного контракта.
+
+## Последнее уточнение 2026-07-16: contracts-registry выполнен
+
+После текста промпта выше считать актуальным:
+
+- `contracts-registry` выполнен по `docs/21-expenses-assets-contracts-contract.md`.
+- Добавлены `ContractTemplate`, `DonationContract`, `ServiceContract`, migration `operations.0027_contracttemplate_donationcontract_servicecontract`, admin/auditlog registration, формы, `/contracts/`, create/edit routes для шаблонов, договоров пожертвования и договоров с получателями, шаблоны и навигация "Договоры".
+- Договоры можно создавать без файла; можно связать с шаблоном и `Document`. Договор пожертвования связан с `FundingSource`; договор с получателем связан с `Child` и `RecipientRepresentative`-подписантом.
+- Валидация запрещает подписанта от другого получателя, non-signer и документ другого получателя; проверяет порядок дат, положительный лимит суммы и уникальность номера+даты внутри типа договора.
+- `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing decisions, grant semantics и статусы занятий не менялись.
+- Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused tests `14 passed`, full pytest `540 passed`, Browser QA desktop/mobile.
+- Python Playwright был установлен только в `.venv-test` для QA; это не production dependency и не проектный файл. Артефакты Browser QA: `%TEMP%\rmcodex-browser-qa-contracts-registry`; runserver `8077` остановлен.
+- Graphify code-index after contracts: `4531` nodes / `18018` edges; semantic extraction was not rerun in this slice.
+- Следующий безопасный срез: `contracts-generation-and-import-preview` отдельным срезом для генерации файла договора из шаблона и preview Excel-импорта без записи в БД, либо небольшой product UI справочников категорий/контрагентов. Не начинать approve/pay/import write-path с записью в БД без отдельного контракта.

@@ -3042,6 +3042,10 @@ def document_upload_path(instance: Document, filename: str) -> str:
     return f"documents/{instance.child_id}/{filename}"
 
 
+def contract_template_upload_path(instance: ContractTemplate, filename: str) -> str:
+    return f"contract_templates/{instance.template_type}/{filename}"
+
+
 class Document(TimeStampedModel):
     class Category(models.TextChoices):
         MEDICAL_REPORT = "medical_report", "Медицинское заключение"
@@ -3494,6 +3498,268 @@ class EquipmentAsset(TimeStampedModel):
             != CenterExpenseCategory.ExpenseType.EQUIPMENT
         ):
             errors["purchase_expense"] = "Расход покупки должен относиться к категории оборудования."
+        if errors:
+            raise ValidationError(errors)
+
+
+class ContractTemplate(TimeStampedModel):
+    class TemplateType(models.TextChoices):
+        RECIPIENT_SERVICE = "recipient_service", "Договор с получателем услуг"
+        DONATION_ONE_TIME = "donation_one_time", "Разовое пожертвование"
+        DONATION_MONTHLY = "donation_monthly", "Регулярная помощь"
+        SPONSOR = "sponsor", "Спонсорский договор"
+        VENDOR = "vendor", "Договор с поставщиком"
+        OTHER = "other", "Прочее"
+
+    template_type = models.CharField(
+        "тип шаблона",
+        max_length=40,
+        choices=TemplateType.choices,
+        default=TemplateType.RECIPIENT_SERVICE,
+    )
+    title = models.CharField("название", max_length=200)
+    version = models.CharField("версия", max_length=40, blank=True)
+    file = models.FileField(
+        "файл шаблона",
+        upload_to=contract_template_upload_path,
+        blank=True,
+    )
+    is_active = models.BooleanField("активен", default=True)
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "шаблон договора"
+        verbose_name_plural = "шаблоны договоров"
+        ordering = ["template_type", "-is_active", "title", "version"]
+        indexes = [
+            models.Index(fields=["template_type", "is_active"]),
+        ]
+
+    def __str__(self) -> str:
+        if self.version:
+            return f"{self.title} v{self.version}"
+        return self.title
+
+
+class DonationContract(TimeStampedModel):
+    class ContractType(models.TextChoices):
+        ONE_TIME = "one_time", "Разовое пожертвование"
+        MONTHLY = "monthly", "Регулярная помощь"
+        PROJECT = "project", "Проектный договор"
+        OTHER = "other", "Прочее"
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Черновик"
+        ACTIVE = "active", "Активен"
+        CLOSED = "closed", "Закрыт"
+        CANCELLED = "cancelled", "Отменен"
+
+    counterparty = models.ForeignKey(
+        Counterparty,
+        verbose_name="контрагент",
+        on_delete=models.PROTECT,
+        related_name="donation_contracts",
+    )
+    funding_source = models.ForeignKey(
+        FundingSource,
+        verbose_name="источник финансирования",
+        on_delete=models.PROTECT,
+        related_name="donation_contracts",
+    )
+    contract_type = models.CharField(
+        "тип договора",
+        max_length=30,
+        choices=ContractType.choices,
+        default=ContractType.ONE_TIME,
+    )
+    number = models.CharField("номер", max_length=80, blank=True)
+    signed_on = models.DateField("подписан", null=True, blank=True)
+    valid_from = models.DateField("действует с", null=True, blank=True)
+    valid_until = models.DateField("действует до", null=True, blank=True)
+    amount_limit = models.DecimalField(
+        "лимит суммы",
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    status = models.CharField(
+        "статус",
+        max_length=30,
+        choices=Status.choices,
+        default=Status.DRAFT,
+    )
+    template = models.ForeignKey(
+        ContractTemplate,
+        verbose_name="шаблон",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="donation_contracts",
+    )
+    document = models.ForeignKey(
+        Document,
+        verbose_name="файл договора",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="donation_contracts",
+    )
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "договор пожертвования"
+        verbose_name_plural = "договоры пожертвования"
+        ordering = ["-signed_on", "-created_at"]
+        indexes = [
+            models.Index(fields=["funding_source", "status", "valid_from", "valid_until"]),
+            models.Index(fields=["counterparty", "status"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(amount_limit__isnull=True) | Q(amount_limit__gt=0),
+                name="donation_contract_amount_limit_positive_or_null",
+            ),
+            models.CheckConstraint(
+                condition=Q(valid_from__isnull=True)
+                | Q(valid_until__isnull=True)
+                | Q(valid_until__gte=models.F("valid_from")),
+                name="donation_contract_dates_order",
+            ),
+            models.UniqueConstraint(
+                fields=["contract_type", "number", "signed_on"],
+                condition=~Q(number="") & Q(signed_on__isnull=False),
+                name="unique_donation_contract_number_signed_on_per_type",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        number = f" №{self.number}" if self.number else ""
+        return f"{self.get_contract_type_display()}{number} — {self.counterparty}"
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.amount_limit is not None and self.amount_limit <= 0:
+            errors["amount_limit"] = "Лимит суммы должен быть положительным."
+        if self.valid_from and self.valid_until and self.valid_until < self.valid_from:
+            errors["valid_until"] = "Дата окончания не может быть раньше даты начала."
+        if self.template_id and self.template.template_type not in {
+            ContractTemplate.TemplateType.DONATION_ONE_TIME,
+            ContractTemplate.TemplateType.DONATION_MONTHLY,
+            ContractTemplate.TemplateType.SPONSOR,
+            ContractTemplate.TemplateType.OTHER,
+        }:
+            errors["template"] = "Выберите шаблон для пожертвования или спонсорского договора."
+        if self.document_id and self.document.category != Document.Category.CONTRACT:
+            errors["document"] = "Связанный документ должен иметь категорию договора."
+        if errors:
+            raise ValidationError(errors)
+
+
+class ServiceContract(TimeStampedModel):
+    class ContractType(models.TextChoices):
+        STANDARD = "standard", "Стандартный договор услуг"
+        GRANT = "grant", "Договор по гранту"
+        CERTIFICATE = "certificate", "Договор по сертификату"
+        OTHER = "other", "Прочее"
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Черновик"
+        ACTIVE = "active", "Активен"
+        CLOSED = "closed", "Закрыт"
+        CANCELLED = "cancelled", "Отменен"
+
+    child = models.ForeignKey(
+        Child,
+        verbose_name="получатель",
+        on_delete=models.PROTECT,
+        related_name="service_contracts",
+    )
+    representative_link = models.ForeignKey(
+        RecipientRepresentative,
+        verbose_name="подписант",
+        on_delete=models.PROTECT,
+        related_name="service_contracts",
+    )
+    contract_type = models.CharField(
+        "тип договора",
+        max_length=30,
+        choices=ContractType.choices,
+        default=ContractType.STANDARD,
+    )
+    number = models.CharField("номер", max_length=80, blank=True)
+    signed_on = models.DateField("подписан", null=True, blank=True)
+    valid_from = models.DateField("действует с", null=True, blank=True)
+    valid_until = models.DateField("действует до", null=True, blank=True)
+    status = models.CharField(
+        "статус",
+        max_length=30,
+        choices=Status.choices,
+        default=Status.DRAFT,
+    )
+    template = models.ForeignKey(
+        ContractTemplate,
+        verbose_name="шаблон",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="service_contracts",
+    )
+    document = models.ForeignKey(
+        Document,
+        verbose_name="файл договора",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="service_contracts",
+    )
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "договор с получателем"
+        verbose_name_plural = "договоры с получателями"
+        ordering = ["-signed_on", "-created_at"]
+        indexes = [
+            models.Index(fields=["child", "status", "valid_from", "valid_until"]),
+            models.Index(fields=["representative_link", "status"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(valid_from__isnull=True)
+                | Q(valid_until__isnull=True)
+                | Q(valid_until__gte=models.F("valid_from")),
+                name="service_contract_dates_order",
+            ),
+            models.UniqueConstraint(
+                fields=["contract_type", "number", "signed_on"],
+                condition=~Q(number="") & Q(signed_on__isnull=False),
+                name="unique_service_contract_number_signed_on_per_type",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        number = f" №{self.number}" if self.number else ""
+        return f"{self.get_contract_type_display()}{number} — {self.child}"
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.valid_from and self.valid_until and self.valid_until < self.valid_from:
+            errors["valid_until"] = "Дата окончания не может быть раньше даты начала."
+        if self.representative_link_id:
+            if self.child_id and self.representative_link.child_id != self.child_id:
+                errors["representative_link"] = "Подписант должен относиться к выбранному получателю."
+            if not self.representative_link.signs_contract:
+                errors["representative_link"] = "У представителя должен быть флажок подписанта договора."
+        if self.template_id and self.template.template_type not in {
+            ContractTemplate.TemplateType.RECIPIENT_SERVICE,
+            ContractTemplate.TemplateType.OTHER,
+        }:
+            errors["template"] = "Выберите шаблон договора с получателем услуг."
+        if self.document_id:
+            if self.document.category != Document.Category.CONTRACT:
+                errors["document"] = "Связанный документ должен иметь категорию договора."
+            if self.child_id and self.document.child_id != self.child_id:
+                errors["document"] = "Документ договора должен относиться к выбранному получателю."
         if errors:
             raise ValidationError(errors)
 

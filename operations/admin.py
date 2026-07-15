@@ -16,8 +16,10 @@ from .models import (
     CenterExpenseCategory,
     Child,
     Consent,
+    ContractTemplate,
     Counterparty,
     Document,
+    DonationContract,
     EquipmentAsset,
     ExpenseFundingSplit,
     FinancialIntegrityCheckRun,
@@ -39,6 +41,7 @@ from .models import (
     Recommendation,
     Room,
     Service,
+    ServiceContract,
     StaffAvailability,
     StaffCompensationRule,
     StaffMember,
@@ -266,6 +269,62 @@ class EquipmentAssetAdmin(admin.ModelAdmin):
     search_fields = ("name", "inventory_number", "location", "notes", "purchase_expense__title")
     list_filter = ("status", "asset_type", "purchase_date")
     autocomplete_fields = ("purchase_expense", "responsible_staff")
+
+
+@admin.register(ContractTemplate)
+class ContractTemplateAdmin(admin.ModelAdmin):
+    list_display = ("title", "template_type", "version", "is_active", "updated_at")
+    search_fields = ("title", "version", "notes")
+    list_filter = ("template_type", "is_active")
+
+
+@admin.register(DonationContract)
+class DonationContractAdmin(admin.ModelAdmin):
+    list_display = (
+        "counterparty",
+        "funding_source",
+        "contract_type",
+        "number",
+        "status",
+        "signed_on",
+        "valid_until",
+        "amount_limit",
+    )
+    search_fields = (
+        "number",
+        "notes",
+        "counterparty__name",
+        "funding_source__name",
+        "template__title",
+        "document__title",
+    )
+    list_filter = ("status", "contract_type", "signed_on", "valid_until")
+    autocomplete_fields = ("counterparty", "funding_source", "template", "document")
+
+
+@admin.register(ServiceContract)
+class ServiceContractAdmin(admin.ModelAdmin):
+    list_display = (
+        "child",
+        "representative_link",
+        "contract_type",
+        "number",
+        "status",
+        "signed_on",
+        "valid_until",
+    )
+    search_fields = (
+        "number",
+        "notes",
+        "child__last_name",
+        "child__first_name",
+        "representative_link__representative__last_name",
+        "representative_link__representative__first_name",
+        "template__title",
+        "document__title",
+    )
+    list_filter = ("status", "contract_type", "signed_on", "valid_until")
+    autocomplete_fields = ("child", "representative_link", "template", "document")
 
 
 class FundingStaffAllocationInline(admin.TabularInline):

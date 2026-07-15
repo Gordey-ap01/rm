@@ -24,8 +24,10 @@ from .models import (
     CenterExpenseCategory,
     Child,
     Consent,
+    ContractTemplate,
     Counterparty,
     Document,
+    DonationContract,
     EquipmentAsset,
     ExpenseFundingSplit,
     FundingServiceQuota,
@@ -40,6 +42,7 @@ from .models import (
     Recommendation,
     Room,
     Service,
+    ServiceContract,
     StaffAvailability,
     StaffCompensationRule,
     StaffMember,
@@ -2477,6 +2480,200 @@ class EquipmentAssetForm(forms.ModelForm):
             staff_filter
         ).order_by("full_name")
         self.fields["responsible_staff"].required = False
+
+
+class ContractTemplateForm(forms.ModelForm):
+    class Meta:
+        model = ContractTemplate
+        fields = ("template_type", "title", "version", "file", "is_active", "notes")
+        labels = {
+            "template_type": "Тип шаблона",
+            "title": "Название",
+            "version": "Версия",
+            "file": "Файл шаблона",
+            "is_active": "Активен",
+            "notes": "Примечания",
+        }
+        widgets = {
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+class DonationContractForm(forms.ModelForm):
+    class Meta:
+        model = DonationContract
+        fields = (
+            "counterparty",
+            "funding_source",
+            "contract_type",
+            "number",
+            "signed_on",
+            "valid_from",
+            "valid_until",
+            "amount_limit",
+            "status",
+            "template",
+            "document",
+            "notes",
+        )
+        labels = {
+            "counterparty": "Контрагент",
+            "funding_source": "Источник финансирования",
+            "contract_type": "Тип договора",
+            "number": "Номер",
+            "signed_on": "Дата подписания",
+            "valid_from": "Действует с",
+            "valid_until": "Действует до",
+            "amount_limit": "Лимит суммы",
+            "status": "Статус",
+            "template": "Шаблон",
+            "document": "Файл договора",
+            "notes": "Примечания",
+        }
+        widgets = {
+            "signed_on": DATE_INPUT,
+            "valid_from": DATE_INPUT,
+            "valid_until": DATE_INPUT,
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        counterparty_filter = Q(archived_at__isnull=True)
+        if self.instance and self.instance.counterparty_id:
+            counterparty_filter |= Q(pk=self.instance.counterparty_id)
+        self.fields["counterparty"].queryset = Counterparty.all_objects.filter(
+            counterparty_filter
+        ).order_by("name")
+
+        funding_filter = Q(archived_at__isnull=True)
+        if self.instance and self.instance.funding_source_id:
+            funding_filter |= Q(pk=self.instance.funding_source_id)
+        self.fields["funding_source"].queryset = FundingSource.all_objects.filter(
+            funding_filter
+        ).order_by("name")
+
+        template_filter = Q(
+            template_type__in=[
+                ContractTemplate.TemplateType.DONATION_ONE_TIME,
+                ContractTemplate.TemplateType.DONATION_MONTHLY,
+                ContractTemplate.TemplateType.SPONSOR,
+                ContractTemplate.TemplateType.OTHER,
+            ],
+            is_active=True,
+        )
+        if self.instance and self.instance.template_id:
+            template_filter |= Q(pk=self.instance.template_id)
+        self.fields["template"].queryset = ContractTemplate.objects.filter(
+            template_filter
+        ).order_by("template_type", "title", "version")
+        self.fields["template"].required = False
+
+        document_filter = Q(category=Document.Category.CONTRACT)
+        if self.instance and self.instance.document_id:
+            document_filter |= Q(pk=self.instance.document_id)
+        self.fields["document"].queryset = Document.objects.filter(document_filter).order_by(
+            "-created_at"
+        )
+        self.fields["document"].required = False
+
+
+class ServiceContractForm(forms.ModelForm):
+    class Meta:
+        model = ServiceContract
+        fields = (
+            "child",
+            "representative_link",
+            "contract_type",
+            "number",
+            "signed_on",
+            "valid_from",
+            "valid_until",
+            "status",
+            "template",
+            "document",
+            "notes",
+        )
+        labels = {
+            "child": "Получатель",
+            "representative_link": "Подписант",
+            "contract_type": "Тип договора",
+            "number": "Номер",
+            "signed_on": "Дата подписания",
+            "valid_from": "Действует с",
+            "valid_until": "Действует до",
+            "status": "Статус",
+            "template": "Шаблон",
+            "document": "Файл договора",
+            "notes": "Примечания",
+        }
+        widgets = {
+            "signed_on": DATE_INPUT,
+            "valid_from": DATE_INPUT,
+            "valid_until": DATE_INPUT,
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        child_id = self._selected_child_id()
+
+        child_filter = Q(archived_at__isnull=True)
+        if self.instance and self.instance.child_id:
+            child_filter |= Q(pk=self.instance.child_id)
+        self.fields["child"].queryset = Child.all_objects.filter(child_filter).order_by(
+            "last_name", "first_name"
+        )
+
+        representative_filter = Q(signs_contract=True)
+        if child_id:
+            representative_filter &= Q(child_id=child_id)
+        if self.instance and self.instance.representative_link_id:
+            representative_filter |= Q(pk=self.instance.representative_link_id)
+        self.fields["representative_link"].queryset = (
+            RecipientRepresentative.objects.select_related("child", "representative")
+            .filter(representative_filter)
+            .order_by(
+                "child__last_name",
+                "child__first_name",
+                "representative__last_name",
+                "representative__first_name",
+            )
+        )
+
+        template_filter = Q(
+            template_type__in=[
+                ContractTemplate.TemplateType.RECIPIENT_SERVICE,
+                ContractTemplate.TemplateType.OTHER,
+            ],
+            is_active=True,
+        )
+        if self.instance and self.instance.template_id:
+            template_filter |= Q(pk=self.instance.template_id)
+        self.fields["template"].queryset = ContractTemplate.objects.filter(
+            template_filter
+        ).order_by("template_type", "title", "version")
+        self.fields["template"].required = False
+
+        document_filter = Q(category=Document.Category.CONTRACT)
+        if child_id:
+            document_filter &= Q(child_id=child_id)
+        if self.instance and self.instance.document_id:
+            document_filter |= Q(pk=self.instance.document_id)
+        self.fields["document"].queryset = Document.objects.filter(document_filter).order_by(
+            "-created_at"
+        )
+        self.fields["document"].required = False
+
+    def _selected_child_id(self) -> int | None:
+        if self.is_bound:
+            try:
+                return int(self.data.get(self.add_prefix("child")) or "")
+            except (TypeError, ValueError):
+                return None
+        if self.instance and self.instance.child_id:
+            return self.instance.child_id
+        return None
 
 
 class TimeSheetFilterForm(forms.Form):

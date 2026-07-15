@@ -1588,3 +1588,17 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA desktop/mobile прошла; артефакты: `%TEMP%\rmcodex-browser-qa-assets-registry`; локальный runserver на `8076` остановлен.
 - Graphify code-index after assets registry: `4461` nodes / `16971` edges; semantic extraction was not rerun in this slice.
 - Следующий безопасный срез по docs/21: `contracts-registry` отдельным DB-owner или небольшой product UI для категорий/контрагентов. Не начинать approve/pay или Excel import write-path без отдельного контракта.
+
+## Обновление 2026-07-16: contracts-registry
+
+- Выполнен additive DB/UI срез `contracts-registry` по `docs/21-expenses-assets-contracts-contract.md`.
+- Добавлены модели `ContractTemplate`, `DonationContract`, `ServiceContract` и migration `operations.0027_contracttemplate_donationcontract_servicecontract`; существующие `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, billing decisions, grant semantics и статусы занятий не менялись.
+- `ContractTemplate` хранит тип, название, версию, optional file, active flag и примечания. Шаблон не является подписанным договором.
+- `DonationContract` связан с `Counterparty` и `FundingSource`, имеет тип, номер, даты, optional amount limit, статус, optional template/document и примечания. Договор пожертвования не создает деньги на балансах.
+- `ServiceContract` связан с `Child` и `RecipientRepresentative`-подписантом, имеет тип, номер, даты, статус, optional template/document и примечания. Валидация запрещает подписанта от другого получателя, non-signer и документ другого получателя.
+- Constraints: порядок дат; положительный `amount_limit`, если задан; уникальность `contract_type + number + signed_on`, если номер и дата подписания заполнены.
+- Добавлены admin/auditlog registration, формы, маршруты `/contracts/`, `/contracts/templates/new/`, `/contracts/templates/<id>/edit/`, `/contracts/donations/new/`, `/contracts/donations/<id>/edit/`, `/contracts/services/new/`, `/contracts/services/<id>/edit/`, шаблоны списка/формы и пункт навигации "Договоры".
+- Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused contract/admin/view tests (`14 passed`), full `pytest -q --tb=short` (`540 passed`, 1 прежнее предупреждение django-tasks).
+- Browser QA desktop/mobile прошла через Python Playwright; артефакты: `%TEMP%\rmcodex-browser-qa-contracts-registry`; локальный runserver на `8077` остановлен.
+- Graphify code-index after contracts registry: `4531` nodes / `18018` edges; semantic extraction was not rerun in this slice.
+- Следующий безопасный срез по docs/21: `contracts-generation-and-import-preview` как отдельный срез для генерации файла договора из шаблона и preview Excel-импорта без записи в БД, либо небольшой product UI справочников категорий/контрагентов. Не начинать approve/pay или Excel import write-path с записью в БД без отдельного контракта.

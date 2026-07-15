@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Договоры{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Договоры</h1>
+    <p>Структурный реестр договоров с получателями, донорами и шаблонами без обязательного файла на этапе черновика.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="button-link secondary" href="{% url 'contract_template_create' %}">Шаблон</a>
+    <a class="button-link secondary" href="{% url 'donation_contract_create' %}">Пожертвование</a>
+    <a class="button-link" href="{% url 'service_contract_create' %}">Договор с получателем</a>
+  </div>
+</section>
+
+<section class="directory-overview">
+  <a class="directory-next-action is-{{ contract_next_action.tone }}" href="{{ contract_next_action.href }}">
+    <span>{{ contract_next_action.label }}</span>
+    <strong>{{ contract_next_action.title }}</strong>
+    <small>{{ contract_next_action.detail }}</small>
+  </a>
+  <div class="directory-summary-grid" aria-label="Сводка договоров">
+    {% for item in contract_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="directory-layout">
+  <div class="directory-main">
+    <section class="panel directory-panel" id="contract-registry">
+      <div class="directory-panel-head">
+        <div>
+          <h2>Реестр договоров</h2>
+          <p>Запись договора отделена от файла. Генерация документов и импорт Excel будут отдельным срезом.</p>
+        </div>
+      </div>
+
+      <form class="expense-filter-form" method="get">
+        <label>
+          <span>Поиск</span>
+          <input type="search" name="q" value="{{ filters.q }}" placeholder="Номер, ФИО, контрагент, источник">
+        </label>
+        <label>
+          <span>Тип</span>
+          <select name="kind">
+            {% for value, label in kind_choices %}
+              <option value="{{ value }}"{% if value == filters.kind %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>Статус</span>
+          <select name="status">
+            <option value="">Все статусы</option>
+            {% for value, label in status_choices %}
+              <option value="{{ value }}"{% if value == filters.status %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div class="expense-filter-actions">
+          <button type="submit">Показать</button>
+          <a class="button-link secondary" href="{% url 'contract_list' %}">Сбросить</a>
+        </div>
+      </form>
+
+      {% if filters.kind == "" or filters.kind == "service" %}
+      <h3 class="mt-4">Договоры с получателями</h3>
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>Получатель</th>
+              <th>Подписант</th>
+              <th>Номер</th>
+              <th>Срок</th>
+              <th>Шаблон/файл</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for contract in service_contracts %}
+            <tr{% if contract.status == "closed" or contract.status == "cancelled" %} class="muted-row"{% endif %}>
+              <td data-label="Получатель">
+                <strong>{{ contract.child.full_name }}</strong>
+                <div class="muted">{{ contract.get_contract_type_display }}</div>
+              </td>
+              <td data-label="Подписант">{{ contract.representative_link.representative.full_name }}</td>
+              <td data-label="Номер">
+                {% if contract.number %}{{ contract.number }}{% else %}<span class="muted">не указан</span>{% endif %}
+                <div class="muted">подписан: {{ contract.ui_signed_on }}</div>
+              </td>
+              <td data-label="Срок">{{ contract.ui_validity }}</td>
+              <td data-label="Шаблон/файл">
+                {% if contract.template %}<div>{{ contract.template }}</div>{% endif %}
+                {% if contract.document %}<div class="muted">{{ contract.document.title }}</div>{% else %}<span class="muted">файл не привязан</span>{% endif %}
+              </td>
+              <td data-label="Статус">
+                {% if contract.status == "active" %}
+                  <span class="status-pill">{{ contract.get_status_display }}</span>
+                {% elif contract.status == "draft" %}
+                  <span class="status-pill warning-pill">{{ contract.get_status_display }}</span>
+                {% elif contract.status == "cancelled" %}
+                  <span class="status-pill danger-pill">{{ contract.get_status_display }}</span>
+                {% else %}
+                  <span class="status-pill muted-pill">{{ contract.get_status_display }}</span>
+                {% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'service_contract_edit' contract.pk %}">Открыть</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" data-label="Договоры">
+                <div class="empty-state">Договоры с получателями еще не добавлены.</div>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      {% if filters.kind == "" or filters.kind == "donation" %}
+      <h3 class="mt-4">Договоры пожертвования</h3>
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>Контрагент</th>
+              <th>Источник</th>
+              <th>Номер</th>
+              <th>Срок</th>
+              <th>Лимит</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for contract in donation_contracts %}
+            <tr{% if contract.status == "closed" or contract.status == "cancelled" %} class="muted-row"{% endif %}>
+              <td data-label="Контрагент">
+                <strong>{{ contract.counterparty.name }}</strong>
+                <div class="muted">{{ contract.get_contract_type_display }}</div>
+              </td>
+              <td data-label="Источник">{{ contract.funding_source.name }}</td>
+              <td data-label="Номер">
+                {% if contract.number %}{{ contract.number }}{% else %}<span class="muted">не указан</span>{% endif %}
+                <div class="muted">подписан: {{ contract.ui_signed_on }}</div>
+              </td>
+              <td data-label="Срок">{{ contract.ui_validity }}</td>
+              <td data-label="Лимит"><strong>{{ contract.ui_amount_limit }}</strong></td>
+              <td data-label="Статус">
+                {% if contract.status == "active" %}
+                  <span class="status-pill">{{ contract.get_status_display }}</span>
+                {% elif contract.status == "draft" %}
+                  <span class="status-pill warning-pill">{{ contract.get_status_display }}</span>
+                {% elif contract.status == "cancelled" %}
+                  <span class="status-pill danger-pill">{{ contract.get_status_display }}</span>
+                {% else %}
+                  <span class="status-pill muted-pill">{{ contract.get_status_display }}</span>
+                {% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'donation_contract_edit' contract.pk %}">Открыть</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" data-label="Договоры">
+                <div class="empty-state">Договоры пожертвования еще не добавлены.</div>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      {% if filters.kind == "" or filters.kind == "template" %}
+      <h3 class="mt-4">Шаблоны</h3>
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>Шаблон</th>
+              <th>Тип</th>
+              <th>Файл</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for template in contract_templates %}
+            <tr{% if not template.is_active %} class="muted-row"{% endif %}>
+              <td data-label="Шаблон">
+                <strong>{{ template.title }}</strong>
+                {% if template.version %}<div class="muted">версия {{ template.version }}</div>{% endif %}
+              </td>
+              <td data-label="Тип">{{ template.get_template_type_display }}</td>
+              <td data-label="Файл">
+                {% if template.file %}{{ template.file.name }}{% else %}<span class="muted">не загружен</span>{% endif %}
+              </td>
+              <td data-label="Статус">
+                {% if template.is_active %}
+                  <span class="status-pill">Активен</span>
+                {% else %}
+                  <span class="status-pill muted-pill">Неактивен</span>
+                {% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'contract_template_edit' template.pk %}">Открыть</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" data-label="Шаблоны">
+                <div class="empty-state">Шаблоны договоров еще не добавлены.</div>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <aside class="directory-sidebar" aria-label="Контроль договоров">
+    <section class="panel directory-control-panel">
+      <h2>Контроль</h2>
+      <ul class="directory-check-list">
+        <li>
+          <strong>Договор без файла</strong>
+          <span>Черновик можно создать сразу, а файл прикрепить позже. Это не блокирует реестр.</span>
+        </li>
+        <li>
+          <strong>Подписант</strong>
+          <span>Для договора с получателем подписант берется из представителей этого же получателя.</span>
+        </li>
+        <li>
+          <strong>Без финансовых проводок</strong>
+          <span>Договоры не создают платежи, балансы, списания, payroll или ledger-записи.</span>
+        </li>
+      </ul>
+    </section>
+  </aside>
+</section>
+{% endblock %}

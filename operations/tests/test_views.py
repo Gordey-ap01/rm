@@ -26,9 +26,11 @@ from operations.models import (
     Certificate,
     Child,
     Consent,
+    ContractTemplate,
     Counterparty,
     Discount,
     Document,
+    DonationContract,
     EquipmentAsset,
     ExpenseFundingSplit,
     FinancialIntegrityCheckRun,
@@ -48,6 +50,7 @@ from operations.models import (
     Recommendation,
     Room,
     Service,
+    ServiceContract,
     StaffCompensationRule,
     StaffMember,
     TreatmentProgram,
@@ -3323,6 +3326,164 @@ class EquipmentAssetViewTests(NewViewsTestBase):
         self.assertEqual(asset.status, EquipmentAsset.Status.WRITTEN_OFF)
         self.assertTrue(CenterExpense.objects.filter(pk=expense.pk).exists())
         self.assertEqual(LedgerEntry.objects.count(), ledger_count)
+
+
+class ContractRegistryViewTests(NewViewsTestBase):
+    def _signer_link(self) -> RecipientRepresentative:
+        return RecipientRepresentative.objects.get(child=self.child, representative=self.parent)
+
+    def _service_template(self) -> ContractTemplate:
+        return ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.RECIPIENT_SERVICE,
+            title="Шаблон договора с получателем",
+            version="1",
+        )
+
+    def _donation_template(self) -> ContractTemplate:
+        return ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.SPONSOR,
+            title="Шаблон пожертвования",
+            version="1",
+        )
+
+    def _contract_document(self, *, child=None, title: str = "Файл договора") -> Document:
+        return Document.objects.create(
+            child=child or self.child,
+            category=Document.Category.CONTRACT,
+            title=title,
+            file="documents/contract.txt",
+        )
+
+    def test_contract_list_renders(self):
+        template = self._service_template()
+        ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-001",
+            signed_on=timezone.localdate(),
+            template=template,
+        )
+
+        response = self.client.get(reverse("contract_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("contract_summary_items", response.context)
+        self.assertIn("contract_next_action", response.context)
+        self.assertContains(response, "Договоры")
+        self.assertContains(response, "Реестр договоров")
+        self.assertContains(response, "Договоры с получателями")
+        self.assertContains(response, "S-001")
+        self.assertContains(response, reverse("service_contract_create"))
+
+    def test_contract_template_create(self):
+        response = self.client.post(
+            reverse("contract_template_create"),
+            {
+                "template_type": ContractTemplate.TemplateType.RECIPIENT_SERVICE,
+                "title": "Новый шаблон",
+                "version": "2",
+                "is_active": "on",
+                "notes": "Для будущей генерации",
+            },
+        )
+
+        template = ContractTemplate.objects.get(title="Новый шаблон")
+        self.assertRedirects(response, reverse("contract_template_edit", args=[template.pk]))
+        self.assertEqual(template.version, "2")
+
+    def test_donation_contract_create_links_funding_source_without_financial_facts(self):
+        template = self._donation_template()
+        ledger_count = LedgerEntry.objects.count()
+        payment_count = Payment.objects.count()
+
+        response = self.client.post(
+            reverse("donation_contract_create"),
+            {
+                "counterparty": self.counterparty.pk,
+                "funding_source": self.funding_grant.pk,
+                "contract_type": DonationContract.ContractType.PROJECT,
+                "number": "D-001",
+                "signed_on": timezone.localdate().isoformat(),
+                "valid_from": timezone.localdate().isoformat(),
+                "valid_until": "",
+                "amount_limit": "100000.00",
+                "status": DonationContract.Status.ACTIVE,
+                "template": template.pk,
+                "document": "",
+                "notes": "Грантовый договор",
+            },
+        )
+
+        contract = DonationContract.objects.get(number="D-001")
+        self.assertRedirects(response, reverse("donation_contract_edit", args=[contract.pk]))
+        self.assertEqual(contract.funding_source, self.funding_grant)
+        self.assertIsNone(contract.document_id)
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
+        self.assertEqual(Payment.objects.count(), payment_count)
+
+    def test_service_contract_create_links_child_signer_template_and_document(self):
+        template = self._service_template()
+        document = self._contract_document()
+
+        response = self.client.post(
+            reverse("service_contract_create"),
+            {
+                "child": self.child.pk,
+                "representative_link": self._signer_link().pk,
+                "contract_type": ServiceContract.ContractType.STANDARD,
+                "number": "S-002",
+                "signed_on": timezone.localdate().isoformat(),
+                "valid_from": timezone.localdate().isoformat(),
+                "valid_until": "",
+                "status": ServiceContract.Status.ACTIVE,
+                "template": template.pk,
+                "document": document.pk,
+                "notes": "Основной договор",
+            },
+        )
+
+        contract = ServiceContract.objects.get(number="S-002")
+        self.assertRedirects(response, reverse("service_contract_edit", args=[contract.pk]))
+        self.assertEqual(contract.child, self.child)
+        self.assertEqual(contract.representative_link, self._signer_link())
+        self.assertEqual(contract.document, document)
+
+    def test_service_contract_create_rejects_signer_from_other_child(self):
+        other_parent = ParentGuardian.objects.create(
+            last_name="Петрова",
+            first_name="Анна",
+            phone="+7 900 000-00-09",
+        )
+        other_child = Child.objects.create(
+            last_name="Петров",
+            first_name="Петр",
+            primary_parent=other_parent,
+        )
+        other_link = RecipientRepresentative.objects.get(
+            child=other_child,
+            representative=other_parent,
+        )
+
+        response = self.client.post(
+            reverse("service_contract_create"),
+            {
+                "child": self.child.pk,
+                "representative_link": other_link.pk,
+                "contract_type": ServiceContract.ContractType.STANDARD,
+                "number": "S-003",
+                "signed_on": timezone.localdate().isoformat(),
+                "valid_from": "",
+                "valid_until": "",
+                "status": ServiceContract.Status.DRAFT,
+                "template": "",
+                "document": "",
+                "notes": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(ServiceContract.objects.filter(number="S-003").exists())
+        self.assertContains(response, "Выберите корректный вариант")
 
 
 class StaffCompensationRuleViewTests(NewViewsTestBase):
