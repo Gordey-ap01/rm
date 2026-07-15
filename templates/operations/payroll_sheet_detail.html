@@ -73,7 +73,16 @@
                   {% endif %}
                 </td>
                 <td data-label="Минуты">{{ line.duration_minutes }}</td>
-                <td data-label="Ставка">{{ line.payroll_accrual.rate_amount_snapshot }} / {{ line.payroll_accrual.get_rate_type_snapshot_display }}</td>
+                <td data-label="Ставка">
+                  {{ line.payroll_accrual.rate_amount_snapshot }} / {{ line.payroll_accrual.get_rate_type_snapshot_display }}
+                  {% if line.payroll_accrual.group_pay_policy_snapshot != "per_session" or line.payroll_accrual.pay_units_snapshot > 1 %}
+                    <small class="text-muted d-block">
+                      {{ line.payroll_accrual.get_group_pay_policy_snapshot_display }},
+                      единиц: {{ line.payroll_accrual.pay_units_snapshot }},
+                      списано: {{ line.payroll_accrual.charged_participants_count_snapshot }}
+                    </small>
+                  {% endif %}
+                </td>
                 <td data-label="Сумма"><strong>{{ line.amount }}</strong></td>
                 <td data-label="Примечание">{{ line.note|default:"—" }}</td>
               </tr>

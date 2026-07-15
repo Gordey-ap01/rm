@@ -29,6 +29,7 @@ from operations.models import (
     StaffMember,
     TimeOffRequest,
 )
+from operations.services.compensation import calculate_staff_compensation
 from operations.services.financial_facts import appointment_charge_fact
 
 
@@ -186,6 +187,9 @@ class TimesheetPayLine:
     amount: Decimal
     note: str
     rate_label: str = ""
+    group_pay_policy: str = StaffCompensationRule.GroupPayPolicy.PER_SESSION
+    charged_participants_count: int = 1
+    pay_units: int = 1
 
     @property
     def has_rate(self) -> bool:
@@ -200,79 +204,6 @@ class Timesheet:
     rows: list[TimesheetRow]
     totals: TimesheetRow
     pay_lines: list[TimesheetPayLine] = field(default_factory=list)
-
-
-def _matching_compensation_rule(
-    rules: list[StaffCompensationRule],
-    *,
-    service_id: int,
-    funding_source_id: int | None,
-    work_date: date,
-    duration_minutes: int,
-) -> StaffCompensationRule | None:
-    matches: list[StaffCompensationRule] = []
-    for rule in rules:
-        if rule.service_id and rule.service_id != service_id:
-            continue
-        if rule.funding_source_id and rule.funding_source_id != funding_source_id:
-            continue
-        if rule.min_duration_minutes and duration_minutes < rule.min_duration_minutes:
-            continue
-        if rule.max_duration_minutes and duration_minutes > rule.max_duration_minutes:
-            continue
-        if rule.starts_on and rule.starts_on > work_date:
-            continue
-        if rule.ends_on and rule.ends_on < work_date:
-            continue
-        matches.append(rule)
-
-    if not matches:
-        return None
-
-    return sorted(
-        matches,
-        key=lambda rule: (
-            (1 if rule.service_id else 0) + (1 if rule.funding_source_id else 0),
-            1 if rule.funding_source_id else 0,
-            1 if rule.service_id else 0,
-            (1 if rule.min_duration_minutes else 0) + (1 if rule.max_duration_minutes else 0),
-            rule.starts_on or date.min,
-            rule.pk or 0,
-        ),
-        reverse=True,
-    )[0]
-
-
-def _matching_grant_allocation(
-    *,
-    staff: StaffMember,
-    service_id: int,
-    funding_source_id: int | None,
-    work_date: date,
-) -> FundingStaffAllocation | None:
-    if not funding_source_id:
-        return None
-    return (
-        FundingStaffAllocation.objects.filter(
-            staff_member=staff,
-            service_id=service_id,
-            funding_source_id=funding_source_id,
-            session_pay_amount__isnull=False,
-        )
-        .filter(Q(starts_on__isnull=True) | Q(starts_on__lte=work_date))
-        .filter(Q(ends_on__isnull=True) | Q(ends_on__gte=work_date))
-        .select_related("service_quota", "funding_source", "service", "staff_member")
-        .order_by("-starts_on", "-service_quota_id", "-pk")
-        .first()
-    )
-
-
-def _compensation_amount(rule: StaffCompensationRule | None, minutes: int) -> Decimal:
-    if rule is None:
-        return Decimal("0")
-    if rule.rate_type == StaffCompensationRule.RateType.HOURLY:
-        return (rule.amount * Decimal(minutes) / Decimal(60)).quantize(Decimal("0.01"))
-    return rule.amount
 
 
 def timesheet(staff: StaffMember, date_from: date, date_to: date) -> Timesheet:
@@ -334,38 +265,19 @@ def timesheet(staff: StaffMember, date_from: date, date_to: date) -> Timesheet:
         by_day[day]["minutes"] += max(minutes, 0)
 
         charge_fact = appointment_charge_fact(appointment, include_ledger=False)
-        is_charged = charge_fact.is_charged
-        funding_source = charge_fact.funding_source
-        note = charge_fact.note
-        rule = None
-        amount = Decimal("0")
-        rate_label = ""
-        if is_charged:
+        compensation = calculate_staff_compensation(
+            staff=staff,
+            appointment=appointment,
+            charge_fact=charge_fact,
+            rules=rules,
+            work_date=day,
+            duration_minutes=max(minutes, 0),
+        )
+        if compensation.payable:
             bucket["payable"] += 1
-            allocation = _matching_grant_allocation(
-                staff=staff,
-                service_id=appointment.service_id,
-                funding_source_id=funding_source.pk if funding_source else None,
-                work_date=day,
+            bucket["pay_amount_cents"] += int(
+                (compensation.amount * Decimal("100")).to_integral_value()
             )
-            if allocation is not None:
-                amount = allocation.session_pay_amount
-                rate_label = f"{allocation.session_pay_amount} / грантовая квота"
-                note = f"{note}; ставка из распределения грантовой квоты"
-            else:
-                rule = _matching_compensation_rule(
-                    rules,
-                    service_id=appointment.service_id,
-                    funding_source_id=funding_source.pk if funding_source else None,
-                    work_date=day,
-                    duration_minutes=max(minutes, 0),
-                )
-                if rule is None:
-                    note = f"{note}; ставка не задана"
-                else:
-                    amount = _compensation_amount(rule, max(minutes, 0))
-                    rate_label = f"{rule.amount} / {rule.get_rate_type_display()}"
-            bucket["pay_amount_cents"] += int((amount * Decimal("100")).to_integral_value())
 
         pay_lines.append(
             TimesheetPayLine(
@@ -375,14 +287,17 @@ def timesheet(staff: StaffMember, date_from: date, date_to: date) -> Timesheet:
                 starts_at=assignment.starts_at_snapshot,
                 ends_at=assignment.ends_at_snapshot,
                 service_name=appointment.service.name,
-                funding_source=funding_source,
+                funding_source=compensation.funding_source,
                 status=appointment.get_status_display(),
                 billing_decision=charge_fact.billing_decision_label,
-                payable=is_charged,
-                rule=rule,
-                amount=amount,
-                note=note,
-                rate_label=rate_label,
+                payable=compensation.payable,
+                rule=compensation.rule,
+                amount=compensation.amount,
+                note=compensation.note,
+                rate_label=compensation.rate_label,
+                group_pay_policy=compensation.group_pay_policy,
+                charged_participants_count=compensation.charged_participants_count,
+                pay_units=compensation.pay_units,
             )
         )
 
@@ -410,38 +325,19 @@ def timesheet(staff: StaffMember, date_from: date, date_to: date) -> Timesheet:
             bucket["no_show"] += 1
         by_day[day]["minutes"] += max(minutes, 0)
         charge_fact = appointment_charge_fact(appointment, include_ledger=False)
-        is_charged = charge_fact.is_charged
-        funding_source = charge_fact.funding_source
-        note = charge_fact.note
-        rule = None
-        amount = Decimal("0")
-        rate_label = ""
-        if is_charged:
+        compensation = calculate_staff_compensation(
+            staff=staff,
+            appointment=appointment,
+            charge_fact=charge_fact,
+            rules=rules,
+            work_date=day,
+            duration_minutes=max(minutes, 0),
+        )
+        if compensation.payable:
             bucket["payable"] += 1
-            allocation = _matching_grant_allocation(
-                staff=staff,
-                service_id=appointment.service_id,
-                funding_source_id=funding_source.pk if funding_source else None,
-                work_date=day,
+            bucket["pay_amount_cents"] += int(
+                (compensation.amount * Decimal("100")).to_integral_value()
             )
-            if allocation is not None:
-                amount = allocation.session_pay_amount
-                rate_label = f"{allocation.session_pay_amount} / грантовая квота"
-                note = f"{note}; ставка из распределения грантовой квоты"
-            else:
-                rule = _matching_compensation_rule(
-                    rules,
-                    service_id=appointment.service_id,
-                    funding_source_id=funding_source.pk if funding_source else None,
-                    work_date=day,
-                    duration_minutes=max(minutes, 0),
-                )
-                if rule is None:
-                    note = f"{note}; ставка не задана"
-                else:
-                    amount = _compensation_amount(rule, max(minutes, 0))
-                    rate_label = f"{rule.amount} / {rule.get_rate_type_display()}"
-            bucket["pay_amount_cents"] += int((amount * Decimal("100")).to_integral_value())
         pay_lines.append(
             TimesheetPayLine(
                 assignment=None,
@@ -450,14 +346,17 @@ def timesheet(staff: StaffMember, date_from: date, date_to: date) -> Timesheet:
                 starts_at=appointment.starts_at,
                 ends_at=appointment.ends_at,
                 service_name=appointment.service.name,
-                funding_source=funding_source,
+                funding_source=compensation.funding_source,
                 status=appointment.get_status_display(),
                 billing_decision=charge_fact.billing_decision_label,
-                payable=is_charged,
-                rule=rule,
-                amount=amount,
-                note=note,
-                rate_label=rate_label,
+                payable=compensation.payable,
+                rule=compensation.rule,
+                amount=compensation.amount,
+                note=compensation.note,
+                rate_label=compensation.rate_label,
+                group_pay_policy=compensation.group_pay_policy,
+                charged_participants_count=compensation.charged_participants_count,
+                pay_units=compensation.pay_units,
             )
         )
 

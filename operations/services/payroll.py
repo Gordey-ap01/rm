@@ -8,19 +8,18 @@ from decimal import Decimal
 from typing import Any
 
 from django.db import transaction
-from django.db.models import Q
 from django.utils import timezone
 
 from operations.models import (
     Appointment,
     AppointmentStaffAssignment,
-    FundingStaffAllocation,
     PayrollAccrual,
     PayrollSheet,
     PayrollSheetLine,
     StaffCompensationRule,
     StaffMember,
 )
+from operations.services.compensation import calculate_staff_compensation
 from operations.services.financial_facts import appointment_charge_fact
 
 
@@ -35,77 +34,6 @@ class PayrollGenerationResult:
     @property
     def touched(self) -> int:
         return self.created + self.updated
-
-
-def _matching_compensation_rule(
-    rules: list[StaffCompensationRule],
-    *,
-    service_id: int,
-    funding_source_id: int | None,
-    work_date: date,
-    duration_minutes: int,
-) -> StaffCompensationRule | None:
-    matches: list[StaffCompensationRule] = []
-    for rule in rules:
-        if rule.service_id and rule.service_id != service_id:
-            continue
-        if rule.funding_source_id and rule.funding_source_id != funding_source_id:
-            continue
-        if rule.min_duration_minutes and duration_minutes < rule.min_duration_minutes:
-            continue
-        if rule.max_duration_minutes and duration_minutes > rule.max_duration_minutes:
-            continue
-        if rule.starts_on and rule.starts_on > work_date:
-            continue
-        if rule.ends_on and rule.ends_on < work_date:
-            continue
-        matches.append(rule)
-
-    if not matches:
-        return None
-
-    return sorted(
-        matches,
-        key=lambda rule: (
-            (1 if rule.service_id else 0) + (1 if rule.funding_source_id else 0),
-            1 if rule.funding_source_id else 0,
-            1 if rule.service_id else 0,
-            (1 if rule.min_duration_minutes else 0) + (1 if rule.max_duration_minutes else 0),
-            rule.starts_on or date.min,
-            rule.pk or 0,
-        ),
-        reverse=True,
-    )[0]
-
-
-def _matching_grant_allocation(
-    *,
-    staff: StaffMember,
-    service_id: int,
-    funding_source_id: int | None,
-    work_date: date,
-) -> FundingStaffAllocation | None:
-    if not funding_source_id:
-        return None
-    return (
-        FundingStaffAllocation.objects.filter(
-            staff_member=staff,
-            service_id=service_id,
-            funding_source_id=funding_source_id,
-            session_pay_amount__isnull=False,
-        )
-        .filter(Q(starts_on__isnull=True) | Q(starts_on__lte=work_date))
-        .filter(Q(ends_on__isnull=True) | Q(ends_on__gte=work_date))
-        .select_related("service_quota", "funding_source", "service", "staff_member")
-        .order_by("-starts_on", "-service_quota_id", "-pk")
-        .first()
-    )
-
-
-def _compensation_amount(rule: StaffCompensationRule, minutes: int) -> Decimal:
-    if rule.rate_type == StaffCompensationRule.RateType.HOURLY:
-        return (rule.amount * Decimal(minutes) / Decimal(60)).quantize(Decimal("0.01"))
-    return rule.amount
 
 
 @transaction.atomic
@@ -159,34 +87,18 @@ def generate_accruals_for_staff(
             return
 
         work_date = timezone.localtime(starts_at, tz).date()
-        allocation = _matching_grant_allocation(
-            staff=staff,
-            service_id=appointment.service_id,
-            funding_source_id=context.funding_source.pk if context.funding_source else None,
-            work_date=work_date,
-        )
         minutes = max(int((ends_at - starts_at).total_seconds() // 60), 0)
-        if allocation is not None:
-            rule = None
-            rate_type = StaffCompensationRule.RateType.PER_SESSION
-            rate_amount = allocation.session_pay_amount
-            amount = allocation.session_pay_amount
-            note = f"{context.note}; ставка из распределения грантовой квоты"
-        else:
-            rule = _matching_compensation_rule(
-                rules,
-                service_id=appointment.service_id,
-                funding_source_id=context.funding_source.pk if context.funding_source else None,
-                work_date=work_date,
-                duration_minutes=minutes,
-            )
-            if rule is None:
-                counters["skipped_no_rule"] += 1
-                return
-            rate_type = rule.rate_type
-            rate_amount = rule.amount
-            amount = _compensation_amount(rule, minutes)
-            note = context.note
+        compensation = calculate_staff_compensation(
+            staff=staff,
+            appointment=appointment,
+            charge_fact=context,
+            rules=rules,
+            work_date=work_date,
+            duration_minutes=minutes,
+        )
+        if not compensation.has_rate:
+            counters["skipped_no_rule"] += 1
+            return
         defaults = {
             "staff_assignment": staff_assignment,
             "appointment": appointment,
@@ -194,16 +106,20 @@ def generate_accruals_for_staff(
             "ledger_entry": context.ledger_entry,
             "staff_member": staff,
             "service": appointment.service,
-            "funding_source": context.funding_source,
-            "pay_rule": rule,
+            "funding_source": compensation.funding_source,
+            "pay_rule": compensation.rule,
             "work_date": work_date,
             "starts_at_snapshot": starts_at,
             "ends_at_snapshot": ends_at,
             "duration_minutes": minutes,
-            "rate_type_snapshot": rate_type,
-            "rate_amount_snapshot": rate_amount,
-            "amount": amount,
-            "note": note,
+            "rate_type_snapshot": compensation.rate_type,
+            "rate_amount_snapshot": compensation.rate_amount,
+            "session_scope_snapshot": compensation.session_scope,
+            "group_pay_policy_snapshot": compensation.group_pay_policy,
+            "charged_participants_count_snapshot": compensation.charged_participants_count,
+            "pay_units_snapshot": compensation.pay_units,
+            "amount": compensation.amount,
+            "note": compensation.note,
             "created_by": actor,
         }
         accrual = PayrollAccrual.objects.filter(dedupe_key=dedupe_key).first()

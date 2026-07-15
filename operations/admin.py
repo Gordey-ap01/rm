@@ -681,8 +681,11 @@ class StaffCompensationRuleAdmin(admin.ModelAdmin):
         "staff_member",
         "service",
         "funding_source",
+        "session_scope",
         "rate_type",
         "amount",
+        "group_pay_policy",
+        "group_fixed_amount",
         "min_duration_minutes",
         "max_duration_minutes",
         "starts_on",
@@ -690,7 +693,14 @@ class StaffCompensationRuleAdmin(admin.ModelAdmin):
         "is_active",
     )
     search_fields = ("staff_member__full_name", "service__name", "funding_source__name", "note")
-    list_filter = ("rate_type", "is_active", "service", "funding_source")
+    list_filter = (
+        "rate_type",
+        "session_scope",
+        "group_pay_policy",
+        "is_active",
+        "service",
+        "funding_source",
+    )
     autocomplete_fields = ("staff_member", "service", "funding_source")
 
 
@@ -876,6 +886,7 @@ class PayrollAccrualAdmin(admin.ModelAdmin):
         "staff_member",
         "service",
         "funding_source",
+        "group_pay_policy_snapshot",
         "amount",
         "status",
         "appointment",
@@ -887,7 +898,13 @@ class PayrollAccrualAdmin(admin.ModelAdmin):
         "note",
         "dedupe_key",
     )
-    list_filter = ("status", "service", "funding_source", "rate_type_snapshot")
+    list_filter = (
+        "status",
+        "service",
+        "funding_source",
+        "rate_type_snapshot",
+        "group_pay_policy_snapshot",
+    )
     autocomplete_fields = (
         "staff_assignment",
         "appointment",

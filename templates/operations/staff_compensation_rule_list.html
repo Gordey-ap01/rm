@@ -70,7 +70,13 @@
                   <span class="status-pill muted-pill">любой источник</span>
                 {% endif %}
               </td>
-              <td data-label="Тип">{{ rule.get_rate_type_display }}</td>
+              <td data-label="Тип">
+                <strong>{{ rule.get_rate_type_display }}</strong>
+                <small class="text-muted d-block">{{ rule.get_session_scope_display }}</small>
+                {% if rule.group_pay_policy != "per_session" or rule.session_scope == "group" %}
+                  <small class="text-muted d-block">Группа: {{ rule.get_group_pay_policy_display }}</small>
+                {% endif %}
+              </td>
               <td data-label="Длительность">
                 {% if rule.min_duration_minutes or rule.max_duration_minutes %}
                   {{ rule.min_duration_minutes|default:"…" }}-{{ rule.max_duration_minutes|default:"…" }} мин
@@ -78,7 +84,12 @@
                   <span class="status-pill muted-pill">любая</span>
                 {% endif %}
               </td>
-              <td data-label="Сумма">{{ rule.amount }}</td>
+              <td data-label="Сумма">
+                <strong>{{ rule.amount }}</strong>
+                {% if rule.group_fixed_amount %}
+                  <small class="text-muted d-block">Группа: {{ rule.group_fixed_amount }}</small>
+                {% endif %}
+              </td>
               <td data-label="Период">
                 {% if rule.starts_on or rule.ends_on %}
                   {{ rule.starts_on|date:"d.m.Y"|default:"—" }}-{{ rule.ends_on|date:"d.m.Y"|default:"—" }}
@@ -123,6 +134,10 @@
         <li>
           <strong>Гранты</strong>
           <span>Ставка по источнику финансирования важнее общей ставки специалиста.</span>
+        </li>
+        <li>
+          <strong>Группы</strong>
+          <span>Для группового занятия можно задать отдельный формат ставки и принцип начисления.</span>
         </li>
         <li>
           <strong>Длительность</strong>

@@ -2988,7 +2988,7 @@ class StaffCompensationRuleViewTests(NewViewsTestBase):
             amount=Decimal("500"),
         )
         cases = [
-            (reverse("staff_compensation_rule_create"), "Контроль ставки", "Тип ставки"),
+            (reverse("staff_compensation_rule_create"), "Контроль ставки", "Групповые занятия"),
             (
                 reverse("staff_compensation_rule_edit", args=[rule.pk]),
                 "Контроль ставки",
@@ -3047,8 +3047,11 @@ class StaffCompensationRuleViewTests(NewViewsTestBase):
                 "staff_member": self.staff.pk,
                 "service": self.service.pk,
                 "funding_source": self.funding_grant.pk,
+                "session_scope": StaffCompensationRule.SessionScope.ALL,
                 "rate_type": StaffCompensationRule.RateType.PER_SESSION,
                 "amount": "700.00",
+                "group_pay_policy": StaffCompensationRule.GroupPayPolicy.PER_SESSION,
+                "group_fixed_amount": "",
                 "min_duration_minutes": "30",
                 "max_duration_minutes": "45",
                 "starts_on": "2026-01-01",
@@ -3062,6 +3065,8 @@ class StaffCompensationRuleViewTests(NewViewsTestBase):
         self.assertRedirects(response, reverse("staff_compensation_rule_edit", args=[rule.pk]))
         self.assertEqual(rule.amount, Decimal("700.00"))
         self.assertEqual(rule.funding_source, self.funding_grant)
+        self.assertEqual(rule.session_scope, StaffCompensationRule.SessionScope.ALL)
+        self.assertEqual(rule.group_pay_policy, StaffCompensationRule.GroupPayPolicy.PER_SESSION)
         self.assertEqual(rule.min_duration_minutes, 30)
         self.assertEqual(rule.max_duration_minutes, 45)
 
@@ -3078,8 +3083,11 @@ class StaffCompensationRuleViewTests(NewViewsTestBase):
                 "staff_member": self.staff.pk,
                 "service": "",
                 "funding_source": "",
+                "session_scope": StaffCompensationRule.SessionScope.GROUP,
                 "rate_type": StaffCompensationRule.RateType.HOURLY,
                 "amount": "900.00",
+                "group_pay_policy": StaffCompensationRule.GroupPayPolicy.FIXED_GROUP_AMOUNT,
+                "group_fixed_amount": "450.00",
                 "min_duration_minutes": "",
                 "max_duration_minutes": "",
                 "starts_on": "2026-01-01",
@@ -3092,10 +3100,44 @@ class StaffCompensationRuleViewTests(NewViewsTestBase):
         self.assertRedirects(response, reverse("staff_compensation_rule_list"))
         rule.refresh_from_db()
         self.assertIsNone(rule.service)
+        self.assertEqual(rule.session_scope, StaffCompensationRule.SessionScope.GROUP)
         self.assertEqual(rule.rate_type, StaffCompensationRule.RateType.HOURLY)
         self.assertEqual(rule.amount, Decimal("900.00"))
+        self.assertEqual(
+            rule.group_pay_policy,
+            StaffCompensationRule.GroupPayPolicy.FIXED_GROUP_AMOUNT,
+        )
+        self.assertEqual(rule.group_fixed_amount, Decimal("450.00"))
         self.assertIsNone(rule.min_duration_minutes)
         self.assertIsNone(rule.max_duration_minutes)
+
+    def test_staff_compensation_rule_fixed_group_amount_required(self):
+        response = self.client.post(
+            reverse("staff_compensation_rule_create"),
+            {
+                "staff_member": self.staff.pk,
+                "service": self.service.pk,
+                "funding_source": "",
+                "session_scope": StaffCompensationRule.SessionScope.GROUP,
+                "rate_type": StaffCompensationRule.RateType.PER_SESSION,
+                "amount": "700.00",
+                "group_pay_policy": StaffCompensationRule.GroupPayPolicy.FIXED_GROUP_AMOUNT,
+                "group_fixed_amount": "",
+                "min_duration_minutes": "",
+                "max_duration_minutes": "",
+                "starts_on": "",
+                "ends_on": "",
+                "is_active": "on",
+                "note": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context["form"],
+            "group_fixed_amount",
+            "Укажите фиксированную сумму для группового занятия.",
+        )
 
     def test_staff_compensation_rule_toggle(self):
         rule = StaffCompensationRule.objects.create(

@@ -1512,3 +1512,17 @@ SMTP для реальной промышленной рассылки еще н
 - Код, модели, миграции, payroll/report formulas, ledger/billing/grant/status semantics и UI не менялись.
 - Следующий безопасный срез: `group-payroll-policy-foundation`, но только с одним DB/payroll owner. Не параллелить `operations/models.py`, `operations/migrations/*`, `operations/services/payroll.py`, `operations/services/reports.py` и будущий shared compensation helper.
 - Graphify code-index after group payroll policy contract: `4256` nodes / `15313` edges; semantic extraction was not rerun and no API key was written to project files.
+
+## Обновление 2026-07-15: group-payroll-policy foundation
+
+- Выполнен первый DB/payroll/UI срез `group-payroll-policy-foundation` по `docs/20-group-payroll-policy-contract.md`.
+- В `StaffCompensationRule` добавлены `session_scope`, `group_pay_policy`, `group_fixed_amount`: руководитель может задать ставку для всех/индивидуальных/групповых занятий и выбрать для группы `per_session`, `per_charged_participant` или `fixed_group_amount`.
+- В `PayrollAccrual` добавлены snapshots `session_scope_snapshot`, `group_pay_policy_snapshot`, `charged_participants_count_snapshot`, `pay_units_snapshot`, чтобы расчетный лист объяснял уже созданную сумму после изменения ставок.
+- Добавлена миграция `operations.0024_payrollaccrual_charged_participants_count_snapshot_and_more`; миграция additive, с defaults/index/check constraints, без backfill-пересчета старых начислений.
+- Добавлен общий helper `operations.services.compensation.calculate_staff_compensation()`; `reports.timesheet()` и `payroll.generate_accruals_for_staff()` больше не держат разные формулы расчета.
+- `FundingStaffAllocation.session_pay_amount` намеренно оставлен per-session grant override. Грантовая ставка не умножается на число детей группы без отдельного грантового контракта.
+- UI ставок показывает формат занятия и group policy; форма валидирует fixed group amount. Расчетный лист показывает group policy snapshot and units для групповых multipliers.
+- Проверки: Ruff touched Python/migration прошел; focused service tests `67 passed`; focused StaffCompensationRule views `7 passed`; related StaffTimesheet + StaffCompensationRule views `14 passed`; Django check прошел; migration dry-run `No changes detected`; полный `pytest -q --tb=short` прошел (`500 passed`, 1 прежнее предупреждение django-tasks).
+- Playwright Browser QA fallback прошел на desktop 1365x900 and mobile 390x844: compensation list/form, timesheet and payroll sheet visible; group policy, `× 2` multiplier and payroll units visible; HTTP 4xx/5xx, console/page errors and horizontal overflow absent. Артефакты: `%TEMP%\rmcodex-browser-qa-group-payroll-policy`; QA data очищены, runserver 8070 остановлен.
+- Graphify code-index after group payroll policy foundation: `4275` nodes / `15347` edges; semantic extraction was not rerun and no API key was written to project files.
+- Следующий шаг по payroll не должен заново делать group policy foundation. Возможные следующие срезы: управленческая полировка отчетов по payroll/grant, отдельный контракт на грантовую salary policy beyond per-session, либо возврат к расходам/договорам/импорту после сверки приоритетов.

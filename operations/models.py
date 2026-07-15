@@ -397,9 +397,19 @@ class FundingSource(TimeStampedModel, SoftDeleteMixin):
 
 
 class StaffCompensationRule(TimeStampedModel):
+    class SessionScope(models.TextChoices):
+        ALL = "all", "Все занятия"
+        INDIVIDUAL = "individual", "Индивидуальные"
+        GROUP = "group", "Групповые"
+
     class RateType(models.TextChoices):
         PER_SESSION = "per_session", "За занятие"
         HOURLY = "hourly", "За час"
+
+    class GroupPayPolicy(models.TextChoices):
+        PER_SESSION = "per_session", "Один раз за группу"
+        PER_CHARGED_PARTICIPANT = "per_charged_participant", "По списанным участникам"
+        FIXED_GROUP_AMOUNT = "fixed_group_amount", "Фиксированная сумма за группу"
 
     staff_member = models.ForeignKey(
         StaffMember,
@@ -425,10 +435,32 @@ class StaffCompensationRule(TimeStampedModel):
         related_name="compensation_rules",
         help_text="Оставьте пустым для общей ставки; ставка по источнику финансирования приоритетнее.",
     )
+    session_scope = models.CharField(
+        "формат занятий",
+        max_length=30,
+        choices=SessionScope.choices,
+        default=SessionScope.ALL,
+        help_text="Ограничьте ставку индивидуальными или групповыми занятиями, если суммы отличаются.",
+    )
     rate_type = models.CharField(
         "тип ставки", max_length=30, choices=RateType.choices, default=RateType.PER_SESSION
     )
     amount = models.DecimalField("сумма", max_digits=12, decimal_places=2)
+    group_pay_policy = models.CharField(
+        "начисление в группе",
+        max_length=40,
+        choices=GroupPayPolicy.choices,
+        default=GroupPayPolicy.PER_SESSION,
+        help_text="Для групповых занятий: один раз за группу, по списанным участникам или фиксированной суммой.",
+    )
+    group_fixed_amount = models.DecimalField(
+        "фиксированная сумма за группу",
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Заполняется только для варианта «Фиксированная сумма за группу».",
+    )
     min_duration_minutes = models.PositiveIntegerField(
         "мин. длительность, мин",
         null=True,
@@ -461,6 +493,15 @@ class StaffCompensationRule(TimeStampedModel):
                 condition=Q(amount__gte=0), name="staff_comp_amount_non_negative"
             ),
             models.CheckConstraint(
+                condition=Q(group_fixed_amount__isnull=True) | Q(group_fixed_amount__gte=0),
+                name="staff_comp_group_fixed_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=~Q(group_pay_policy="fixed_group_amount")
+                | Q(group_fixed_amount__isnull=False),
+                name="staff_comp_group_fixed_required",
+            ),
+            models.CheckConstraint(
                 condition=Q(starts_on__isnull=True)
                 | Q(ends_on__isnull=True)
                 | Q(ends_on__gte=models.F("starts_on")),
@@ -484,9 +525,23 @@ class StaffCompensationRule(TimeStampedModel):
         indexes = [
             models.Index(fields=["staff_member", "is_active", "starts_on", "ends_on"]),
             models.Index(fields=["staff_member", "service", "funding_source", "is_active"]),
+            models.Index(
+                fields=["staff_member", "session_scope", "service", "funding_source", "is_active"]
+            ),
         ]
 
     def clean(self) -> None:
+        if (
+            self.group_pay_policy == self.GroupPayPolicy.FIXED_GROUP_AMOUNT
+            and self.group_fixed_amount is None
+        ):
+            raise ValidationError(
+                {"group_fixed_amount": "Укажите фиксированную сумму для группового занятия."}
+            )
+        if self.group_fixed_amount is not None and self.group_fixed_amount < 0:
+            raise ValidationError(
+                {"group_fixed_amount": "Фиксированная сумма не может быть отрицательной."}
+            )
         if self.starts_on and self.ends_on and self.ends_on < self.starts_on:
             raise ValidationError({"ends_on": "Дата окончания не может быть раньше даты начала."})
         if (
@@ -511,7 +566,16 @@ class StaffCompensationRule(TimeStampedModel):
             start = self.min_duration_minutes or "..."
             end = self.max_duration_minutes or "..."
             duration = f", {start}-{end} мин"
-        return " / ".join(parts) + f": {self.amount} ({self.get_rate_type_display()}{duration})"
+        modifiers = []
+        if self.session_scope != self.SessionScope.ALL:
+            modifiers.append(self.get_session_scope_display())
+        if self.group_pay_policy != self.GroupPayPolicy.PER_SESSION:
+            modifiers.append(f"группа: {self.get_group_pay_policy_display()}")
+        modifier = f"; {', '.join(modifiers)}" if modifiers else ""
+        return (
+            " / ".join(parts)
+            + f": {self.amount} ({self.get_rate_type_display()}{duration}{modifier})"
+        )
 
 
 class FundingServiceQuota(TimeStampedModel):
@@ -2499,6 +2563,22 @@ class PayrollAccrual(TimeStampedModel):
         "тип ставки", max_length=30, choices=StaffCompensationRule.RateType.choices
     )
     rate_amount_snapshot = models.DecimalField("ставка", max_digits=12, decimal_places=2)
+    session_scope_snapshot = models.CharField(
+        "формат правила",
+        max_length=30,
+        choices=StaffCompensationRule.SessionScope.choices,
+        default=StaffCompensationRule.SessionScope.ALL,
+    )
+    group_pay_policy_snapshot = models.CharField(
+        "начисление в группе",
+        max_length=40,
+        choices=StaffCompensationRule.GroupPayPolicy.choices,
+        default=StaffCompensationRule.GroupPayPolicy.PER_SESSION,
+    )
+    charged_participants_count_snapshot = models.PositiveIntegerField(
+        "списано участников", default=1
+    )
+    pay_units_snapshot = models.PositiveIntegerField("единиц начисления", default=1)
     amount = models.DecimalField("сумма начисления", max_digits=12, decimal_places=2)
     status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.DRAFT)
     note = models.TextField("примечание", blank=True)
@@ -2530,6 +2610,13 @@ class PayrollAccrual(TimeStampedModel):
             ),
             models.CheckConstraint(
                 condition=Q(rate_amount_snapshot__gte=0), name="payroll_accrual_rate_non_negative"
+            ),
+            models.CheckConstraint(
+                condition=Q(charged_participants_count_snapshot__gte=1),
+                name="payroll_accrual_charged_count_positive",
+            ),
+            models.CheckConstraint(
+                condition=Q(pay_units_snapshot__gte=1), name="payroll_accrual_pay_units_positive"
             ),
         ]
         indexes = [

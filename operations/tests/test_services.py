@@ -3234,6 +3234,35 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertIn("700", ts.pay_lines[0].rate_label)
         self.assertIn("смешанные источники финансирования", ts.pay_lines[0].note)
 
+    def test_timesheet_group_policy_per_charged_participant(self):
+        StaffCompensationRule.objects.create(
+            staff_member=self.staff_a,
+            service=self.service_log,
+            session_scope=StaffCompensationRule.SessionScope.GROUP,
+            rate_type=StaffCompensationRule.RateType.PER_SESSION,
+            amount=Decimal("700"),
+            group_pay_policy=StaffCompensationRule.GroupPayPolicy.PER_CHARGED_PARTICIPANT,
+        )
+        appointment = self._make_same_funding_group_charge()
+        third_child = Child.objects.create(last_name="Без", first_name="Списания")
+        AppointmentParticipant.objects.create(
+            appointment=appointment,
+            child=third_child,
+            billing_decision=Appointment.BillingDecision.DO_NOT_CHARGE,
+            starts_at_snapshot=appointment.starts_at,
+            ends_at_snapshot=appointment.ends_at,
+            appointment_status=Appointment.Status.COMPLETED,
+        )
+
+        ts = reports_svc.timesheet(self.staff_a, self.day, self.day)
+
+        self.assertEqual(ts.totals.payable, 1)
+        self.assertEqual(ts.totals.pay_amount, Decimal("1400"))
+        self.assertEqual(ts.pay_lines[0].pay_units, 2)
+        self.assertEqual(ts.pay_lines[0].charged_participants_count, 2)
+        self.assertIn("× 2", ts.pay_lines[0].rate_label)
+        self.assertIn("начисление по списанным участникам: 2", ts.pay_lines[0].note)
+
     def test_financial_fact_links_single_participant_ledger(self):
         appointment = Appointment.objects.get(staff_member=self.staff_a)
         result = billing_svc.apply_decision(
@@ -4142,6 +4171,12 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertIsNone(accrual.ledger_entry)
         self.assertEqual(accrual.rate_amount_snapshot, Decimal("520"))
         self.assertEqual(accrual.amount, Decimal("520"))
+        self.assertEqual(
+            accrual.group_pay_policy_snapshot,
+            StaffCompensationRule.GroupPayPolicy.PER_SESSION,
+        )
+        self.assertEqual(accrual.charged_participants_count_snapshot, 2)
+        self.assertEqual(accrual.pay_units_snapshot, 1)
         self.assertIn("списано участников: 2", accrual.note)
 
     def test_payroll_generation_uses_generic_rule_for_mixed_group_funding(self):
@@ -4176,7 +4211,102 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertIsNone(accrual.funding_source)
         self.assertIsNone(accrual.appointment_participant)
         self.assertEqual(accrual.amount, Decimal("700"))
+        self.assertEqual(accrual.charged_participants_count_snapshot, 2)
+        self.assertEqual(accrual.pay_units_snapshot, 1)
         self.assertIn("смешанные источники финансирования", accrual.note)
+
+    def test_payroll_generation_group_policy_per_charged_participant(self):
+        rule = StaffCompensationRule.objects.create(
+            staff_member=self.staff_a,
+            service=self.service_log,
+            session_scope=StaffCompensationRule.SessionScope.GROUP,
+            rate_type=StaffCompensationRule.RateType.PER_SESSION,
+            amount=Decimal("700"),
+            group_pay_policy=StaffCompensationRule.GroupPayPolicy.PER_CHARGED_PARTICIPANT,
+        )
+        self._make_same_funding_group_charge()
+
+        result = payroll_svc.generate_accruals_for_staff(
+            self.staff_a,
+            date_from=self.day,
+            date_to=self.day,
+            actor=self.user,
+        )
+
+        accrual = PayrollAccrual.objects.get(staff_member=self.staff_a)
+        self.assertEqual(result.created, 1)
+        self.assertEqual(accrual.pay_rule, rule)
+        self.assertEqual(accrual.amount, Decimal("1400"))
+        self.assertEqual(
+            accrual.group_pay_policy_snapshot,
+            StaffCompensationRule.GroupPayPolicy.PER_CHARGED_PARTICIPANT,
+        )
+        self.assertEqual(accrual.charged_participants_count_snapshot, 2)
+        self.assertEqual(accrual.pay_units_snapshot, 2)
+        self.assertIn("начисление по списанным участникам: 2", accrual.note)
+
+    def test_payroll_generation_group_policy_fixed_amount(self):
+        rule = StaffCompensationRule.objects.create(
+            staff_member=self.staff_a,
+            service=self.service_log,
+            session_scope=StaffCompensationRule.SessionScope.GROUP,
+            rate_type=StaffCompensationRule.RateType.HOURLY,
+            amount=Decimal("999"),
+            group_pay_policy=StaffCompensationRule.GroupPayPolicy.FIXED_GROUP_AMOUNT,
+            group_fixed_amount=Decimal("450"),
+        )
+        self._make_same_funding_group_charge()
+
+        payroll_svc.generate_accruals_for_staff(
+            self.staff_a,
+            date_from=self.day,
+            date_to=self.day,
+            actor=self.user,
+        )
+
+        accrual = PayrollAccrual.objects.get(staff_member=self.staff_a)
+        self.assertEqual(accrual.pay_rule, rule)
+        self.assertEqual(accrual.rate_type_snapshot, StaffCompensationRule.RateType.PER_SESSION)
+        self.assertEqual(accrual.rate_amount_snapshot, Decimal("450"))
+        self.assertEqual(accrual.amount, Decimal("450"))
+        self.assertEqual(
+            accrual.group_pay_policy_snapshot,
+            StaffCompensationRule.GroupPayPolicy.FIXED_GROUP_AMOUNT,
+        )
+        self.assertEqual(accrual.pay_units_snapshot, 1)
+        self.assertIn("фиксированная сумма за групповое занятие", accrual.note)
+
+    def test_payroll_generation_group_policy_is_per_staff_assignment(self):
+        appointment = self._make_same_funding_group_charge()
+        AppointmentStaffAssignment.objects.create(
+            appointment=appointment,
+            staff_member=self.staff_b,
+            role=AppointmentStaffAssignment.Role.ASSISTANT,
+            starts_at_snapshot=appointment.starts_at,
+            ends_at_snapshot=appointment.ends_at,
+            appointment_status=Appointment.Status.COMPLETED,
+        )
+        StaffCompensationRule.objects.create(
+            staff_member=self.staff_b,
+            service=self.service_log,
+            session_scope=StaffCompensationRule.SessionScope.GROUP,
+            rate_type=StaffCompensationRule.RateType.PER_SESSION,
+            amount=Decimal("300"),
+            group_pay_policy=StaffCompensationRule.GroupPayPolicy.PER_CHARGED_PARTICIPANT,
+        )
+
+        result = payroll_svc.generate_accruals_for_staff(
+            self.staff_b,
+            date_from=self.day,
+            date_to=self.day,
+            actor=self.user,
+        )
+
+        accrual = PayrollAccrual.objects.get(staff_member=self.staff_b)
+        self.assertEqual(result.created, 1)
+        self.assertEqual(accrual.amount, Decimal("600"))
+        self.assertEqual(accrual.staff_assignment.staff_member, self.staff_b)
+        self.assertEqual(accrual.pay_units_snapshot, 2)
 
     def test_payroll_sheet_creation_and_approval(self):
         StaffCompensationRule.objects.create(

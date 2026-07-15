@@ -111,3 +111,18 @@
 - `FundingStaffAllocation.session_pay_amount` в первом срезе остается per-session override; не умножать грантовую ставку на детей группы без отдельного грантового контракта.
 - Следующий безопасный срез: `group-payroll-policy-foundation` одним DB/payroll owner. Не параллелить `operations/models.py`, `operations/migrations/*`, `operations/services/payroll.py`, `operations/services/reports.py` и future shared compensation helper.
 - Graphify code-index after contract: `4256` nodes / `15313` edges; semantic extraction was not rerun and no API key was written to project files.
+
+## Последнее уточнение 2026-07-15: group payroll policy foundation выполнен
+
+После текста промпта выше считать актуальным:
+
+- `group-payroll-policy-foundation` выполнен по `docs/20-group-payroll-policy-contract.md`.
+- `StaffCompensationRule` получил `session_scope`, `group_pay_policy`, `group_fixed_amount`.
+- `PayrollAccrual` получил snapshots `session_scope_snapshot`, `group_pay_policy_snapshot`, `charged_participants_count_snapshot`, `pay_units_snapshot`.
+- Добавлена migration `operations.0024_payrollaccrual_charged_participants_count_snapshot_and_more`.
+- `operations.services.compensation.calculate_staff_compensation()` стал общей формулой для `reports.timesheet()` and `payroll.generate_accruals_for_staff()`.
+- UI ставок показывает формат и принцип начисления в группе; расчетный лист показывает group policy snapshot and units.
+- `FundingStaffAllocation.session_pay_amount` остается per-session grant override; не умножать грантовую ставку на детей группы без отдельного контракта.
+- Проверки прошли: Ruff, Django check, migration dry-run, focused service/view tests, full pytest `500 passed`, Playwright Browser QA desktop/mobile. Артефакты: `%TEMP%\rmcodex-browser-qa-group-payroll-policy`; QA data очищены, runserver 8070 остановлен.
+- Graphify code-index after foundation: `4275` nodes / `15347` edges; semantic extraction was not rerun and no API key was written to project files.
+- Следующий шаг не должен заново делать group payroll foundation. Возможные следующие направления: отдельный контракт на grant payroll beyond per-session, управленческие отчеты payroll/grants, расходы/договоры или Excel import after model stabilization.

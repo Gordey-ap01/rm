@@ -2,7 +2,7 @@
 
 Дата: 2026-07-15
 
-Статус: proposed. Docs-only контракт создан перед любыми изменениями БД, payroll, grant payroll, табеля или расчетных листов.
+Статус: accepted for current payroll slice. Docs-only контракт создан; первый кодовый срез `group-payroll-policy-foundation` выполнен 2026-07-15.
 
 Назначение: закрыть оставшийся gap после интервью 2026-06-23: для группового занятия руководитель должен выбирать принцип начисления зарплаты специалисту. Контракт нужен до правок `operations/models.py`, migration chain, `operations/services/payroll.py`, `operations/services/reports.py`, UI ставок или тестов payroll.
 
@@ -149,6 +149,30 @@ Constraints:
 4. Переключить `timesheet()` и `generate_accruals_for_staff()` на helper без изменения индивидуального поведения.
 5. Добавить focused tests.
 6. Обновить расчетный лист/табель только минимально: показывать policy/count/units в note/rate label, без redesign.
+
+## Выполнение 2026-07-15: group-payroll-policy-foundation
+
+Выполнен первый DB/payroll/UI срез по этому контракту.
+
+- Добавлены additive поля `StaffCompensationRule.session_scope`, `group_pay_policy`, `group_fixed_amount`.
+- Добавлены snapshot-поля `PayrollAccrual.session_scope_snapshot`, `group_pay_policy_snapshot`, `charged_participants_count_snapshot`, `pay_units_snapshot`.
+- Добавлена миграция `operations.0024_payrollaccrual_charged_participants_count_snapshot_and_more` с defaults, index and check constraints. Старые начисления не пересчитываются.
+- Добавлен общий service helper `operations.services.compensation.calculate_staff_compensation()`; `reports.timesheet()` и `payroll.generate_accruals_for_staff()` используют одну формулу.
+- `FundingStaffAllocation.session_pay_amount` сохранен как per-session grant override: group grant allocation не умножается на число детей без отдельного грантового контракта.
+- UI ставок показывает формат занятий и принцип начисления в группе; форма ставки валидирует fixed group amount.
+- Расчетный лист показывает group policy snapshot and pay units, если начисление посчитано не как обычное `per_session`.
+- Добавлены focused regressions: per-charged participant in timesheet/payroll, fixed group amount, multi-staff group accrual, grant allocation unchanged, form validation.
+
+Проверки:
+
+- `ruff check` по затронутым Python files and migration прошел.
+- `pytest operations/tests/test_services.py::ReportsServiceTests -q --tb=short` прошел (`67 passed`).
+- `pytest operations/tests/test_views.py::StaffCompensationRuleViewTests -q --tb=short` прошел (`7 passed`).
+- `pytest operations/tests/test_views.py::StaffTimesheetViewTests operations/tests/test_views.py::StaffCompensationRuleViewTests -q --tb=short` прошел (`14 passed`).
+- `manage.py check --settings=rehab_center.settings_test` прошел.
+- `manage.py makemigrations --check --dry-run --settings=rehab_center.settings_test` показал `No changes detected`.
+- полный `pytest -q --tb=short` прошел (`500 passed`, 1 прежнее предупреждение django-tasks).
+- Playwright Browser QA fallback прошел на desktop 1365x900 and mobile 390x844: list/form/timesheet/payroll visible, group policy and `× 2` multiplier visible, payroll snapshot units visible, HTTP 4xx/5xx, console/page errors and horizontal overflow absent. Артефакты: `%TEMP%\rmcodex-browser-qa-group-payroll-policy`; QA data очищены, runserver 8070 остановлен.
 
 Не входит:
 

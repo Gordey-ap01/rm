@@ -53,6 +53,12 @@ def compensation_rule_summary_items(
     duration_specific_count = sum(
         1 for rule in rules if rule.min_duration_minutes or rule.max_duration_minutes
     )
+    group_specific_count = sum(
+        1
+        for rule in rules
+        if rule.session_scope == StaffCompensationRule.SessionScope.GROUP
+        or rule.group_pay_policy != StaffCompensationRule.GroupPayPolicy.PER_SESSION
+    )
     inactive_count = sum(1 for rule in rules if not rule.is_active)
     return [
         {
@@ -79,6 +85,11 @@ def compensation_rule_summary_items(
             "label": "По длительности",
             "value": str(duration_specific_count),
             "hint": "есть границы минут",
+        },
+        {
+            "label": "Для групп",
+            "value": str(group_specific_count),
+            "hint": "есть особый формат или принцип",
         },
         {
             "label": "Отключены",
@@ -160,6 +171,9 @@ def compensation_rule_form_control_items(
     rate_detail = (
         "Тип ставки определяет расчет: фиксированно за занятие или по длительности, если выбран почасовой вариант."
     )
+    group_detail = (
+        "Для групп можно оставить оплату один раз за занятие, умножать на списанных участников или задать фиксированную сумму."
+    )
     duration_detail = (
         "Границы минут помогают разделить ставки для коротких, стандартных и длинных занятий."
     )
@@ -172,6 +186,14 @@ def compensation_rule_form_control_items(
             f"Услуга: {rule.service or 'любая'}. Источник: {rule.funding_source or 'любой'}."
         )
         rate_detail = f"Сейчас: {rule.get_rate_type_display()}, сумма {rule.amount}."
+        group_detail = (
+            f"Формат: {rule.get_session_scope_display()}. "
+            f"Группа: {rule.get_group_pay_policy_display()}"
+        )
+        if rule.group_fixed_amount is not None:
+            group_detail = f"{group_detail}, фиксированно {rule.group_fixed_amount}."
+        else:
+            group_detail = f"{group_detail}."
         duration_detail = (
             f"Минуты: {rule.min_duration_minutes or 'без минимума'} - "
             f"{rule.max_duration_minutes or 'без максимума'}."
@@ -188,6 +210,10 @@ def compensation_rule_form_control_items(
         {
             "title": "Тип ставки",
             "detail": rate_detail,
+        },
+        {
+            "title": "Групповые занятия",
+            "detail": group_detail,
         },
         {
             "title": "Длительность занятия",
