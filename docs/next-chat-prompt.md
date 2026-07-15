@@ -140,3 +140,17 @@
 - Код, модели, миграции, billing/ledger/payroll/grant/status semantics не менялись.
 - Следующий безопасный кодовый шаг: `expenses-foundation-schema` одним DB-owner, additive models/migration + service validation + tests. Не параллелить `operations/models.py` и migration chain; UI расходов начинать отдельным срезом после schema commit.
 - Graphify code-index after contract: `4308` nodes / `15379` edges; semantic extraction was not rerun and no API key was written to project files.
+
+## Последнее уточнение 2026-07-15: expenses-foundation-schema выполнен
+
+После текста промпта выше считать актуальным:
+
+- `expenses-foundation-schema` выполнен по `docs/21-expenses-assets-contracts-contract.md`.
+- Добавлены модели `Counterparty`, `CenterExpenseCategory`, `CenterExpense`, `ExpenseFundingSplit`.
+- Добавлена migration `operations.0025_centerexpensecategory_counterparty_centerexpense_and_more`.
+- Добавлен сервис `operations.services.expenses` для проверки суммы split-строк и готовности статусов `approved`/`paid`.
+- Новые модели зарегистрированы в Django admin и auditlog; `ExpenseFundingSplit` не создает `LedgerEntry`.
+- `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, billing decisions и grant semantics не менялись.
+- Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused expenses/auditlog tests `13 passed`, full pytest `507 passed`. Browser QA не требовалась, потому что product UI/templates/JS не менялись.
+- Graphify code-index after foundation: `4353` nodes / `15919` edges; semantic extraction was not rerun and no API key was written to project files.
+- Следующий безопасный срез: `expenses-basic-ui` или read-only manager report поверх новой схемы. Не начинать contracts/assets/import write-path до отдельного среза.

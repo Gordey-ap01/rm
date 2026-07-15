@@ -12,9 +12,13 @@ from .models import (
     AppointmentSeries,
     AppointmentStaffAssignment,
     BalanceAccount,
+    CenterExpense,
+    CenterExpenseCategory,
     Child,
     Consent,
+    Counterparty,
     Document,
+    ExpenseFundingSplit,
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
     FinancialIntegrityFindingEvent,
@@ -190,6 +194,60 @@ class FundingSourceAdmin(admin.ModelAdmin):
     list_display = ("name", "source_type", "starts_on", "ends_on", "transfer_policy", "archived_at")
     search_fields = ("name",)
     list_filter = ("source_type", "transfer_policy", SoftDeletedFilter)
+
+
+@admin.register(Counterparty)
+class CounterpartyAdmin(admin.ModelAdmin):
+    list_display = ("name", "counterparty_type", "phone", "email", "archived_at")
+    search_fields = ("name", "inn", "kpp", "ogrn", "contact_person", "phone", "email")
+    list_filter = ("counterparty_type", SoftDeletedFilter)
+
+
+@admin.register(CenterExpenseCategory)
+class CenterExpenseCategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "expense_type", "is_active", "sort_order")
+    search_fields = ("name", "notes")
+    list_filter = ("expense_type", "is_active")
+    ordering = ("sort_order", "name")
+
+
+class ExpenseFundingSplitInline(admin.TabularInline):
+    model = ExpenseFundingSplit
+    extra = 0
+    fields = ("funding_source", "amount", "notes")
+    autocomplete_fields = ("funding_source",)
+
+
+@admin.register(CenterExpense)
+class CenterExpenseAdmin(admin.ModelAdmin):
+    list_display = (
+        "expense_date",
+        "title",
+        "category",
+        "total_amount",
+        "status",
+        "counterparty",
+        "paid_at",
+    )
+    search_fields = (
+        "title",
+        "description",
+        "notes",
+        "counterparty__name",
+        "category__name",
+    )
+    list_filter = ("status", "category", "expense_date")
+    autocomplete_fields = ("category", "counterparty", "document", "created_by", "approved_by")
+    date_hierarchy = "expense_date"
+    inlines = (ExpenseFundingSplitInline,)
+
+
+@admin.register(ExpenseFundingSplit)
+class ExpenseFundingSplitAdmin(admin.ModelAdmin):
+    list_display = ("expense", "funding_source", "amount")
+    search_fields = ("expense__title", "funding_source__name", "notes")
+    list_filter = ("funding_source",)
+    autocomplete_fields = ("expense", "funding_source")
 
 
 class FundingStaffAllocationInline(admin.TabularInline):

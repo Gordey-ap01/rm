@@ -3187,6 +3187,226 @@ class Payment(TimeStampedModel):
             raise ValidationError({"amount": "Сумма пополнения должна быть положительной."})
 
 
+class Counterparty(TimeStampedModel, SoftDeleteMixin):
+    class CounterpartyType(models.TextChoices):
+        INDIVIDUAL = "individual", "Физическое лицо"
+        ORGANIZATION = "organization", "Организация"
+        FOUNDATION = "foundation", "Фонд"
+        SPONSOR = "sponsor", "Спонсор"
+        VENDOR = "vendor", "Поставщик"
+        OTHER = "other", "Прочее"
+
+    name = models.CharField("наименование", max_length=200)
+    counterparty_type = models.CharField(
+        "тип",
+        max_length=30,
+        choices=CounterpartyType.choices,
+        default=CounterpartyType.ORGANIZATION,
+    )
+    inn = models.CharField("ИНН", max_length=20, blank=True)
+    kpp = models.CharField("КПП", max_length=20, blank=True)
+    ogrn = models.CharField("ОГРН/ОГРНИП", max_length=20, blank=True)
+    legal_address = models.TextField("юридический адрес", blank=True)
+    postal_address = models.TextField("почтовый адрес", blank=True)
+    bank_details = models.TextField("банковские реквизиты", blank=True)
+    contact_person = models.CharField("контактное лицо", max_length=200, blank=True)
+    phone = models.CharField("телефон", max_length=40, blank=True)
+    email = models.EmailField("email", blank=True)
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "контрагент"
+        verbose_name_plural = "контрагенты"
+        ordering = ["archived_at", "name"]
+        indexes = [
+            models.Index(fields=["counterparty_type", "archived_at", "name"]),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class CenterExpenseCategory(TimeStampedModel):
+    class ExpenseType(models.TextChoices):
+        HOUSEHOLD = "household", "Хозяйственные расходы"
+        UTILITIES = "utilities", "Коммунальные платежи"
+        EQUIPMENT = "equipment", "Оборудование"
+        INVENTORY = "inventory", "Инвентарь и материалы"
+        RENT = "rent", "Аренда"
+        SERVICES = "services", "Внешние услуги"
+        ADMIN_PAYROLL = "admin_payroll", "Административная зарплата"
+        OTHER = "other", "Прочее"
+
+    name = models.CharField("название", max_length=160, unique=True)
+    expense_type = models.CharField(
+        "тип",
+        max_length=30,
+        choices=ExpenseType.choices,
+        default=ExpenseType.OTHER,
+    )
+    is_active = models.BooleanField("активна", default=True)
+    sort_order = models.PositiveIntegerField("порядок", default=0)
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "категория расхода центра"
+        verbose_name_plural = "категории расходов центра"
+        ordering = ["sort_order", "name"]
+        indexes = [
+            models.Index(fields=["expense_type", "is_active"]),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class CenterExpense(TimeStampedModel):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Черновик"
+        APPROVED = "approved", "Утвержден"
+        PAID = "paid", "Оплачен"
+        CANCELLED = "cancelled", "Отменен"
+
+    expense_date = models.DateField("дата расхода", default=timezone.localdate)
+    category = models.ForeignKey(
+        CenterExpenseCategory,
+        verbose_name="категория",
+        on_delete=models.PROTECT,
+        related_name="center_expenses",
+    )
+    title = models.CharField("название", max_length=200)
+    description = models.TextField("описание", blank=True)
+    counterparty = models.ForeignKey(
+        Counterparty,
+        verbose_name="контрагент",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="center_expenses",
+    )
+    total_amount = models.DecimalField("сумма", max_digits=12, decimal_places=2)
+    status = models.CharField(
+        "статус",
+        max_length=30,
+        choices=Status.choices,
+        default=Status.DRAFT,
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="утвердил",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_center_expenses",
+    )
+    approved_at = models.DateTimeField("утверждено", null=True, blank=True)
+    paid_at = models.DateField("оплачено", null=True, blank=True)
+    document = models.ForeignKey(
+        Document,
+        verbose_name="документ",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="center_expenses",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="создал",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_center_expenses",
+    )
+    notes = models.TextField("примечания", blank=True)
+    cancel_reason = models.TextField("причина отмены", blank=True)
+
+    class Meta:
+        verbose_name = "расход центра"
+        verbose_name_plural = "расходы центра"
+        ordering = ["-expense_date", "-created_at"]
+        indexes = [
+            models.Index(fields=["expense_date", "status"]),
+            models.Index(fields=["category", "expense_date"]),
+            models.Index(fields=["counterparty", "expense_date"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(total_amount__gt=0),
+                name="center_expense_total_amount_positive",
+            ),
+            models.CheckConstraint(
+                condition=~Q(status="paid") | Q(paid_at__isnull=False),
+                name="center_expense_paid_requires_paid_at",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.expense_date:%d.%m.%Y} - {self.title}"
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.total_amount is None or self.total_amount <= 0:
+            errors["total_amount"] = "Сумма расхода должна быть положительной."
+        if self.status == self.Status.PAID and self.paid_at is None:
+            errors["paid_at"] = "Для оплаченного расхода нужно указать дату оплаты."
+        if errors:
+            raise ValidationError(errors)
+
+    @property
+    def funding_split_total(self) -> Decimal:
+        if not self.pk:
+            return Decimal("0")
+        return self.funding_splits.aggregate(total=Sum("amount"))["total"] or Decimal("0")
+
+    @property
+    def unallocated_amount(self) -> Decimal:
+        if self.total_amount is None:
+            return Decimal("0")
+        return self.total_amount - self.funding_split_total
+
+
+class ExpenseFundingSplit(TimeStampedModel):
+    expense = models.ForeignKey(
+        CenterExpense,
+        verbose_name="расход",
+        on_delete=models.CASCADE,
+        related_name="funding_splits",
+    )
+    funding_source = models.ForeignKey(
+        FundingSource,
+        verbose_name="источник финансирования",
+        on_delete=models.PROTECT,
+        related_name="expense_splits",
+    )
+    amount = models.DecimalField("сумма", max_digits=12, decimal_places=2)
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "распределение расхода по источнику"
+        verbose_name_plural = "распределение расходов по источникам"
+        ordering = ["expense_id", "funding_source__name"]
+        indexes = [
+            models.Index(fields=["funding_source", "expense"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(amount__gt=0),
+                name="expense_funding_split_amount_positive",
+            ),
+            models.UniqueConstraint(
+                fields=["expense", "funding_source"],
+                name="unique_expense_funding_source",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.expense}: {self.funding_source} - {self.amount}"
+
+    def clean(self) -> None:
+        if self.amount is None or self.amount <= 0:
+            raise ValidationError({"amount": "Сумма распределения должна быть положительной."})
+
+
 class Discount(TimeStampedModel):
     child = models.ForeignKey(
         Child, verbose_name="получатель", on_delete=models.CASCADE, related_name="discounts"

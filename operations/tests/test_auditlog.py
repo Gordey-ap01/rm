@@ -15,7 +15,11 @@ from operations.models import (
     AppointmentRescheduleChain,
     AppointmentRescheduleStepDependency,
     AppointmentStaffAssignment,
+    CenterExpense,
+    CenterExpenseCategory,
     Child,
+    Counterparty,
+    ExpenseFundingSplit,
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
     FinancialIntegrityFindingEvent,
@@ -77,7 +81,11 @@ class AuditLogTests(TestCase):
             AppointmentRescheduleChain,
             AppointmentRescheduleStepDependency,
             AppointmentStaffAssignment,
+            CenterExpense,
+            CenterExpenseCategory,
             Child,
+            Counterparty,
+            ExpenseFundingSplit,
             FundingSource,
             FinancialIntegrityCheckRun,
             FinancialIntegrityFinding,
@@ -94,6 +102,12 @@ class AuditLogTests(TestCase):
         self.assertIn(FinancialIntegrityCheckRun, admin.site._registry)
         self.assertIn(FinancialIntegrityFinding, admin.site._registry)
         self.assertIn(FinancialIntegrityFindingEvent, admin.site._registry)
+
+    def test_expense_models_registered_in_admin(self):
+        self.assertIn(Counterparty, admin.site._registry)
+        self.assertIn(CenterExpenseCategory, admin.site._registry)
+        self.assertIn(CenterExpense, admin.site._registry)
+        self.assertIn(ExpenseFundingSplit, admin.site._registry)
 
     def test_financial_integrity_finding_update_is_logged(self):
         now = timezone.now()

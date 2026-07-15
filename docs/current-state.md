@@ -1537,3 +1537,16 @@ SMTP для реальной промышленной рассылки еще н
 - Обновлен устаревший статус в `docs/08-parallel-agent-execution-plan.md`: возможность выбрать принцип начисления зарплаты для группы теперь считается выполненной через `StaffCompensationRule.group_pay_policy` и snapshots в `PayrollAccrual`.
 - Следующий безопасный кодовый шаг, если продолжаем эту линию: `expenses-foundation-schema` одним DB-owner, additive models/migration + service validation + tests. Не менять `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, `billing.apply_decision()` или grant semantics.
 - Graphify code-index after expenses/assets/contracts contract: `4308` nodes / `15379` edges; semantic extraction was not rerun and no API key was written to project files.
+
+## Обновление 2026-07-15: expenses-foundation-schema
+
+- Выполнен первый DB/service/admin срез по `docs/21-expenses-assets-contracts-contract.md`.
+- Добавлены модели `Counterparty`, `CenterExpenseCategory`, `CenterExpense`, `ExpenseFundingSplit`.
+- Добавлена additive migration `operations.0025_centerexpensecategory_counterparty_centerexpense_and_more`; старые таблицы `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, billing decisions и grant semantics не менялись.
+- Добавлен сервис `operations.services.expenses`: расчет суммы split-строк и validation готовности расхода к `approved`/`paid`. Черновики могут быть неполностью распределены, `approved/paid` требуют полного совпадения суммы расхода и split-строк; `paid` требует `paid_at`.
+- Новые модели зарегистрированы в Django admin и auditlog. `ExpenseFundingSplit` не создает `LedgerEntry`.
+- Добавлены tests `operations/tests/test_expenses.py`; расширены auditlog/admin tests.
+- Проверки прошли: Ruff touched Python/migration, `manage.py check`, `manage.py makemigrations --check --dry-run` (`No changes detected`), focused expenses/auditlog tests (`13 passed`), full `pytest -q --tb=short` (`507 passed`, 1 прежнее предупреждение django-tasks).
+- Browser QA не требовалась: рабочие templates/JS/product UI не менялись, только модели, admin и сервис.
+- Graphify code-index after expenses foundation schema: `4353` nodes / `15919` edges; semantic extraction was not rerun and no API key was written to project files.
+- Следующий безопасный срез по docs/21: `expenses-basic-ui` для списка/формы черновика и split-строк или read-only manager report после UI foundation. Не начинать contracts/assets/import write-path до отдельного среза.

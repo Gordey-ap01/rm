@@ -2,7 +2,7 @@
 
 Дата: 2026-07-15
 
-Статус: proposed. Docs-only контракт перед любыми изменениями БД, финансовой логики, отчетов или UI по расходам центра, оборудованию, контрагентам и договорам.
+Статус: accepted for current expenses foundation. Docs-only контракт создан 2026-07-15; первый кодовый срез `expenses-foundation-schema` выполнен 2026-07-15.
 
 Назначение: зафиксировать следующую крупную финансовую зону после расписания, балансов, грантов, зарплат и financial-integrity эпика. Срез нужен для единого контура руководителя: видеть не только оказанные услуги и начисления специалистам, но и расходы центра, оборудование, источники покрытия расходов, доноров/контрагентов и договоры.
 
@@ -370,22 +370,24 @@ Acceptance:
 
 ### Срез 1: `expenses-foundation-schema`
 
+Статус: выполнен 2026-07-15.
+
 Состав:
 
-- модели `Counterparty`, `CenterExpenseCategory`, `CenterExpense`, `ExpenseFundingSplit`;
-- миграция только additive;
-- admin/auditlog registration;
-- service-функции проверки split-сумм и допустимых переходов статусов;
-- unit tests для constraints и service validation.
+- модели `Counterparty`, `CenterExpenseCategory`, `CenterExpense`, `ExpenseFundingSplit` - реализованы;
+- миграция только additive - `operations.0025_centerexpensecategory_counterparty_centerexpense_and_more`;
+- admin/auditlog registration - реализовано;
+- service-функции проверки split-сумм и готовности статуса `approved/paid` - реализовано в `operations.services.expenses`;
+- unit tests для constraints и service validation - реализованы.
 
 Acceptance:
 
-- можно создать черновой расход с одной категорией и общей суммой;
-- можно создать две split-строки на разные `FundingSource`;
-- `approved/paid` расход не проходит validation, если сумма split-строк не равна total;
-- `ExpenseFundingSplit` не создает `LedgerEntry`;
-- `manage.py makemigrations --check --dry-run` после миграции показывает `No changes detected`;
-- полный тестовый набор проходит.
+- можно создать черновой расход с одной категорией и общей суммой - выполнено;
+- можно создать split-строки на разные `FundingSource` - выполнено;
+- `approved/paid` расход не проходит validation, если сумма split-строк не равна total - выполнено;
+- `ExpenseFundingSplit` не создает `LedgerEntry` - выполнено;
+- `manage.py makemigrations --check --dry-run` после миграции показывает `No changes detected` - выполнено;
+- полный тестовый набор проходит - выполнено (`507 passed`).
 
 ### Срез 2: `expenses-basic-ui`
 
