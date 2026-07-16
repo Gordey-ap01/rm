@@ -7,11 +7,24 @@ import re
 import zipfile
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from io import BytesIO, StringIO
 from pathlib import PurePosixPath
 from xml.etree import ElementTree
 
-from operations.models import Child
+from django.db.models import Q
+
+from operations.models import (
+    CenterExpense,
+    CenterExpenseCategory,
+    Child,
+    ContractTemplate,
+    Counterparty,
+    DonationContract,
+    FundingSource,
+    RecipientRepresentative,
+    ServiceContract,
+)
 
 MAX_IMPORT_ROWS = 200
 XLSX_MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
@@ -70,6 +83,14 @@ class ImportPreview:
             }
             for column in self.columns
         ]
+
+
+@dataclass(frozen=True)
+class ImportSpec:
+    key: str
+    label: str
+    columns: list[ImportColumn]
+    aliases: dict[str, list[str]]
 
 
 RECIPIENT_COLUMNS = [
@@ -189,6 +210,174 @@ def _normalize_header(value: str) -> str:
 ALIAS_TO_KEY = {
     _normalize_header(alias): key for key, aliases in ALIASES.items() for alias in aliases
 }
+
+
+COUNTERPARTY_IMPORT = "counterparties"
+EXPENSE_IMPORT = "expenses"
+DONATION_CONTRACT_IMPORT = "donation_contracts"
+SERVICE_CONTRACT_IMPORT = "service_contracts"
+
+COUNTERPARTY_COLUMNS = [
+    ImportColumn("name", "Контрагент", required=True),
+    ImportColumn("counterparty_type", "Тип контрагента"),
+    ImportColumn("inn", "ИНН"),
+    ImportColumn("kpp", "КПП"),
+    ImportColumn("ogrn", "ОГРН/ОГРНИП"),
+    ImportColumn("contact_person", "Контактное лицо"),
+    ImportColumn("phone", "Телефон"),
+    ImportColumn("email", "Email"),
+    ImportColumn("notes", "Примечание"),
+]
+
+EXPENSE_COLUMNS = [
+    ImportColumn("expense_date", "Дата расхода", required=True),
+    ImportColumn("category", "Категория", required=True),
+    ImportColumn("title", "Название", required=True),
+    ImportColumn("total_amount", "Сумма", required=True),
+    ImportColumn("counterparty", "Контрагент"),
+    ImportColumn("funding_source", "Источник финансирования"),
+    ImportColumn("split_amount", "Сумма источника"),
+    ImportColumn("status", "Статус"),
+    ImportColumn("paid_at", "Дата оплаты"),
+    ImportColumn("notes", "Примечание"),
+]
+
+DONATION_CONTRACT_COLUMNS = [
+    ImportColumn("counterparty", "Контрагент", required=True),
+    ImportColumn("funding_source", "Источник финансирования", required=True),
+    ImportColumn("contract_type", "Тип договора"),
+    ImportColumn("number", "Номер"),
+    ImportColumn("signed_on", "Дата подписания"),
+    ImportColumn("valid_from", "Действует с"),
+    ImportColumn("valid_until", "Действует до"),
+    ImportColumn("amount_limit", "Лимит суммы"),
+    ImportColumn("status", "Статус"),
+    ImportColumn("template", "Шаблон"),
+    ImportColumn("notes", "Примечание"),
+]
+
+SERVICE_CONTRACT_COLUMNS = [
+    ImportColumn("recipient_last_name", "Фамилия получателя", required=True),
+    ImportColumn("recipient_first_name", "Имя получателя", required=True),
+    ImportColumn("signer_last_name", "Фамилия подписанта", required=True),
+    ImportColumn("signer_first_name", "Имя подписанта"),
+    ImportColumn("signer_phone", "Телефон подписанта"),
+    ImportColumn("contract_type", "Тип договора"),
+    ImportColumn("number", "Номер"),
+    ImportColumn("signed_on", "Дата подписания"),
+    ImportColumn("valid_from", "Действует с"),
+    ImportColumn("valid_until", "Действует до"),
+    ImportColumn("status", "Статус"),
+    ImportColumn("template", "Шаблон"),
+    ImportColumn("document_title", "Документ"),
+    ImportColumn("notes", "Примечание"),
+]
+
+COUNTERPARTY_ALIASES = {
+    "name": ["контрагент", "наименование", "название", "name", "counterparty"],
+    "counterparty_type": ["тип контрагента", "тип", "counterparty_type", "type"],
+    "inn": ["инн", "inn"],
+    "kpp": ["кпп", "kpp"],
+    "ogrn": ["огрн", "огрнип", "ogrn"],
+    "contact_person": ["контактное лицо", "контакт", "contact_person"],
+    "phone": ["телефон", "phone"],
+    "email": ["email", "почта"],
+    "notes": ["примечание", "комментарий", "notes", "note"],
+}
+
+EXPENSE_ALIASES = {
+    "expense_date": ["дата расхода", "дата", "expense_date", "date"],
+    "category": ["категория", "категория расхода", "category"],
+    "title": ["название", "расход", "title", "expense"],
+    "total_amount": ["сумма", "сумма расхода", "total_amount", "amount"],
+    "counterparty": ["контрагент", "поставщик", "counterparty", "vendor"],
+    "funding_source": ["источник финансирования", "источник", "funding_source", "funding"],
+    "split_amount": ["сумма источника", "сумма распределения", "split_amount"],
+    "status": ["статус", "status"],
+    "paid_at": ["дата оплаты", "оплачено", "paid_at"],
+    "notes": ["примечание", "комментарий", "notes", "note"],
+}
+
+DONATION_CONTRACT_ALIASES = {
+    "counterparty": ["контрагент", "донор", "спонсор", "counterparty", "donor"],
+    "funding_source": ["источник финансирования", "источник", "funding_source", "funding"],
+    "contract_type": ["тип договора", "тип", "contract_type"],
+    "number": ["номер", "номер договора", "number"],
+    "signed_on": ["дата подписания", "подписан", "signed_on"],
+    "valid_from": ["действует с", "valid_from"],
+    "valid_until": ["действует до", "valid_until"],
+    "amount_limit": ["лимит суммы", "лимит", "amount_limit"],
+    "status": ["статус", "status"],
+    "template": ["шаблон", "template"],
+    "notes": ["примечание", "комментарий", "notes", "note"],
+}
+
+SERVICE_CONTRACT_ALIASES = {
+    "recipient_last_name": [
+        "фамилия получателя",
+        "фамилия ребенка",
+        "фамилия ребёнка",
+        "recipient_last_name",
+    ],
+    "recipient_first_name": [
+        "имя получателя",
+        "имя ребенка",
+        "имя ребёнка",
+        "recipient_first_name",
+    ],
+    "signer_last_name": ["фамилия подписанта", "подписант фамилия", "signer_last_name"],
+    "signer_first_name": ["имя подписанта", "подписант имя", "signer_first_name"],
+    "signer_phone": ["телефон подписанта", "телефон представителя", "signer_phone"],
+    "contract_type": ["тип договора", "тип", "contract_type"],
+    "number": ["номер", "номер договора", "number"],
+    "signed_on": ["дата подписания", "подписан", "signed_on"],
+    "valid_from": ["действует с", "valid_from"],
+    "valid_until": ["действует до", "valid_until"],
+    "status": ["статус", "status"],
+    "template": ["шаблон", "template"],
+    "document_title": ["документ", "файл договора", "document", "document_title"],
+    "notes": ["примечание", "комментарий", "notes", "note"],
+}
+
+FINANCE_CONTRACT_IMPORT_SPECS = {
+    COUNTERPARTY_IMPORT: ImportSpec(
+        key=COUNTERPARTY_IMPORT,
+        label="Контрагенты",
+        columns=COUNTERPARTY_COLUMNS,
+        aliases=COUNTERPARTY_ALIASES,
+    ),
+    EXPENSE_IMPORT: ImportSpec(
+        key=EXPENSE_IMPORT,
+        label="Расходы",
+        columns=EXPENSE_COLUMNS,
+        aliases=EXPENSE_ALIASES,
+    ),
+    DONATION_CONTRACT_IMPORT: ImportSpec(
+        key=DONATION_CONTRACT_IMPORT,
+        label="Договоры пожертвования",
+        columns=DONATION_CONTRACT_COLUMNS,
+        aliases=DONATION_CONTRACT_ALIASES,
+    ),
+    SERVICE_CONTRACT_IMPORT: ImportSpec(
+        key=SERVICE_CONTRACT_IMPORT,
+        label="Договоры с получателями",
+        columns=SERVICE_CONTRACT_COLUMNS,
+        aliases=SERVICE_CONTRACT_ALIASES,
+    ),
+}
+
+FINANCE_CONTRACT_IMPORT_CHOICES = [
+    (COUNTERPARTY_IMPORT, FINANCE_CONTRACT_IMPORT_SPECS[COUNTERPARTY_IMPORT].label),
+    (EXPENSE_IMPORT, FINANCE_CONTRACT_IMPORT_SPECS[EXPENSE_IMPORT].label),
+    (
+        DONATION_CONTRACT_IMPORT,
+        FINANCE_CONTRACT_IMPORT_SPECS[DONATION_CONTRACT_IMPORT].label,
+    ),
+    (
+        SERVICE_CONTRACT_IMPORT,
+        FINANCE_CONTRACT_IMPORT_SPECS[SERVICE_CONTRACT_IMPORT].label,
+    ),
+]
 
 
 def _read_csv_rows(data: bytes, filename: str) -> list[list[str]]:
@@ -322,6 +511,34 @@ def _parse_birth_date(value: str) -> tuple[date | None, str]:
     return None, "Дата рождения должна быть в формате ДД.ММ.ГГГГ или ГГГГ-ММ-ДД."
 
 
+def _parse_date(value: str, label: str) -> tuple[date | None, str]:
+    value = value.strip()
+    if not value:
+        return None, ""
+    if re.fullmatch(r"\d+(\.0)?", value):
+        serial = int(float(value))
+        if 1 <= serial <= 80000:
+            return date(1899, 12, 30) + timedelta(days=serial), ""
+    for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%d/%m/%Y", "%d.%m.%y"):
+        try:
+            return datetime.strptime(value, fmt).date(), ""
+        except ValueError:
+            continue
+    return None, f"{label}: дата должна быть в формате ДД.ММ.ГГГГ или ГГГГ-ММ-ДД."
+
+
+def _parse_decimal(value: str, label: str) -> tuple[Decimal | None, str]:
+    value = value.strip()
+    if not value:
+        return None, ""
+    normalized = value.replace(" ", "").replace("\u00a0", "").replace(",", ".")
+    try:
+        amount = Decimal(normalized)
+    except (InvalidOperation, ValueError):
+        return None, f"{label}: укажите число."
+    return amount, ""
+
+
 def _parse_bool(value: str) -> bool | None:
     normalized = _normalize_header(value)
     if not normalized:
@@ -339,6 +556,221 @@ def _row_value(raw_row: list[str], index: int) -> str:
 
 def _is_empty_row(row: list[str]) -> bool:
     return not any(cell.strip() for cell in row if cell)
+
+
+def _choice_values_by_normalized_label(choices) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for value, label in choices:
+        values[_normalize_header(str(value))] = str(value)
+        values[_normalize_header(str(label))] = str(value)
+    return values
+
+
+def _choice_error(value: str, choices, label: str) -> str:
+    if not value:
+        return ""
+    allowed = _choice_values_by_normalized_label(choices)
+    if _normalize_header(value) in allowed:
+        return ""
+    labels = ", ".join(choice_label for _, choice_label in choices)
+    return f"{label}: допустимые значения - {labels}."
+
+
+def _build_header_mapping(
+    headers: list[str], aliases: dict[str, list[str]]
+) -> tuple[dict[int, str], dict[str, str]]:
+    alias_to_key = {
+        _normalize_header(alias): key for key, key_aliases in aliases.items() for alias in key_aliases
+    }
+    index_to_key: dict[int, str] = {}
+    mapped_headers: dict[str, str] = {}
+    for index, header in enumerate(headers):
+        key = alias_to_key.get(_normalize_header(header))
+        if key and key not in mapped_headers:
+            index_to_key[index] = key
+            mapped_headers[key] = header
+    return index_to_key, mapped_headers
+
+
+def _validate_counterparty_row(values: dict[str, str]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    type_error = _choice_error(
+        values["counterparty_type"],
+        Counterparty.CounterpartyType.choices,
+        "Тип контрагента",
+    )
+    if type_error:
+        errors.append(type_error)
+    if values["email"] and "@" not in values["email"]:
+        errors.append("Email выглядит некорректно.")
+    if values["name"] and Counterparty.all_objects.filter(name__iexact=values["name"]).exists():
+        warnings.append("Контрагент с таким названием уже есть в базе.")
+    return errors, warnings
+
+
+def _validate_expense_row(values: dict[str, str]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    _, date_error = _parse_date(values["expense_date"], "Дата расхода")
+    if date_error:
+        errors.append(date_error)
+    amount, amount_error = _parse_decimal(values["total_amount"], "Сумма")
+    if amount_error:
+        errors.append(amount_error)
+    elif amount is not None and amount <= 0:
+        errors.append("Сумма должна быть положительной.")
+    paid_at = values["paid_at"]
+    if paid_at:
+        _, paid_at_error = _parse_date(paid_at, "Дата оплаты")
+        if paid_at_error:
+            errors.append(paid_at_error)
+    if values["status"]:
+        status_error = _choice_error(values["status"], CenterExpense.Status.choices, "Статус")
+        if status_error:
+            errors.append(status_error)
+    if values["category"] and not CenterExpenseCategory.objects.filter(
+        name__iexact=values["category"]
+    ).exists():
+        errors.append("Категория расхода не найдена в справочнике.")
+    if values["counterparty"] and not Counterparty.all_objects.filter(
+        name__iexact=values["counterparty"]
+    ).exists():
+        warnings.append("Контрагент не найден: перед импортом нужна карточка контрагента.")
+    split_amount = values["split_amount"]
+    if split_amount:
+        split, split_error = _parse_decimal(split_amount, "Сумма источника")
+        if split_error:
+            errors.append(split_error)
+        elif split is not None and split <= 0:
+            errors.append("Сумма источника должна быть положительной.")
+        if not values["funding_source"]:
+            errors.append("Для суммы источника нужно указать источник финансирования.")
+    if values["funding_source"] and not FundingSource.all_objects.filter(
+        name__iexact=values["funding_source"]
+    ).exists():
+        errors.append("Источник финансирования не найден.")
+    return errors, warnings
+
+
+def _validate_donation_contract_row(values: dict[str, str]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    for key, label in (
+        ("signed_on", "Дата подписания"),
+        ("valid_from", "Действует с"),
+        ("valid_until", "Действует до"),
+    ):
+        if values[key]:
+            _, date_error = _parse_date(values[key], label)
+            if date_error:
+                errors.append(date_error)
+    valid_from, _ = _parse_date(values["valid_from"], "Действует с")
+    valid_until, _ = _parse_date(values["valid_until"], "Действует до")
+    if valid_from and valid_until and valid_until < valid_from:
+        errors.append("Дата окончания не может быть раньше даты начала.")
+    amount_limit, amount_error = _parse_decimal(values["amount_limit"], "Лимит суммы")
+    if amount_error:
+        errors.append(amount_error)
+    elif amount_limit is not None and amount_limit <= 0:
+        errors.append("Лимит суммы должен быть положительным.")
+    if values["contract_type"]:
+        type_error = _choice_error(
+            values["contract_type"],
+            DonationContract.ContractType.choices,
+            "Тип договора",
+        )
+        if type_error:
+            errors.append(type_error)
+    if values["status"]:
+        status_error = _choice_error(values["status"], DonationContract.Status.choices, "Статус")
+        if status_error:
+            errors.append(status_error)
+    if values["counterparty"] and not Counterparty.all_objects.filter(
+        name__iexact=values["counterparty"]
+    ).exists():
+        errors.append("Контрагент договора не найден.")
+    if values["funding_source"] and not FundingSource.all_objects.filter(
+        name__iexact=values["funding_source"]
+    ).exists():
+        errors.append("Источник финансирования не найден.")
+    if values["template"] and not ContractTemplate.objects.filter(
+        title__iexact=values["template"]
+    ).exists():
+        warnings.append("Шаблон не найден: договор можно проверить без шаблона.")
+    return errors, warnings
+
+
+def _validate_service_contract_row(values: dict[str, str]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    for key, label in (
+        ("signed_on", "Дата подписания"),
+        ("valid_from", "Действует с"),
+        ("valid_until", "Действует до"),
+    ):
+        if values[key]:
+            _, date_error = _parse_date(values[key], label)
+            if date_error:
+                errors.append(date_error)
+    valid_from, _ = _parse_date(values["valid_from"], "Действует с")
+    valid_until, _ = _parse_date(values["valid_until"], "Действует до")
+    if valid_from and valid_until and valid_until < valid_from:
+        errors.append("Дата окончания не может быть раньше даты начала.")
+    if values["contract_type"]:
+        type_error = _choice_error(
+            values["contract_type"],
+            ServiceContract.ContractType.choices,
+            "Тип договора",
+        )
+        if type_error:
+            errors.append(type_error)
+    if values["status"]:
+        status_error = _choice_error(values["status"], ServiceContract.Status.choices, "Статус")
+        if status_error:
+            errors.append(status_error)
+
+    child_queryset = Child.all_objects.filter(
+        last_name__iexact=values["recipient_last_name"],
+        first_name__iexact=values["recipient_first_name"],
+    )
+    child = child_queryset.first()
+    if values["recipient_last_name"] and values["recipient_first_name"] and child is None:
+        errors.append("Получатель не найден.")
+    elif child_queryset.count() > 1:
+        warnings.append("Найдено несколько получателей с такими ФИО; нужен ручной выбор.")
+
+    if child and values["signer_last_name"]:
+        signer_filter = Q(
+            child=child,
+            signs_contract=True,
+            representative__last_name__iexact=values["signer_last_name"],
+        )
+        if values["signer_first_name"]:
+            signer_filter &= Q(representative__first_name__iexact=values["signer_first_name"])
+        if values["signer_phone"]:
+            signer_filter &= Q(representative__phone__icontains=values["signer_phone"])
+        signer_exists = RecipientRepresentative.objects.filter(signer_filter).exists()
+        if not signer_exists:
+            errors.append("Подписант договора не найден у выбранного получателя.")
+
+    if values["template"] and not ContractTemplate.objects.filter(
+        title__iexact=values["template"]
+    ).exists():
+        warnings.append("Шаблон не найден: договор можно проверить без шаблона.")
+    if child and values["document_title"] and not child.documents.filter(
+        title__iexact=values["document_title"]
+    ).exists():
+        warnings.append("Документ с таким названием не найден у получателя.")
+    return errors, warnings
+
+
+VALIDATORS = {
+    COUNTERPARTY_IMPORT: _validate_counterparty_row,
+    EXPENSE_IMPORT: _validate_expense_row,
+    DONATION_CONTRACT_IMPORT: _validate_donation_contract_row,
+    SERVICE_CONTRACT_IMPORT: _validate_service_contract_row,
+}
 
 
 def preview_recipient_import(uploaded_file) -> ImportPreview:
@@ -415,6 +847,73 @@ def preview_recipient_import(uploaded_file) -> ImportPreview:
             if existing.exists():
                 warnings.append("Похожий получатель уже есть в базе.")
 
+        rows.append(
+            ImportRowPreview(
+                row_number=offset,
+                values=values,
+                errors=errors,
+                warnings=warnings,
+            )
+        )
+
+    return ImportPreview(
+        filename=filename,
+        columns=columns,
+        mapped_headers=mapped_headers,
+        missing_required_headers=missing_required_headers,
+        rows=rows,
+        total_rows=len(data_rows),
+        truncated=truncated,
+    )
+
+
+def preview_finance_contract_import(uploaded_file, import_type: str) -> ImportPreview:
+    try:
+        spec = FINANCE_CONTRACT_IMPORT_SPECS[import_type]
+    except KeyError as exc:
+        raise ValueError("Неизвестный тип предпросмотра импорта.") from exc
+
+    filename = getattr(uploaded_file, "name", "import")
+    data = uploaded_file.read()
+    raw_rows = _read_rows(data, filename)
+    raw_rows = [row for row in raw_rows if not _is_empty_row(row)]
+    columns = spec.columns
+    if not raw_rows:
+        return ImportPreview(
+            filename=filename,
+            columns=columns,
+            mapped_headers={},
+            missing_required_headers=[column.label for column in columns if column.required],
+            rows=[],
+            total_rows=0,
+        )
+
+    index_to_key, mapped_headers = _build_header_mapping(raw_rows[0], spec.aliases)
+    missing_required_headers = [
+        column.label for column in columns if column.required and column.key not in mapped_headers
+    ]
+    column_by_key = {column.key: column for column in columns}
+    validator = VALIDATORS[import_type]
+    rows: list[ImportRowPreview] = []
+    data_rows = raw_rows[1:]
+    truncated = len(data_rows) > MAX_IMPORT_ROWS
+
+    for offset, raw_row in enumerate(data_rows[:MAX_IMPORT_ROWS], start=2):
+        values = {
+            key: _row_value(raw_row, index)
+            for index, key in index_to_key.items()
+            if key in column_by_key
+        }
+        errors: list[str] = []
+        warnings: list[str] = []
+        for column in columns:
+            values.setdefault(column.key, "")
+            if column.required and not values[column.key]:
+                errors.append(f"Не заполнено: {column.label}.")
+
+        row_errors, row_warnings = validator(values)
+        errors.extend(row_errors)
+        warnings.extend(row_warnings)
         rows.append(
             ImportRowPreview(
                 row_number=offset,

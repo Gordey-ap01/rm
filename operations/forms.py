@@ -61,6 +61,12 @@ TIME_INPUT = forms.TimeInput(attrs={"type": "time"}, format="%H:%M")
 GROUP_BILLING_PARTICIPANT_REQUIRED = (
     "Для группового занятия выберите конкретного участника."
 )
+CONTRACT_IMPORT_TYPE_CHOICES = (
+    ("counterparties", "Контрагенты"),
+    ("expenses", "Расходы"),
+    ("donation_contracts", "Договоры пожертвования"),
+    ("service_contracts", "Договоры с получателями"),
+)
 
 
 def default_charge_amount(account, appointment):
@@ -2947,6 +2953,30 @@ class RecipientImportPreviewForm(forms.Form):
         label="Файл Excel/CSV",
         help_text=(
             "Поддерживаются .xlsx, .csv и .tsv. На этом шаге система только проверяет файл "
+            "и ничего не записывает в базу."
+        ),
+    )
+
+    def clean_file(self):
+        uploaded = self.cleaned_data["file"]
+        name = uploaded.name.lower()
+        if not name.endswith((".xlsx", ".csv", ".tsv")):
+            raise forms.ValidationError("Загрузите файл .xlsx, .csv или .tsv.")
+        if uploaded.size > 5 * 1024 * 1024:
+            raise forms.ValidationError("Файл слишком большой. Ограничение: 5 МБ.")
+        return uploaded
+
+
+class ContractImportPreviewForm(forms.Form):
+    import_type = forms.ChoiceField(
+        label="Что проверяем",
+        choices=CONTRACT_IMPORT_TYPE_CHOICES,
+        initial="expenses",
+    )
+    file = forms.FileField(
+        label="Файл Excel/CSV",
+        help_text=(
+            "Поддерживаются .xlsx, .csv и .tsv. Экран только проверяет строки "
             "и ничего не записывает в базу."
         ),
     )

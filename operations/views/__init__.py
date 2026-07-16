@@ -30,8 +30,10 @@ from .contracts import (
     contract_template_edit,
     donation_contract_create,
     donation_contract_edit,
+    donation_contract_pdf,
     service_contract_create,
     service_contract_edit,
+    service_contract_pdf,
 )
 from .dashboard import (
     dashboard,
@@ -59,7 +61,7 @@ from .funding_sources import (
     funding_source_list,
     funding_source_restore,
 )
-from .imports import recipient_import_preview
+from .imports import contract_import_preview, recipient_import_preview
 from .payments import payment_create
 from .programs import (
     program_block_create,
@@ -145,6 +147,7 @@ __all__ = [
     "center_expense_report",
     "consent_create",
     "consent_list",
+    "contract_import_preview",
     "contract_list",
     "contract_template_create",
     "contract_template_edit",
@@ -154,6 +157,7 @@ __all__ = [
     "document_list",
     "donation_contract_create",
     "donation_contract_edit",
+    "donation_contract_pdf",
     "equipment_asset_create",
     "equipment_asset_edit",
     "equipment_asset_list",
@@ -210,6 +214,7 @@ __all__ = [
     "service_archive",
     "service_contract_create",
     "service_contract_edit",
+    "service_contract_pdf",
     "service_create",
     "service_edit",
     "service_list",

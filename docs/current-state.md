@@ -1602,3 +1602,17 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA desktop/mobile прошла через Python Playwright; артефакты: `%TEMP%\rmcodex-browser-qa-contracts-registry`; локальный runserver на `8077` остановлен.
 - Graphify code-index after contracts registry: `4531` nodes / `18018` edges; semantic extraction was not rerun in this slice.
 - Следующий безопасный срез по docs/21: `contracts-generation-and-import-preview` как отдельный срез для генерации файла договора из шаблона и preview Excel-импорта без записи в БД, либо небольшой product UI справочников категорий/контрагентов. Не начинать approve/pay или Excel import write-path с записью в БД без отдельного контракта.
+
+## Обновление 2026-07-17: contracts-generation-and-import-preview
+
+- Выполнен шестой срез из `docs/21-expenses-assets-contracts-contract.md`; линия расходов/активов/договоров по этому контракту закрыта как 6/6.
+- Добавлен read-only PDF-download для `ServiceContract` и `DonationContract` из структурных данных договора и метаданных шаблона. PDF не сохраняется как `Document` и не создает финансовые, payroll, billing или grant факты.
+- Добавлен `/contracts/import-preview/` для проверки Excel/CSV/TSV до записи в базу. Поддержаны типы: контрагенты, расходы, договоры пожертвования, договоры с получателями.
+- Preview распознает колонки, валидирует обязательные поля, ссылки на справочники, даты, суммы, статусы, подписанта договора с получателем и показывает готовые строки/ошибки/предупреждения. Реальная запись в БД намеренно отсутствует.
+- Реестр договоров получил ссылку "Проверить Excel" и PDF-ссылки для договоров. UI остается в Bootstrap/templates без React.
+- Важно: текущая генерация не подставляет поля в загруженный Word-шаблон; полноценная юридическая генерация по Word placeholders и сохранение `Document` должны идти отдельным контрактом.
+- `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing decisions, grant semantics и статусы занятий не менялись; миграций нет.
+- Проверки прошли: Ruff touched Python, `manage.py check --settings=rehab_center.settings_test`, migration dry-run `No changes detected`, focused import/contract tests `14 passed`, full `pytest -q --tb=short` `547 passed` с прежним предупреждением django-tasks.
+- Browser QA: in-app Browser проверил `/contracts/` и `/contracts/import-preview/` desktop/mobile без console errors и overflow; полный Playwright E2E проверил login, реестр, PDF download и CSV upload preview на desktop 1365x900 и mobile 390x844. Findings пустые, артефакты в `%TEMP%\rmcodex-browser-qa-contract-generation-preview`; runserver `8078` остановлен.
+- Graphify code-index after contracts generation/import preview: `4570` nodes / `18329` edges; semantic extraction was not rerun and no API key was written to project files.
+- Следующие безопасные направления: product UI для справочников категорий/контрагентов; отдельный контракт на Word-template legal generation; отдельный контракт на approve/pay или import write-path с записью в БД. Не начинать эти write-path без нового контракта.

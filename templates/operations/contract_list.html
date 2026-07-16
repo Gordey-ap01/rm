@@ -9,6 +9,7 @@
     <p>Структурный реестр договоров с получателями, донорами и шаблонами без обязательного файла на этапе черновика.</p>
   </div>
   <div class="d-flex flex-wrap gap-2">
+    <a class="button-link secondary" href="{% url 'contract_import_preview' %}">Проверить Excel</a>
     <a class="button-link secondary" href="{% url 'contract_template_create' %}">Шаблон</a>
     <a class="button-link secondary" href="{% url 'donation_contract_create' %}">Пожертвование</a>
     <a class="button-link" href="{% url 'service_contract_create' %}">Договор с получателем</a>
@@ -115,6 +116,7 @@
               </td>
               <td class="table-actions" data-label="Действия">
                 <a class="small-action" href="{% url 'service_contract_edit' contract.pk %}">Открыть</a>
+                <a class="small-action" href="{{ contract.ui_pdf_url }}">PDF</a>
               </td>
             </tr>
           {% empty %}
@@ -171,6 +173,7 @@
               </td>
               <td class="table-actions" data-label="Действия">
                 <a class="small-action" href="{% url 'donation_contract_edit' contract.pk %}">Открыть</a>
+                <a class="small-action" href="{{ contract.ui_pdf_url }}">PDF</a>
               </td>
             </tr>
           {% empty %}
@@ -249,6 +252,10 @@
         <li>
           <strong>Без финансовых проводок</strong>
           <span>Договоры не создают платежи, балансы, списания, payroll или ledger-записи.</span>
+        </li>
+        <li>
+          <strong>Excel только preview</strong>
+          <span>Проверка файлов показывает ошибки строк, но не записывает данные в базу.</span>
         </li>
       </ul>
     </section>

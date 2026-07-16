@@ -28,7 +28,12 @@ from operations.models import (
     AppointmentRoomOverride,
     AppointmentStaffAssignment,
     BalanceAccount,
+    CenterExpense,
+    CenterExpenseCategory,
     Child,
+    ContractTemplate,
+    Counterparty,
+    DonationContract,
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
     FinancialIntegrityFindingEvent,
@@ -42,8 +47,10 @@ from operations.models import (
     PayrollAccrual,
     PayrollSheet,
     ProgramBlock,
+    RecipientRepresentative,
     Room,
     Service,
+    ServiceContract,
     StaffAvailability,
     StaffCompensationRule,
     StaffMember,
@@ -2713,6 +2720,96 @@ class ImportPreviewServiceTests(TestCase):
         self.assertEqual(preview.valid_count, 1)
         self.assertEqual(preview.rows[0].values["recipient_last_name"], "Сидоров")
         self.assertEqual(preview.rows[0].values["representative_phone"], "+7 900")
+
+    def test_expense_preview_validates_reference_data_without_creating_expenses(self):
+        CenterExpenseCategory.objects.create(
+            name="Материалы",
+            expense_type=CenterExpenseCategory.ExpenseType.INVENTORY,
+        )
+        FundingSource.objects.create(name="Грант", source_type=FundingSource.SourceType.GRANT)
+        before_count = CenterExpense.objects.count()
+        uploaded = SimpleUploadedFile(
+            "expenses.csv",
+            (
+                "Дата расхода;Категория;Название;Сумма;Источник финансирования;Сумма источника\n"
+                "2026-07-17;Материалы;Бумага;1000;Грант;1000\n"
+                "2026-07-17;Неизвестная;Ошибка;-1;Нет;500\n"
+            ).encode(),
+            content_type="text/csv",
+        )
+
+        preview = import_preview_svc.preview_finance_contract_import(
+            uploaded,
+            import_preview_svc.EXPENSE_IMPORT,
+        )
+
+        self.assertEqual(preview.total_rows, 2)
+        self.assertEqual(preview.valid_count, 1)
+        self.assertEqual(preview.invalid_count, 1)
+        self.assertTrue(any("Категория" in error for error in preview.rows[1].errors))
+        self.assertEqual(CenterExpense.objects.count(), before_count)
+
+    def test_donation_contract_preview_validates_contract_rows_without_creating_contracts(self):
+        Counterparty.objects.create(
+            name="Фонд",
+            counterparty_type=Counterparty.CounterpartyType.FOUNDATION,
+        )
+        FundingSource.objects.create(
+            name="Фондовый проект",
+            source_type=FundingSource.SourceType.CHARITY_FUND,
+        )
+        ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.SPONSOR,
+            title="Спонсорский шаблон",
+        )
+        before_count = DonationContract.objects.count()
+        uploaded = SimpleUploadedFile(
+            "donations.csv",
+            (
+                "Контрагент;Источник финансирования;Тип договора;Номер;Дата подписания;Лимит суммы;Шаблон\n"
+                "Фонд;Фондовый проект;Проектный договор;D-100;2026-07-17;50000;Спонсорский шаблон\n"
+            ).encode(),
+            content_type="text/csv",
+        )
+
+        preview = import_preview_svc.preview_finance_contract_import(
+            uploaded,
+            import_preview_svc.DONATION_CONTRACT_IMPORT,
+        )
+
+        self.assertEqual(preview.valid_count, 1)
+        self.assertEqual(preview.invalid_count, 0)
+        self.assertEqual(DonationContract.objects.count(), before_count)
+
+    def test_service_contract_preview_checks_existing_signer_without_creating_contracts(self):
+        parent = ParentGuardian.objects.create(
+            last_name="Смирнова",
+            first_name="Ольга",
+            phone="+7 900 000-00-01",
+        )
+        child = Child.objects.create(last_name="Смирнов", first_name="Илья", primary_parent=parent)
+        signer = RecipientRepresentative.objects.get(child=child, representative=parent)
+        self.assertTrue(signer.signs_contract)
+        before_count = ServiceContract.objects.count()
+        uploaded = SimpleUploadedFile(
+            "service-contracts.csv",
+            (
+                "Фамилия получателя;Имя получателя;Фамилия подписанта;Имя подписанта;Номер\n"
+                "Смирнов;Илья;Смирнова;Ольга;S-100\n"
+                "Смирнов;Илья;Неизвестная;Анна;S-101\n"
+            ).encode(),
+            content_type="text/csv",
+        )
+
+        preview = import_preview_svc.preview_finance_contract_import(
+            uploaded,
+            import_preview_svc.SERVICE_CONTRACT_IMPORT,
+        )
+
+        self.assertEqual(preview.valid_count, 1)
+        self.assertEqual(preview.invalid_count, 1)
+        self.assertTrue(any("Подписант" in error for error in preview.rows[1].errors))
+        self.assertEqual(ServiceContract.objects.count(), before_count)
 
 
 class ReportsServiceTests(_FixturesMixin, TestCase):

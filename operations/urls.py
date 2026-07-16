@@ -114,6 +114,11 @@ urlpatterns = [
         name="donation_contract_edit",
     ),
     path(
+        "contracts/donations/<int:pk>/pdf/",
+        views.donation_contract_pdf,
+        name="donation_contract_pdf",
+    ),
+    path(
         "contracts/services/new/",
         views.service_contract_create,
         name="service_contract_create",
@@ -122,6 +127,16 @@ urlpatterns = [
         "contracts/services/<int:pk>/edit/",
         views.service_contract_edit,
         name="service_contract_edit",
+    ),
+    path(
+        "contracts/services/<int:pk>/pdf/",
+        views.service_contract_pdf,
+        name="service_contract_pdf",
+    ),
+    path(
+        "contracts/import-preview/",
+        views.contract_import_preview,
+        name="contract_import_preview",
     ),
     path("recipients/", views.recipient_list, name="recipient_list"),
     path("imports/recipients/", views.recipient_import_preview, name="recipient_import_preview"),

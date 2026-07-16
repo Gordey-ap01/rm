@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Preview импорта{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Preview импорта</h1>
+    <p>Проверка Excel/CSV для контрагентов, расходов и договоров без записи в базу.</p>
+  </div>
+  <a class="button-link secondary" href="{{ contract_list_url }}">К договорам</a>
+</section>
+
+<section class="import-command">
+  <a class="import-next-action is-{{ import_next_action.tone }}" href="{{ import_next_action.href }}">
+    <span>{{ import_next_action.label }}</span>
+    <strong>{{ import_next_action.title }}</strong>
+    <small>{{ import_next_action.detail }}</small>
+  </a>
+  <div class="import-summary-grid" aria-label="Сводка preview импорта">
+    {% for item in import_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="import-layout">
+  <div class="import-main">
+    <section class="panel form-panel" id="import-upload">
+      <div class="import-panel-head">
+        <div>
+          <h2>Файл для проверки</h2>
+          <p>Выберите тип строк перед загрузкой. Проверка не создает контрагентов, расходы, договоры, платежи или проводки.</p>
+        </div>
+      </div>
+      <form method="post" enctype="multipart/form-data" class="form-grid">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+          <div class="form-error form-wide">{{ form.non_field_errors }}</div>
+        {% endif %}
+        {% for field in form %}
+          <label class="field form-wide">
+            <span>{{ field.label }}</span>
+            {{ field }}
+            {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+            {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+          </label>
+        {% endfor %}
+        <div class="form-actions form-wide">
+          <button type="submit">Проверить файл</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel import-panel">
+      <div class="import-panel-head">
+        <div>
+          <h2>Поддерживаемые типы</h2>
+          <p>Каждый тип имеет свой набор обязательных колонок.</p>
+        </div>
+      </div>
+      <div class="table-wrap import-table-wrap">
+        <table class="import-columns-table">
+          <thead>
+            <tr>
+              <th>Тип</th>
+              <th>Обязательные колонки</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for spec in contract_import_types %}
+            <tr>
+              <td data-label="Тип"><strong>{{ spec.label }}</strong></td>
+              <td data-label="Обязательные колонки">
+                {% for column in spec.columns %}
+                  {% if column.required %}<span class="status-pill">{{ column.label }}</span>{% endif %}
+                {% endfor %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    {% if preview %}
+      <section class="panel import-panel" id="import-columns">
+        <div class="import-panel-head">
+          <div>
+            <h2>Распознанные колонки</h2>
+            <p>Тип проверки: {% if selected_spec %}{{ selected_spec.label }}{% else %}{{ selected_type }}{% endif %}.</p>
+          </div>
+        </div>
+
+        {% if preview.truncated %}
+          <p class="note-block">Показаны первые 200 строк. Для массовой проверки файл лучше делить на части.</p>
+        {% endif %}
+        {% if preview.missing_required_headers %}
+          <div class="alert alert-warning">
+            Не найдены обязательные колонки: {{ preview.missing_required_headers|join:", " }}.
+          </div>
+        {% endif %}
+
+        <div class="table-wrap import-table-wrap">
+          <table class="import-columns-table">
+            <thead><tr><th>Поле системы</th><th>Колонка файла</th><th>Статус</th></tr></thead>
+            <tbody>
+            {% for column in preview.column_rows %}
+              <tr>
+                <td data-label="Поле системы">{{ column.label }}{% if column.required %} *{% endif %}</td>
+                <td data-label="Колонка файла">{% if column.header %}{{ column.header }}{% else %}<span class="muted">не найдена</span>{% endif %}</td>
+                <td data-label="Статус">
+                  {% if column.header %}
+                    <span class="status-pill">найдена</span>
+                  {% elif column.required %}
+                    <span class="status-pill danger-pill">обязательная</span>
+                  {% else %}
+                    <span class="status-pill muted-pill">необязательная</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel import-panel" id="import-rows">
+        <div class="import-panel-head">
+          <div>
+            <h2>Строки файла</h2>
+            <p>Ошибки исправляются в исходном файле. Эта страница ничего не сохраняет.</p>
+          </div>
+        </div>
+        <div class="table-wrap import-table-wrap">
+          <table class="import-rows-table">
+            <thead>
+              <tr>
+                <th>Строка</th>
+                <th>Данные</th>
+                <th>Проверка</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for row in import_display_rows %}
+              <tr class="{% if row.errors %}is-invalid{% elif row.warnings %}is-warning{% endif %}">
+                <td data-label="Строка">{{ row.row_number }}</td>
+                <td data-label="Данные">
+                  <div class="import-cell-grid">
+                    {% for cell in row.cells %}
+                      {% if cell.value %}
+                        <div>
+                          <span>{{ cell.label }}</span>
+                          <strong>{{ cell.value }}</strong>
+                        </div>
+                      {% endif %}
+                    {% endfor %}
+                  </div>
+                </td>
+                <td data-label="Проверка">
+                  <div class="import-row-status">
+                    {% if row.errors %}
+                      <span class="status-pill danger-pill">ошибка</span>
+                      {% for error in row.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+                    {% else %}
+                      <span class="status-pill">готово</span>
+                    {% endif %}
+                    {% for warning in row.warnings %}<div class="import-warning">{{ warning }}</div>{% endfor %}
+                  </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3" data-label="Строки">В файле нет строк данных.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endif %}
+  </div>
+
+  <aside class="import-sidebar" aria-label="Контроль preview импорта">
+    <section class="panel import-control-panel">
+      <h2>Контроль</h2>
+      <ul class="import-check-list">
+        <li>
+          <strong>Запись в базу отключена</strong>
+          <span>Страница только читает файл и показывает ошибки.</span>
+        </li>
+        <li>
+          <strong>Финансовые факты не создаются</strong>
+          <span>Preview не создает оплаты, балансы, ledger, payroll или списания занятий.</span>
+        </li>
+        <li>
+          <strong>Справочники проверяются</strong>
+          <span>Категории, источники финансирования и подписанты должны уже существовать в системе.</span>
+        </li>
+      </ul>
+    </section>
+
+    {% if preview %}
+      <section class="panel import-control-panel">
+        <h2>После проверки</h2>
+        {% if preview.invalid_count or preview.missing_required_headers %}
+          <p>Исправьте файл и повторите проверку. Реальную запись в БД включать рано, пока есть ошибки.</p>
+        {% else %}
+          <p>Файл можно использовать как эталон для будущего реального импорта после отдельного утверждения.</p>
+        {% endif %}
+      </section>
+    {% endif %}
+  </aside>
+</section>
+{% endblock %}

@@ -8,12 +8,14 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Q
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
 from operations.forms import ContractTemplateForm, DonationContractForm, ServiceContractForm
 from operations.models import ContractTemplate, DonationContract, ServiceContract
+from operations.services import pdf as pdf_svc
 
 from ._common import is_admin_user
 
@@ -29,6 +31,12 @@ def _format_date(value: date | None) -> str:
     if value is None:
         return "не указана"
     return value.strftime("%d.%m.%Y")
+
+
+def _pdf_filename(prefix: str, number: str, pk: int) -> str:
+    safe_number = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in number).strip("_")
+    suffix = safe_number or str(pk)
+    return f"{prefix}_{suffix}.pdf"
 
 
 def _validity_label(valid_from: date | None, valid_until: date | None) -> str:
@@ -87,6 +95,7 @@ def _donation_queryset(filters: dict[str, str]) -> list[DonationContract]:
         contract.ui_amount_limit = _format_money(contract.amount_limit)
         contract.ui_signed_on = _format_date(contract.signed_on)
         contract.ui_validity = _validity_label(contract.valid_from, contract.valid_until)
+        contract.ui_pdf_url = reverse("donation_contract_pdf", args=[contract.pk])
     return contracts
 
 
@@ -117,6 +126,7 @@ def _service_queryset(filters: dict[str, str]) -> list[ServiceContract]:
     for contract in contracts:
         contract.ui_signed_on = _format_date(contract.signed_on)
         contract.ui_validity = _validity_label(contract.valid_from, contract.valid_until)
+        contract.ui_pdf_url = reverse("service_contract_pdf", args=[contract.pk])
     return contracts
 
 
@@ -430,4 +440,40 @@ def service_contract_edit(request, pk: int):
             "cancel_url": reverse("contract_list"),
             "control_items": contract_form_control_items("service"),
         },
+    )
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def donation_contract_pdf(request, pk: int):
+    contract = get_object_or_404(
+        DonationContract.objects.select_related("counterparty", "funding_source", "template"),
+        pk=pk,
+    )
+    filename = _pdf_filename("donation_contract", contract.number, contract.pk)
+    return FileResponse(
+        pdf_svc.donation_contract_pdf(contract),
+        as_attachment=True,
+        filename=filename,
+        content_type="application/pdf",
+    )
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def service_contract_pdf(request, pk: int):
+    contract = get_object_or_404(
+        ServiceContract.objects.select_related(
+            "child",
+            "representative_link__representative",
+            "template",
+        ),
+        pk=pk,
+    )
+    filename = _pdf_filename("service_contract", contract.number, contract.pk)
+    return FileResponse(
+        pdf_svc.service_contract_pdf(contract),
+        as_attachment=True,
+        filename=filename,
+        content_type="application/pdf",
     )

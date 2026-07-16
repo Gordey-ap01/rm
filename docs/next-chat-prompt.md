@@ -207,3 +207,17 @@
 - Python Playwright был установлен только в `.venv-test` для QA; это не production dependency и не проектный файл. Артефакты Browser QA: `%TEMP%\rmcodex-browser-qa-contracts-registry`; runserver `8077` остановлен.
 - Graphify code-index after contracts: `4531` nodes / `18018` edges; semantic extraction was not rerun in this slice.
 - Следующий безопасный срез: `contracts-generation-and-import-preview` отдельным срезом для генерации файла договора из шаблона и preview Excel-импорта без записи в БД, либо небольшой product UI справочников категорий/контрагентов. Не начинать approve/pay/import write-path с записью в БД без отдельного контракта.
+
+## Последнее уточнение 2026-07-17: contracts-generation-and-import-preview выполнен
+
+После текста промпта выше считать актуальным:
+
+- `contracts-generation-and-import-preview` выполнен по `docs/21-expenses-assets-contracts-contract.md`; все 6 срезов docs/21 закрыты.
+- Добавлены read-only PDF-download для договоров пожертвования и договоров с получателями; PDF строится из структурных данных и не сохраняется как `Document`.
+- Добавлен `/contracts/import-preview/` для Excel/CSV/TSV preview контрагентов, расходов, договоров пожертвования и договоров с получателями без записи в БД.
+- Preview проверяет колонки, даты, суммы, справочники, статусы и подписанта договора; показывает готовые строки, ошибки и предупреждения.
+- Реальная генерация по Word placeholders, сохранение финального `Document`, approve/pay и import write-path с записью в БД не реализованы и требуют отдельных контрактов.
+- `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing decisions, grant semantics и статусы занятий не менялись; миграций нет.
+- Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused tests `14 passed`, full pytest `547 passed`, Browser QA desktop/mobile с PDF download и CSV upload preview.
+- Graphify code-index after slice: `4570` nodes / `18329` edges; semantic extraction was not rerun and no API key was written to project files.
+- Следующее безопасное направление: новый отдельный контракт на product UI справочников категорий/контрагентов, Word-template legal generation, approve/pay или import write-path. Не начинать эти write-path без нового контракта.

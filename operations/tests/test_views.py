@@ -3485,6 +3485,89 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertFalse(ServiceContract.objects.filter(number="S-003").exists())
         self.assertContains(response, "Выберите корректный вариант")
 
+    def test_contract_import_preview_get(self):
+        response = self.client.get(reverse("contract_import_preview"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("form", response.context)
+        self.assertContains(response, "Preview")
+        self.assertContains(response, "Контрагенты")
+        self.assertContains(response, "Расходы")
+
+    def test_contract_import_preview_post_expenses_does_not_create_records(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        before_count = CenterExpense.objects.count()
+        upload = SimpleUploadedFile(
+            "expenses.csv",
+            (
+                "Дата расхода;Категория;Название;Сумма;Источник финансирования;Сумма источника\n"
+                f"2026-07-17;{self.expense_category.name};Тестовый расход;1000;{self.funding.name};1000\n"
+            ).encode(),
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("contract_import_preview"),
+            {
+                "import_type": "expenses",
+                "file": upload,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(CenterExpense.objects.count(), before_count)
+        self.assertEqual(response.context["preview"].valid_count, 1)
+        self.assertContains(response, "Тестовый расход")
+
+    def test_service_contract_pdf_download_does_not_create_document_or_financial_facts(self):
+        template = self._service_template()
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-004",
+            signed_on=timezone.localdate(),
+            template=template,
+        )
+        document_count = Document.objects.count()
+        ledger_count = LedgerEntry.objects.count()
+        payment_count = Payment.objects.count()
+
+        response = self.client.get(reverse("service_contract_pdf", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        payload = b"".join(response.streaming_content)
+        self.assertTrue(payload.startswith(b"%PDF"))
+        self.assertEqual(Document.objects.count(), document_count)
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
+        self.assertEqual(Payment.objects.count(), payment_count)
+
+    def test_donation_contract_pdf_download_does_not_create_document_or_financial_facts(self):
+        template = self._donation_template()
+        contract = DonationContract.objects.create(
+            counterparty=self.counterparty,
+            funding_source=self.funding_grant,
+            contract_type=DonationContract.ContractType.PROJECT,
+            number="D-004",
+            signed_on=timezone.localdate(),
+            amount_limit=Decimal("10000.00"),
+            template=template,
+        )
+        document_count = Document.objects.count()
+        ledger_count = LedgerEntry.objects.count()
+        payment_count = Payment.objects.count()
+
+        response = self.client.get(reverse("donation_contract_pdf", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        payload = b"".join(response.streaming_content)
+        self.assertTrue(payload.startswith(b"%PDF"))
+        self.assertEqual(Document.objects.count(), document_count)
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
+        self.assertEqual(Payment.objects.count(), payment_count)
+
 
 class StaffCompensationRuleViewTests(NewViewsTestBase):
     def test_staff_compensation_rule_list_renders(self):
