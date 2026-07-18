@@ -221,3 +221,17 @@
 - Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused tests `14 passed`, full pytest `547 passed`, Browser QA desktop/mobile с PDF download и CSV upload preview.
 - Graphify code-index after slice: `4570` nodes / `18329` edges; semantic extraction was not rerun and no API key was written to project files.
 - Следующее безопасное направление: новый отдельный контракт на product UI справочников категорий/контрагентов, Word-template legal generation, approve/pay или import write-path. Не начинать эти write-path без нового контракта.
+
+## Последнее уточнение 2026-07-18: category-counterparty-directory UI выполнен
+
+После текста промпта выше считать актуальным:
+
+- `docs/22-category-counterparty-directory-contract.md` добавлен и выполнен.
+- Добавлен product UI `/directories/expenses/` для категорий расходов и контрагентов.
+- Категории можно создавать, редактировать, включать и отключать; отключение не удаляет старые расходы.
+- Контрагентов можно создавать, редактировать, архивировать и восстанавливать через существующий soft-delete; старые расходы и договоры сохраняются.
+- Расходы, договоры и import preview теперь ведут в этот справочник, чтобы исправлять missing category/counterparty без Django admin.
+- Новых моделей/миграций нет; `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing decisions, grant semantics и статусы занятий не менялись.
+- Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, related tests `24 passed`, full pytest `553 passed`, Browser QA desktop/mobile.
+- Graphify code-index after slice: `4614` nodes / `18538` edges; semantic extraction was not rerun and no API key was written to project files.
+- Следующее безопасное направление: отдельный контракт на Word-template legal generation, approve/pay расходов, import write-path или расширение юридических реквизитов контрагентов.

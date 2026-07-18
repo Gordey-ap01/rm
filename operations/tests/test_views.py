@@ -2983,6 +2983,198 @@ class FundingSourceViewTests(NewViewsTestBase):
         self.assertIsNone(self.funding_grant.archived_at)
 
 
+class ExpenseDirectoryViewTests(NewViewsTestBase):
+    def _financial_counts(self):
+        return {
+            "balances": BalanceAccount.objects.count(),
+            "ledger": LedgerEntry.objects.count(),
+            "payments": Payment.objects.count(),
+            "expenses": CenterExpense.objects.count(),
+            "donation_contracts": DonationContract.objects.count(),
+            "payroll": PayrollAccrual.objects.count(),
+        }
+
+    def test_expense_directory_list_renders_categories_and_counterparties(self):
+        CenterExpense.objects.create(
+            category=self.expense_category,
+            counterparty=self.counterparty,
+            title="Расход по справочнику",
+            total_amount=Decimal("500.00"),
+        )
+        DonationContract.objects.create(
+            counterparty=self.counterparty,
+            funding_source=self.funding_grant,
+            contract_type=DonationContract.ContractType.PROJECT,
+            number="DIR-1",
+        )
+
+        response = self.client.get(reverse("expense_directory_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("directory_summary_items", response.context)
+        self.assertIn("directory_next_action", response.context)
+        self.assertContains(response, "Справочники расходов")
+        self.assertContains(response, "Категории расходов")
+        self.assertContains(response, "Контрагенты")
+        self.assertContains(response, self.expense_category.name)
+        self.assertContains(response, self.counterparty.name)
+        self.assertContains(response, "Расходов: 1")
+        self.assertContains(response, "Договоров: 1")
+        self.assertContains(response, reverse("expense_category_create"))
+        self.assertContains(response, reverse("counterparty_create"))
+        self.assertContains(response, 'id="expense-directory-categories"')
+        self.assertContains(response, 'id="expense-directory-counterparties"')
+
+    def test_expense_directory_list_filters_archived_counterparties(self):
+        self.counterparty.archive()
+
+        archived_response = self.client.get(
+            reverse("expense_directory_list"),
+            {"counterparty_status": "archived"},
+        )
+        active_response = self.client.get(
+            reverse("expense_directory_list"),
+            {"counterparty_status": "active"},
+        )
+
+        self.assertContains(archived_response, self.counterparty.name)
+        self.assertNotContains(active_response, self.counterparty.name)
+
+    def test_expense_category_create_edit_and_toggle_without_financial_facts(self):
+        counts_before = self._financial_counts()
+
+        create_response = self.client.post(
+            reverse("expense_category_create"),
+            {
+                "name": "Транспорт",
+                "expense_type": CenterExpenseCategory.ExpenseType.OTHER,
+                "is_active": "on",
+                "sort_order": "30",
+                "notes": "Такси и доставка",
+            },
+        )
+
+        category = CenterExpenseCategory.objects.get(name="Транспорт")
+        self.assertRedirects(create_response, reverse("expense_category_edit", args=[category.pk]))
+        self.assertEqual(self._financial_counts(), counts_before)
+
+        edit_response = self.client.post(
+            reverse("expense_category_edit", args=[category.pk]),
+            {
+                "name": "Транспортные расходы",
+                "expense_type": CenterExpenseCategory.ExpenseType.SERVICES,
+                "sort_order": "35",
+                "notes": "",
+            },
+        )
+
+        self.assertRedirects(edit_response, reverse("expense_directory_list"))
+        category.refresh_from_db()
+        self.assertEqual(category.name, "Транспортные расходы")
+        self.assertFalse(category.is_active)
+        self.assertEqual(self._financial_counts(), counts_before)
+
+        activate_response = self.client.post(
+            reverse("expense_category_activate", args=[category.pk])
+        )
+        self.assertRedirects(activate_response, reverse("expense_directory_list"))
+        category.refresh_from_db()
+        self.assertTrue(category.is_active)
+
+        deactivate_response = self.client.post(
+            reverse("expense_category_deactivate", args=[category.pk])
+        )
+        self.assertRedirects(deactivate_response, reverse("expense_directory_list"))
+        category.refresh_from_db()
+        self.assertFalse(category.is_active)
+        self.assertEqual(self._financial_counts(), counts_before)
+
+    def test_expense_category_form_rejects_case_insensitive_duplicate(self):
+        response = self.client.post(
+            reverse("expense_category_create"),
+            {
+                "name": self.expense_category.name.upper(),
+                "expense_type": CenterExpenseCategory.ExpenseType.HOUSEHOLD,
+                "is_active": "on",
+                "sort_order": "10",
+                "notes": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Категория с таким названием уже есть.")
+
+    def test_counterparty_create_edit_archive_restore_without_financial_facts(self):
+        counts_before = self._financial_counts()
+
+        create_response = self.client.post(
+            reverse("counterparty_create"),
+            {
+                "name": "Благотворительный партнер",
+                "counterparty_type": Counterparty.CounterpartyType.SPONSOR,
+                "inn": "2500000000",
+                "kpp": "",
+                "ogrn": "",
+                "legal_address": "",
+                "postal_address": "",
+                "bank_details": "",
+                "contact_person": "Петров Петр",
+                "phone": "+7 900 000-10-10",
+                "email": "partner@example.local",
+                "notes": "",
+            },
+        )
+
+        counterparty = Counterparty.objects.get(name="Благотворительный партнер")
+        self.assertRedirects(create_response, reverse("counterparty_edit", args=[counterparty.pk]))
+        self.assertEqual(self._financial_counts(), counts_before)
+
+        edit_response = self.client.post(
+            reverse("counterparty_edit", args=[counterparty.pk]),
+            {
+                "name": "Благотворительный партнер 2026",
+                "counterparty_type": Counterparty.CounterpartyType.FOUNDATION,
+                "inn": "2500000001",
+                "kpp": "",
+                "ogrn": "",
+                "legal_address": "Адрес",
+                "postal_address": "",
+                "bank_details": "Реквизиты",
+                "contact_person": "",
+                "phone": "",
+                "email": "",
+                "notes": "Обновлено",
+            },
+        )
+
+        self.assertRedirects(edit_response, reverse("expense_directory_list"))
+        counterparty.refresh_from_db()
+        self.assertEqual(counterparty.name, "Благотворительный партнер 2026")
+        self.assertEqual(counterparty.counterparty_type, Counterparty.CounterpartyType.FOUNDATION)
+        self.assertEqual(self._financial_counts(), counts_before)
+
+        archive_response = self.client.post(reverse("counterparty_archive", args=[counterparty.pk]))
+        self.assertRedirects(archive_response, reverse("expense_directory_list"))
+        counterparty.refresh_from_db()
+        self.assertTrue(counterparty.is_archived)
+        self.assertFalse(Counterparty.objects.filter(pk=counterparty.pk).exists())
+
+        restore_response = self.client.post(reverse("counterparty_restore", args=[counterparty.pk]))
+        self.assertRedirects(restore_response, reverse("expense_directory_list"))
+        counterparty.refresh_from_db()
+        self.assertFalse(counterparty.is_archived)
+        self.assertTrue(Counterparty.objects.filter(pk=counterparty.pk).exists())
+        self.assertEqual(self._financial_counts(), counts_before)
+
+    def test_expense_directory_rejects_specialist(self):
+        self.client.logout()
+        self.client.force_login(self.staff_user)
+
+        response = self.client.get(reverse("expense_directory_list"))
+
+        self.assertEqual(response.status_code, 302)
+
+
 class CenterExpenseViewTests(NewViewsTestBase):
     def _expense_post_data(
         self,

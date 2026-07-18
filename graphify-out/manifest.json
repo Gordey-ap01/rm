@@ -25,8 +25,8 @@
     "semantic_hash": ""
   },
   "operations/forms.py": {
-    "mtime": 1784243998.7314684,
-    "ast_hash": "62d736dc459c36802efe463b045afa9e",
+    "mtime": 1784350616.6840756,
+    "ast_hash": "a2062572d2ea6d6f0c46f36c07c68067",
     "semantic_hash": ""
   },
   "operations/management/__init__.py": {
@@ -170,18 +170,18 @@
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
-    "mtime": 1784243945.5004525,
-    "ast_hash": "edb4bbb1b16ef62704c6e17ddbae92f6",
+    "mtime": 1784350558.8957484,
+    "ast_hash": "abf190813d39b4842646749696fcde99",
     "semantic_hash": ""
   },
   "operations/urls.py": {
-    "mtime": 1784243691.0320454,
-    "ast_hash": "88be10ec4ff325f001d3b958ddc1c58d",
+    "mtime": 1784350424.4551272,
+    "ast_hash": "d5354a66732de984f3ba20ef9393654d",
     "semantic_hash": ""
   },
   "operations/views/__init__.py": {
-    "mtime": 1784243855.1594093,
-    "ast_hash": "84854b507150669ba5394eab3aacc798",
+    "mtime": 1784350583.1697116,
+    "ast_hash": "f5f5c91adaf8ef12d0fa7a1a81edfeca",
     "semantic_hash": ""
   },
   "operations/views/_common.py": {
@@ -515,8 +515,8 @@
     "semantic_hash": "929b035a1aeaf7a9482b03a04df8a13e"
   },
   "templates/base.html": {
-    "mtime": 1784149348.5406756,
-    "ast_hash": "5bdf4bb688c7fe8279263f621972ec06",
+    "mtime": 1784350502.0249014,
+    "ast_hash": "e0a355b8c00b8541183c60d159fac08c",
     "semantic_hash": ""
   },
   "templates/operations/appointment_cancel.html": {
@@ -580,8 +580,8 @@
     "semantic_hash": ""
   },
   "templates/operations/object_form.html": {
-    "mtime": 1782681211.6159332,
-    "ast_hash": "f1ac2e6026e3b399a5371b99684f6ec0",
+    "mtime": 1784350502.0233948,
+    "ast_hash": "e8686027ff95f2b469178f80d6fb905b",
     "semantic_hash": ""
   },
   "templates/operations/payment_form.html": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784150638.4869275,
-    "ast_hash": "cc56d07e6227362b8d9d275747c2c839",
+    "mtime": 1784351465.8012428,
+    "ast_hash": "11322f313e15de0a297817063ad5426f",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784150655.994979,
-    "ast_hash": "eb447604cbcb23dcf871cc88ae653f38",
+    "mtime": 1784351465.8032386,
+    "ast_hash": "0ace59ee45e7254dad97e5ced7048abf",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784150674.4377732,
-    "ast_hash": "8618a5e1a977da5e1b437980ea87f38c",
+    "mtime": 1784351465.8022404,
+    "ast_hash": "a6b7639b765990855130770a7eb7876f",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1060,8 +1060,8 @@
     "semantic_hash": ""
   },
   "templates/operations/center_expense_list.html": {
-    "mtime": 1784121298.2978475,
-    "ast_hash": "cc74ae688ffae02f1ba330b6e69e170f",
+    "mtime": 1784350502.0259113,
+    "ast_hash": "4c2bdf8b560094be26b61f663ed153a2",
     "semantic_hash": ""
   },
   "operations/services/expense_reports.py": {
@@ -1115,13 +1115,28 @@
     "semantic_hash": ""
   },
   "templates/operations/contract_list.html": {
-    "mtime": 1784243706.2670994,
-    "ast_hash": "d3097cbeeb89553f7f0659e58be430a4",
+    "mtime": 1784350502.0269108,
+    "ast_hash": "e331430f27c7ebc3804db200d268f854",
     "semantic_hash": ""
   },
   "templates/operations/contract_import_preview.html": {
-    "mtime": 1784243808.672814,
-    "ast_hash": "b6cbebe9c53d0f5e93614b8e57552e4a",
+    "mtime": 1784350970.6403193,
+    "ast_hash": "4fce60d8665df04c7e7b89beb010bad6",
+    "semantic_hash": ""
+  },
+  "operations/views/expense_directories.py": {
+    "mtime": 1784350310.7137914,
+    "ast_hash": "948a0e36725dc90b9a82cc9e6560b576",
+    "semantic_hash": ""
+  },
+  "docs/22-category-counterparty-directory-contract.md": {
+    "mtime": 1784351465.7982306,
+    "ast_hash": "4a83c93913dcfc7f89a3cb7e76dac429",
+    "semantic_hash": ""
+  },
+  "templates/operations/expense_directory_list.html": {
+    "mtime": 1784351128.8737936,
+    "ast_hash": "1424c48393c72b4f3fe9e87dcfbfc91c",
     "semantic_hash": ""
   }
 }

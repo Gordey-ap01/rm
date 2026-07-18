@@ -2323,6 +2323,78 @@ class PaymentForm(forms.ModelForm):
         }
 
 
+class CenterExpenseCategoryForm(forms.ModelForm):
+    class Meta:
+        model = CenterExpenseCategory
+        fields = ("name", "expense_type", "is_active", "sort_order", "notes")
+        labels = {
+            "name": "Название",
+            "expense_type": "Тип расхода",
+            "is_active": "Доступна для новых расходов",
+            "sort_order": "Порядок",
+            "notes": "Примечания",
+        }
+        widgets = {
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+        normalized_name = name.casefold()
+        duplicate_names = CenterExpenseCategory.objects.all()
+        if self.instance.pk:
+            duplicate_names = duplicate_names.exclude(pk=self.instance.pk)
+        if any(existing_name.casefold() == normalized_name for existing_name in duplicate_names.values_list("name", flat=True)):
+            raise forms.ValidationError("Категория с таким названием уже есть.")
+        return name
+
+
+class CounterpartyForm(forms.ModelForm):
+    class Meta:
+        model = Counterparty
+        fields = (
+            "name",
+            "counterparty_type",
+            "inn",
+            "kpp",
+            "ogrn",
+            "legal_address",
+            "postal_address",
+            "bank_details",
+            "contact_person",
+            "phone",
+            "email",
+            "notes",
+        )
+        labels = {
+            "name": "Наименование",
+            "counterparty_type": "Тип",
+            "inn": "ИНН",
+            "kpp": "КПП",
+            "ogrn": "ОГРН/ОГРНИП",
+            "legal_address": "Юридический адрес",
+            "postal_address": "Почтовый адрес",
+            "bank_details": "Банковские реквизиты",
+            "contact_person": "Контактное лицо",
+            "phone": "Телефон",
+            "email": "Email",
+            "notes": "Примечания",
+        }
+        help_texts = {
+            "name": "Используется в расходах, договорах пожертвования и preview импорта.",
+            "bank_details": "Реквизиты хранятся справочно и не создают платежи.",
+        }
+        widgets = {
+            "legal_address": forms.Textarea(attrs={"rows": 3}),
+            "postal_address": forms.Textarea(attrs={"rows": 3}),
+            "bank_details": forms.Textarea(attrs={"rows": 3}),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def clean_name(self):
+        return self.cleaned_data["name"].strip()
+
+
 class CenterExpenseForm(forms.ModelForm):
     class Meta:
         model = CenterExpense

@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Справочники расходов{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Справочники расходов</h1>
+    <p>Категории расходов и контрагенты для договоров, отчетов и preview импорта.</p>
+  </div>
+  <div class="header-actions">
+    <a class="button-link secondary" href="{% url 'counterparty_create' %}">Контрагент</a>
+    <a class="button-link" href="{% url 'expense_category_create' %}">Категория</a>
+  </div>
+</section>
+
+<section class="directory-overview">
+  <a class="directory-next-action is-{{ directory_next_action.tone }}" href="{{ directory_next_action.href }}">
+    <span>{{ directory_next_action.label }}</span>
+    <strong>{{ directory_next_action.title }}</strong>
+    <small>{{ directory_next_action.detail }}</small>
+  </a>
+  <div class="directory-summary-grid" aria-label="Сводка справочников расходов">
+    {% for item in directory_summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="directory-layout">
+  <div class="directory-main">
+    <section class="panel directory-panel">
+      <div class="directory-panel-head">
+        <div>
+          <h2>Фильтры</h2>
+          <p>Один поиск работает по названиям категорий, контрагентам, реквизитам и контактам.</p>
+        </div>
+      </div>
+      <form class="expense-filter-form" method="get">
+        <label>
+          <span>Поиск</span>
+          <input type="search" name="q" value="{{ filters.q }}" placeholder="Название, ИНН, телефон">
+        </label>
+        <label>
+          <span>Категории</span>
+          <select name="category_status">
+            <option value="">Все</option>
+            <option value="active"{% if filters.category_status == "active" %} selected{% endif %}>Активные</option>
+            <option value="inactive"{% if filters.category_status == "inactive" %} selected{% endif %}>Отключенные</option>
+          </select>
+        </label>
+        <label>
+          <span>Тип расхода</span>
+          <select name="expense_type">
+            <option value="">Все типы</option>
+            {% for value, label in expense_type_choices %}
+              <option value="{{ value }}"{% if filters.expense_type == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>Контрагенты</span>
+          <select name="counterparty_status">
+            <option value="">Все</option>
+            <option value="active"{% if filters.counterparty_status == "active" %} selected{% endif %}>Активные</option>
+            <option value="archived"{% if filters.counterparty_status == "archived" %} selected{% endif %}>Архив</option>
+          </select>
+        </label>
+        <label>
+          <span>Тип контрагента</span>
+          <select name="counterparty_type">
+            <option value="">Все типы</option>
+            {% for value, label in counterparty_type_choices %}
+              <option value="{{ value }}"{% if filters.counterparty_type == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div class="expense-filter-actions">
+          <button type="submit">Показать</button>
+          <a class="button-link secondary" href="{% url 'expense_directory_list' %}">Сбросить</a>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel directory-panel" id="expense-directory-categories">
+      <div class="directory-panel-head">
+        <div>
+          <h2>Категории расходов</h2>
+          <p>Отключенная категория не предлагается в новых расходах, но остается в старых расходах и отчетах.</p>
+        </div>
+        <a class="small-action" href="{% url 'expense_category_create' %}">Добавить</a>
+      </div>
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>Категория</th>
+              <th>Тип</th>
+              <th>Порядок</th>
+              <th>Расходов</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for category in categories %}
+            <tr{% if not category.is_active %} class="muted-row"{% endif %}>
+              <td data-label="Категория">
+                <strong>{{ category.name }}</strong>
+                {% if category.notes %}<div class="muted">{{ category.notes|truncatechars:100 }}</div>{% endif %}
+              </td>
+              <td data-label="Тип">{{ category.get_expense_type_display }}</td>
+              <td data-label="Порядок">{{ category.sort_order }}</td>
+              <td data-label="Расходов">{{ category.expense_count }}</td>
+              <td data-label="Статус">
+                {% if category.is_active %}
+                  <span class="status-pill">активна</span>
+                {% else %}
+                  <span class="status-pill muted-pill">отключена</span>
+                {% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'expense_category_edit' category.pk %}">Править</a>
+                {% if category.is_active %}
+                  <form method="post" action="{% url 'expense_category_deactivate' category.pk %}" class="inline-form compact-form">
+                    {% csrf_token %}
+                    <button class="secondary-button small-action" type="submit">Отключить</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="{% url 'expense_category_activate' category.pk %}" class="inline-form compact-form">
+                    {% csrf_token %}
+                    <button class="secondary-button small-action" type="submit">Включить</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" data-label="Категории">
+                <div class="empty-state">Категории расходов еще не созданы.</div>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel directory-panel" id="expense-directory-counterparties">
+      <div class="directory-panel-head">
+        <div>
+          <h2>Контрагенты</h2>
+          <p>Архив скрывает запись из новых расходов и договоров, но не удаляет связанные данные.</p>
+        </div>
+        <a class="small-action" href="{% url 'counterparty_create' %}">Добавить</a>
+      </div>
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>Контрагент</th>
+              <th>Тип</th>
+              <th>Контакты</th>
+              <th>Использование</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for counterparty in counterparties %}
+            <tr{% if counterparty.is_archived %} class="muted-row"{% endif %}>
+              <td data-label="Контрагент">
+                <strong>{{ counterparty.name }}</strong>
+                {% if counterparty.inn %}<div class="muted">ИНН {{ counterparty.inn }}</div>{% endif %}
+                {% if counterparty.notes %}<div class="muted">{{ counterparty.notes|truncatechars:100 }}</div>{% endif %}
+              </td>
+              <td data-label="Тип">{{ counterparty.get_counterparty_type_display }}</td>
+              <td data-label="Контакты">
+                {% if counterparty.contact_person %}<div>{{ counterparty.contact_person }}</div>{% endif %}
+                {% if counterparty.phone %}<div class="muted">{{ counterparty.phone }}</div>{% endif %}
+                {% if counterparty.email %}<div class="muted">{{ counterparty.email }}</div>{% endif %}
+                {% if not counterparty.contact_person and not counterparty.phone and not counterparty.email %}
+                  <span class="muted">не указаны</span>
+                {% endif %}
+              </td>
+              <td data-label="Использование">
+                <div>Расходов: {{ counterparty.expense_count }}</div>
+                <div class="muted">Договоров: {{ counterparty.donation_contract_count }}</div>
+              </td>
+              <td data-label="Статус">
+                {% if counterparty.is_archived %}
+                  <span class="status-pill muted-pill">архив</span>
+                {% else %}
+                  <span class="status-pill">активен</span>
+                {% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'counterparty_edit' counterparty.pk %}">Править</a>
+                {% if not counterparty.is_archived %}
+                  <form method="post" action="{% url 'counterparty_archive' counterparty.pk %}" class="inline-form compact-form">
+                    {% csrf_token %}
+                    <button class="secondary-button small-action" type="submit">В архив</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="{% url 'counterparty_restore' counterparty.pk %}" class="inline-form compact-form">
+                    {% csrf_token %}
+                    <button class="secondary-button small-action" type="submit">Восстановить</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" data-label="Контрагенты">
+                <div class="empty-state">Контрагенты еще не созданы.</div>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="directory-sidebar" aria-label="Контроль справочников расходов">
+    <section class="panel directory-control-panel">
+      <h2>Контроль</h2>
+      <ul class="directory-check-list">
+        <li>
+          <strong>Только справочник</strong>
+          <span>Эта страница не создает расходы, договоры, оплаты, проводки или начисления.</span>
+        </li>
+        <li>
+          <strong>Категории</strong>
+          <span>Отключайте устаревшие категории вместо удаления, чтобы отчеты по старым расходам оставались понятными.</span>
+        </li>
+        <li>
+          <strong>Контрагенты</strong>
+          <span>Архивируйте поставщиков, фонды и спонсоров, которые больше не используются в новых операциях.</span>
+        </li>
+        <li>
+          <strong>Preview импорта</strong>
+          <span>Ошибки "не найдено" в Excel preview исправляются здесь до реального импорта.</span>
+        </li>
+      </ul>
+    </section>
+  </aside>
+</section>
+{% endblock %}

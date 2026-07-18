@@ -1616,3 +1616,16 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA: in-app Browser проверил `/contracts/` и `/contracts/import-preview/` desktop/mobile без console errors и overflow; полный Playwright E2E проверил login, реестр, PDF download и CSV upload preview на desktop 1365x900 и mobile 390x844. Findings пустые, артефакты в `%TEMP%\rmcodex-browser-qa-contract-generation-preview`; runserver `8078` остановлен.
 - Graphify code-index after contracts generation/import preview: `4570` nodes / `18329` edges; semantic extraction was not rerun and no API key was written to project files.
 - Следующие безопасные направления: product UI для справочников категорий/контрагентов; отдельный контракт на Word-template legal generation; отдельный контракт на approve/pay или import write-path с записью в БД. Не начинать эти write-path без нового контракта.
+
+## Обновление 2026-07-18: category-counterparty-directory UI
+
+- Выполнен срез `docs/22-category-counterparty-directory-contract.md`: product UI для справочников категорий расходов и контрагентов.
+- Добавлены `/directories/expenses/`, create/edit/toggle routes для `CenterExpenseCategory`, create/edit/archive/restore routes для `Counterparty`, формы `CenterExpenseCategoryForm` и `CounterpartyForm`.
+- Страница показывает summary, next-action, фильтры, таблицу категорий с количеством связанных расходов и таблицу контрагентов с количеством расходов/договоров пожертвования.
+- Категория отключается через `is_active=False`, без удаления; контрагент архивируется через существующий `SoftDeleteMixin.archive()`, связи и история сохраняются.
+- Добавлены входы в справочник из основной навигации, расходов, договоров и import preview.
+- Новых моделей и миграций нет. `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing decisions, grant semantics, договоры, расходы и статусы занятий не менялись.
+- Проверки прошли: Ruff touched Python, `manage.py check --settings=rehab_center.settings_test`, migration dry-run `No changes detected`, focused/related view tests `24 passed`, full `pytest -q --tb=short` `553 passed` с прежним предупреждением django-tasks.
+- Browser QA: in-app Browser проверил list/forms/actions, create/edit категории, create/edit/archive/restore контрагента, ссылки из расходов/договоров/import preview, desktop и mobile без console errors и horizontal overflow. Артефакты: `%TEMP%\rmcodex-browser-qa-expense-directories`; runserver `8079` остановлен.
+- Graphify code-index after category/counterparty directory UI: `4614` nodes / `18538` edges; semantic extraction was not rerun and no API key was written to project files.
+- Следующие безопасные направления только отдельными контрактами: Word-template legal generation, approve/pay расходов центра, import write-path с записью в БД, расширение юридических реквизитов контрагентов.

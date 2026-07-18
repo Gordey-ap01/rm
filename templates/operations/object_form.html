@@ -25,7 +25,7 @@
         <div class="form-error form-wide">{{ form.non_field_errors }}</div>
       {% endif %}
       {% for field in form %}
-        <label class="field {% if field.name == 'notes' or field.name == 'note' or field.name == 'diagnosis' %}form-wide{% endif %}">
+        <label class="field {% if field.name == 'notes' or field.name == 'note' or field.name == 'diagnosis' or field.name == 'legal_address' or field.name == 'postal_address' or field.name == 'bank_details' %}form-wide{% endif %}">
           <span>{{ field.label }}</span>
           {{ field }}
           {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}

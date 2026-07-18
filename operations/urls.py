@@ -85,6 +85,47 @@ urlpatterns = [
         views.center_expense_edit,
         name="center_expense_edit",
     ),
+    path("directories/expenses/", views.expense_directory_list, name="expense_directory_list"),
+    path(
+        "directories/expense-categories/new/",
+        views.expense_category_create,
+        name="expense_category_create",
+    ),
+    path(
+        "directories/expense-categories/<int:pk>/edit/",
+        views.expense_category_edit,
+        name="expense_category_edit",
+    ),
+    path(
+        "directories/expense-categories/<int:pk>/deactivate/",
+        views.expense_category_deactivate,
+        name="expense_category_deactivate",
+    ),
+    path(
+        "directories/expense-categories/<int:pk>/activate/",
+        views.expense_category_activate,
+        name="expense_category_activate",
+    ),
+    path(
+        "directories/counterparties/new/",
+        views.counterparty_create,
+        name="counterparty_create",
+    ),
+    path(
+        "directories/counterparties/<int:pk>/edit/",
+        views.counterparty_edit,
+        name="counterparty_edit",
+    ),
+    path(
+        "directories/counterparties/<int:pk>/archive/",
+        views.counterparty_archive,
+        name="counterparty_archive",
+    ),
+    path(
+        "directories/counterparties/<int:pk>/restore/",
+        views.counterparty_restore,
+        name="counterparty_restore",
+    ),
     path("assets/", views.equipment_asset_list, name="equipment_asset_list"),
     path("assets/new/", views.equipment_asset_create, name="equipment_asset_create"),
     path(
