@@ -3692,6 +3692,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
             "child": self.child.pk,
             "representative_link": self._signer_link().pk,
             "funding_source": self.funding.pk,
+            "certificate": "",
             "contract_type": ServiceContract.ContractType.STANDARD,
             "number": number,
             "signed_on": timezone.localdate().isoformat(),
@@ -3787,6 +3788,23 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(line.amount, Decimal("15000.00"))
         self.assertEqual(LedgerEntry.objects.count(), ledger_count)
 
+    def test_service_contract_create_saves_certificate_for_selected_child(self):
+        certificate = Certificate.objects.create(
+            child=self.child,
+            certificate_type=Certificate.CertificateType.MATERNITY_CAPITAL,
+            number="CERT-FORM",
+            total_amount=Decimal("100000.00"),
+            remaining_amount=Decimal("75000.00"),
+        )
+        data = self._service_contract_post_data(number="S-CERT-FORM")
+        data["certificate"] = certificate.pk
+
+        response = self.client.post(reverse("service_contract_create"), data)
+
+        contract = ServiceContract.objects.get(number="S-CERT-FORM")
+        self.assertRedirects(response, reverse("service_contract_edit", args=[contract.pk]))
+        self.assertEqual(contract.certificate, certificate)
+
     def test_service_contract_create_keeps_form_on_invalid_spec_line(self):
         data = self._service_contract_post_data(number="S-BAD")
         data["service_lines-0-quantity"] = "0.00"
@@ -3820,6 +3838,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
                 "child": self.child.pk,
                 "representative_link": self._signer_link().pk,
                 "funding_source": self.funding.pk,
+                "certificate": "",
                 "contract_type": contract.contract_type,
                 "number": contract.number,
                 "signed_on": contract.signed_on.isoformat(),
@@ -4387,6 +4406,57 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(
             snapshot.contract_snapshot["service_lines"][0]["service_name"],
             "Индивидуальные занятия логопеда",
+        )
+
+    def test_service_contract_word_uses_certificate_placeholders(self):
+        certificate = Certificate.objects.create(
+            child=self.child,
+            certificate_type=Certificate.CertificateType.MATERNITY_CAPITAL,
+            number="CERT-WORD",
+            total_amount=Decimal("100000.00"),
+            remaining_amount=Decimal("75000.00"),
+            valid_from=timezone.localdate(),
+            valid_until=timezone.localdate() + timedelta(days=365),
+        )
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.RECIPIENT_CERTIFICATE,
+            title="Certificate placeholders",
+            version="1",
+            file=self._docx_upload(
+                "certificate_service.docx",
+                "Certificate {{ certificate.type }} №{{ certificate.number }} "
+                "total {{ certificate.total_amount }} remaining {{ certificate.remaining_amount }} "
+                "{{ certificate.valid_from }} {{ certificate.valid_until }} payer {{ certificate.payer_name }}.",
+            ),
+        )
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            certificate=certificate,
+            contract_type=ServiceContract.ContractType.CERTIFICATE,
+            number="S-CERT",
+            signed_on=timezone.localdate(),
+            template=template,
+        )
+
+        response = self.client.post(reverse("service_contract_word", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        payload = b"".join(response.streaming_content)
+        generated_text = self._docx_text(payload)
+        self.assertIn("Материнский капитал", generated_text)
+        self.assertIn("CERT-WORD", generated_text)
+        self.assertIn("100 000,00 ₽", generated_text)
+        self.assertIn("75 000,00 ₽", generated_text)
+        self.assertIn(certificate.valid_from.strftime("%d.%m.%Y"), generated_text)
+        self.assertIn(certificate.valid_until.strftime("%d.%m.%Y"), generated_text)
+
+        contract.refresh_from_db()
+        snapshot = contract.document.contract_legal_snapshot
+        self.assertEqual(snapshot.contract_snapshot["certificate"]["number"], "CERT-WORD")
+        self.assertEqual(
+            snapshot.contract_snapshot["certificate"]["remaining_amount"],
+            "75000.00",
         )
 
     def test_service_contract_word_uses_active_center_legal_profile(self):

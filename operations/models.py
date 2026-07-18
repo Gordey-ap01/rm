@@ -3851,6 +3851,14 @@ class ServiceContract(TimeStampedModel):
         blank=True,
         related_name="service_contracts",
     )
+    certificate = models.ForeignKey(
+        "Certificate",
+        verbose_name="сертификат",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="service_contracts",
+    )
     contract_type = models.CharField(
         "тип договора",
         max_length=30,
@@ -3893,6 +3901,7 @@ class ServiceContract(TimeStampedModel):
             models.Index(fields=["child", "status", "valid_from", "valid_until"]),
             models.Index(fields=["representative_link", "status"]),
             models.Index(fields=["funding_source", "status", "valid_from", "valid_until"]),
+            models.Index(fields=["certificate", "status"]),
         ]
         constraints = [
             models.CheckConstraint(
@@ -3934,6 +3943,8 @@ class ServiceContract(TimeStampedModel):
                 errors["representative_link"] = "Подписант должен относиться к выбранному получателю."
             if not self.representative_link.signs_contract:
                 errors["representative_link"] = "У представителя должен быть флажок подписанта договора."
+        if self.certificate_id and self.child_id and self.certificate.child_id != self.child_id:
+            errors["certificate"] = "Сертификат должен относиться к выбранному получателю."
         if (
             self.template_id
             and self.template.template_type

@@ -140,6 +140,7 @@ def _service_queryset(filters: dict[str, str]) -> list[ServiceContract]:
         "child",
         "representative_link__representative",
         "funding_source",
+        "certificate",
         "template",
         "document",
         "document__contract_legal_snapshot",
@@ -158,6 +159,7 @@ def _service_queryset(filters: dict[str, str]) -> list[ServiceContract]:
             | Q(representative_link__representative__last_name__icontains=query)
             | Q(representative_link__representative__first_name__icontains=query)
             | Q(funding_source__name__icontains=query)
+            | Q(certificate__number__icontains=query)
             | Q(service_lines__service_name__icontains=query)
             | Q(service_lines__service__name__icontains=query)
             | Q(template__title__icontains=query)

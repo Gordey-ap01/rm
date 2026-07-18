@@ -461,6 +461,25 @@ def _service_lines_snapshot(contract: ServiceContract) -> list[dict[str, object]
     return [_service_line_snapshot(line) for line in _service_lines(contract)]
 
 
+def _certificate_snapshot(contract: ServiceContract) -> dict[str, object]:
+    certificate = getattr(contract, "certificate", None)
+    if certificate is None:
+        return {}
+    return {
+        "id": certificate.pk,
+        "child_id": certificate.child_id,
+        "certificate_type": certificate.certificate_type,
+        "certificate_type_display": certificate.get_certificate_type_display(),
+        "number": certificate.number,
+        "total_amount": _snapshot_decimal(certificate.total_amount),
+        "remaining_amount": _snapshot_decimal(certificate.remaining_amount),
+        "valid_from": _snapshot_date(certificate.valid_from),
+        "valid_until": _snapshot_date(certificate.valid_until),
+        "note": certificate.note,
+        "updated_at": _snapshot_datetime(certificate.updated_at),
+    }
+
+
 def _service_contract_snapshot(contract: ServiceContract, document: Document) -> dict[str, object]:
     service_lines = _service_lines_snapshot(contract)
     total_amount = sum((Decimal(line["amount"] or "0") for line in service_lines), Decimal("0"))
@@ -471,6 +490,8 @@ def _service_contract_snapshot(contract: ServiceContract, document: Document) ->
         "contract_type": contract.contract_type,
         "contract_type_display": contract.get_contract_type_display(),
         "funding_source_id": contract.funding_source_id,
+        "certificate_id": contract.certificate_id,
+        "certificate": _certificate_snapshot(contract),
         "signed_on": _snapshot_date(contract.signed_on),
         "valid_from": _snapshot_date(contract.valid_from),
         "valid_until": _snapshot_date(contract.valid_until),
@@ -668,6 +689,21 @@ def _service_spec_placeholder_values(contract: ServiceContract) -> dict[str, str
     return values
 
 
+def _certificate_placeholder_values(contract: ServiceContract) -> dict[str, str]:
+    certificate = getattr(contract, "certificate", None)
+    if certificate is None:
+        return {}
+    return {
+        "certificate.type": certificate.get_certificate_type_display(),
+        "certificate.number": _text(certificate.number),
+        "certificate.total_amount": _money_label(certificate.total_amount),
+        "certificate.remaining_amount": _money_label(certificate.remaining_amount),
+        "certificate.valid_from": _date_label(certificate.valid_from),
+        "certificate.valid_until": _date_label(certificate.valid_until),
+        "certificate.payer_name": PLACEHOLDER_BLANK,
+    }
+
+
 def service_contract_placeholders(contract: ServiceContract) -> dict[str, str]:
     signer_link = contract.representative_link
     signer = signer_link.representative
@@ -676,6 +712,7 @@ def service_contract_placeholders(contract: ServiceContract) -> dict[str, str]:
     values.update(_center_placeholder_values())
     values.update(_funding_source_placeholder_values(contract))
     values.update(_service_spec_placeholder_values(contract))
+    values.update(_certificate_placeholder_values(contract))
     values.update(
         {
             "contract.number": _text(contract.number, "б/н"),

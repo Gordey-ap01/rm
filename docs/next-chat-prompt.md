@@ -361,3 +361,20 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused contract tests `40 passed`, full pytest `588 passed`, Python Playwright desktop/mobile QA for service contract form/list with artifacts `%TEMP%\rmcodex-browser-qa-service-contract-spec`.
 - Graphify code-index after this slice: `4868` nodes / `20003` edges. Semantic extraction was not rerun; keep `docshablon/` private/ignored and do not send raw samples to semantic extraction.
 - Next safe step: `certificate-contract-link`, immutable signed-file archive, or a separate B2B/consent/act contract. Do not connect service contract lines to ledger/import write-path without a new contract.
+
+## Latest clarification 2026-07-18: certificate-contract-link complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/30-certificate-contract-link-contract.md` is added and implemented.
+- Migration `operations.0034_servicecontract_certificate_and_more` adds nullable `ServiceContract.certificate` and a certificate/status index.
+- `ServiceContract.clean()` rejects certificates that belong to another child.
+- `ServiceContractForm` filters certificate choices by selected child on bound POST and edit forms; the field remains optional for drafts.
+- `Certificate` is registered in Django admin so `ServiceContractAdmin.autocomplete_fields` can reference it safely.
+- `/contracts/` shows certificate type and number for linked service contracts.
+- Word generation fills `certificate.type`, `certificate.number`, `certificate.total_amount`, `certificate.remaining_amount`, `certificate.valid_from`, `certificate.valid_until`; `certificate.payer_name` remains blank fallback until payer modeling exists.
+- `ContractLegalSnapshot.contract_snapshot["certificate"]` stores certificate id/type/number/amounts/dates.
+- No certificate balance mutation, ledger/balance/payment/billing/payroll/grant/schedule/status semantics changed.
+- Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused contract tests `43 passed`, full pytest `591 passed`, Python Playwright desktop/mobile QA for service contract certificate form/list with artifacts `%TEMP%\rmcodex-browser-qa-certificate-contract-link`.
+- Graphify code-index after this slice: `4885` nodes / `20203` edges. Semantic extraction was not rerun; keep `docshablon/` private/ignored and do not send raw samples to semantic extraction.
+- Next safe step: immutable signed-file archive, B2B contract contract, consent/act generation contract, or certificate payer/source modeling. Do not mutate certificate остатки or ledger from contracts without a new contract.

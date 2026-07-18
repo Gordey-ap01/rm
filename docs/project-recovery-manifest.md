@@ -354,3 +354,18 @@ Browser QA - это проверка живого интерфейса в бра
 - Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused contract tests `40 passed`, full pytest `588 passed`, Python Playwright desktop/mobile QA with artifacts `%TEMP%\rmcodex-browser-qa-service-contract-spec`; runserver `8097` stopped.
 - Graphify code-index after this slice: `4868` nodes / `20003` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
 - Next safe slice: `certificate-contract-link`, immutable signed-file archive, or a separate B2B/consent/act contract. Do not connect service contract lines to ledger/import write-path without a new contract.
+
+## Latest Recovery Note 2026-07-18: certificate-contract-link
+
+- `docs/30-certificate-contract-link-contract.md` is added and implemented.
+- Migration `operations.0034_servicecontract_certificate_and_more` adds nullable `ServiceContract.certificate` and a certificate/status index.
+- `ServiceContract.clean()` rejects certificates that belong to another child.
+- `ServiceContractForm` filters certificate choices by selected child on bound POST and edit forms; the field remains optional for drafts.
+- `Certificate` is registered in Django admin so `ServiceContractAdmin.autocomplete_fields` can reference it safely.
+- `/contracts/` shows certificate type and number for linked service contracts.
+- Word generation fills `certificate.type`, `certificate.number`, `certificate.total_amount`, `certificate.remaining_amount`, `certificate.valid_from`, `certificate.valid_until`; `certificate.payer_name` remains blank fallback until payer modeling exists.
+- `ContractLegalSnapshot.contract_snapshot["certificate"]` stores certificate id/type/number/amounts/dates.
+- No certificate balance mutation, ledger/balance/payment/billing/payroll/grant/schedule/appointment-status semantics changed.
+- Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused contract tests `43 passed`, full pytest `591 passed`, Python Playwright desktop/mobile QA with artifacts `%TEMP%\rmcodex-browser-qa-certificate-contract-link`; runserver `8098` stopped.
+- Graphify code-index after this slice: `4885` nodes / `20203` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
+- Next safe slice: immutable signed-file archive, B2B contract contract, consent/act generation contract, or certificate payer/source modeling. Do not mutate certificate остатки or ledger from contracts without a new contract.

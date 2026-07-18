@@ -24,6 +24,7 @@ from .models import (
     CenterExpense,
     CenterExpenseCategory,
     CenterLegalProfile,
+    Certificate,
     Child,
     Consent,
     ContractTemplate,
@@ -2821,6 +2822,7 @@ class ServiceContractForm(forms.ModelForm):
             "child",
             "representative_link",
             "funding_source",
+            "certificate",
             "contract_type",
             "number",
             "signed_on",
@@ -2835,6 +2837,7 @@ class ServiceContractForm(forms.ModelForm):
             "child": "Получатель",
             "representative_link": "Подписант",
             "funding_source": "Источник финансирования",
+            "certificate": "Сертификат",
             "contract_type": "Тип договора",
             "number": "Номер",
             "signed_on": "Дата подписания",
@@ -2886,6 +2889,18 @@ class ServiceContractForm(forms.ModelForm):
             funding_filter
         ).order_by("name")
         self.fields["funding_source"].required = False
+
+        certificate_filter = Q()
+        if child_id:
+            certificate_filter &= Q(child_id=child_id)
+        else:
+            certificate_filter &= Q(pk__isnull=True)
+        if self.instance and self.instance.certificate_id:
+            certificate_filter |= Q(pk=self.instance.certificate_id)
+        self.fields["certificate"].queryset = Certificate.objects.filter(
+            certificate_filter
+        ).order_by("-created_at")
+        self.fields["certificate"].required = False
 
         template_filter = Q(
             template_type__in=ContractTemplate.service_contract_template_types(),

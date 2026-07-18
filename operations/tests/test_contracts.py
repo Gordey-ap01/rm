@@ -8,6 +8,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from operations.models import (
+    Certificate,
     Child,
     ContractTemplate,
     Counterparty,
@@ -79,6 +80,20 @@ class ContractRegistryValidationTests(TestCase):
             code="SPEECH",
             default_duration_minutes=30,
             default_price=Decimal("1500.00"),
+        )
+        cls.certificate = Certificate.objects.create(
+            child=cls.child,
+            certificate_type=Certificate.CertificateType.MATERNITY_CAPITAL,
+            number="CERT-001",
+            total_amount=Decimal("100000.00"),
+            remaining_amount=Decimal("75000.00"),
+        )
+        cls.other_certificate = Certificate.objects.create(
+            child=cls.other_child,
+            certificate_type=Certificate.CertificateType.REGIONAL,
+            number="CERT-OTHER",
+            total_amount=Decimal("50000.00"),
+            remaining_amount=Decimal("50000.00"),
         )
         cls.contract_document = Document.objects.create(
             child=cls.child,
@@ -185,6 +200,7 @@ class ContractRegistryValidationTests(TestCase):
             child=self.child,
             representative_link=self.signer_link,
             funding_source=self.funding_source,
+            certificate=self.certificate,
             contract_type=ServiceContract.ContractType.STANDARD,
             number="S-001",
             signed_on=self.today,
@@ -197,7 +213,20 @@ class ContractRegistryValidationTests(TestCase):
         self.assertEqual(contract.child, self.child)
         self.assertEqual(contract.representative_link, self.signer_link)
         self.assertEqual(contract.funding_source, self.funding_source)
+        self.assertEqual(contract.certificate, self.certificate)
         self.assertEqual(contract.document, self.contract_document)
+
+    def test_service_contract_rejects_certificate_from_other_child(self):
+        contract = ServiceContract(
+            child=self.child,
+            representative_link=self.signer_link,
+            certificate=self.other_certificate,
+        )
+
+        with self.assertRaises(ValidationError) as raised:
+            contract.full_clean()
+
+        self.assertIn("certificate", raised.exception.message_dict)
 
     def test_service_contract_line_tracks_spec_without_financial_facts(self):
         ledger_count = LedgerEntry.objects.count()

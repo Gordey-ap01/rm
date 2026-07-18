@@ -2,7 +2,7 @@
 
 Дата: 2026-07-18
 
-Статус: контракт на DB-owner срез
+Статус: DB-owner срез выполнен
 
 Основание:
 - `docs/24-document-template-source-inventory.md`
@@ -42,3 +42,13 @@
 - No ledger/balance/payment/billing/payroll/grant/schedule/status semantics change.
 - Checks: Ruff, Django check, migration dry-run, focused contract/model/view tests, full pytest, Browser QA for service contract form/list.
 
+## Реализация 2026-07-18
+
+- Миграция `operations.0034_servicecontract_certificate_and_more` добавляет nullable `ServiceContract.certificate` и индекс `certificate/status`.
+- `ServiceContract.clean()` отклоняет сертификат другого получателя.
+- `ServiceContractForm` показывает сертификаты выбранного получателя на bound POST и edit-форме; поле остается опциональным для черновиков.
+- Django admin зарегистрировал `Certificate`, чтобы `ServiceContractAdmin.autocomplete_fields` мог безопасно использовать связь.
+- `/contracts/` показывает тип и номер сертификата в строке договора с получателем.
+- Word generation заполняет `certificate.type`, `certificate.number`, `certificate.total_amount`, `certificate.remaining_amount`, `certificate.valid_from`, `certificate.valid_until`, а `certificate.payer_name` пока остается blank fallback.
+- `ContractLegalSnapshot.contract_snapshot["certificate"]` фиксирует id, тип, номер, суммы и даты сертификата.
+- Проверки: Ruff, Django check, migration dry-run `No changes detected`, focused contract tests `43 passed`, full pytest `591 passed`, Python Playwright desktop/mobile QA для формы/реестра; артефакты `%TEMP%\rmcodex-browser-qa-certificate-contract-link`.

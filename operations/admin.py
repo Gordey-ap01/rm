@@ -15,6 +15,7 @@ from .models import (
     CenterExpense,
     CenterExpenseCategory,
     CenterLegalProfile,
+    Certificate,
     Child,
     Consent,
     ContractLegalSnapshot,
@@ -345,6 +346,7 @@ class ServiceContractAdmin(admin.ModelAdmin):
         "child",
         "representative_link",
         "funding_source",
+        "certificate",
         "contract_type",
         "number",
         "status",
@@ -359,14 +361,23 @@ class ServiceContractAdmin(admin.ModelAdmin):
         "representative_link__representative__last_name",
         "representative_link__representative__first_name",
         "funding_source__name",
+        "certificate__number",
         "template__title",
         "document__title",
     )
-    list_filter = ("status", "contract_type", "funding_source", "signed_on", "valid_until")
+    list_filter = (
+        "status",
+        "contract_type",
+        "funding_source",
+        "certificate__certificate_type",
+        "signed_on",
+        "valid_until",
+    )
     autocomplete_fields = (
         "child",
         "representative_link",
         "funding_source",
+        "certificate",
         "template",
         "document",
     )
@@ -417,6 +428,21 @@ class ContractLegalSnapshotAdmin(admin.ModelAdmin):
         "funding_source_snapshot",
         "template_snapshot",
     )
+
+
+@admin.register(Certificate)
+class CertificateAdmin(admin.ModelAdmin):
+    list_display = (
+        "child",
+        "certificate_type",
+        "number",
+        "total_amount",
+        "remaining_amount",
+        "valid_until",
+    )
+    search_fields = ("number", "child__last_name", "child__first_name", "note")
+    list_filter = ("certificate_type", "valid_until")
+    autocomplete_fields = ("child",)
 
 
 class FundingStaffAllocationInline(admin.TabularInline):
