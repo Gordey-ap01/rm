@@ -249,4 +249,16 @@
 - Новых моделей/миграций нет; `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing decisions, grant semantics и статусы занятий не менялись.
 - Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused contract tests `13 passed`, related tests `24 passed`, full pytest `557 passed`, Python Playwright desktop/mobile Browser QA.
 - Graphify code-index after slice: `4670` nodes / `18767` edges; semantic extraction was not rerun and no API key was written to project files.
+
+## Последнее уточнение 2026-07-18: inventory исходных документов для шаблонов
+
+После текста промпта выше считать актуальным:
+
+- Добавлен `docs/24-document-template-source-inventory.md`.
+- Локальная папка `docshablon/` содержит реальные исходные `.doc/.docx` для будущих шаблонов и добавлена в `.gitignore`; raw samples не коммитить, не копировать в docs и не отправлять в публичные артефакты.
+- Образцы обезличенно разложены по контурам: пожертвование разовое/регулярное, договоры услуг с получателем, присмотр/уход, материнский капитал, безвозмездные услуги за счет пожертвований, B2B-договор организации в пользу получателя, фото/видео согласие.
+- Главные gaps перед юридически полноценной генерацией: реквизиты центра, паспорт/адрес представителя, адрес получателя, спецификация услуг договора, связь договора с финансированием/сертификатом, сохранение документов без обязательного `Child`, snapshot подписанных реквизитов, общий шаблон для согласий.
+- Код, модели, миграции, расписание, billing/ledger/payroll/grants/status semantics не менялись.
+- Graphify: `graphify update .` был запущен после docs/24, но отказался перезаписать граф из-за shrink 4670 -> 4630 nodes. `--force` не использовать без отдельного решения; raw `docshablon/` не отправлялись в semantic extraction.
+- Следующий безопасный кодовый срез: `template-placeholder-expansion-v2` без миграций. DB-срезы по реквизитам/документам/сертификатам/B2B делать только после отдельного контракта и одним владельцем migration chain.
 - Следующее безопасное направление: отдельный контракт на модель документов для договоров пожертвования без `Child`, юридические реквизиты центра/контрагентов, approve/pay расходов или import write-path.

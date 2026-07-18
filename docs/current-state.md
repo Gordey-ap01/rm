@@ -1642,4 +1642,14 @@ SMTP для реальной промышленной рассылки еще н
 - Проверки прошли: Ruff touched Python, `manage.py check --settings=rehab_center.settings_test`, migration dry-run `No changes detected`, focused contract tests `13 passed`, related document/contract/directory tests `24 passed`, full `pytest -q --tb=short` `557 passed` с прежним предупреждением django-tasks.
 - Browser QA: Python Playwright проверил `/contracts/` desktop/mobile, POST-download Word для service/donation contracts, отсутствие console/page errors и horizontal overflow. Артефакты: `%TEMP%\rmcodex-browser-qa-contract-word`; runserver `8080` остановлен.
 - Graphify code-index after contract Word generation: `4670` nodes / `18767` edges; semantic extraction was not rerun and no API key was written to project files.
+
+## Обновление 2026-07-18: inventory исходных документов для шаблонов
+
+- Добавлен docs-only контракт `docs/24-document-template-source-inventory.md` по локальной папке `docshablon/`.
+- `docshablon/` добавлена в `.gitignore`, потому что образцы содержат реальные персональные, юридические, банковские и договорные данные; raw `.doc/.docx` не должны попадать в git, публичные артефакты или Graphify semantic extraction.
+- Инвентаризация обезличенно разложила 8 образцов на контуры: разовое пожертвование, регулярное пожертвование, платные услуги получателю, присмотр/уход, материнский капитал, безвозмездные услуги за счет пожертвований, B2B-договор организации в пользу получателя, фото/видео согласие.
+- Зафиксированы gaps текущей модели: `Document` требует `Child`; нет реквизитов центра, юридических данных представителя и адреса получателя; `DonationContract.amount_limit` не описывает регулярные платежи; `ServiceContract` не хранит спецификацию услуг, источник финансирования, связь с сертификатом и юридический вариант договора; нет snapshot-слоя подписанных реквизитов; `ContractTemplate` не покрывает согласия.
+- Код, модели, миграции, billing/ledger/payroll/grants/status semantics не менялись.
+- Graphify update attempted after docs/24: `graphify update .` re-extracted 171 code files but refused to overwrite existing `graphify-out/graph.json` because the new code-only graph had 4630 nodes versus existing 4670. No `--force` was used, so the existing graph remains unchanged and `docshablon/` raw documents were not semantically extracted.
+- Следующий безопасный кодовый срез без миграций: `template-placeholder-expansion-v2` по docs/24. Он должен расширить плейсхолдеры и UI-справку по `.docx`-шаблонам, не трогая БД и финансовые/расписательные контуры.
 - Следующие безопасные направления только отдельными контрактами: модель документов для договоров пожертвования без `Child`, юридические реквизиты центра/контрагентов, approve/pay расходов центра, import write-path с записью в БД.
