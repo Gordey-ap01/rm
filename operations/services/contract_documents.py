@@ -16,6 +16,7 @@ from operations.models import Document, DonationContract, ServiceContract
 
 DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 MAX_TEMPLATE_BYTES = 5 * 1024 * 1024
+PLACEHOLDER_BLANK = "_______________"
 
 
 class ContractDocumentError(RuntimeError):
@@ -28,10 +29,171 @@ class _ContractWithNumber(Protocol):
 
 
 @dataclass(frozen=True)
+class PlaceholderGroup:
+    title: str
+    placeholders: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class GeneratedContractFile:
     payload: BytesIO
     filename: str
     document: Document | None = None
+
+
+PLACEHOLDER_GROUPS = (
+    PlaceholderGroup(
+        "Центр",
+        (
+            "center.full_name",
+            "center.short_name",
+            "center.director_full_name",
+            "center.director_short_name",
+            "center.authority_basis",
+            "center.license_number",
+            "center.license_date",
+            "center.license_authority",
+            "center.ogrn",
+            "center.inn",
+            "center.kpp",
+            "center.legal_address",
+            "center.location_address",
+            "center.phone",
+            "center.email",
+            "center.site",
+            "center.bank_name",
+            "center.bank_bik",
+            "center.bank_account",
+            "center.bank_corr_account",
+        ),
+    ),
+    PlaceholderGroup(
+        "Договор",
+        (
+            "contract.number",
+            "contract.signed_on",
+            "contract.valid_from",
+            "contract.valid_until",
+            "contract.validity",
+            "contract.status",
+            "contract.type",
+            "contract.template",
+            "contract.city",
+            "contract.amount",
+            "contract.amount_words",
+            "contract.monthly_amount",
+            "contract.payment_due_days",
+        ),
+    ),
+    PlaceholderGroup(
+        "Получатель",
+        (
+            "child.full_name",
+            "child.birth_date",
+            "child.phone",
+            "child.email",
+            "child.address",
+        ),
+    ),
+    PlaceholderGroup(
+        "Представитель",
+        (
+            "representative.full_name",
+            "representative.relationship",
+            "representative.phone",
+            "representative.phone_alt",
+            "representative.email",
+            "representative.passport_series",
+            "representative.passport_number",
+            "representative.passport_issued_by",
+            "representative.passport_issued_on",
+            "representative.registration_address",
+            "representative.signs_contract",
+            "representative.receives_schedule",
+            "representative.is_payer",
+        ),
+    ),
+    PlaceholderGroup(
+        "Контрагент",
+        (
+            "counterparty.name",
+            "counterparty.type",
+            "counterparty.inn",
+            "counterparty.kpp",
+            "counterparty.ogrn",
+            "counterparty.legal_address",
+            "counterparty.postal_address",
+            "counterparty.bank_details",
+            "counterparty.contact_person",
+            "counterparty.phone",
+            "counterparty.email",
+            "counterparty.signer_full_name",
+            "counterparty.signer_position",
+            "counterparty.authority_basis",
+            "counterparty.bank_name",
+            "counterparty.bank_bik",
+            "counterparty.bank_account",
+            "counterparty.bank_corr_account",
+        ),
+    ),
+    PlaceholderGroup(
+        "Финансирование",
+        (
+            "funding_source.name",
+            "funding_source.type",
+            "funding_source.starts_on",
+            "funding_source.ends_on",
+            "funding_source.transfer_policy",
+            "funding_source.project_name",
+        ),
+    ),
+    PlaceholderGroup(
+        "Пожертвование",
+        (
+            "donation.amount_limit",
+            "donation.amount",
+            "donation.monthly_amount",
+            "donation.periodicity",
+        ),
+    ),
+    PlaceholderGroup(
+        "Спецификация услуг",
+        (
+            "service_spec.rows",
+            "service_spec.service_name",
+            "service_spec.quantity",
+            "service_spec.unit",
+            "service_spec.hours",
+            "service_spec.price",
+            "service_spec.amount",
+            "service_spec.period",
+        ),
+    ),
+    PlaceholderGroup(
+        "Сертификат",
+        (
+            "certificate.type",
+            "certificate.number",
+            "certificate.total_amount",
+            "certificate.remaining_amount",
+            "certificate.valid_from",
+            "certificate.valid_until",
+            "certificate.payer_name",
+        ),
+    ),
+)
+
+
+def placeholder_reference_groups() -> list[PlaceholderGroup]:
+    return list(PLACEHOLDER_GROUPS)
+
+
+def _empty_placeholder_values() -> dict[str, str]:
+    return {
+        placeholder: PLACEHOLDER_BLANK
+        for group in PLACEHOLDER_GROUPS
+        for placeholder in group.placeholders
+    }
 
 
 def _safe_filename(prefix: str, contract: _ContractWithNumber) -> str:
@@ -42,7 +204,7 @@ def _safe_filename(prefix: str, contract: _ContractWithNumber) -> str:
 
 def _date_label(value) -> str:
     if not value:
-        return "_______________"
+        return PLACEHOLDER_BLANK
     return value.strftime("%d.%m.%Y")
 
 
@@ -52,10 +214,26 @@ def _money_label(value: Decimal | None) -> str:
     return f"{value:,.2f}".replace(",", " ").replace(".", ",") + " ₽"
 
 
-def _text(value: object, fallback: str = "_______________") -> str:
+def _text(value: object, fallback: str = PLACEHOLDER_BLANK) -> str:
     if value is None or value == "":
         return fallback
     return str(value)
+
+
+def _bool_label(value: bool | None) -> str:
+    if value is None:
+        return PLACEHOLDER_BLANK
+    return "да" if value else "нет"
+
+
+def _validity_label(valid_from, valid_until) -> str:
+    if valid_from and valid_until:
+        return f"{_date_label(valid_from)} - {_date_label(valid_until)}"
+    if valid_from:
+        return f"с {_date_label(valid_from)}"
+    if valid_until:
+        return f"до {_date_label(valid_until)}"
+    return PLACEHOLDER_BLANK
 
 
 def _template_label(template) -> str:
@@ -66,41 +244,71 @@ def _template_label(template) -> str:
 
 
 def service_contract_placeholders(contract: ServiceContract) -> dict[str, str]:
-    signer = contract.representative_link.representative
-    return {
-        "contract.number": _text(contract.number, "б/н"),
-        "contract.signed_on": _date_label(contract.signed_on),
-        "contract.valid_from": _date_label(contract.valid_from),
-        "contract.valid_until": _date_label(contract.valid_until),
-        "contract.status": contract.get_status_display(),
-        "contract.type": contract.get_contract_type_display(),
-        "contract.template": _template_label(contract.template),
-        "child.full_name": contract.child.full_name,
-        "child.birth_date": _date_label(contract.child.birth_date),
-        "representative.full_name": signer.full_name,
-    }
+    signer_link = contract.representative_link
+    signer = signer_link.representative
+    values = _empty_placeholder_values()
+    values.update(
+        {
+            "contract.number": _text(contract.number, "б/н"),
+            "contract.signed_on": _date_label(contract.signed_on),
+            "contract.valid_from": _date_label(contract.valid_from),
+            "contract.valid_until": _date_label(contract.valid_until),
+            "contract.validity": _validity_label(contract.valid_from, contract.valid_until),
+            "contract.status": contract.get_status_display(),
+            "contract.type": contract.get_contract_type_display(),
+            "contract.template": _template_label(contract.template),
+            "child.full_name": contract.child.full_name,
+            "child.birth_date": _date_label(contract.child.birth_date),
+            "child.phone": _text(contract.child.phone),
+            "child.email": _text(contract.child.email),
+            "representative.full_name": signer.full_name,
+            "representative.relationship": signer_link.get_relationship_type_display(),
+            "representative.phone": _text(signer.phone),
+            "representative.phone_alt": _text(signer.phone_alt),
+            "representative.email": _text(signer.email),
+            "representative.signs_contract": _bool_label(signer_link.signs_contract),
+            "representative.receives_schedule": _bool_label(signer_link.receives_schedule),
+            "representative.is_payer": _bool_label(signer_link.is_payer),
+        }
+    )
+    return values
 
 
 def donation_contract_placeholders(contract: DonationContract) -> dict[str, str]:
     counterparty = contract.counterparty
-    return {
-        "contract.number": _text(contract.number, "б/н"),
-        "contract.signed_on": _date_label(contract.signed_on),
-        "contract.valid_from": _date_label(contract.valid_from),
-        "contract.valid_until": _date_label(contract.valid_until),
-        "contract.status": contract.get_status_display(),
-        "contract.type": contract.get_contract_type_display(),
-        "contract.template": _template_label(contract.template),
-        "counterparty.name": counterparty.name,
-        "counterparty.inn": _text(counterparty.inn, ""),
-        "counterparty.kpp": _text(counterparty.kpp, ""),
-        "counterparty.ogrn": _text(counterparty.ogrn, ""),
-        "counterparty.legal_address": _text(counterparty.legal_address, ""),
-        "counterparty.postal_address": _text(counterparty.postal_address, ""),
-        "counterparty.bank_details": _text(counterparty.bank_details, ""),
-        "funding_source.name": contract.funding_source.name,
-        "donation.amount_limit": _money_label(contract.amount_limit),
-    }
+    funding_source = contract.funding_source
+    values = _empty_placeholder_values()
+    values.update(
+        {
+            "contract.number": _text(contract.number, "б/н"),
+            "contract.signed_on": _date_label(contract.signed_on),
+            "contract.valid_from": _date_label(contract.valid_from),
+            "contract.valid_until": _date_label(contract.valid_until),
+            "contract.validity": _validity_label(contract.valid_from, contract.valid_until),
+            "contract.status": contract.get_status_display(),
+            "contract.type": contract.get_contract_type_display(),
+            "contract.template": _template_label(contract.template),
+            "counterparty.name": counterparty.name,
+            "counterparty.type": counterparty.get_counterparty_type_display(),
+            "counterparty.inn": _text(counterparty.inn, ""),
+            "counterparty.kpp": _text(counterparty.kpp, ""),
+            "counterparty.ogrn": _text(counterparty.ogrn, ""),
+            "counterparty.legal_address": _text(counterparty.legal_address, ""),
+            "counterparty.postal_address": _text(counterparty.postal_address, ""),
+            "counterparty.bank_details": _text(counterparty.bank_details, ""),
+            "counterparty.contact_person": _text(counterparty.contact_person),
+            "counterparty.phone": _text(counterparty.phone),
+            "counterparty.email": _text(counterparty.email),
+            "funding_source.name": funding_source.name,
+            "funding_source.type": funding_source.get_source_type_display(),
+            "funding_source.starts_on": _date_label(funding_source.starts_on),
+            "funding_source.ends_on": _date_label(funding_source.ends_on),
+            "funding_source.transfer_policy": funding_source.get_transfer_policy_display(),
+            "donation.amount_limit": _money_label(contract.amount_limit),
+            "donation.amount": _money_label(contract.amount_limit),
+        }
+    )
+    return values
 
 
 def _replace_placeholders(text: str, values: dict[str, str]) -> str:

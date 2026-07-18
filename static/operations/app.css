@@ -2274,6 +2274,60 @@ th {
   line-height: 1.3;
 }
 
+.placeholder-reference {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.placeholder-reference h3,
+.placeholder-reference p {
+  margin: 0;
+}
+
+.placeholder-reference h3 {
+  color: var(--heading);
+  font-size: 15px;
+}
+
+.placeholder-reference p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.placeholder-reference details {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.placeholder-reference summary {
+  color: var(--heading);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.placeholder-token-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.placeholder-token-grid code {
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--heading);
+  display: block;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  padding: 5px 6px;
+}
+
 .object-form-actions {
   display: grid;
   gap: 8px;

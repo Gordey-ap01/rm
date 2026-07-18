@@ -48,6 +48,22 @@
           </li>
         {% endfor %}
       </ul>
+      {% if placeholder_groups %}
+        <div class="placeholder-reference">
+          <h3>Плейсхолдеры</h3>
+          <p>В Word-шаблоне используйте формат <code>{% templatetag openvariable %} key {% templatetag closevariable %}</code>.</p>
+          {% for group in placeholder_groups %}
+            <details{% if forloop.first %} open{% endif %}>
+              <summary>{{ group.title }}</summary>
+              <div class="placeholder-token-grid">
+                {% for placeholder in group.placeholders %}
+                  <code>{% templatetag openvariable %} {{ placeholder }} {% templatetag closevariable %}</code>
+                {% endfor %}
+              </div>
+            </details>
+          {% endfor %}
+        </div>
+      {% endif %}
       <div class="form-actions object-form-actions">
         <button type="submit">Сохранить</button>
         <a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>

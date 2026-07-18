@@ -322,6 +322,7 @@ def contract_template_create(request):
             "form": form,
             "cancel_url": reverse("contract_list"),
             "control_items": contract_form_control_items("template"),
+            "placeholder_groups": contract_doc_svc.placeholder_reference_groups(),
         },
     )
 
@@ -347,6 +348,7 @@ def contract_template_edit(request, pk: int):
             "form": form,
             "cancel_url": reverse("contract_list"),
             "control_items": contract_form_control_items("template"),
+            "placeholder_groups": contract_doc_svc.placeholder_reference_groups(),
         },
     )
 

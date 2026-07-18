@@ -262,3 +262,17 @@
 - Graphify: `graphify update .` был запущен после docs/24, но отказался перезаписать граф из-за shrink 4670 -> 4630 nodes. `--force` не использовать без отдельного решения; raw `docshablon/` не отправлялись в semantic extraction.
 - Следующий безопасный кодовый срез: `template-placeholder-expansion-v2` без миграций. DB-срезы по реквизитам/документам/сертификатам/B2B делать только после отдельного контракта и одним владельцем migration chain.
 - Следующее безопасное направление: отдельный контракт на модель документов для договоров пожертвования без `Child`, юридические реквизиты центра/контрагентов, approve/pay расходов или import write-path.
+
+## Latest clarification 2026-07-18: template-placeholder-expansion-v2 complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/25-template-placeholder-expansion-v2-contract.md` is implemented.
+- Contract Word template placeholders are now grouped in `operations.services.contract_documents` and shown on `ContractTemplate` create/edit pages.
+- Existing service/donation `.docx` generation replaces supported v2 placeholders; future legal/spec/certificate placeholders become `_______________`.
+- New uploaded contract template files must be `.docx`; local `docshablon/` legacy `.doc` samples must be converted outside the app first.
+- No DB/models/migrations or ledger/balance/payment/payroll/billing/grant/schedule/status semantics changed in this slice.
+- Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused/related contract tests `24 passed`, full pytest `561 passed`, Python Playwright desktop/mobile QA for `/contracts/templates/new/`.
+- `docshablon/` is ignored and contains sensitive source examples; never commit raw samples or send them to Graphify semantic extraction.
+- Graphify was not forced after this slice; previous update refused shrink `4670 -> 4630`. Keep Graphify as an index unless a sanitized corpus update is explicitly planned.
+- Next safe step: draft a separate DB-owner contract for center legal profile plus generalized document targets/signed snapshots, or take a smaller no-migration template/document UI slice. Do not start donation `Document` storage, B2B, consents, acts, approve/pay or import write-path without a new explicit contract.

@@ -1653,3 +1653,16 @@ SMTP для реальной промышленной рассылки еще н
 - Graphify update attempted after docs/24: `graphify update .` re-extracted 171 code files but refused to overwrite existing `graphify-out/graph.json` because the new code-only graph had 4630 nodes versus existing 4670. No `--force` was used, so the existing graph remains unchanged and `docshablon/` raw documents were not semantically extracted.
 - Следующий безопасный кодовый срез без миграций: `template-placeholder-expansion-v2` по docs/24. Он должен расширить плейсхолдеры и UI-справку по `.docx`-шаблонам, не трогая БД и финансовые/расписательные контуры.
 - Следующие безопасные направления только отдельными контрактами: модель документов для договоров пожертвования без `Child`, юридические реквизиты центра/контрагентов, approve/pay расходов центра, import write-path с записью в БД.
+
+## Update 2026-07-18: template-placeholder-expansion-v2
+
+- Implemented `docs/25-template-placeholder-expansion-v2-contract.md` as a no-migration contract-template slice.
+- `operations.services.contract_documents` now exposes grouped Word placeholder reference data and fills supported v2 placeholders for service/donation contract `.docx` generation.
+- Future DB placeholders from the source-template inventory are replaced with `_______________`, so uploaded Word templates do not leak raw `{{ key }}` tokens when a reserved field is not yet modeled.
+- `ContractTemplateForm` now rejects newly uploaded non-`.docx` template files and shows an explicit note to convert legacy `.doc` samples first.
+- Contract template create/edit UI now shows a grouped placeholder reference in the sidebar; Russian group titles were browser-verified after fixing an encoding issue.
+- No models, migrations, ledger, balance accounts, payments, billing, payroll, grant, schedule or appointment-status semantics changed.
+- Verification passed: Ruff format/check on touched Python, Django check, migration dry-run `No changes detected`, focused/related contract tests `24 passed`, full pytest `561 passed` with the existing django-tasks warning, and Python Playwright desktop/mobile QA for `/contracts/templates/new/`.
+- Browser QA artifacts: `%TEMP%\rmcodex-browser-qa-template-placeholders`; local runserver `8081` was stopped.
+- Graphify was not forced after this slice. The previous docs/24 `graphify update .` refused shrink `4670 -> 4630`; raw `docshablon/` samples remain ignored and must not be semantically extracted or committed.
+- Next safe work should be a separate DB-owner contract for center/legal profile and generalized document targets, or another small no-migration document-template slice. Do not start donation `Document` storage, legal snapshots, B2B/consents/acts, approve/pay or import write-path without a new contract and one migration owner.

@@ -7,6 +7,7 @@ from typing import Any
 
 from django import forms
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.db.models import Q, Sum
 from django.forms.models import BaseInlineFormSet, inlineformset_factory
@@ -2575,6 +2576,22 @@ class ContractTemplateForm(forms.ModelForm):
         widgets = {
             "notes": forms.Textarea(attrs={"rows": 3}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["file"].help_text = (
+            "Поддерживается только .docx. Старые .doc из локальных образцов "
+            "сначала конвертируйте в .docx."
+        )
+
+    def clean_file(self):
+        upload = self.cleaned_data.get("file")
+        if isinstance(upload, UploadedFile) and not upload.name.lower().endswith(".docx"):
+            raise forms.ValidationError(
+                "Загрузите шаблон в формате .docx. Файлы .doc нужно сначала "
+                "конвертировать в .docx."
+            )
+        return upload
 
 
 class DonationContractForm(forms.ModelForm):

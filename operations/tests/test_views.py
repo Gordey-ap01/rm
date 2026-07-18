@@ -3618,6 +3618,37 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertRedirects(response, reverse("contract_template_edit", args=[template.pk]))
         self.assertEqual(template.version, "2")
 
+    def test_contract_template_create_shows_placeholder_reference(self):
+        response = self.client.get(reverse("contract_template_create"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "center.full_name")
+        self.assertContains(response, "representative.passport_number")
+        self.assertContains(response, "service_spec.rows")
+        self.assertContains(response, "certificate.number")
+        self.assertContains(response, ".docx")
+
+    def test_contract_template_rejects_legacy_doc_upload(self):
+        response = self.client.post(
+            reverse("contract_template_create"),
+            {
+                "template_type": ContractTemplate.TemplateType.RECIPIENT_SERVICE,
+                "title": "Legacy template",
+                "version": "1",
+                "file": SimpleUploadedFile(
+                    "legacy.doc",
+                    b"legacy word payload",
+                    content_type="application/msword",
+                ),
+                "is_active": "on",
+                "notes": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(ContractTemplate.objects.filter(title="Legacy template").exists())
+        self.assertContains(response, ".docx")
+
     def test_donation_contract_create_links_funding_source_without_financial_facts(self):
         template = self._donation_template()
         ledger_count = LedgerEntry.objects.count()
@@ -3862,6 +3893,38 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertTrue(existing_document.file.name.endswith(".docx"))
         self.assertEqual(self._financial_counts(), counts_before)
 
+    def test_service_contract_word_replaces_v2_placeholders_with_blank_fallback(self):
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.RECIPIENT_SERVICE,
+            title="Service v2 placeholders",
+            version="2",
+            file=self._docx_upload(
+                "service_template_v2.docx",
+                "Phone {{ representative.phone }} email {{ representative.email }} "
+                "center {{ center.full_name }} child-address {{ child.address }} "
+                "spec {{ service_spec.rows }} certificate {{ certificate.number }}.",
+            ),
+        )
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-V2",
+            signed_on=timezone.localdate(),
+            template=template,
+        )
+
+        response = self.client.post(reverse("service_contract_word", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        payload = b"".join(response.streaming_content)
+        generated_text = self._docx_text(payload)
+        self.assertIn(self.parent.phone, generated_text)
+        self.assertIn(self.parent.email, generated_text)
+        self.assertIn("_______________", generated_text)
+        self.assertNotIn("{{ representative.phone }}", generated_text)
+        self.assertNotIn("{{ center.full_name }}", generated_text)
+        self.assertNotIn("{{ service_spec.rows }}", generated_text)
+
     def test_donation_contract_word_download_does_not_create_document_or_financial_facts(self):
         template = ContractTemplate.objects.create(
             template_type=ContractTemplate.TemplateType.SPONSOR,
@@ -3903,6 +3966,45 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertIsNone(contract.document_id)
         self.assertEqual(Document.objects.count(), document_count)
         self.assertEqual(self._financial_counts(), counts_before)
+
+    def test_donation_contract_word_replaces_v2_placeholders_with_blank_fallback(self):
+        self.counterparty.contact_person = "Legal Contact"
+        self.counterparty.phone = "+7 900 000-00-88"
+        self.counterparty.email = "vendor@example.local"
+        self.counterparty.save(update_fields=["contact_person", "phone", "email", "updated_at"])
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.SPONSOR,
+            title="Donation v2 placeholders",
+            version="2",
+            file=self._docx_upload(
+                "donation_template_v2.docx",
+                "Counterparty {{ counterparty.contact_person }} {{ counterparty.phone }} "
+                "{{ counterparty.email }} funding {{ funding_source.type }} "
+                "monthly {{ donation.monthly_amount }} bank {{ counterparty.bank_bik }}.",
+            ),
+        )
+        contract = DonationContract.objects.create(
+            counterparty=self.counterparty,
+            funding_source=self.funding_grant,
+            contract_type=DonationContract.ContractType.MONTHLY,
+            number="D-V2",
+            signed_on=timezone.localdate(),
+            amount_limit=Decimal("1000.00"),
+            template=template,
+        )
+
+        response = self.client.post(reverse("donation_contract_word", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        payload = b"".join(response.streaming_content)
+        generated_text = self._docx_text(payload)
+        self.assertIn("Legal Contact", generated_text)
+        self.assertIn("+7 900 000-00-88", generated_text)
+        self.assertIn("vendor@example.local", generated_text)
+        self.assertIn("_______________", generated_text)
+        self.assertNotIn("{{ counterparty.contact_person }}", generated_text)
+        self.assertNotIn("{{ donation.monthly_amount }}", generated_text)
+        self.assertNotIn("{{ counterparty.bank_bik }}", generated_text)
 
     def test_service_contract_word_invalid_template_does_not_create_document(self):
         template = ContractTemplate.objects.create(
