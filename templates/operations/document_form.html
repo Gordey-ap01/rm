@@ -6,7 +6,7 @@
 <section class="page-header">
   <div>
     <h1>{{ title }}</h1>
-    <p>Файл, категория, получатель и срок действия документа.</p>
+    <p>Файл, категория, цель документа и срок действия.</p>
   </div>
   <a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>
 </section>
@@ -15,7 +15,7 @@
   <article class="panel support-form-panel">
     <div class="support-form-head">
       <h2>Данные документа</h2>
-      <p>Проверьте получателя и срок действия перед загрузкой файла.</p>
+      <p>Проверьте цель и срок действия перед загрузкой файла.</p>
     </div>
     <form method="post" enctype="multipart/form-data" class="form-grid" id="document-form">
       {% csrf_token %}
@@ -40,7 +40,7 @@
     <article class="panel support-form-control">
       <h2>Контроль записи</h2>
       <ul>
-        <li><strong>Получатель</strong><span>Документ попадет в карточку выбранного получателя.</span></li>
+        <li><strong>Цель</strong><span>Документ может относиться к получателю, контрагенту, центру или общему договору.</span></li>
         <li><strong>Срок действия</strong><span>Дата окончания влияет на предупреждения в реестре документов.</span></li>
         <li><strong>Файл</strong><span>Не загружайте реальные персональные данные в тестовое окружение.</span></li>
       </ul>

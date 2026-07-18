@@ -468,6 +468,10 @@ def save_service_contract_docx(contract: ServiceContract, *, actor=None) -> Gene
     generated = render_service_contract_docx(contract)
     document = contract.document
     if document is not None:
+        if document.target_type != Document.TargetType.RECIPIENT:
+            raise ContractDocumentError(
+                "Связанный документ не является документом получателя. Исправьте карточку договора."
+            )
         if document.child_id != contract.child_id:
             raise ContractDocumentError(
                 "Связанный документ относится к другому получателю. Исправьте карточку договора."
@@ -478,6 +482,7 @@ def save_service_contract_docx(contract: ServiceContract, *, actor=None) -> Gene
             )
     else:
         document = Document(
+            target_type=Document.TargetType.RECIPIENT,
             child=contract.child,
             category=Document.Category.CONTRACT,
         )
@@ -504,7 +509,61 @@ def save_service_contract_docx(contract: ServiceContract, *, actor=None) -> Gene
     )
 
 
+def save_donation_contract_docx(contract: DonationContract, *, actor=None) -> GeneratedContractFile:
+    generated = render_donation_contract_docx(contract)
+    document = contract.document
+    if document is not None:
+        if document.category != Document.Category.CONTRACT:
+            raise ContractDocumentError(
+                "Связанный документ должен быть категорией договора. Исправьте карточку договора."
+            )
+        if document.target_type == Document.TargetType.RECIPIENT:
+            raise ContractDocumentError(
+                "Договор пожертвования нельзя сохранять в документ получателя."
+            )
+        if (
+            document.target_type == Document.TargetType.COUNTERPARTY
+            and document.counterparty_id != contract.counterparty_id
+        ):
+            raise ContractDocumentError(
+                "Связанный документ относится к другому контрагенту. Исправьте карточку договора."
+            )
+    else:
+        document = Document(
+            target_type=Document.TargetType.COUNTERPARTY,
+            counterparty=contract.counterparty,
+            category=Document.Category.CONTRACT,
+        )
+
+    document.title = _donation_document_title(contract)
+    document.issued_on = contract.signed_on or timezone.localdate()
+    document.expires_on = contract.valid_until
+    if actor is not None and getattr(actor, "is_authenticated", False):
+        document.uploaded_by = actor
+    document.note = "Сформирован автоматически из карточки договора пожертвования и Word-шаблона."
+    document.file.save(generated.filename, ContentFile(generated.payload.getvalue()), save=False)
+    document.full_clean()
+    document.save()
+
+    if contract.document_id != document.pk:
+        contract.document = document
+        contract.save(update_fields=["document", "updated_at"])
+
+    generated.payload.seek(0)
+    return GeneratedContractFile(
+        payload=generated.payload,
+        filename=generated.filename,
+        document=document,
+    )
+
+
 def _service_document_title(contract: ServiceContract) -> str:
     number = contract.number or "б/н"
     title = f"Договор {number} — {contract.child.full_name}"
+    return title[:200]
+
+
+def _donation_document_title(contract: DonationContract) -> str:
+    number = contract.number or "б/н"
+    title = f"Договор пожертвования {number} — {contract.counterparty.name}"
     return title[:200]

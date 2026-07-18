@@ -28,6 +28,11 @@
 | `docs/19-financial-integrity-history-and-manager-report-contract.md` | Контракт будущего DB-owner среза: typed `FinancialIntegrityFindingEvent`, timeline finding-а и read-only trend report руководителя. | Перед любыми изменениями event table, timeline, manager financial-integrity report или миграциями этой зоны. |
 | `docs/20-group-payroll-policy-contract.md` | Контракт следующего payroll/DB среза: принцип начисления зарплаты на групповых занятиях, snapshots in payroll accruals and parity between timesheet and persisted payroll. | Перед любыми изменениями group payroll policy, `StaffCompensationRule`, `PayrollAccrual`, payroll/timesheet formulas or payroll UI. |
 | `docs/21-expenses-assets-contracts-contract.md` | Контракт следующей финансовой зоны: расходы центра, распределение расходов по источникам, оборудование, контрагенты и договоры. | Перед любыми изменениями расходов центра, `Counterparty`, `CenterExpense`, `ExpenseFundingSplit`, equipment/assets, договоров, донорской отчетности или Excel import write-path. |
+| `docs/22-category-counterparty-directory-contract.md` | Контракт product UI для справочников категорий расходов и контрагентов. | Перед изменениями `/directories/expenses/`, `CenterExpenseCategoryForm`, `CounterpartyForm` и related links из расходов/договоров/import preview. |
+| `docs/23-contract-word-generation-contract.md` | Контракт Word-генерации договоров из структурных данных и `.docx` шаблонов. | Перед изменениями `operations.services.contract_documents`, Word routes/buttons или сохранения generated contract files. |
+| `docs/24-document-template-source-inventory.md` | Обезличенная инвентаризация приватных source samples из `docshablon/`. | Перед расширением юридических шаблонов; raw `docshablon/` не коммитить и не отправлять в semantic extraction. |
+| `docs/25-template-placeholder-expansion-v2-contract.md` | Контракт расширения placeholder catalog/sidebar без миграций. | Перед изменениями grouped placeholders, `.docx` validation и sidebar reference шаблонов договоров. |
+| `docs/26-legal-document-targets-and-center-profile-contract.md` | Контракт DB-owner среза для generalized `Document` targets и будущего юрпрофиля центра/signed snapshots. | Перед изменениями `Document`, donation-document storage, center legal profile, legal snapshots, B2B/consents/acts. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -57,14 +62,17 @@
 10. Если задача затрагивает `FinancialIntegrityFindingEvent`, timeline finding-а, manager financial-integrity report или миграции этой зоны, прочитать `docs/19-financial-integrity-history-and-manager-report-contract.md`.
 11. Если задача затрагивает принцип начисления зарплаты в группах, `StaffCompensationRule`, `PayrollAccrual`, табель или persisted payroll formulas, прочитать `docs/20-group-payroll-policy-contract.md`.
 12. Если задача затрагивает расходы центра, оборудование, контрагентов, договоры, донорскую отчетность или Excel import write-path, прочитать `docs/21-expenses-assets-contracts-contract.md`.
-13. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
-14. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
-15. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
-16. Если задача затрагивает терминальные статусы или перепроверку планов переноса, прочитать `docs/11-plan-terminal-status-contract.md`.
-17. Если задача затрагивает параллельную работу, прочитать `docs/08-parallel-agent-execution-plan.md`.
-18. Если задача UX/UI, прочитать `docs/03-ux-ui-and-implementation-plan.md` и соответствующие шаблоны/JS.
-19. Если задача по коду, читать только релевантные файлы: модели, сервисы, формы, views, шаблоны и тесты вокруг изменяемого сценария.
-20. Перед широким поиском по проекту сначала выполнить `graphify query "<вопрос>" --budget 500-1500`, если граф доступен и актуален.
+13. Если задача затрагивает справочники категорий/контрагентов вне Django admin, прочитать `docs/22-category-counterparty-directory-contract.md`.
+14. Если задача затрагивает Word-генерацию договоров или placeholder catalog, прочитать `docs/23-contract-word-generation-contract.md`, `docs/24-document-template-source-inventory.md` и `docs/25-template-placeholder-expansion-v2-contract.md`.
+15. Если задача затрагивает `Document` без `Child`, donation-document storage, юрпрофиль центра, signed snapshots, B2B/consents/acts, прочитать `docs/26-legal-document-targets-and-center-profile-contract.md`.
+16. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
+17. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
+18. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
+19. Если задача затрагивает терминальные статусы или перепроверку планов переноса, прочитать `docs/11-plan-terminal-status-contract.md`.
+20. Если задача затрагивает параллельную работу, прочитать `docs/08-parallel-agent-execution-plan.md`.
+21. Если задача UX/UI, прочитать `docs/03-ux-ui-and-implementation-plan.md` и соответствующие шаблоны/JS.
+22. Если задача по коду, читать только релевантные файлы: модели, сервисы, формы, views, шаблоны и тесты вокруг изменяемого сценария.
+23. Перед широким поиском по проекту сначала выполнить `graphify query "<вопрос>" --budget 500-1500`, если граф доступен и актуален.
 
 ## Skills и назначение
 
@@ -270,3 +278,16 @@ Browser QA - это проверка живого интерфейса в бра
 - Verification for the latest code slice: Ruff format/check, Django check, migration dry-run `No changes detected`, focused/related contract tests `24 passed`, full pytest `561 passed`, and Python Playwright desktop/mobile QA for `/contracts/templates/new/`.
 - Graphify should stay an index only. The previous `graphify update .` refused shrink `4670 -> 4630`; do not use `--force` or semantic extraction on raw `docshablon/` without an explicit sanitized corpus decision.
 - Next high-value DB-owner contract: center legal profile plus generalized document targets/signed snapshots. Keep donation-document storage, B2B contracts, consents, acts, approve/pay and import write-path separate unless a new contract explicitly combines them.
+
+## Latest Recovery Note 2026-07-18: document-target-foundation
+
+- `docs/26-legal-document-targets-and-center-profile-contract.md` is added and its first vertical slice is implemented.
+- Migration `operations.0028_document_counterparty_document_target_type_and_more` expands `Document` with `target_type`, nullable `child` (`SET_NULL`) and optional `counterparty`.
+- Existing recipient documents remain valid through default `target_type=recipient`; validation/DB constraints require `child` for recipient documents and `counterparty` for counterparty documents.
+- `/documents/` and `/documents/new/` now work for recipient, center, counterparty and generic contract documents instead of assuming every document has a `Child`.
+- Service contract Word generation still saves a recipient contract document for the contract child.
+- Donation contract Word generation now saves/updates a counterparty contract document and links it to `DonationContract.document`; PDF downloads remain read-only.
+- No ledger/balance/payment/billing/payroll/grant/schedule/appointment-status semantics changed.
+- Verification: Ruff format/check, Django check, migration dry-run `No changes detected`, focused document/contract tests `31 passed`, full pytest `566 passed`, Python Playwright desktop/mobile QA for documents list/form with artifacts `%TEMP%\rmcodex-browser-qa-document-targets`; runserver `8082` stopped.
+- Graphify code-index after this slice: `4731` nodes / `18868` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and must not be sent to semantic extraction.
+- Next safe slice: `center-legal-profile-foundation` from docs/26. Signed legal snapshots should follow after center profile. B2B/consents/acts, approve/pay and import write-path remain separate contracts.

@@ -970,16 +970,24 @@ class RecommendationAdmin(admin.ModelAdmin):
 class DocumentAdmin(admin.ModelAdmin):
     list_display = (
         "created_at",
+        "target_type",
         "child",
+        "counterparty",
         "category",
         "title",
         "issued_on",
         "expires_on",
         "uploaded_by",
     )
-    search_fields = ("title", "child__last_name", "child__first_name", "note")
-    list_filter = ("category",)
-    autocomplete_fields = ("child", "uploaded_by")
+    search_fields = (
+        "title",
+        "child__last_name",
+        "child__first_name",
+        "counterparty__name",
+        "note",
+    )
+    list_filter = ("target_type", "category")
+    autocomplete_fields = ("child", "counterparty", "uploaded_by")
     date_hierarchy = "created_at"
 
 

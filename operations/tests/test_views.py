@@ -2369,7 +2369,9 @@ class DocumentViewTests(NewViewsTestBase):
         response = self.client.post(
             reverse("document_create"),
             {
+                "target_type": Document.TargetType.RECIPIENT,
                 "child": self.child.pk,
+                "counterparty": "",
                 "category": Document.Category.OTHER,
                 "title": "Справка",
                 "issued_on": "2024-01-01",
@@ -2380,6 +2382,54 @@ class DocumentViewTests(NewViewsTestBase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Document.objects.filter(child=self.child, title="Справка").exists())
+
+    def test_create_counterparty_document_without_child(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        counterparty = Counterparty.objects.create(name="Фонд документов")
+
+        response = self.client.post(
+            reverse("document_create"),
+            {
+                "target_type": Document.TargetType.COUNTERPARTY,
+                "child": "",
+                "counterparty": counterparty.pk,
+                "category": Document.Category.CONTRACT,
+                "title": "Договор фонда",
+                "issued_on": "2024-01-01",
+                "expires_on": "",
+                "file": SimpleUploadedFile("fund.txt", b"hello", content_type="text/plain"),
+                "note": "",
+            },
+        )
+
+        self.assertRedirects(response, reverse("document_list"))
+        document = Document.objects.get(title="Договор фонда")
+        self.assertIsNone(document.child_id)
+        self.assertEqual(document.counterparty, counterparty)
+        self.assertEqual(document.target_type, Document.TargetType.COUNTERPARTY)
+
+    def test_create_recipient_document_requires_child(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        response = self.client.post(
+            reverse("document_create"),
+            {
+                "target_type": Document.TargetType.RECIPIENT,
+                "child": "",
+                "counterparty": "",
+                "category": Document.Category.OTHER,
+                "title": "Без получателя",
+                "issued_on": "",
+                "expires_on": "",
+                "file": SimpleUploadedFile("missing.txt", b"hello", content_type="text/plain"),
+                "note": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Document.objects.filter(title="Без получателя").exists())
+        self.assertContains(response, "Для документа получателя выберите получателя")
 
 
 class ConsentViewTests(NewViewsTestBase):
@@ -3925,7 +3975,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertNotIn("{{ center.full_name }}", generated_text)
         self.assertNotIn("{{ service_spec.rows }}", generated_text)
 
-    def test_donation_contract_word_download_does_not_create_document_or_financial_facts(self):
+    def test_donation_contract_word_generates_document_without_financial_facts(self):
         template = ContractTemplate.objects.create(
             template_type=ContractTemplate.TemplateType.SPONSOR,
             title="Word шаблон пожертвования",
@@ -3963,8 +4013,45 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertIn("12 345,67 ₽", generated_text)
 
         contract.refresh_from_db()
-        self.assertIsNone(contract.document_id)
+        self.assertIsNotNone(contract.document_id)
+        self.assertEqual(Document.objects.count(), document_count + 1)
+        self.assertEqual(contract.document.category, Document.Category.CONTRACT)
+        self.assertEqual(contract.document.target_type, Document.TargetType.COUNTERPARTY)
+        self.assertEqual(contract.document.counterparty, self.counterparty)
+        self.assertIsNone(contract.document.child_id)
+        self.assertEqual(contract.document.uploaded_by, self.admin)
+        self.assertTrue(contract.document.file.name.endswith(".docx"))
+        self.assertEqual(self._financial_counts(), counts_before)
+
+    def test_donation_contract_word_updates_existing_document_without_duplicate(self):
+        existing_document = Document.objects.create(
+            target_type=Document.TargetType.COUNTERPARTY,
+            counterparty=self.counterparty,
+            category=Document.Category.CONTRACT,
+            title="Старый договор пожертвования",
+            file="documents/donation-old.txt",
+        )
+        contract = DonationContract.objects.create(
+            counterparty=self.counterparty,
+            funding_source=self.funding_grant,
+            contract_type=DonationContract.ContractType.PROJECT,
+            number="D-REGEN",
+            signed_on=timezone.localdate(),
+            document=existing_document,
+        )
+        document_count = Document.objects.count()
+        counts_before = self._financial_counts()
+
+        response = self.client.post(reverse("donation_contract_word", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        contract.refresh_from_db()
+        existing_document.refresh_from_db()
         self.assertEqual(Document.objects.count(), document_count)
+        self.assertEqual(contract.document, existing_document)
+        self.assertIn("D-REGEN", existing_document.title)
+        self.assertEqual(existing_document.counterparty, self.counterparty)
+        self.assertTrue(existing_document.file.name.endswith(".docx"))
         self.assertEqual(self._financial_counts(), counts_before)
 
     def test_donation_contract_word_replaces_v2_placeholders_with_blank_fallback(self):

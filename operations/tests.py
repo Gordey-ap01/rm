@@ -23,6 +23,7 @@ from .models import (
     BalanceAccount,
     Child,
     Consent,
+    Counterparty,
     Document,
     FundingSource,
     LedgerEntry,
@@ -1327,9 +1328,7 @@ class ApiAccessTests(TestCase):
             )
             for i in range(4)
         ]
-        staff = [
-            StaffMember.objects.create(full_name=f"API Room Staff {i}") for i in range(4)
-        ]
+        staff = [StaffMember.objects.create(full_name=f"API Room Staff {i}") for i in range(4)]
         service = Service.objects.create(
             name="API Room Service", code="AROOM", default_duration_minutes=30
         )
@@ -1406,8 +1405,7 @@ class ApiAccessTests(TestCase):
             for i in range(5)
         ]
         staff = [
-            StaffMember.objects.create(full_name=f"API Partial Room Staff {i}")
-            for i in range(5)
+            StaffMember.objects.create(full_name=f"API Partial Room Staff {i}") for i in range(5)
         ]
         service = Service.objects.create(
             name="API Partial Room Service", code="APROOM", default_duration_minutes=30
@@ -1544,9 +1542,7 @@ class ApiAccessTests(TestCase):
         parent = ParentGuardian.objects.create(
             last_name="Parent", first_name="TimeOff", phone="+70000000004"
         )
-        child = Child.objects.create(
-            last_name="Child", first_name="TimeOff", primary_parent=parent
-        )
+        child = Child.objects.create(last_name="Child", first_name="TimeOff", primary_parent=parent)
         staff_a = StaffMember.objects.create(full_name="Available Specialist")
         staff_b = StaffMember.objects.create(full_name="Unavailable Assistant")
         service = Service.objects.create(
@@ -2750,6 +2746,29 @@ class DocumentTests(TestCase):
         )
         with self.assertRaises(ValidationError):
             doc.full_clean()
+
+    def test_recipient_target_requires_child(self):
+        doc = Document(
+            target_type=Document.TargetType.RECIPIENT,
+            title="Документ без получателя",
+            file="x.pdf",
+        )
+        with self.assertRaises(ValidationError):
+            doc.full_clean()
+
+    def test_counterparty_contract_can_exist_without_child(self):
+        counterparty = Counterparty.objects.create(name="Фонд Радость")
+        doc = Document.objects.create(
+            target_type=Document.TargetType.COUNTERPARTY,
+            counterparty=counterparty,
+            category=Document.Category.CONTRACT,
+            title="Договор фонда",
+            file="documents/fund.docx",
+        )
+
+        self.assertIsNone(doc.child_id)
+        self.assertEqual(doc.target_label, counterparty.name)
+        self.assertEqual(str(doc), f"Договор фонда — {counterparty.name}")
 
 
 class ConsentTests(TestCase):

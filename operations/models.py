@@ -3039,7 +3039,11 @@ class Recommendation(TimeStampedModel):
 
 
 def document_upload_path(instance: Document, filename: str) -> str:
-    return f"documents/{instance.child_id}/{filename}"
+    if instance.child_id:
+        return f"documents/{instance.child_id}/{filename}"
+    if instance.counterparty_id:
+        return f"documents/counterparties/{instance.counterparty_id}/{filename}"
+    return f"documents/{instance.target_type}/{filename}"
 
 
 def contract_template_upload_path(instance: ContractTemplate, filename: str) -> str:
@@ -3054,8 +3058,34 @@ class Document(TimeStampedModel):
         CONTRACT = "contract", "Договор"
         OTHER = "other", "Прочее"
 
+    class TargetType(models.TextChoices):
+        RECIPIENT = "recipient", "Получатель"
+        CENTER = "center", "Центр"
+        COUNTERPARTY = "counterparty", "Контрагент"
+        CONTRACT = "contract", "Договор"
+        OTHER = "other", "Прочее"
+
     child = models.ForeignKey(
-        Child, verbose_name="получатель", on_delete=models.CASCADE, related_name="documents"
+        Child,
+        verbose_name="получатель",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="documents",
+    )
+    target_type = models.CharField(
+        "цель документа",
+        max_length=30,
+        choices=TargetType.choices,
+        default=TargetType.RECIPIENT,
+    )
+    counterparty = models.ForeignKey(
+        "Counterparty",
+        verbose_name="контрагент",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="documents",
     )
     category = models.CharField(
         "категория", max_length=30, choices=Category.choices, default=Category.OTHER
@@ -3078,14 +3108,47 @@ class Document(TimeStampedModel):
         verbose_name = "документ"
         verbose_name_plural = "документы"
         ordering = ["-created_at"]
-        indexes = [models.Index(fields=["child", "category"])]
+        indexes = [
+            models.Index(fields=["target_type", "category"]),
+            models.Index(fields=["child", "category"]),
+            models.Index(fields=["counterparty", "category"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=~Q(target_type="recipient") | Q(child__isnull=False),
+                name="document_recipient_target_requires_child",
+            ),
+            models.CheckConstraint(
+                condition=~Q(target_type="counterparty") | Q(counterparty__isnull=False),
+                name="document_counterparty_target_requires_counterparty",
+            ),
+        ]
 
     def __str__(self) -> str:
-        return f"{self.title} — {self.child}"
+        return f"{self.title} — {self.target_label}"
 
     def clean(self) -> None:
+        errors: dict[str, str] = {}
         if self.expires_on and self.issued_on and self.expires_on < self.issued_on:
-            raise ValidationError({"expires_on": "Срок действия не может быть раньше даты выдачи."})
+            errors["expires_on"] = "Срок действия не может быть раньше даты выдачи."
+        if self.target_type == self.TargetType.RECIPIENT and not self.child_id:
+            errors["child"] = "Для документа получателя выберите получателя."
+        if self.target_type == self.TargetType.COUNTERPARTY and not self.counterparty_id:
+            errors["counterparty"] = "Для документа контрагента выберите контрагента."
+        if errors:
+            raise ValidationError(errors)
+
+    @property
+    def target_label(self) -> str:
+        if self.child_id:
+            return str(self.child)
+        if self.counterparty_id:
+            return str(self.counterparty)
+        if self.target_type == self.TargetType.CENTER:
+            return "Центр"
+        if self.target_type == self.TargetType.CONTRACT:
+            return "Договор"
+        return self.get_target_type_display()
 
     @property
     def is_expired(self) -> bool:
@@ -3652,6 +3715,15 @@ class DonationContract(TimeStampedModel):
             errors["template"] = "Выберите шаблон для пожертвования или спонсорского договора."
         if self.document_id and self.document.category != Document.Category.CONTRACT:
             errors["document"] = "Связанный документ должен иметь категорию договора."
+        if self.document_id and self.document.target_type == Document.TargetType.RECIPIENT:
+            errors["document"] = "Договор пожертвования нельзя связывать с документом получателя."
+        if (
+            self.document_id
+            and self.document.target_type == Document.TargetType.COUNTERPARTY
+            and self.counterparty_id
+            and self.document.counterparty_id != self.counterparty_id
+        ):
+            errors["document"] = "Документ договора должен относиться к выбранному контрагенту."
         if errors:
             raise ValidationError(errors)
 
@@ -3758,6 +3830,10 @@ class ServiceContract(TimeStampedModel):
         if self.document_id:
             if self.document.category != Document.Category.CONTRACT:
                 errors["document"] = "Связанный документ должен иметь категорию договора."
+            if self.document.target_type != Document.TargetType.RECIPIENT:
+                errors["document"] = (
+                    "Документ договора с получателем должен быть документом получателя."
+                )
             if self.child_id and self.document.child_id != self.child_id:
                 errors["document"] = "Документ договора должен относиться к выбранному получателю."
         if errors:

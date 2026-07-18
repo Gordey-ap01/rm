@@ -2261,9 +2261,21 @@ class RecommendationForm(forms.ModelForm):
 class DocumentForm(forms.ModelForm):
     class Meta:
         model = Document
-        fields = ("child", "category", "title", "file", "issued_on", "expires_on", "note")
+        fields = (
+            "target_type",
+            "child",
+            "counterparty",
+            "category",
+            "title",
+            "file",
+            "issued_on",
+            "expires_on",
+            "note",
+        )
         labels = {
+            "target_type": "К чему относится",
             "child": "Получатель",
+            "counterparty": "Контрагент",
             "category": "Категория",
             "title": "Название",
             "file": "Файл",
@@ -2280,6 +2292,24 @@ class DocumentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["child"].queryset = Child.objects.order_by("last_name", "first_name")
+        self.fields["child"].required = False
+        self.fields["counterparty"].queryset = Counterparty.all_objects.order_by("name")
+        self.fields["counterparty"].required = False
+        self.fields["target_type"].help_text = (
+            "Для документов получателя выберите получателя. Для документов контрагента "
+            "выберите контрагента. Для центра и общих договоров получатель не нужен."
+        )
+
+    def clean(self):
+        cleaned = super().clean()
+        target_type = cleaned.get("target_type")
+        child = cleaned.get("child")
+        counterparty = cleaned.get("counterparty")
+        if target_type == Document.TargetType.RECIPIENT and child is None:
+            self.add_error("child", "Для документа получателя выберите получателя.")
+        if target_type == Document.TargetType.COUNTERPARTY and counterparty is None:
+            self.add_error("counterparty", "Для документа контрагента выберите контрагента.")
+        return cleaned
 
 
 class ConsentForm(forms.ModelForm):
@@ -2664,13 +2694,36 @@ class DonationContractForm(forms.ModelForm):
         ).order_by("template_type", "title", "version")
         self.fields["template"].required = False
 
-        document_filter = Q(category=Document.Category.CONTRACT)
+        counterparty_id = self._selected_counterparty_id()
+        document_filter = Q(category=Document.Category.CONTRACT) & ~Q(
+            target_type=Document.TargetType.RECIPIENT
+        )
+        if counterparty_id:
+            document_filter &= Q(
+                target_type=Document.TargetType.COUNTERPARTY, counterparty_id=counterparty_id
+            ) | Q(
+                target_type__in=[
+                    Document.TargetType.CENTER,
+                    Document.TargetType.CONTRACT,
+                    Document.TargetType.OTHER,
+                ]
+            )
         if self.instance and self.instance.document_id:
             document_filter |= Q(pk=self.instance.document_id)
         self.fields["document"].queryset = Document.objects.filter(document_filter).order_by(
             "-created_at"
         )
         self.fields["document"].required = False
+
+    def _selected_counterparty_id(self) -> int | None:
+        if self.is_bound:
+            try:
+                return int(self.data.get(self.add_prefix("counterparty")) or "")
+            except (TypeError, ValueError):
+                return None
+        if self.instance and self.instance.counterparty_id:
+            return self.instance.counterparty_id
+        return None
 
 
 class ServiceContractForm(forms.ModelForm):
@@ -2750,7 +2803,10 @@ class ServiceContractForm(forms.ModelForm):
         ).order_by("template_type", "title", "version")
         self.fields["template"].required = False
 
-        document_filter = Q(category=Document.Category.CONTRACT)
+        document_filter = Q(
+            category=Document.Category.CONTRACT,
+            target_type=Document.TargetType.RECIPIENT,
+        )
         if child_id:
             document_filter &= Q(child_id=child_id)
         if self.instance and self.instance.document_id:

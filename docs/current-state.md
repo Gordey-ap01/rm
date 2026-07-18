@@ -1666,3 +1666,18 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA artifacts: `%TEMP%\rmcodex-browser-qa-template-placeholders`; local runserver `8081` was stopped.
 - Graphify was not forced after this slice. The previous docs/24 `graphify update .` refused shrink `4670 -> 4630`; raw `docshablon/` samples remain ignored and must not be semantically extracted or committed.
 - Next safe work should be a separate DB-owner contract for center/legal profile and generalized document targets, or another small no-migration document-template slice. Do not start donation `Document` storage, legal snapshots, B2B/consents/acts, approve/pay or import write-path without a new contract and one migration owner.
+
+## Update 2026-07-18: document-target-foundation
+
+- Added DB-owner contract `docs/26-legal-document-targets-and-center-profile-contract.md`.
+- Implemented first generalized document-target slice with migration `operations.0028_document_counterparty_document_target_type_and_more`.
+- `Document` now has `target_type` (`recipient`, `center`, `counterparty`, `contract`, `other`) and optional `counterparty`; `child` is nullable and uses `SET_NULL`. Existing documents default to `recipient` and still require `child`.
+- Model/form constraints require `child` for recipient documents and `counterparty` for counterparty documents.
+- `/documents/` and `/documents/new/` now show document target instead of assuming every document belongs to a recipient.
+- Service contract Word generation still creates/updates a recipient `Document(category=contract)` for the selected child.
+- Donation contract Word generation now creates/updates a counterparty `Document(category=contract)` and links it to `DonationContract.document`; PDF downloads remain read-only.
+- No `LedgerEntry`, `BalanceAccount`, `Payment`, billing, payroll, grant, schedule or appointment-status semantics changed.
+- Verification passed: Ruff format/check, Django check, migration dry-run `No changes detected`, focused document/contract tests `31 passed`, full pytest `566 passed` with the existing django-tasks warning, Python Playwright desktop/mobile QA for `/documents/` and `/documents/new/`.
+- Browser QA artifacts: `%TEMP%\rmcodex-browser-qa-document-targets`; local runserver `8082` was stopped.
+- Graphify code-index after this slice: `4731` nodes / `18868` edges. Semantic extraction was not rerun; keep raw `docshablon/` out of semantic extraction and project commits.
+- Next safe work: `center-legal-profile-foundation` from docs/26, then signed legal snapshot layer. Keep B2B contracts, consents, acts, approve/pay and import write-path separate unless a new contract explicitly combines them.

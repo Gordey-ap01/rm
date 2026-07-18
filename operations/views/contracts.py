@@ -477,14 +477,19 @@ def donation_contract_pdf(request, pk: int):
 @user_passes_test(is_admin_user)
 def donation_contract_word(request, pk: int):
     contract = get_object_or_404(
-        DonationContract.objects.select_related("counterparty", "funding_source", "template"),
+        DonationContract.objects.select_related(
+            "counterparty",
+            "funding_source",
+            "template",
+            "document",
+        ),
         pk=pk,
     )
     if request.method != "POST":
         messages.warning(request, "Сформируйте Word-файл кнопкой в реестре договоров.")
         return redirect("contract_list")
     try:
-        generated = contract_doc_svc.render_donation_contract_docx(contract)
+        generated = contract_doc_svc.save_donation_contract_docx(contract, actor=request.user)
     except contract_doc_svc.ContractDocumentError as exc:
         messages.error(request, str(exc))
         return redirect("contract_list")

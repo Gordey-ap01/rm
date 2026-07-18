@@ -6,7 +6,7 @@
 <section class="page-header">
   <div>
     <h1>Документы</h1>
-    <p>{% if child_id %}Документы выбранного получателя{% else %}Все документы получателей{% endif %}</p>
+    <p>{% if child_id %}Документы выбранного получателя{% else %}Все документы центра, получателей и контрагентов{% endif %}</p>
   </div>
   <div class="header-actions">
     <a class="button-link" href="{{ document_create_url }}">+ Загрузить документ</a>
@@ -35,14 +35,14 @@
   <article class="panel document-panel" id="document-list">
     <div class="document-panel-head">
       <h2>Реестр документов</h2>
-      <p>Договоры, ИПР, согласия, медицинские заключения и другие файлы получателей.</p>
+      <p>Договоры, ИПР, согласия, медицинские заключения и другие юридические файлы.</p>
     </div>
 
     <div class="table-wrap">
       <table class="document-table">
         <thead>
           <tr>
-            <th>Получатель</th>
+            <th>Цель</th>
             <th>Категория</th>
             <th>Название</th>
             <th>Файл</th>
@@ -54,7 +54,14 @@
         <tbody>
           {% for d in documents %}
             <tr>
-              <td data-label="Получатель"><a href="{% url 'child_detail' pk=d.child_id %}">{{ d.child }}</a></td>
+              <td data-label="Цель">
+                {% if d.child_id %}
+                  <a href="{% url 'child_detail' pk=d.child_id %}">{{ d.target_label }}</a>
+                {% else %}
+                  {{ d.target_label }}
+                {% endif %}
+                <small>{{ d.get_target_type_display }}</small>
+              </td>
               <td data-label="Категория">{{ d.get_category_display }}</td>
               <td data-label="Название">
                 <strong>{{ d.title }}</strong>

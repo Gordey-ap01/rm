@@ -128,7 +128,9 @@ def _document_control_items(
 @login_required
 @user_passes_test(is_admin_user)
 def document_list(request, child_id: int | None = None):
-    qs = Document.objects.select_related("child", "uploaded_by").order_by("-created_at")
+    qs = Document.objects.select_related("child", "counterparty", "uploaded_by").order_by(
+        "-created_at"
+    )
     if child_id is None:
         child_id = request.GET.get("child_id")
     if child_id:
@@ -154,6 +156,7 @@ def document_create(request, child_id: int | None = None):
     initial = {}
     if child_id:
         initial["child"] = get_object_or_404(Child, pk=child_id)
+        initial["target_type"] = Document.TargetType.RECIPIENT
     if request.method == "POST":
         form = DocumentForm(request.POST, request.FILES)
         if form.is_valid():
@@ -161,7 +164,9 @@ def document_create(request, child_id: int | None = None):
             doc.uploaded_by = request.user
             doc.save()
             messages.success(request, "Документ загружен.")
-            return redirect("child_detail", pk=doc.child_id)
+            if doc.child_id:
+                return redirect("child_detail", pk=doc.child_id)
+            return redirect("document_list")
     else:
         form = DocumentForm(initial=initial)
     return render(

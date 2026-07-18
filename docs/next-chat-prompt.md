@@ -276,3 +276,17 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - `docshablon/` is ignored and contains sensitive source examples; never commit raw samples or send them to Graphify semantic extraction.
 - Graphify was not forced after this slice; previous update refused shrink `4670 -> 4630`. Keep Graphify as an index unless a sanitized corpus update is explicitly planned.
 - Next safe step: draft a separate DB-owner contract for center legal profile plus generalized document targets/signed snapshots, or take a smaller no-migration template/document UI slice. Do not start donation `Document` storage, B2B, consents, acts, approve/pay or import write-path without a new explicit contract.
+
+## Latest clarification 2026-07-18: document-target-foundation complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/26-legal-document-targets-and-center-profile-contract.md` is added.
+- Implemented migration `operations.0028_document_counterparty_document_target_type_and_more`.
+- `Document` now has `target_type`, nullable `child` with `SET_NULL`, and optional `counterparty`; recipient docs still require `child`, counterparty docs require `counterparty`.
+- `/documents/` and `/documents/new/` now show and create documents by target, not only by recipient.
+- Service contract Word still saves recipient contract files; donation contract Word now saves/updates counterparty contract files and links `DonationContract.document`.
+- PDF downloads remain read-only. No ledger/balance/payment/billing/payroll/grant/schedule/status semantics changed.
+- Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused document/contract tests `31 passed`, full pytest `566 passed`, Python Playwright desktop/mobile QA for documents list/form.
+- Graphify code-index after this slice: `4731` nodes / `18868` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and must not be sent to semantic extraction.
+- Next safe step: `center-legal-profile-foundation` from docs/26, then signed legal snapshots. Keep B2B/consents/acts, approve/pay and import write-path separate unless a new contract explicitly combines them.
