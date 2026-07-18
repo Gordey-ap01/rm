@@ -10,7 +10,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from operations.models import Child, DonationContract, ServiceContract
+from operations.models import Child, DonationContract, OrganizationServiceContract, ServiceContract
 
 STYLES = getSampleStyleSheet()
 STYLES.add(
@@ -266,6 +266,77 @@ def _build_donation_contract_story(contract: DonationContract) -> list[Any]:
     return story
 
 
+def _build_organization_service_contract_story(
+    contract: OrganizationServiceContract,
+) -> list[Any]:
+    story: list[Any] = []
+    signed_on = contract.signed_on or timezone.localdate()
+    number = contract.number or "б/н"
+    amount = f"{contract.service_lines_total_amount:,.2f}".replace(",", " ").replace(".", ",")
+    funding_source = contract.funding_source.name if contract.funding_source else "не указан"
+
+    story.append(Paragraph("B2B-ДОГОВОР ОКАЗАНИЯ УСЛУГ", STYLES["Title_ru"]))
+    story.append(Paragraph(f"Шаблон: {_safe(_contract_template_label(contract.template), '')}", STYLES["Small_ru"]))
+    story.append(Spacer(1, 6 * mm))
+    story.append(
+        Paragraph(
+            f"№ {_safe(number)} &nbsp;&nbsp; г. Владивосток &nbsp;&nbsp; {signed_on:%d.%m.%Y}",
+            STYLES["Right_ru"],
+        )
+    )
+    story.append(Spacer(1, 8 * mm))
+
+    data = [
+        ["1.", f"Организация: {_safe(contract.counterparty.name)}"],
+        ["2.", f"ИНН: {_safe(contract.counterparty.inn, '')}"],
+        ["3.", f"Источник финансирования: {_safe(funding_source)}"],
+        ["4.", f"Тип договора: {_safe(contract.get_contract_type_display())}"],
+        ["5.", f"Статус реестра: {_safe(contract.get_status_display())}"],
+        ["6.", f"Сумма спецификации: {_safe(amount)}"],
+        [
+            "7.",
+            (
+                "Срок действия: "
+                f"{_safe(contract.valid_from.strftime('%d.%m.%Y') if contract.valid_from else '')} - "
+                f"{_safe(contract.valid_until.strftime('%d.%m.%Y') if contract.valid_until else '')}"
+            ),
+        ],
+        ["8.", "Договор не создает автоматические платежи, списания, занятия или акты."],
+        ["9.", "Условия оказания услуг и приемки уточняются в утвержденном шаблоне и будущих актах."],
+    ]
+    table = Table(data, colWidths=[15 * mm, 160 * mm])
+    table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("LEADING", (0, 0), (-1, -1), 14),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    story.append(table)
+    story.append(Spacer(1, 12 * mm))
+    story.append(Paragraph("Подписи сторон:", STYLES["Body_ru"]))
+    story.append(Spacer(1, 4 * mm))
+    story.append(
+        Paragraph(
+            "Организация: ______________________ &nbsp;&nbsp;&nbsp;&nbsp; /_______________/",
+            STYLES["Body_ru"],
+        )
+    )
+    story.append(Spacer(1, 3 * mm))
+    story.append(
+        Paragraph(
+            "Центр: ______________________________ &nbsp;&nbsp;&nbsp;&nbsp; /_______________/",
+            STYLES["Body_ru"],
+        )
+    )
+    return story
+
+
 def _build_pdf(story: list[Any]) -> BytesIO:
     buf = BytesIO()
     doc = SimpleDocTemplate(
@@ -291,3 +362,7 @@ def service_contract_pdf(contract: ServiceContract) -> BytesIO:
 
 def donation_contract_pdf(contract: DonationContract) -> BytesIO:
     return _build_pdf(_build_donation_contract_story(contract))
+
+
+def organization_service_contract_pdf(contract: OrganizationServiceContract) -> BytesIO:
+    return _build_pdf(_build_organization_service_contract_story(contract))

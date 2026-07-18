@@ -46,6 +46,8 @@ from operations.models import (
     FundingStaffAllocation,
     GrantRecipientAllocation,
     LedgerEntry,
+    OrganizationServiceContract,
+    OrganizationServiceContractLine,
     ParentGuardian,
     Payment,
     PayrollAccrual,
@@ -3696,6 +3698,19 @@ class ContractRegistryViewTests(NewViewsTestBase):
         contract.refresh_from_db()
         return payload
 
+    def _generate_organization_contract_word(
+        self,
+        contract: OrganizationServiceContract,
+    ) -> bytes:
+        response = self.client.post(
+            reverse("organization_service_contract_word", args=[contract.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = b"".join(response.streaming_content)
+        self.assertTrue(payload.startswith(b"PK"))
+        contract.refresh_from_db()
+        return payload
+
     def _empty_service_line_formset_data(self) -> dict[str, str]:
         return {
             "service_lines-TOTAL_FORMS": "0",
@@ -3737,6 +3752,47 @@ class ContractRegistryViewTests(NewViewsTestBase):
             "service_lines-1-service_name": "",
             "service_lines-1-quantity": "",
             "service_lines-1-unit": ServiceContractLine.Unit.SESSION,
+            "service_lines-1-unit_price": "",
+            "service_lines-1-starts_on": "",
+            "service_lines-1-ends_on": "",
+            "service_lines-1-notes": "",
+        }
+
+    def _organization_contract_post_data(
+        self,
+        *,
+        number: str = "B2B-FORM",
+    ) -> dict[str, object]:
+        return {
+            "counterparty": self.counterparty.pk,
+            "funding_source": self.funding_grant.pk,
+            "contract_type": OrganizationServiceContract.ContractType.PROJECT,
+            "number": number,
+            "signed_on": timezone.localdate().isoformat(),
+            "valid_from": timezone.localdate().isoformat(),
+            "valid_until": "",
+            "status": OrganizationServiceContract.Status.DRAFT,
+            "template": "",
+            "document": "",
+            "notes": "",
+            "service_lines-TOTAL_FORMS": "2",
+            "service_lines-INITIAL_FORMS": "0",
+            "service_lines-MIN_NUM_FORMS": "0",
+            "service_lines-MAX_NUM_FORMS": "1000",
+            "service_lines-0-sort_order": "1",
+            "service_lines-0-service": self.service.pk,
+            "service_lines-0-service_name": "Групповые занятия по договору организации",
+            "service_lines-0-quantity": "12.00",
+            "service_lines-0-unit": OrganizationServiceContractLine.Unit.SESSION,
+            "service_lines-0-unit_price": "500.00",
+            "service_lines-0-starts_on": timezone.localdate().isoformat(),
+            "service_lines-0-ends_on": "",
+            "service_lines-0-notes": "",
+            "service_lines-1-sort_order": "0",
+            "service_lines-1-service": "",
+            "service_lines-1-service_name": "",
+            "service_lines-1-quantity": "",
+            "service_lines-1-unit": OrganizationServiceContractLine.Unit.SESSION,
             "service_lines-1-unit_price": "",
             "service_lines-1-starts_on": "",
             "service_lines-1-ends_on": "",
@@ -3786,6 +3842,61 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertContains(response, reverse("service_contract_word", args=[contract.pk]))
         self.assertContains(response, "Word")
         self.assertContains(response, "реквизиты зафиксированы:")
+
+    def test_contract_list_renders_organization_contract(self):
+        contract = OrganizationServiceContract.objects.create(
+            counterparty=self.counterparty,
+            funding_source=self.funding_grant,
+            contract_type=OrganizationServiceContract.ContractType.PROJECT,
+            number="B2B-001",
+            signed_on=timezone.localdate(),
+        )
+        OrganizationServiceContractLine.objects.create(
+            organization_contract=contract,
+            service=self.service,
+            service_name="Групповые занятия по договору организации",
+            quantity=Decimal("12.00"),
+            unit_price=Decimal("500.00"),
+        )
+
+        response = self.client.get(reverse("contract_list"), {"kind": "organization"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "B2B-договоры с организациями")
+        self.assertContains(response, "B2B-001")
+        self.assertContains(response, self.counterparty.name)
+        self.assertContains(response, "Групповые занятия по договору организации")
+        self.assertContains(response, "6 000,00 ₽")
+        self.assertContains(
+            response,
+            reverse("organization_service_contract_edit", args=[contract.pk]),
+        )
+        self.assertContains(
+            response,
+            reverse("organization_service_contract_word", args=[contract.pk]),
+        )
+
+    def test_organization_contract_create_saves_funding_and_spec_lines(self):
+        counts_before = self._financial_counts()
+
+        response = self.client.post(
+            reverse("organization_service_contract_create"),
+            self._organization_contract_post_data(),
+        )
+
+        contract = OrganizationServiceContract.objects.get(number="B2B-FORM")
+        self.assertRedirects(
+            response,
+            reverse("organization_service_contract_edit", args=[contract.pk]),
+        )
+        self.assertEqual(contract.counterparty, self.counterparty)
+        self.assertEqual(contract.funding_source, self.funding_grant)
+        line = contract.service_lines.get()
+        self.assertEqual(line.service, self.service)
+        self.assertEqual(line.service_name, "Групповые занятия по договору организации")
+        self.assertEqual(line.quantity, Decimal("12.00"))
+        self.assertEqual(line.amount, Decimal("6000.00"))
+        self.assertEqual(self._financial_counts(), counts_before)
 
     def test_service_contract_create_saves_funding_and_spec_lines(self):
         ledger_count = LedgerEntry.objects.count()
@@ -3953,6 +4064,26 @@ class ContractRegistryViewTests(NewViewsTestBase):
         )
         self.assertIn(project_template.pk, template_ids)
         self.assertNotIn(service_template.pk, template_ids)
+
+    def test_organization_contract_form_filters_template_families(self):
+        b2b_template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.ORGANIZATION_SERVICE,
+            title="B2B шаблон услуг",
+        )
+        service_template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.RECIPIENT_SERVICE,
+            title="Договор с получателем",
+        )
+        donation_template = self._donation_template()
+
+        response = self.client.get(reverse("organization_service_contract_create"))
+
+        template_ids = set(
+            response.context["form"].fields["template"].queryset.values_list("pk", flat=True)
+        )
+        self.assertIn(b2b_template.pk, template_ids)
+        self.assertNotIn(service_template.pk, template_ids)
+        self.assertNotIn(donation_template.pk, template_ids)
 
     def test_contract_template_rejects_legacy_doc_upload(self):
         response = self.client.post(
@@ -4309,6 +4440,93 @@ class ContractRegistryViewTests(NewViewsTestBase):
 
         self.assertRedirects(response, reverse("contract_list"))
         self.assertFalse(ContractSignedFile.objects.filter(service_contract=contract).exists())
+
+    def test_organization_contract_word_archive_and_download(self):
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.ORGANIZATION_SERVICE,
+            title="B2B placeholders",
+            version="1",
+            file=self._docx_upload(
+                "b2b_template.docx",
+                "B2B {{ contract.number }} {{ counterparty.name }} {{ funding_source.name }} "
+                "{{ contract.amount }} {{ service_spec.rows }} {{ service_spec.service_name }}.",
+            ),
+        )
+        contract = OrganizationServiceContract.objects.create(
+            counterparty=self.counterparty,
+            funding_source=self.funding_grant,
+            contract_type=OrganizationServiceContract.ContractType.PROJECT,
+            number="B2B-WORD",
+            signed_on=timezone.localdate(),
+            template=template,
+        )
+        OrganizationServiceContractLine.objects.create(
+            organization_contract=contract,
+            service=self.service,
+            service_name="Групповые занятия по договору организации",
+            quantity=Decimal("12.00"),
+            unit=OrganizationServiceContractLine.Unit.SESSION,
+            unit_price=Decimal("500.00"),
+            sort_order=1,
+        )
+        document_count = Document.objects.count()
+        snapshot_count = ContractLegalSnapshot.objects.count()
+        counts_before = self._financial_counts()
+
+        generated_payload = self._generate_organization_contract_word(contract)
+        generated_text = self._docx_text(generated_payload)
+
+        self.assertIn("B2B-WORD", generated_text)
+        self.assertIn(self.counterparty.name, generated_text)
+        self.assertIn(self.funding_grant.name, generated_text)
+        self.assertIn("6 000,00 ₽", generated_text)
+        self.assertIn("Групповые занятия по договору организации", generated_text)
+        contract.refresh_from_db()
+        self.assertIsNotNone(contract.document_id)
+        self.assertEqual(Document.objects.count(), document_count + 1)
+        self.assertEqual(contract.document.category, Document.Category.CONTRACT)
+        self.assertEqual(contract.document.target_type, Document.TargetType.COUNTERPARTY)
+        self.assertEqual(contract.document.counterparty, self.counterparty)
+        self.assertIsNone(contract.document.child_id)
+        snapshot = contract.document.contract_legal_snapshot
+        self.assertEqual(ContractLegalSnapshot.objects.count(), snapshot_count + 1)
+        self.assertEqual(
+            snapshot.contract_kind,
+            ContractLegalSnapshot.ContractKind.ORGANIZATION_SERVICE,
+        )
+        self.assertEqual(snapshot.organization_contract, contract)
+        self.assertIsNone(snapshot.service_contract_id)
+        self.assertIsNone(snapshot.donation_contract_id)
+        self.assertEqual(snapshot.contract_snapshot["number"], "B2B-WORD")
+        self.assertEqual(snapshot.contract_snapshot["amount"], "6000.00")
+        self.assertEqual(snapshot.counterparty_snapshot["name"], self.counterparty.name)
+        self.assertEqual(snapshot.funding_source_snapshot["name"], self.funding_grant.name)
+        self.assertEqual(self._financial_counts(), counts_before)
+
+        archive_response = self.client.post(
+            reverse("organization_service_contract_archive_signed", args=[contract.pk])
+        )
+
+        self.assertRedirects(archive_response, reverse("contract_list"))
+        signed_file = ContractSignedFile.objects.get(organization_contract=contract)
+        self.assertEqual(
+            signed_file.contract_kind,
+            ContractSignedFile.ContractKind.ORGANIZATION_SERVICE,
+        )
+        self.assertEqual(signed_file.source_document, contract.document)
+        self.assertEqual(signed_file.counterparty_snapshot["name"], self.counterparty.name)
+        self.assertEqual(signed_file.contract_snapshot["number"], "B2B-WORD")
+        self.assertTrue(
+            signed_file.file.name.startswith("contract_signed_files/organization_service/")
+        )
+        self.assertEqual(self._financial_counts(), counts_before)
+
+        download_response = self.client.get(
+            reverse("contract_signed_file_download", args=[signed_file.pk])
+        )
+        self.assertEqual(download_response.status_code, 200)
+        downloaded_payload = b"".join(download_response.streaming_content)
+        self.assertEqual(downloaded_payload, generated_payload)
 
     def test_service_contract_word_rejects_document_snapshot_from_other_contract(self):
         existing_document = self._contract_document(title="Старый файл договора")

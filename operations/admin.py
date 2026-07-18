@@ -35,6 +35,8 @@ from .models import (
     GrantRecipientAllocation,
     LedgerEntry,
     Note,
+    OrganizationServiceContract,
+    OrganizationServiceContractLine,
     ParentGuardian,
     Payment,
     PayrollAccrual,
@@ -400,12 +402,74 @@ class ServiceContractLineAdmin(admin.ModelAdmin):
     autocomplete_fields = ("service_contract", "service")
 
 
+class OrganizationServiceContractLineInline(admin.TabularInline):
+    model = OrganizationServiceContractLine
+    extra = 0
+    fields = (
+        "sort_order",
+        "service",
+        "service_name",
+        "quantity",
+        "unit",
+        "unit_price",
+        "starts_on",
+        "ends_on",
+    )
+    autocomplete_fields = ("service",)
+
+
+@admin.register(OrganizationServiceContract)
+class OrganizationServiceContractAdmin(admin.ModelAdmin):
+    list_display = (
+        "counterparty",
+        "funding_source",
+        "contract_type",
+        "number",
+        "status",
+        "signed_on",
+        "valid_until",
+    )
+    search_fields = (
+        "number",
+        "notes",
+        "counterparty__name",
+        "funding_source__name",
+        "template__title",
+        "document__title",
+    )
+    list_filter = ("status", "contract_type", "funding_source", "signed_on", "valid_until")
+    autocomplete_fields = ("counterparty", "funding_source", "template", "document")
+    inlines = (OrganizationServiceContractLineInline,)
+
+
+@admin.register(OrganizationServiceContractLine)
+class OrganizationServiceContractLineAdmin(admin.ModelAdmin):
+    list_display = (
+        "organization_contract",
+        "service",
+        "service_name",
+        "quantity",
+        "unit",
+        "unit_price",
+    )
+    search_fields = (
+        "organization_contract__number",
+        "organization_contract__counterparty__name",
+        "service__name",
+        "service_name",
+        "notes",
+    )
+    list_filter = ("unit", "service")
+    autocomplete_fields = ("organization_contract", "service")
+
+
 @admin.register(ContractLegalSnapshot)
 class ContractLegalSnapshotAdmin(admin.ModelAdmin):
     list_display = (
         "contract_kind",
         "service_contract",
         "donation_contract",
+        "organization_contract",
         "document",
         "generated_by",
         "created_at",
@@ -416,10 +480,18 @@ class ContractLegalSnapshotAdmin(admin.ModelAdmin):
         "service_contract__child__first_name",
         "donation_contract__number",
         "donation_contract__counterparty__name",
+        "organization_contract__number",
+        "organization_contract__counterparty__name",
         "document__title",
     )
     list_filter = ("contract_kind", "created_at")
-    autocomplete_fields = ("service_contract", "donation_contract", "document", "generated_by")
+    autocomplete_fields = (
+        "service_contract",
+        "donation_contract",
+        "organization_contract",
+        "document",
+        "generated_by",
+    )
     readonly_fields = (
         "contract_snapshot",
         "center_snapshot",
@@ -437,6 +509,7 @@ class ContractSignedFileAdmin(admin.ModelAdmin):
         "contract_kind",
         "service_contract",
         "donation_contract",
+        "organization_contract",
         "signed_on",
         "status",
         "file_size",
@@ -449,6 +522,8 @@ class ContractSignedFileAdmin(admin.ModelAdmin):
         "service_contract__child__first_name",
         "donation_contract__number",
         "donation_contract__counterparty__name",
+        "organization_contract__number",
+        "organization_contract__counterparty__name",
         "original_filename",
         "file_sha256",
         "note",
@@ -457,6 +532,7 @@ class ContractSignedFileAdmin(admin.ModelAdmin):
     autocomplete_fields = (
         "service_contract",
         "donation_contract",
+        "organization_contract",
         "source_document",
         "uploaded_by",
     )
@@ -464,6 +540,7 @@ class ContractSignedFileAdmin(admin.ModelAdmin):
         "contract_kind",
         "service_contract",
         "donation_contract",
+        "organization_contract",
         "source_document",
         "file",
         "original_filename",

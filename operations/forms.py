@@ -38,6 +38,8 @@ from .models import (
     FundingStaffAllocation,
     GrantRecipientAllocation,
     LedgerEntry,
+    OrganizationServiceContract,
+    OrganizationServiceContractLine,
     ParentGuardian,
     Payment,
     ProgramBlock,
@@ -2937,6 +2939,103 @@ class ServiceContractForm(forms.ModelForm):
         return None
 
 
+class OrganizationServiceContractForm(forms.ModelForm):
+    class Meta:
+        model = OrganizationServiceContract
+        fields = (
+            "counterparty",
+            "funding_source",
+            "contract_type",
+            "number",
+            "signed_on",
+            "valid_from",
+            "valid_until",
+            "status",
+            "template",
+            "document",
+            "notes",
+        )
+        labels = {
+            "counterparty": "Организация",
+            "funding_source": "Источник финансирования",
+            "contract_type": "Тип договора",
+            "number": "Номер",
+            "signed_on": "Дата подписания",
+            "valid_from": "Действует с",
+            "valid_until": "Действует до",
+            "status": "Статус",
+            "template": "Шаблон",
+            "document": "Файл договора",
+            "notes": "Примечания",
+        }
+        widgets = {
+            "signed_on": DATE_INPUT,
+            "valid_from": DATE_INPUT,
+            "valid_until": DATE_INPUT,
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        counterparty_filter = Q(archived_at__isnull=True)
+        if self.instance and self.instance.counterparty_id:
+            counterparty_filter |= Q(pk=self.instance.counterparty_id)
+        self.fields["counterparty"].queryset = Counterparty.all_objects.filter(
+            counterparty_filter
+        ).order_by("name")
+
+        funding_filter = Q(archived_at__isnull=True)
+        if self.instance and self.instance.funding_source_id:
+            funding_filter |= Q(pk=self.instance.funding_source_id)
+        self.fields["funding_source"].queryset = FundingSource.all_objects.filter(
+            funding_filter
+        ).order_by("name")
+        self.fields["funding_source"].required = False
+
+        template_filter = Q(
+            template_type__in=ContractTemplate.organization_service_contract_template_types(),
+            is_active=True,
+        )
+        if self.instance and self.instance.template_id:
+            template_filter |= Q(pk=self.instance.template_id)
+        self.fields["template"].queryset = ContractTemplate.objects.filter(
+            template_filter
+        ).order_by("template_type", "title", "version")
+        self.fields["template"].required = False
+
+        counterparty_id = self._selected_counterparty_id()
+        document_filter = Q(category=Document.Category.CONTRACT) & ~Q(
+            target_type=Document.TargetType.RECIPIENT
+        )
+        if counterparty_id:
+            document_filter &= Q(
+                target_type=Document.TargetType.COUNTERPARTY,
+                counterparty_id=counterparty_id,
+            ) | Q(
+                target_type__in=[
+                    Document.TargetType.CENTER,
+                    Document.TargetType.CONTRACT,
+                    Document.TargetType.OTHER,
+                ]
+            )
+        if self.instance and self.instance.document_id:
+            document_filter |= Q(pk=self.instance.document_id)
+        self.fields["document"].queryset = Document.objects.filter(document_filter).order_by(
+            "-created_at"
+        )
+        self.fields["document"].required = False
+
+    def _selected_counterparty_id(self) -> int | None:
+        if self.is_bound:
+            try:
+                return int(self.data.get(self.add_prefix("counterparty")) or "")
+            except (TypeError, ValueError):
+                return None
+        if self.instance and self.instance.counterparty_id:
+            return self.instance.counterparty_id
+        return None
+
+
 class ServiceContractLineForm(forms.ModelForm):
     meaningful_empty_check_fields = (
         "service",
@@ -3000,10 +3099,92 @@ class ServiceContractLineForm(forms.ModelForm):
         )
 
 
+class OrganizationServiceContractLineForm(forms.ModelForm):
+    meaningful_empty_check_fields = (
+        "service",
+        "service_name",
+        "quantity",
+        "unit_price",
+        "starts_on",
+        "ends_on",
+        "notes",
+    )
+
+    class Meta:
+        model = OrganizationServiceContractLine
+        fields = (
+            "sort_order",
+            "service",
+            "service_name",
+            "quantity",
+            "unit",
+            "unit_price",
+            "starts_on",
+            "ends_on",
+            "notes",
+        )
+        labels = {
+            "sort_order": "Порядок",
+            "service": "Услуга",
+            "service_name": "Наименование в договоре",
+            "quantity": "Количество",
+            "unit": "Ед.",
+            "unit_price": "Цена",
+            "starts_on": "Период с",
+            "ends_on": "Период по",
+            "notes": "Примечания",
+        }
+        widgets = {
+            "starts_on": DATE_INPUT,
+            "ends_on": DATE_INPUT,
+            "notes": forms.Textarea(attrs={"rows": 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        service_filter = Q(is_active=True)
+        if self.instance and self.instance.service_id:
+            service_filter |= Q(pk=self.instance.service_id)
+        self.fields["service"].queryset = Service.all_objects.filter(service_filter).order_by(
+            "name"
+        )
+        self.fields["service_name"].required = False
+
+    def has_changed(self) -> bool:
+        base_changed = super().has_changed()
+        if not base_changed:
+            return False
+        if self.instance and self.instance.pk:
+            return True
+        return any(
+            (self.data.get(self.add_prefix(field)) or "").strip()
+            for field in self.meaningful_empty_check_fields
+        )
+
+
 ServiceContractLineFormSet = inlineformset_factory(
     ServiceContract,
     ServiceContractLine,
     form=ServiceContractLineForm,
+    fields=(
+        "sort_order",
+        "service",
+        "service_name",
+        "quantity",
+        "unit",
+        "unit_price",
+        "starts_on",
+        "ends_on",
+        "notes",
+    ),
+    extra=2,
+    can_delete=True,
+)
+
+OrganizationServiceContractLineFormSet = inlineformset_factory(
+    OrganizationServiceContract,
+    OrganizationServiceContractLine,
+    form=OrganizationServiceContractLineForm,
     fields=(
         "sort_order",
         "service",

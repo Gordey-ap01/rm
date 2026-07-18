@@ -17,6 +17,8 @@ from django.utils import timezone
 from operations.forms import (
     ContractTemplateForm,
     DonationContractForm,
+    OrganizationServiceContractForm,
+    OrganizationServiceContractLineFormSet,
     ServiceContractForm,
     ServiceContractLineFormSet,
 )
@@ -25,6 +27,7 @@ from operations.models import (
     ContractSignedFile,
     ContractTemplate,
     DonationContract,
+    OrganizationServiceContract,
     ServiceContract,
 )
 from operations.services import contract_documents as contract_doc_svc, pdf as pdf_svc
@@ -205,13 +208,55 @@ def _service_queryset(filters: dict[str, str]) -> list[ServiceContract]:
     return contracts
 
 
+def _organization_queryset(filters: dict[str, str]) -> list[OrganizationServiceContract]:
+    queryset = OrganizationServiceContract.objects.select_related(
+        "counterparty",
+        "funding_source",
+        "template",
+        "document",
+        "document__contract_legal_snapshot",
+    ).prefetch_related("service_lines__service")
+    queryset = queryset.prefetch_related(_active_signed_files_prefetch())
+    if filters["kind"] not in {"", "organization"}:
+        return []
+    if filters["status"] in {choice[0] for choice in OrganizationServiceContract.Status.choices}:
+        queryset = queryset.filter(status=filters["status"])
+    query = filters["q"]
+    if query:
+        queryset = queryset.filter(
+            Q(number__icontains=query)
+            | Q(notes__icontains=query)
+            | Q(counterparty__name__icontains=query)
+            | Q(funding_source__name__icontains=query)
+            | Q(service_lines__service_name__icontains=query)
+            | Q(service_lines__service__name__icontains=query)
+            | Q(template__title__icontains=query)
+            | Q(document__title__icontains=query)
+        ).distinct()
+    contracts = list(queryset.order_by("-signed_on", "-created_at")[:300])
+    for contract in contracts:
+        contract.ui_signed_on = _format_date(contract.signed_on)
+        contract.ui_validity = _validity_label(contract.valid_from, contract.valid_until)
+        contract.ui_pdf_url = reverse("organization_service_contract_pdf", args=[contract.pk])
+        contract.ui_word_url = reverse("organization_service_contract_word", args=[contract.pk])
+        contract.ui_legal_snapshot = _legal_snapshot_label(contract)
+        contract.ui_spec_summary = contract.service_lines_summary or "спецификация не заполнена"
+        contract.ui_amount = _format_money(contract.service_lines_total_amount)
+        _attach_signed_file_ui(
+            contract,
+            archive_url_name="organization_service_contract_archive_signed",
+        )
+    return contracts
+
+
 def contract_summary_items(
     *,
     templates: list[ContractTemplate],
     donation_contracts: list[DonationContract],
     service_contracts: list[ServiceContract],
+    organization_contracts: list[OrganizationServiceContract],
 ) -> list[dict[str, str]]:
-    contracts = [*donation_contracts, *service_contracts]
+    contracts = [*donation_contracts, *service_contracts, *organization_contracts]
     active_count = sum(1 for contract in contracts if contract.status == "active")
     draft_count = sum(1 for contract in contracts if contract.status == "draft")
     no_file_count = sum(1 for contract in contracts if not contract.document_id)
@@ -245,8 +290,9 @@ def contract_next_action(
     templates: list[ContractTemplate],
     donation_contracts: list[DonationContract],
     service_contracts: list[ServiceContract],
+    organization_contracts: list[OrganizationServiceContract],
 ) -> dict[str, str]:
-    contracts = [*donation_contracts, *service_contracts]
+    contracts = [*donation_contracts, *service_contracts, *organization_contracts]
     if not any(template.is_active for template in templates):
         return {
             "tone": "warning",
@@ -315,6 +361,22 @@ def contract_form_control_items(kind: str) -> list[dict[str, str]]:
                 "detail": "Лимит суммы можно оставить пустым, если договор не ограничен фиксированной суммой.",
             },
         ]
+    if kind == "organization":
+        return [
+            *common,
+            {
+                "title": "Организация",
+                "detail": "B2B-договор подписывается с контрагентом и не требует получателя или представителя.",
+            },
+            {
+                "title": "Спецификация",
+                "detail": "Строки описывают юридический план услуг организации и не создают платежей, занятий или актов.",
+            },
+            {
+                "title": "Документ контрагента",
+                "detail": "Word сохраняется как документ выбранной организации; документ получателя использовать нельзя.",
+            },
+        ]
     return [
         *common,
         {
@@ -339,6 +401,7 @@ def contract_list(request):
     templates = _template_queryset(filters)
     donation_contracts = _donation_queryset(filters)
     service_contracts = _service_queryset(filters)
+    organization_contracts = _organization_queryset(filters)
     return render(
         request,
         "operations/contract_list.html",
@@ -346,19 +409,23 @@ def contract_list(request):
             "contract_templates": templates,
             "donation_contracts": donation_contracts,
             "service_contracts": service_contracts,
+            "organization_contracts": organization_contracts,
             "contract_summary_items": contract_summary_items(
                 templates=templates,
                 donation_contracts=donation_contracts,
                 service_contracts=service_contracts,
+                organization_contracts=organization_contracts,
             ),
             "contract_next_action": contract_next_action(
                 templates=templates,
                 donation_contracts=donation_contracts,
                 service_contracts=service_contracts,
+                organization_contracts=organization_contracts,
             ),
             "kind_choices": [
                 ("", "Все"),
                 ("service", "С получателями"),
+                ("organization", "Организации"),
                 ("donation", "Пожертвования"),
                 ("template", "Шаблоны"),
             ],
@@ -554,6 +621,91 @@ def service_contract_edit(request, pk: int):
 
 @login_required
 @user_passes_test(is_admin_user)
+def organization_service_contract_create(request):
+    contract = OrganizationServiceContract()
+    if request.method == "POST":
+        form = OrganizationServiceContractForm(request.POST, instance=contract)
+        line_formset = OrganizationServiceContractLineFormSet(
+            request.POST,
+            instance=contract,
+            prefix="service_lines",
+        )
+        form_valid = form.is_valid()
+        line_formset_valid = line_formset.is_valid()
+        if form_valid and line_formset_valid:
+            with transaction.atomic():
+                contract = form.save()
+                line_formset.instance = contract
+                line_formset.save()
+            messages.success(request, "B2B-договор услуг добавлен.")
+            return redirect("organization_service_contract_edit", pk=contract.pk)
+    else:
+        form = OrganizationServiceContractForm(instance=contract)
+        line_formset = OrganizationServiceContractLineFormSet(
+            instance=contract,
+            prefix="service_lines",
+        )
+    return render(
+        request,
+        "operations/contract_form.html",
+        {
+            "title": "Добавить B2B-договор услуг",
+            "subtitle": "Структурная запись договора с организацией и спецификацией услуг.",
+            "form": form,
+            "service_line_formset": line_formset,
+            "cancel_url": reverse("contract_list"),
+            "control_items": contract_form_control_items("organization"),
+        },
+    )
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def organization_service_contract_edit(request, pk: int):
+    contract = get_object_or_404(
+        OrganizationServiceContract.objects.select_related(
+            "counterparty",
+            "funding_source",
+        ).prefetch_related("service_lines__service"),
+        pk=pk,
+    )
+    if request.method == "POST":
+        form = OrganizationServiceContractForm(request.POST, instance=contract)
+        line_formset = OrganizationServiceContractLineFormSet(
+            request.POST,
+            instance=contract,
+            prefix="service_lines",
+        )
+        form_valid = form.is_valid()
+        line_formset_valid = line_formset.is_valid()
+        if form_valid and line_formset_valid:
+            with transaction.atomic():
+                form.save()
+                line_formset.save()
+            messages.success(request, "B2B-договор услуг обновлен.")
+            return redirect("contract_list")
+    else:
+        form = OrganizationServiceContractForm(instance=contract)
+        line_formset = OrganizationServiceContractLineFormSet(
+            instance=contract,
+            prefix="service_lines",
+        )
+    return render(
+        request,
+        "operations/contract_form.html",
+        {
+            "title": "Редактировать B2B-договор услуг",
+            "subtitle": str(contract),
+            "form": form,
+            "service_line_formset": line_formset,
+            "cancel_url": reverse("contract_list"),
+            "control_items": contract_form_control_items("organization"),
+        },
+    )
+
+
+@login_required
+@user_passes_test(is_admin_user)
 def donation_contract_pdf(request, pk: int):
     contract = get_object_or_404(
         DonationContract.objects.select_related("counterparty", "funding_source", "template"),
@@ -667,6 +819,52 @@ def service_contract_word(request, pk: int):
 
 @login_required
 @user_passes_test(is_admin_user)
+def organization_service_contract_pdf(request, pk: int):
+    contract = get_object_or_404(
+        OrganizationServiceContract.objects.select_related(
+            "counterparty",
+            "funding_source",
+            "template",
+        ).prefetch_related("service_lines__service"),
+        pk=pk,
+    )
+    filename = _pdf_filename("organization_service_contract", contract.number, contract.pk)
+    return FileResponse(
+        pdf_svc.organization_service_contract_pdf(contract),
+        as_attachment=True,
+        filename=filename,
+        content_type="application/pdf",
+    )
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def organization_service_contract_word(request, pk: int):
+    contract = get_object_or_404(
+        OrganizationServiceContract.objects.select_related(
+            "counterparty",
+            "funding_source",
+            "template",
+            "document",
+        ).prefetch_related("service_lines__service"),
+        pk=pk,
+    )
+    if request.method != "POST":
+        messages.warning(request, "Сформируйте Word-файл кнопкой в реестре договоров.")
+        return redirect("contract_list")
+    try:
+        generated = contract_doc_svc.save_organization_service_contract_docx(
+            contract,
+            actor=request.user,
+        )
+    except contract_doc_svc.ContractDocumentError as exc:
+        messages.error(request, str(exc))
+        return redirect("contract_list")
+    return _docx_response(generated)
+
+
+@login_required
+@user_passes_test(is_admin_user)
 def service_contract_archive_signed(request, pk: int):
     contract = get_object_or_404(
         ServiceContract.objects.select_related(
@@ -691,6 +889,36 @@ def service_contract_archive_signed(request, pk: int):
     messages.success(
         request,
         f"Подписанный файл договора с получателем сохранен в архиве: "
+        f"{signed_file.file_sha256[:12]}...",
+    )
+    return redirect("contract_list")
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def organization_service_contract_archive_signed(request, pk: int):
+    contract = get_object_or_404(
+        OrganizationServiceContract.objects.select_related(
+            "counterparty",
+            "document",
+            "document__contract_legal_snapshot",
+        ),
+        pk=pk,
+    )
+    if request.method != "POST":
+        messages.warning(request, "Архив подписанного файла создается кнопкой в реестре.")
+        return redirect("contract_list")
+    try:
+        signed_file = contract_doc_svc.archive_organization_service_contract_signed_file(
+            contract,
+            actor=request.user,
+        )
+    except contract_doc_svc.ContractDocumentError as exc:
+        messages.error(request, str(exc))
+        return redirect("contract_list")
+    messages.success(
+        request,
+        f"Подписанный файл B2B-договора услуг сохранен в архиве: "
         f"{signed_file.file_sha256[:12]}...",
     )
     return redirect("contract_list")

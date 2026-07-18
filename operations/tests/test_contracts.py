@@ -17,6 +17,8 @@ from operations.models import (
     DonationContract,
     FundingSource,
     LedgerEntry,
+    OrganizationServiceContract,
+    OrganizationServiceContractLine,
     ParentGuardian,
     Payment,
     RecipientRepresentative,
@@ -278,6 +280,53 @@ class ContractRegistryValidationTests(TestCase):
         self.assertIn("quantity", raised.exception.message_dict)
         self.assertIn("unit_price", raised.exception.message_dict)
         self.assertIn("ends_on", raised.exception.message_dict)
+
+    def test_organization_service_contract_tracks_counterparty_spec_without_financial_facts(self):
+        ledger_count = LedgerEntry.objects.count()
+        payment_count = Payment.objects.count()
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.ORGANIZATION_SERVICE,
+            title="Organization service template",
+        )
+        contract = OrganizationServiceContract.objects.create(
+            counterparty=self.counterparty,
+            funding_source=self.funding_source,
+            contract_type=OrganizationServiceContract.ContractType.PROJECT,
+            number="B2B-SPEC",
+            signed_on=self.today,
+            template=template,
+        )
+
+        line = OrganizationServiceContractLine.objects.create(
+            organization_contract=contract,
+            service=self.service,
+            quantity=Decimal("12.00"),
+            unit=OrganizationServiceContractLine.Unit.SESSION,
+            unit_price=Decimal("500.00"),
+            starts_on=self.today,
+            ends_on=self.today + timezone.timedelta(days=60),
+            sort_order=1,
+        )
+
+        self.assertEqual(line.service_name, self.service.name)
+        self.assertEqual(line.amount, Decimal("6000.00"))
+        self.assertEqual(contract.service_lines_total_amount, Decimal("6000.00"))
+        self.assertIn("Speech therapy", contract.service_lines_summary)
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
+        self.assertEqual(Payment.objects.count(), payment_count)
+
+    def test_organization_service_contract_rejects_wrong_template_and_recipient_document(self):
+        contract = OrganizationServiceContract(
+            counterparty=self.counterparty,
+            template=self.service_template,
+            document=self.contract_document,
+        )
+
+        with self.assertRaises(ValidationError) as raised:
+            contract.full_clean()
+
+        self.assertIn("template", raised.exception.message_dict)
+        self.assertIn("document", raised.exception.message_dict)
 
     def test_service_contract_accepts_recipient_template_families(self):
         for template_type in (

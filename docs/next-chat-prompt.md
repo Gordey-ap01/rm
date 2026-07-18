@@ -394,3 +394,19 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Runserver `8099` stopped; synthetic `BQA-SIGNED-*` QA data cleaned.
 - Graphify code-index after this slice: `4932` nodes / `20613` edges. Semantic extraction was not rerun; keep `docshablon/` private/ignored.
 - Next safe step: B2B organization-service contract contract, consent template generation, legal acts, or certificate payer/source modeling. Keep approve/pay/import write-path and certificate-balance mutation under separate contracts.
+
+## Latest clarification 2026-07-18: organization-service-contract complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/32-organization-service-contract-contract.md` is added and implemented.
+- Migration `operations.0036_organizationservicecontract_and_more` adds `OrganizationServiceContract` and `OrganizationServiceContractLine`.
+- `ContractLegalSnapshot` and `ContractSignedFile` support `contract_kind=organization_service` with nullable `organization_contract`; exactly-one-contract constraints remain enforced.
+- B2B contracts link `Counterparty`, optional `FundingSource`, organization-service template and service specification lines. They do not require a recipient or representative.
+- Word generation creates/updates counterparty `Document(category=contract)`, stores a legal snapshot and fills center/counterparty/funding/contract/service-spec placeholders.
+- `/contracts/` has a separate B2B block with create/edit, Word, PDF, archive and signed archive download link.
+- No ledger/balance/payment/billing/payroll/grant/certificate-balance/schedule/status/acts/import semantics changed.
+- Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused contract/view tests `55 passed`, full pytest `603 passed`, in-app Browser desktop/mobile QA for B2B list/snapshot/archive link. In-app Browser does not support download events; Word/download routes are covered by Django tests.
+- Runserver `8100` stopped; synthetic `BQA-ORG-*` QA data cleaned.
+- Graphify code-index after this slice: `4996` nodes / `21474` edges. Semantic extraction was not rerun; keep `docshablon/` private/ignored.
+- Next safe step: consent template generation, legal acts, certificate payer/source modeling, or another explicit contract. Do not connect B2B contracts to payments, ledger, balances, payroll, grants, schedules or import write-path without a new contract.

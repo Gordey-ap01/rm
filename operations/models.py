@@ -3060,7 +3060,12 @@ def contract_template_upload_path(instance: ContractTemplate, filename: str) -> 
 
 def contract_signed_file_upload_path(instance: ContractSignedFile, filename: str) -> str:
     kind = instance.contract_kind or "contract"
-    contract_id = instance.service_contract_id or instance.donation_contract_id or "unassigned"
+    contract_id = (
+        instance.service_contract_id
+        or instance.donation_contract_id
+        or instance.organization_contract_id
+        or "unassigned"
+    )
     safe_name = get_valid_filename(filename.rsplit("/", 1)[-1].rsplit("\\", 1)[-1])
     stamp = timezone.now().strftime("%Y%m%d%H%M%S")
     return f"contract_signed_files/{kind}/{contract_id}/{stamp}_{uuid.uuid4().hex[:8]}_{safe_name}"
@@ -3703,6 +3708,13 @@ class ContractTemplate(TimeStampedModel):
             cls.TemplateType.OTHER,
         }
 
+    @classmethod
+    def organization_service_contract_template_types(cls) -> set[str]:
+        return {
+            cls.TemplateType.ORGANIZATION_SERVICE,
+            cls.TemplateType.OTHER,
+        }
+
 
 class DonationContract(TimeStampedModel):
     class ContractType(models.TextChoices):
@@ -4062,10 +4074,224 @@ class ServiceContractLine(TimeStampedModel):
         super().save(*args, **kwargs)
 
 
+class OrganizationServiceContract(TimeStampedModel):
+    class ContractType(models.TextChoices):
+        STANDARD = "standard", "Договор оказания услуг организации"
+        PROJECT = "project", "Проектный договор услуг"
+        OTHER = "other", "Прочее"
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Черновик"
+        ACTIVE = "active", "Активен"
+        CLOSED = "closed", "Закрыт"
+        CANCELLED = "cancelled", "Отменен"
+
+    counterparty = models.ForeignKey(
+        Counterparty,
+        verbose_name="организация",
+        on_delete=models.PROTECT,
+        related_name="organization_service_contracts",
+    )
+    funding_source = models.ForeignKey(
+        FundingSource,
+        verbose_name="источник финансирования",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="organization_service_contracts",
+    )
+    contract_type = models.CharField(
+        "тип договора",
+        max_length=30,
+        choices=ContractType.choices,
+        default=ContractType.STANDARD,
+    )
+    number = models.CharField("номер", max_length=80, blank=True)
+    signed_on = models.DateField("подписан", null=True, blank=True)
+    valid_from = models.DateField("действует с", null=True, blank=True)
+    valid_until = models.DateField("действует до", null=True, blank=True)
+    status = models.CharField(
+        "статус",
+        max_length=30,
+        choices=Status.choices,
+        default=Status.DRAFT,
+    )
+    template = models.ForeignKey(
+        ContractTemplate,
+        verbose_name="шаблон",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="organization_service_contracts",
+    )
+    document = models.ForeignKey(
+        Document,
+        verbose_name="файл договора",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="organization_service_contracts",
+    )
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "B2B-договор оказания услуг"
+        verbose_name_plural = "B2B-договоры оказания услуг"
+        ordering = ["-signed_on", "-created_at"]
+        indexes = [
+            models.Index(fields=["counterparty", "status", "valid_from", "valid_until"]),
+            models.Index(fields=["funding_source", "status", "valid_from", "valid_until"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(valid_from__isnull=True)
+                | Q(valid_until__isnull=True)
+                | Q(valid_until__gte=models.F("valid_from")),
+                name="organization_service_contract_dates_order",
+            ),
+            models.UniqueConstraint(
+                fields=["contract_type", "number", "signed_on"],
+                condition=~Q(number="") & Q(signed_on__isnull=False),
+                name="unique_organization_service_contract_number_signed_on_per_type",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        number = f" №{self.number}" if self.number else ""
+        return f"{self.get_contract_type_display()}{number} — {self.counterparty}"
+
+    @property
+    def service_lines_total_amount(self) -> Decimal:
+        return sum((line.amount for line in self.service_lines.all()), Decimal("0"))
+
+    @property
+    def service_lines_summary(self) -> str:
+        lines = list(self.service_lines.all())
+        if not lines:
+            return ""
+        first = lines[0]
+        suffix = f" + еще {len(lines) - 1}" if len(lines) > 1 else ""
+        return f"{first.service_name or first.service.name}: {first.quantity:g} {first.get_unit_display()}{suffix}"
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.valid_from and self.valid_until and self.valid_until < self.valid_from:
+            errors["valid_until"] = "Дата окончания не может быть раньше даты начала."
+        if (
+            self.template_id
+            and self.template.template_type
+            not in ContractTemplate.organization_service_contract_template_types()
+        ):
+            errors["template"] = "Выберите B2B-шаблон договора услуг организации."
+        if self.document_id:
+            if self.document.category != Document.Category.CONTRACT:
+                errors["document"] = "Связанный документ должен иметь категорию договора."
+            if self.document.target_type == Document.TargetType.RECIPIENT:
+                errors["document"] = "B2B-договор нельзя связывать с документом получателя."
+            if (
+                self.document.target_type == Document.TargetType.COUNTERPARTY
+                and self.counterparty_id
+                and self.document.counterparty_id != self.counterparty_id
+            ):
+                errors["document"] = "Документ договора должен относиться к выбранной организации."
+        if errors:
+            raise ValidationError(errors)
+
+
+class OrganizationServiceContractLine(TimeStampedModel):
+    class Unit(models.TextChoices):
+        SESSION = "session", "занятие"
+        HOUR = "hour", "час"
+        COURSE = "course", "курс"
+        MONTH = "month", "месяц"
+        OTHER = "other", "другое"
+
+    organization_contract = models.ForeignKey(
+        OrganizationServiceContract,
+        verbose_name="B2B-договор",
+        on_delete=models.CASCADE,
+        related_name="service_lines",
+    )
+    service = models.ForeignKey(
+        Service,
+        verbose_name="услуга",
+        on_delete=models.PROTECT,
+        related_name="organization_contract_lines",
+    )
+    service_name = models.CharField(
+        "наименование услуги в договоре",
+        max_length=240,
+        blank=True,
+        help_text="Если оставить пустым, будет использовано название услуги.",
+    )
+    quantity = models.DecimalField("количество", max_digits=10, decimal_places=2, default=1)
+    unit = models.CharField(
+        "единица",
+        max_length=20,
+        choices=Unit.choices,
+        default=Unit.SESSION,
+    )
+    unit_price = models.DecimalField("цена за единицу", max_digits=12, decimal_places=2, default=0)
+    starts_on = models.DateField("период с", null=True, blank=True)
+    ends_on = models.DateField("период по", null=True, blank=True)
+    sort_order = models.PositiveIntegerField("порядок", default=0)
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "строка спецификации B2B-договора"
+        verbose_name_plural = "строки спецификации B2B-договора"
+        ordering = ["organization_contract", "sort_order", "pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(quantity__gt=0),
+                name="organization_contract_line_quantity_positive",
+            ),
+            models.CheckConstraint(
+                condition=Q(unit_price__gte=0),
+                name="organization_contract_line_unit_price_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=Q(starts_on__isnull=True)
+                | Q(ends_on__isnull=True)
+                | Q(ends_on__gte=models.F("starts_on")),
+                name="organization_contract_line_dates_order",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["organization_contract", "sort_order"]),
+            models.Index(fields=["service", "unit"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.organization_contract}: {self.service_name or self.service.name}"
+
+    @property
+    def amount(self) -> Decimal:
+        return (self.quantity * self.unit_price).quantize(Decimal("0.01"))
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.quantity <= 0:
+            errors["quantity"] = "Количество должно быть больше нуля."
+        if self.unit_price < 0:
+            errors["unit_price"] = "Цена не может быть отрицательной."
+        if self.starts_on and self.ends_on and self.ends_on < self.starts_on:
+            errors["ends_on"] = "Дата окончания не может быть раньше даты начала."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if not self.service_name and self.service_id:
+            self.service_name = self.service.name
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
 class ContractLegalSnapshot(TimeStampedModel):
     class ContractKind(models.TextChoices):
         SERVICE = "service", "Договор с получателем"
         DONATION = "donation", "Договор пожертвования"
+        ORGANIZATION_SERVICE = "organization_service", "B2B-договор услуг организации"
 
     contract_kind = models.CharField(
         "тип договора",
@@ -4083,6 +4309,14 @@ class ContractLegalSnapshot(TimeStampedModel):
     donation_contract = models.ForeignKey(
         DonationContract,
         verbose_name="договор пожертвования",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="legal_snapshots",
+    )
+    organization_contract = models.ForeignKey(
+        OrganizationServiceContract,
+        verbose_name="B2B-договор услуг организации",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
@@ -4123,6 +4357,7 @@ class ContractLegalSnapshot(TimeStampedModel):
             models.Index(fields=["contract_kind", "-created_at"]),
             models.Index(fields=["service_contract", "-created_at"]),
             models.Index(fields=["donation_contract", "-created_at"]),
+            models.Index(fields=["organization_contract", "-created_at"]),
         ]
         constraints = [
             models.CheckConstraint(
@@ -4131,11 +4366,19 @@ class ContractLegalSnapshot(TimeStampedModel):
                         contract_kind="service",
                         service_contract__isnull=False,
                         donation_contract__isnull=True,
+                        organization_contract__isnull=True,
                     )
                     | Q(
                         contract_kind="donation",
                         service_contract__isnull=True,
                         donation_contract__isnull=False,
+                        organization_contract__isnull=True,
+                    )
+                    | Q(
+                        contract_kind="organization_service",
+                        service_contract__isnull=True,
+                        donation_contract__isnull=True,
+                        organization_contract__isnull=False,
                     )
                 ),
                 name="contract_snapshot_matches_contract_kind",
@@ -4143,7 +4386,7 @@ class ContractLegalSnapshot(TimeStampedModel):
         ]
 
     def __str__(self) -> str:
-        contract = self.service_contract or self.donation_contract
+        contract = self.service_contract or self.donation_contract or self.organization_contract
         return f"{self.get_contract_kind_display()} — {contract}"
 
     def clean(self) -> None:
@@ -4155,12 +4398,31 @@ class ContractLegalSnapshot(TimeStampedModel):
                 errors["donation_contract"] = (
                     "Для договора с получателем договор пожертвования должен быть пустым."
                 )
+            if self.organization_contract_id:
+                errors["organization_contract"] = (
+                    "Для договора с получателем B2B-договор должен быть пустым."
+                )
         elif self.contract_kind == self.ContractKind.DONATION:
             if not self.donation_contract_id:
                 errors["donation_contract"] = "Выберите договор пожертвования."
             if self.service_contract_id:
                 errors["service_contract"] = (
                     "Для договора пожертвования договор с получателем должен быть пустым."
+                )
+            if self.organization_contract_id:
+                errors["organization_contract"] = (
+                    "Для договора пожертвования B2B-договор должен быть пустым."
+                )
+        elif self.contract_kind == self.ContractKind.ORGANIZATION_SERVICE:
+            if not self.organization_contract_id:
+                errors["organization_contract"] = "Выберите B2B-договор услуг организации."
+            if self.service_contract_id:
+                errors["service_contract"] = (
+                    "Для B2B-договора договор с получателем должен быть пустым."
+                )
+            if self.donation_contract_id:
+                errors["donation_contract"] = (
+                    "Для B2B-договора договор пожертвования должен быть пустым."
                 )
         if self.document_id:
             if self.document.category != Document.Category.CONTRACT:
@@ -4186,6 +4448,22 @@ class ContractLegalSnapshot(TimeStampedModel):
                     errors["document"] = (
                         "Документ snapshot должен относиться к контрагенту договора."
                     )
+            if (
+                self.contract_kind == self.ContractKind.ORGANIZATION_SERVICE
+                and self.organization_contract_id
+            ):
+                if self.document.target_type == Document.TargetType.RECIPIENT:
+                    errors["document"] = (
+                        "Snapshot B2B-договора нельзя ссылать на документ получателя."
+                    )
+                elif (
+                    self.document.target_type == Document.TargetType.COUNTERPARTY
+                    and self.document.counterparty_id
+                    != self.organization_contract.counterparty_id
+                ):
+                    errors["document"] = (
+                        "Документ snapshot должен относиться к организации договора."
+                    )
         if errors:
             raise ValidationError(errors)
 
@@ -4194,6 +4472,7 @@ class ContractSignedFile(TimeStampedModel):
     class ContractKind(models.TextChoices):
         SERVICE = "service", "Договор с получателем"
         DONATION = "donation", "Договор пожертвования"
+        ORGANIZATION_SERVICE = "organization_service", "B2B-договор услуг организации"
 
     class Status(models.TextChoices):
         ACTIVE = "active", "Действует"
@@ -4215,6 +4494,14 @@ class ContractSignedFile(TimeStampedModel):
     donation_contract = models.ForeignKey(
         DonationContract,
         verbose_name="договор пожертвования",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="signed_files",
+    )
+    organization_contract = models.ForeignKey(
+        OrganizationServiceContract,
+        verbose_name="B2B-договор услуг организации",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
@@ -4269,6 +4556,7 @@ class ContractSignedFile(TimeStampedModel):
         "contract_kind",
         "service_contract_id",
         "donation_contract_id",
+        "organization_contract_id",
         "source_document_id",
         "file",
         "original_filename",
@@ -4294,6 +4582,7 @@ class ContractSignedFile(TimeStampedModel):
             models.Index(fields=["contract_kind", "status", "-signed_on"]),
             models.Index(fields=["service_contract", "status", "-signed_on"]),
             models.Index(fields=["donation_contract", "status", "-signed_on"]),
+            models.Index(fields=["organization_contract", "status", "-signed_on"]),
             models.Index(fields=["file_sha256"]),
         ]
         constraints = [
@@ -4303,11 +4592,19 @@ class ContractSignedFile(TimeStampedModel):
                         contract_kind="service",
                         service_contract__isnull=False,
                         donation_contract__isnull=True,
+                        organization_contract__isnull=True,
                     )
                     | Q(
                         contract_kind="donation",
                         service_contract__isnull=True,
                         donation_contract__isnull=False,
+                        organization_contract__isnull=True,
+                    )
+                    | Q(
+                        contract_kind="organization_service",
+                        service_contract__isnull=True,
+                        donation_contract__isnull=True,
+                        organization_contract__isnull=False,
                     )
                 ),
                 name="contract_signed_file_matches_contract_kind",
@@ -4319,12 +4616,12 @@ class ContractSignedFile(TimeStampedModel):
         ]
 
     def __str__(self) -> str:
-        contract = self.service_contract or self.donation_contract
+        contract = self.service_contract or self.donation_contract or self.organization_contract
         return f"{self.get_contract_kind_display()} — {contract} — {self.signed_on:%d.%m.%Y}"
 
     @property
-    def contract(self) -> ServiceContract | DonationContract | None:
-        return self.service_contract or self.donation_contract
+    def contract(self) -> ServiceContract | DonationContract | OrganizationServiceContract | None:
+        return self.service_contract or self.donation_contract or self.organization_contract
 
     def _immutable_value(self, field: str):
         value = getattr(self, field)
@@ -4352,12 +4649,31 @@ class ContractSignedFile(TimeStampedModel):
                 errors["donation_contract"] = (
                     "Для договора с получателем договор пожертвования должен быть пустым."
                 )
+            if self.organization_contract_id:
+                errors["organization_contract"] = (
+                    "Для договора с получателем B2B-договор должен быть пустым."
+                )
         elif self.contract_kind == self.ContractKind.DONATION:
             if not self.donation_contract_id:
                 errors["donation_contract"] = "Выберите договор пожертвования."
             if self.service_contract_id:
                 errors["service_contract"] = (
                     "Для договора пожертвования договор с получателем должен быть пустым."
+                )
+            if self.organization_contract_id:
+                errors["organization_contract"] = (
+                    "Для договора пожертвования B2B-договор должен быть пустым."
+                )
+        elif self.contract_kind == self.ContractKind.ORGANIZATION_SERVICE:
+            if not self.organization_contract_id:
+                errors["organization_contract"] = "Выберите B2B-договор услуг организации."
+            if self.service_contract_id:
+                errors["service_contract"] = (
+                    "Для B2B-договора договор с получателем должен быть пустым."
+                )
+            if self.donation_contract_id:
+                errors["donation_contract"] = (
+                    "Для B2B-договора договор пожертвования должен быть пустым."
                 )
         if self.source_document_id:
             if self.source_document.category != Document.Category.CONTRACT:
@@ -4383,6 +4699,22 @@ class ContractSignedFile(TimeStampedModel):
                 ):
                     errors["source_document"] = (
                         "Исходный файл должен относиться к контрагенту договора."
+                    )
+            if (
+                self.contract_kind == self.ContractKind.ORGANIZATION_SERVICE
+                and self.organization_contract_id
+            ):
+                if self.source_document.target_type == Document.TargetType.RECIPIENT:
+                    errors["source_document"] = (
+                        "Подписанный файл B2B-договора нельзя создавать из документа получателя."
+                    )
+                elif (
+                    self.source_document.target_type == Document.TargetType.COUNTERPARTY
+                    and self.source_document.counterparty_id
+                    != self.organization_contract.counterparty_id
+                ):
+                    errors["source_document"] = (
+                        "Исходный файл должен относиться к организации договора."
                     )
         if self.file_sha256 and len(self.file_sha256) != 64:
             errors["file_sha256"] = "SHA-256 должен состоять из 64 символов."

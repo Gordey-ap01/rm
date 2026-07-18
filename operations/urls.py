@@ -200,6 +200,31 @@ urlpatterns = [
         name="service_contract_archive_signed",
     ),
     path(
+        "contracts/organizations/new/",
+        views.organization_service_contract_create,
+        name="organization_service_contract_create",
+    ),
+    path(
+        "contracts/organizations/<int:pk>/edit/",
+        views.organization_service_contract_edit,
+        name="organization_service_contract_edit",
+    ),
+    path(
+        "contracts/organizations/<int:pk>/pdf/",
+        views.organization_service_contract_pdf,
+        name="organization_service_contract_pdf",
+    ),
+    path(
+        "contracts/organizations/<int:pk>/word/",
+        views.organization_service_contract_word,
+        name="organization_service_contract_word",
+    ),
+    path(
+        "contracts/organizations/<int:pk>/archive-signed/",
+        views.organization_service_contract_archive_signed,
+        name="organization_service_contract_archive_signed",
+    ),
+    path(
         "contracts/signed-files/<int:pk>/download/",
         views.contract_signed_file_download,
         name="contract_signed_file_download",

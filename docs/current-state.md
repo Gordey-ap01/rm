@@ -1707,3 +1707,17 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA artifacts: `%TEMP%\rmcodex-browser-qa-center-profile`; local runserver `8083` was stopped.
 - Graphify code-index after this slice: `4757` nodes / `19251` edges. Semantic extraction was not rerun.
 - Next safe work: `contract-signed-snapshot` from docs/26 before B2B contracts, consents, acts or legally significant signed versions.
+
+## Update 2026-07-18: organization-service-contract
+
+- Implemented `docs/32-organization-service-contract-contract.md` as a DB-owner legal-document slice for B2B organization service contracts.
+- Added model/migration `operations.0036_organizationservicecontract_and_more` with `OrganizationServiceContract` and `OrganizationServiceContractLine`.
+- `ContractLegalSnapshot` and `ContractSignedFile` now support `contract_kind=organization_service` and nullable `organization_contract` links while preserving "exactly one contract" constraints.
+- B2B contracts use `Counterparty` as the legal party, optional `FundingSource` as a contract label, organization-service template allowlist and line-based service specification. They do not require a recipient or representative.
+- Word generation creates/updates a counterparty `Document(category=contract)`, stores a legal snapshot, and fills `center.*`, `counterparty.*`, `funding_source.*`, `contract.*` and `service_spec.*` placeholders.
+- `/contracts/` now includes a separate B2B block with create/edit, Word, PDF, signed archive action and signed archive download link.
+- No `LedgerEntry`, `BalanceAccount`, `Payment`, billing, payroll, grant, certificate-balance, schedule, appointment-status, acts or import write-path semantics changed.
+- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused contract/view tests `55 passed`, full pytest `603 passed` with the existing django-tasks warning, and in-app Browser desktop/mobile QA for B2B list, Word-triggered snapshot, signed archive link and no horizontal overflow.
+- In-app Browser still cannot handle download events; Word/download routes are covered by Django tests. Synthetic `BQA-ORG-*` QA data was cleaned and local runserver `8100` was stopped.
+- Graphify code-index after this slice: `4996` nodes / `21474` edges. Semantic extraction was not rerun; keep raw `docshablon/` ignored/private.
+- Next safe work: consent template generation, legal acts, certificate payer/source modeling, or another explicit contract. Keep approve/pay/import write-path, certificate balance mutation and schedule/finance coupling out of B2B contracts until a new contract is approved.

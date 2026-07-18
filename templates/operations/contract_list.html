@@ -13,6 +13,7 @@
     <a class="button-link secondary" href="{% url 'expense_directory_list' %}">Справочники</a>
     <a class="button-link secondary" href="{% url 'contract_template_create' %}">Шаблон</a>
     <a class="button-link secondary" href="{% url 'donation_contract_create' %}">Пожертвование</a>
+    <a class="button-link secondary" href="{% url 'organization_service_contract_create' %}">B2B-договор</a>
     <a class="button-link" href="{% url 'service_contract_create' %}">Договор с получателем</a>
   </div>
 </section>
@@ -148,6 +149,90 @@
             <tr>
               <td colspan="8" data-label="Договоры">
                 <div class="empty-state">Договоры с получателями еще не добавлены.</div>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      {% if filters.kind == "" or filters.kind == "organization" %}
+      <h3 class="mt-4">B2B-договоры с организациями</h3>
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>Организация</th>
+              <th>Источник</th>
+              <th>Номер</th>
+              <th>Срок</th>
+              <th>Спецификация</th>
+              <th>Шаблон/файл</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for contract in organization_contracts %}
+            <tr{% if contract.status == "closed" or contract.status == "cancelled" %} class="muted-row"{% endif %}>
+              <td data-label="Организация">
+                <strong>{{ contract.counterparty.name }}</strong>
+                <div class="muted">{{ contract.get_contract_type_display }}</div>
+              </td>
+              <td data-label="Источник">
+                {% if contract.funding_source %}{{ contract.funding_source.name }}{% else %}<span class="muted">не указан</span>{% endif %}
+              </td>
+              <td data-label="Номер">
+                {% if contract.number %}{{ contract.number }}{% else %}<span class="muted">не указан</span>{% endif %}
+                <div class="muted">подписан: {{ contract.ui_signed_on }}</div>
+              </td>
+              <td data-label="Срок">{{ contract.ui_validity }}</td>
+              <td data-label="Спецификация">
+                <div>{{ contract.ui_spec_summary }}</div>
+                <strong>{{ contract.ui_amount }}</strong>
+              </td>
+              <td data-label="Шаблон/файл">
+                {% if contract.template %}<div>{{ contract.template }}</div>{% endif %}
+                {% if contract.document %}<div class="muted">{{ contract.document.title }}</div>{% else %}<span class="muted">файл не привязан</span>{% endif %}
+                {% if contract.ui_legal_snapshot %}<div class="muted">{{ contract.ui_legal_snapshot }}</div>{% endif %}
+                {% if contract.ui_signed_file %}
+                  <div class="muted">
+                    подписанный архив:
+                    <a href="{{ contract.ui_signed_file_url }}">{{ contract.ui_signed_file.signed_on|date:"d.m.Y" }}</a>
+                  </div>
+                {% endif %}
+              </td>
+              <td data-label="Статус">
+                {% if contract.status == "active" %}
+                  <span class="status-pill">{{ contract.get_status_display }}</span>
+                {% elif contract.status == "draft" %}
+                  <span class="status-pill warning-pill">{{ contract.get_status_display }}</span>
+                {% elif contract.status == "cancelled" %}
+                  <span class="status-pill danger-pill">{{ contract.get_status_display }}</span>
+                {% else %}
+                  <span class="status-pill muted-pill">{{ contract.get_status_display }}</span>
+                {% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'organization_service_contract_edit' contract.pk %}">Открыть</a>
+                <form method="post" action="{{ contract.ui_word_url }}" class="inline-form compact-form">
+                  {% csrf_token %}
+                  <button class="secondary-button small-action" type="submit">Word</button>
+                </form>
+                <a class="small-action" href="{{ contract.ui_pdf_url }}">PDF</a>
+                {% if contract.ui_archive_signed_url %}
+                <form method="post" action="{{ contract.ui_archive_signed_url }}" class="inline-form compact-form">
+                  {% csrf_token %}
+                  <button class="secondary-button small-action" type="submit">Зафиксировать</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="8" data-label="B2B-договоры">
+                <div class="empty-state">B2B-договоры с организациями еще не добавлены.</div>
               </td>
             </tr>
           {% endfor %}
