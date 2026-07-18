@@ -406,6 +406,7 @@ urlpatterns = [
     path("consents/", views.consent_list, name="consent_list"),
     path("consents/new/", views.consent_create, name="consent_create"),
     path("consents/new/<int:child_id>/", views.consent_create, name="consent_create_for_child"),
+    path("consents/<int:pk>/word/", views.consent_word, name="consent_word"),
     path("payments/new/", views.payment_create, name="payment_create"),
     path("payments/new/<int:account_id>/", views.payment_create, name="payment_create_for_account"),
 ]

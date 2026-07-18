@@ -44,10 +44,13 @@
           <tr>
             <th>Получатель</th>
             <th>Тип</th>
+            <th>Подписант</th>
             <th>Подписано</th>
             <th>Действует до</th>
+            <th>Шаблон</th>
             <th>Документ</th>
             <th>Статус</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -55,11 +58,26 @@
             <tr>
               <td data-label="Получатель"><a href="{% url 'child_detail' pk=c.child_id %}">{{ c.child }}</a></td>
               <td data-label="Тип">{{ c.get_consent_type_display }}</td>
+              <td data-label="Подписант">
+                {% if c.signatory_representative %}
+                  {{ c.signatory_representative.representative.full_name }}
+                  <small>{{ c.signatory_representative.get_relationship_type_display }}</small>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
               <td data-label="Подписано">{% if c.signed_on %}{{ c.signed_on|date:"d.m.Y" }}{% else %}—{% endif %}</td>
               <td data-label="Действует до">{% if c.expires_on %}{{ c.expires_on|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+              <td data-label="Шаблон">
+                {% if c.template %}
+                  {{ c.template }}
+                {% else %}
+                  <span class="muted">системный</span>
+                {% endif %}
+              </td>
               <td data-label="Документ">
                 {% if c.document %}
-                  {{ c.document.title }}
+                  <a href="{{ c.document.file.url }}" target="_blank">{{ c.document.title }}</a>
                 {% else %}
                   —
                 {% endif %}
@@ -71,9 +89,15 @@
                   <span class="status-pill balance-critical">Истекло</span>
                 {% endif %}
               </td>
+              <td class="table-actions" data-label="Действия">
+                <form method="post" action="{% url 'consent_word' c.pk %}" class="inline-form compact-form">
+                  {% csrf_token %}
+                  <button class="secondary-button small-action" type="submit">Word</button>
+                </form>
+              </td>
             </tr>
           {% empty %}
-            <tr><td colspan="6" data-label="Согласия"><p class="empty-state">Согласий нет.</p></td></tr>
+            <tr><td colspan="9" data-label="Согласия"><p class="empty-state">Согласий нет.</p></td></tr>
           {% endfor %}
         </tbody>
       </table>

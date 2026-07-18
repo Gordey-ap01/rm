@@ -10,6 +10,7 @@ from django.utils import timezone
 from operations.models import (
     Certificate,
     Child,
+    Consent,
     ContractSignedFile,
     ContractTemplate,
     Counterparty,
@@ -327,6 +328,57 @@ class ContractRegistryValidationTests(TestCase):
 
         self.assertIn("template", raised.exception.message_dict)
         self.assertIn("document", raised.exception.message_dict)
+
+    def test_consent_rejects_wrong_signatory_template_and_document(self):
+        consent_template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.DONATION_ONE_TIME,
+            title="Wrong consent template",
+        )
+        other_consent_document = Document.objects.create(
+            child=self.other_child,
+            category=Document.Category.CONSENT,
+            title="Other child consent",
+            file="documents/other-consent.txt",
+        )
+        consent = Consent(
+            child=self.child,
+            consent_type=Consent.ConsentType.PHOTO_VIDEO,
+            signatory_representative=self.other_signer_link,
+            template=consent_template,
+            document=other_consent_document,
+            signed_on=self.today,
+            expires_on=self.today + timezone.timedelta(days=30),
+        )
+
+        with self.assertRaises(ValidationError) as raised:
+            consent.full_clean()
+
+        self.assertIn("signatory_representative", raised.exception.message_dict)
+        self.assertIn("template", raised.exception.message_dict)
+        self.assertIn("document", raised.exception.message_dict)
+
+    def test_consent_accepts_photo_video_template_and_recipient_document(self):
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.CONSENT_PHOTO_VIDEO,
+            title="Photo consent template",
+        )
+        document = Document.objects.create(
+            child=self.child,
+            category=Document.Category.CONSENT,
+            title="Photo consent file",
+            file="documents/photo-consent.txt",
+        )
+        consent = Consent(
+            child=self.child,
+            consent_type=Consent.ConsentType.PHOTO_VIDEO,
+            signatory_representative=self.signer_link,
+            template=template,
+            document=document,
+            signed_on=self.today,
+            expires_on=self.today + timezone.timedelta(days=30),
+        )
+
+        consent.full_clean()
 
     def test_service_contract_accepts_recipient_template_families(self):
         for template_type in (

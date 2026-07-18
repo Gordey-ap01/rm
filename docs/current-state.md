@@ -1721,3 +1721,17 @@ SMTP для реальной промышленной рассылки еще н
 - In-app Browser still cannot handle download events; Word/download routes are covered by Django tests. Synthetic `BQA-ORG-*` QA data was cleaned and local runserver `8100` was stopped.
 - Graphify code-index after this slice: `4996` nodes / `21474` edges. Semantic extraction was not rerun; keep raw `docshablon/` ignored/private.
 - Next safe work: consent template generation, legal acts, certificate payer/source modeling, or another explicit contract. Keep approve/pay/import write-path, certificate balance mutation and schedule/finance coupling out of B2B contracts until a new contract is approved.
+
+## Update 2026-07-19: consent-template-generation
+
+- Implemented `docs/33-consent-template-generation-contract.md` as a DB-owner legal-document slice for generated consent files.
+- Added migration `operations.0037_consent_signatory_representative_consent_template_and_more`: `Consent.signatory_representative`, `Consent.template` and consent template index.
+- `Consent` now validates same-child signatory, consent template allowlist, recipient `Document(category=consent)` ownership and date order.
+- `ConsentForm` filters signatories/documents by selected recipient and templates by `ContractTemplate.consent_template_types()`.
+- Word generation for consent uses existing document generator with `center.*`, `child.*`, `representative.*` and new `consent.*` placeholders, creates/updates `Document(target_type=recipient, category=consent)` and links it to `Consent.document`.
+- `/consents/` shows signatory, template, generated document link and POST `Word` action.
+- No signed archive, consent legal snapshot, new `DocumentTemplate`, acts, schedule restrictions, email/public consent flows, ledger/balance/payment/billing/payroll/grant/status/import semantics changed.
+- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused legal/consent tests `26 passed`, full pytest `607 passed` with the existing django-tasks warning, and in-app Browser desktop/mobile QA for consent list, Word-triggered document creation and no horizontal overflow.
+- In-app Browser cannot handle download events; Word download route is covered by Django tests. Synthetic `BQAConsent*` QA data was cleaned and local runserver `8101` was stopped.
+- Graphify code-index after this slice: `5028` nodes / `21578` edges. Semantic extraction was not rerun; keep raw `docshablon/` ignored/private.
+- Next safe work: legal acts, signed archive/snapshot for consents, certificate payer/source modeling, or another explicit contract. Do not connect consents to schedule blocking, public permissions, finance, grants or import write-path without a new contract.

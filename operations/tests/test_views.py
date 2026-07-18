@@ -2439,10 +2439,14 @@ class DocumentViewTests(NewViewsTestBase):
 
 
 class ConsentViewTests(NewViewsTestBase):
+    def _signer_link(self):
+        return RecipientRepresentative.objects.get(child=self.child, representative=self.parent)
+
     def test_list_renders(self):
         Consent.objects.create(
             child=self.child,
             consent_type=Consent.ConsentType.PERSONAL_DATA,
+            signatory_representative=self._signer_link(),
             signed_on=timezone.localdate(),
         )
 
@@ -2457,7 +2461,10 @@ class ConsentViewTests(NewViewsTestBase):
         self.assertContains(response, 'id="consent-list"')
         self.assertContains(response, "consent-table")
         self.assertContains(response, 'data-label="Подписано"')
+        self.assertContains(response, 'data-label="Подписант"')
+        self.assertContains(response, 'data-label="Шаблон"')
         self.assertContains(response, 'data-label="Документ"')
+        self.assertContains(response, "Word")
 
     def test_list_filtered_by_child(self):
         other_child = Child.objects.create(last_name="Согласия", first_name="Другой")
@@ -2494,17 +2501,77 @@ class ConsentViewTests(NewViewsTestBase):
         self.assertEqual(response.status_code, 200)
 
     def test_create_post(self):
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.CONSENT_PHOTO_VIDEO,
+            title="Фото согласие",
+        )
+        signer = self._signer_link()
         response = self.client.post(
             reverse("consent_create"),
             {
                 "child": self.child.pk,
-                "consent_type": Consent.ConsentType.PERSONAL_DATA,
+                "consent_type": Consent.ConsentType.PHOTO_VIDEO,
+                "signatory_representative": signer.pk,
+                "template": template.pk,
+                "document": "",
                 "signed_on": "2024-06-01",
+                "expires_on": "",
                 "note": "",
             },
         )
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(Consent.objects.filter(child=self.child).exists())
+        consent = Consent.objects.get(child=self.child)
+        self.assertEqual(consent.signatory_representative, signer)
+        self.assertEqual(consent.template, template)
+
+    def test_create_filters_consent_templates_and_child_signatories(self):
+        consent_template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.CONSENT_PHOTO_VIDEO,
+            title="Фото шаблон",
+        )
+        service_template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.RECIPIENT_SERVICE,
+            title="Договорной шаблон",
+        )
+        response = self.client.get(reverse("consent_create_for_child", args=[self.child.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        form = response.context["form"]
+        self.assertIn(consent_template, form.fields["template"].queryset)
+        self.assertNotIn(service_template, form.fields["template"].queryset)
+        self.assertEqual(list(form.fields["signatory_representative"].queryset), [self._signer_link()])
+
+    def test_word_generation_creates_and_reuses_consent_document(self):
+        signer = self._signer_link()
+        consent = Consent.objects.create(
+            child=self.child,
+            consent_type=Consent.ConsentType.PHOTO_VIDEO,
+            signatory_representative=signer,
+            signed_on=timezone.localdate(),
+        )
+
+        response = self.client.post(reverse("consent_word", args=[consent.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        consent.refresh_from_db()
+        document = consent.document
+        self.assertIsNotNone(document)
+        self.assertEqual(document.target_type, Document.TargetType.RECIPIENT)
+        self.assertEqual(document.category, Document.Category.CONSENT)
+        self.assertEqual(document.child, self.child)
+        self.assertEqual(document.issued_on, consent.signed_on)
+
+        document_count = Document.objects.count()
+        document_pk = document.pk
+        repeat = self.client.post(reverse("consent_word", args=[consent.pk]))
+        self.assertEqual(repeat.status_code, 200)
+        consent.refresh_from_db()
+        self.assertEqual(consent.document_id, document_pk)
+        self.assertEqual(Document.objects.count(), document_count)
 
 
 class PaymentViewTests(NewViewsTestBase):

@@ -39,6 +39,7 @@
 | `docs/30-certificate-contract-link-contract.md` | Контракт связи service договора с сертификатом/маткапиталом. | Перед изменениями `ServiceContract.certificate`, `certificate.*` placeholders или сертификатных договоров. |
 | `docs/31-immutable-contract-signed-file-archive-contract.md` | Контракт неизменяемого архива подписанных service/donation файлов. | Перед изменениями `ContractSignedFile`, signed archive actions/download или юридических подписанных версий. |
 | `docs/32-organization-service-contract-contract.md` | Контракт B2B-договора оказания услуг организации. | Перед изменениями `OrganizationServiceContract`, B2B Word/PDF/archive, organization-service snapshots или B2B спецификации услуг. |
+| `docs/33-consent-template-generation-contract.md` | Контракт генерации Word-согласий получателя. | Перед изменениями `Consent`, consent templates, consent Word generation или consent document ownership. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -71,7 +72,7 @@
 13. Если задача затрагивает справочники категорий/контрагентов вне Django admin, прочитать `docs/22-category-counterparty-directory-contract.md`.
 14. Если задача затрагивает Word-генерацию договоров или placeholder catalog, прочитать `docs/23-contract-word-generation-contract.md`, `docs/24-document-template-source-inventory.md` и `docs/25-template-placeholder-expansion-v2-contract.md`.
 15. Если задача затрагивает `Document` без `Child`, donation-document storage, юрпрофиль центра, signed snapshots, B2B/consents/acts, прочитать `docs/26-legal-document-targets-and-center-profile-contract.md`.
-16. Если задача затрагивает юридические семейства шаблонов, юрполя сторон, спецификацию договора, сертификаты, архив подписанных файлов или B2B-договоры организации, прочитать `docs/27-legal-template-families-contract.md` и соответствующий контракт `docs/28`-`docs/32`.
+16. Если задача затрагивает юридические семейства шаблонов, юрполя сторон, спецификацию договора, сертификаты, архив подписанных файлов, B2B-договоры организации или согласия, прочитать `docs/27-legal-template-families-contract.md` и соответствующий контракт `docs/28`-`docs/33`.
 17. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
 18. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
 19. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
@@ -402,3 +403,16 @@ Browser QA - это проверка живого интерфейса в бра
 - Verification: Ruff, Django check, migration dry-run `No changes detected`, focused contract/view tests `55 passed`, full pytest `603 passed`, in-app Browser desktop/mobile QA for B2B list/snapshot/archive link; in-app Browser cannot handle download events, download routes are covered by Django tests. Synthetic `BQA-ORG-*` QA data was cleaned and runserver `8100` stopped.
 - Graphify code-index after this slice: `4996` nodes / `21474` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
 - Next safe slice: consent template generation, legal acts, certificate payer/source modeling, or another explicit contract. Do not connect B2B contracts to payments, ledger, balances, payroll, grants, schedules or import write-path without a new contract.
+
+## Latest Recovery Note 2026-07-19: consent-template-generation
+
+- `docs/33-consent-template-generation-contract.md` is added and implemented.
+- Migration `operations.0037_consent_signatory_representative_consent_template_and_more` adds optional `Consent.signatory_representative` and optional `Consent.template`.
+- `Consent` validates same-recipient signatory, consent template allowlist, recipient consent document ownership and date order.
+- `ContractTemplate.consent_template_types()` allows `consent_photo_video` and `other`.
+- Word generation for consent creates/updates recipient `Document(category=consent)`, links it to `Consent.document` and fills center/child/representative/consent placeholders.
+- `/consents/` shows signatory, template, document link and POST `Word` action.
+- No consent signed archive/snapshot, new `DocumentTemplate`, acts, schedule blocking, email/public consent flows, ledger/balance/payment/billing/payroll/grant/status/import semantics changed.
+- Verification: Ruff, Django check, migration dry-run `No changes detected`, focused legal/consent tests `26 passed`, full pytest `607 passed`, in-app Browser desktop/mobile QA for consent list and Word-triggered document link; in-app Browser cannot handle download events, download routes are covered by Django tests. Synthetic `BQAConsent*` QA data was cleaned and runserver `8101` stopped.
+- Graphify code-index after this slice: `5028` nodes / `21578` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
+- Next safe slice: legal acts, signed archive/snapshot for consents, certificate payer/source modeling, or another explicit contract. Do not connect consents to schedule blocking/public permissions/finance/grants/import write-path without a new contract.

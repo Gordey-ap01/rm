@@ -1243,10 +1243,27 @@ class DocumentAdmin(admin.ModelAdmin):
 
 @admin.register(Consent)
 class ConsentAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "child", "consent_type", "signed_on", "expires_on", "document")
-    search_fields = ("child__last_name", "child__first_name", "note")
-    list_filter = ("consent_type",)
-    autocomplete_fields = ("child", "document")
+    list_display = (
+        "created_at",
+        "child",
+        "consent_type",
+        "signatory_representative",
+        "template",
+        "signed_on",
+        "expires_on",
+        "document",
+    )
+    search_fields = (
+        "child__last_name",
+        "child__first_name",
+        "signatory_representative__representative__last_name",
+        "signatory_representative__representative__first_name",
+        "template__title",
+        "document__title",
+        "note",
+    )
+    list_filter = ("consent_type", "template__template_type")
+    autocomplete_fields = ("child", "signatory_representative", "template", "document")
     date_hierarchy = "created_at"
 
 

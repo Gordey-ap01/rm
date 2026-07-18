@@ -410,3 +410,19 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Runserver `8100` stopped; synthetic `BQA-ORG-*` QA data cleaned.
 - Graphify code-index after this slice: `4996` nodes / `21474` edges. Semantic extraction was not rerun; keep `docshablon/` private/ignored.
 - Next safe step: consent template generation, legal acts, certificate payer/source modeling, or another explicit contract. Do not connect B2B contracts to payments, ledger, balances, payroll, grants, schedules or import write-path without a new contract.
+
+## Latest clarification 2026-07-19: consent-template-generation complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/33-consent-template-generation-contract.md` is added and implemented.
+- Migration `operations.0037_consent_signatory_representative_consent_template_and_more` adds optional `Consent.signatory_representative` and `Consent.template`.
+- `Consent` validates same-recipient signatory, consent template allowlist, recipient consent document ownership and date order.
+- `ContractTemplate.consent_template_types()` allows `consent_photo_video` and `other`.
+- Word generation for consent creates/updates `Document(target_type=recipient, category=consent)`, links it to `Consent.document` and fills `center.*`, `child.*`, `representative.*`, `consent.*`.
+- `/consents/` shows signatory, template, generated document link and POST `Word` action.
+- No consent signed archive/snapshot, new `DocumentTemplate`, acts, schedule blocking, email/public consent flows, ledger/balance/payment/billing/payroll/grant/status/import semantics changed.
+- Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused legal/consent tests `26 passed`, full pytest `607 passed`, in-app Browser desktop/mobile QA for consent list and Word-triggered document link. In-app Browser does not support download events; Word download route is covered by Django tests.
+- Runserver `8101` stopped; synthetic `BQAConsent*` QA data cleaned.
+- Graphify code-index after this slice: `5028` nodes / `21578` edges. Semantic extraction was not rerun; keep `docshablon/` private/ignored.
+- Next safe step: legal acts, signed archive/snapshot for consents, certificate payer/source modeling, or another explicit contract. Do not connect consents to schedule blocking/public permissions/finance/grants/import write-path without a new contract.

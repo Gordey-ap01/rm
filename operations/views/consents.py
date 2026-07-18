@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from operations.forms import ConsentForm
-from operations.models import Child, Consent
+from operations.models import Child, Consent, RecipientRepresentative
+from operations.services import contract_documents as contract_doc_svc
 
 from ._common import is_admin_user
 
@@ -120,7 +122,12 @@ def _consent_control_items(
 @login_required
 @user_passes_test(is_admin_user)
 def consent_list(request, child_id: int | None = None):
-    qs = Consent.objects.select_related("child", "document").order_by("-signed_on")
+    qs = Consent.objects.select_related(
+        "child",
+        "document",
+        "signatory_representative__representative",
+        "template",
+    ).order_by("-signed_on")
     if child_id is None:
         child_id = request.GET.get("child_id")
     if child_id:
@@ -145,7 +152,23 @@ def consent_list(request, child_id: int | None = None):
 def consent_create(request, child_id: int | None = None):
     initial = {}
     if child_id:
-        initial["child"] = get_object_or_404(Child, pk=child_id)
+        child = get_object_or_404(Child, pk=child_id)
+        initial["child"] = child
+        signatory = (
+            RecipientRepresentative.objects.filter(child=child, signs_contract=True)
+            .select_related("representative")
+            .order_by("-is_primary", "representative__last_name")
+            .first()
+        )
+        if signatory is None:
+            signatory = (
+                RecipientRepresentative.objects.filter(child=child, is_primary=True)
+                .select_related("representative")
+                .order_by("representative__last_name")
+                .first()
+            )
+        if signatory is not None:
+            initial["signatory_representative"] = signatory
     if request.method == "POST":
         form = ConsentForm(request.POST)
         if form.is_valid():
@@ -162,4 +185,32 @@ def consent_create(request, child_id: int | None = None):
             "title": "Зафиксировать согласие",
             "cancel_url": reverse("consent_list"),
         },
+    )
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def consent_word(request, pk: int):
+    consent = get_object_or_404(
+        Consent.objects.select_related(
+            "child",
+            "signatory_representative__representative",
+            "template",
+            "document",
+        ),
+        pk=pk,
+    )
+    if request.method != "POST":
+        messages.warning(request, "Сформируйте Word-файл кнопкой в реестре согласий.")
+        return redirect("consent_list")
+    try:
+        generated = contract_doc_svc.save_consent_docx(consent, actor=request.user)
+    except contract_doc_svc.ContractDocumentError as exc:
+        messages.error(request, str(exc))
+        return redirect("consent_list")
+    return FileResponse(
+        generated.payload,
+        as_attachment=True,
+        filename=generated.filename,
+        content_type=contract_doc_svc.DOCX_CONTENT_TYPE,
     )

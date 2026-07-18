@@ -2341,10 +2341,21 @@ class DocumentForm(forms.ModelForm):
 class ConsentForm(forms.ModelForm):
     class Meta:
         model = Consent
-        fields = ("child", "consent_type", "document", "signed_on", "expires_on", "note")
+        fields = (
+            "child",
+            "consent_type",
+            "signatory_representative",
+            "template",
+            "document",
+            "signed_on",
+            "expires_on",
+            "note",
+        )
         labels = {
             "child": "Получатель",
             "consent_type": "Тип согласия",
+            "signatory_representative": "Подписант",
+            "template": "Шаблон",
             "document": "Документ",
             "signed_on": "Дата подписания",
             "expires_on": "Действителен до",
@@ -2359,7 +2370,85 @@ class ConsentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["child"].queryset = Child.objects.order_by("last_name", "first_name")
+        self.fields["signatory_representative"].required = False
+        self.fields["signatory_representative"].queryset = RecipientRepresentative.objects.none()
+        self.fields["template"].required = False
+        self.fields["template"].queryset = ContractTemplate.objects.filter(
+            is_active=True,
+            template_type__in=ContractTemplate.consent_template_types(),
+        ).order_by("template_type", "title", "version")
         self.fields["document"].required = False
+        self.fields["document"].queryset = Document.objects.none()
+        child = self._selected_child()
+        if child is not None:
+            self.fields["signatory_representative"].queryset = (
+                RecipientRepresentative.objects.select_related("representative")
+                .filter(child=child)
+                .order_by("-is_primary", "-signs_contract", "representative__last_name")
+            )
+            self.fields["document"].queryset = Document.objects.filter(
+                target_type=Document.TargetType.RECIPIENT,
+                category=Document.Category.CONSENT,
+                child=child,
+            ).order_by("-issued_on", "-created_at")
+        elif self.instance.pk:
+            self.fields["signatory_representative"].queryset = (
+                RecipientRepresentative.objects.select_related("representative")
+                .filter(child=self.instance.child)
+                .order_by("-is_primary", "-signs_contract", "representative__last_name")
+            )
+            self.fields["document"].queryset = Document.objects.filter(
+                target_type=Document.TargetType.RECIPIENT,
+                category=Document.Category.CONSENT,
+                child=self.instance.child,
+            ).order_by("-issued_on", "-created_at")
+
+    def _selected_child(self) -> Child | None:
+        child_id = self.data.get(self.add_prefix("child")) if self.is_bound else None
+        if child_id:
+            try:
+                return Child.objects.get(pk=child_id)
+            except (Child.DoesNotExist, ValueError):
+                return None
+        child = self.initial.get("child")
+        if isinstance(child, Child):
+            return child
+        if child:
+            try:
+                return Child.objects.get(pk=child)
+            except (Child.DoesNotExist, ValueError):
+                return None
+        if self.instance.pk:
+            return self.instance.child
+        return None
+
+    def clean(self):
+        cleaned = super().clean()
+        child = cleaned.get("child")
+        signatory = cleaned.get("signatory_representative")
+        document = cleaned.get("document")
+        template = cleaned.get("template")
+        if signatory is not None and child is not None and signatory.child_id != child.pk:
+            self.add_error(
+                "signatory_representative",
+                "Подписант должен быть представителем выбранного получателя.",
+            )
+        if document is not None and child is not None:
+            if document.category != Document.Category.CONSENT:
+                self.add_error("document", "Связанный документ должен иметь категорию согласия.")
+            elif document.target_type != Document.TargetType.RECIPIENT:
+                self.add_error("document", "Согласие должно ссылаться на документ получателя.")
+            elif document.child_id != child.pk:
+                self.add_error(
+                    "document",
+                    "Документ согласия должен относиться к выбранному получателю.",
+                )
+        if (
+            template is not None
+            and template.template_type not in ContractTemplate.consent_template_types()
+        ):
+            self.add_error("template", "Выберите шаблон согласия.")
+        return cleaned
 
 
 class PaymentForm(forms.ModelForm):

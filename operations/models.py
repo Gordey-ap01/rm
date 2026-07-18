@@ -3199,6 +3199,22 @@ class Consent(TimeStampedModel):
     consent_type = models.CharField("тип согласия", max_length=30, choices=ConsentType.choices)
     signed_on = models.DateField("подписано", null=True, blank=True)
     expires_on = models.DateField("действует до", null=True, blank=True)
+    signatory_representative = models.ForeignKey(
+        RecipientRepresentative,
+        verbose_name="подписант",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="signed_consents",
+    )
+    template = models.ForeignKey(
+        "ContractTemplate",
+        verbose_name="шаблон",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="consents",
+    )
     document = models.ForeignKey(
         Document,
         verbose_name="документ",
@@ -3213,16 +3229,40 @@ class Consent(TimeStampedModel):
         verbose_name = "согласие"
         verbose_name_plural = "согласия"
         ordering = ["-created_at"]
-        indexes = [models.Index(fields=["child", "consent_type"])]
+        indexes = [
+            models.Index(fields=["child", "consent_type"]),
+            models.Index(fields=["template", "consent_type"]),
+        ]
 
     def __str__(self) -> str:
         return f"{self.get_consent_type_display()} — {self.child}"
 
     def clean(self) -> None:
+        errors: dict[str, str] = {}
         if self.expires_on and self.signed_on and self.expires_on < self.signed_on:
-            raise ValidationError(
-                {"expires_on": "Срок действия не может быть раньше даты подписания."}
+            errors["expires_on"] = "Срок действия не может быть раньше даты подписания."
+        if (
+            self.signatory_representative_id
+            and self.child_id
+            and self.signatory_representative.child_id != self.child_id
+        ):
+            errors["signatory_representative"] = (
+                "Подписант должен быть представителем выбранного получателя."
             )
+        if (
+            self.template_id
+            and self.template.template_type not in ContractTemplate.consent_template_types()
+        ):
+            errors["template"] = "Выберите шаблон согласия."
+        if self.document_id:
+            if self.document.category != Document.Category.CONSENT:
+                errors["document"] = "Связанный документ должен иметь категорию согласия."
+            elif self.document.target_type != Document.TargetType.RECIPIENT:
+                errors["document"] = "Согласие должно ссылаться на документ получателя."
+            elif self.child_id and self.document.child_id != self.child_id:
+                errors["document"] = "Документ согласия должен относиться к выбранному получателю."
+        if errors:
+            raise ValidationError(errors)
 
     @property
     def is_valid(self) -> bool:
@@ -3712,6 +3752,13 @@ class ContractTemplate(TimeStampedModel):
     def organization_service_contract_template_types(cls) -> set[str]:
         return {
             cls.TemplateType.ORGANIZATION_SERVICE,
+            cls.TemplateType.OTHER,
+        }
+
+    @classmethod
+    def consent_template_types(cls) -> set[str]:
+        return {
+            cls.TemplateType.CONSENT_PHOTO_VIDEO,
             cls.TemplateType.OTHER,
         }
 

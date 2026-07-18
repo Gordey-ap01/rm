@@ -17,6 +17,7 @@ from docx.document import Document as WordDocumentType
 
 from operations.models import (
     CenterLegalProfile,
+    Consent,
     ContractLegalSnapshot,
     ContractSignedFile,
     Document,
@@ -193,6 +194,18 @@ PLACEHOLDER_GROUPS = (
             "certificate.payer_name",
         ),
     ),
+    PlaceholderGroup(
+        "Согласие",
+        (
+            "consent.type",
+            "consent.signed_on",
+            "consent.expires_on",
+            "consent.validity",
+            "consent.template",
+            "consent.purpose",
+            "consent.revocation",
+        ),
+    ),
 )
 
 
@@ -210,6 +223,11 @@ def _empty_placeholder_values() -> dict[str, str]:
 
 def _safe_filename(prefix: str, contract: _ContractWithNumber) -> str:
     source = contract.number or str(contract.pk or "")
+    suffix = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in source).strip("_")
+    return f"{prefix}_{suffix or 'draft'}.docx"
+
+
+def _safe_filename_from_source(prefix: str, source: str) -> str:
     suffix = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in source).strip("_")
     return f"{prefix}_{suffix or 'draft'}.docx"
 
@@ -1033,6 +1051,64 @@ def organization_service_contract_placeholders(
     return values
 
 
+def _consent_purpose_label(consent: Consent) -> str:
+    if consent.consent_type == Consent.ConsentType.PHOTO_VIDEO:
+        return "фото- и видеосъемка, хранение и использование материалов в целях работы центра"
+    if consent.consent_type == Consent.ConsentType.PERSONAL_DATA:
+        return "обработка персональных данных для оказания услуг и ведения документов центра"
+    if consent.consent_type == Consent.ConsentType.EXTERNAL_SPECIALIST:
+        return "передача необходимых сведений внешнему специалисту для оказания помощи"
+    return "цель согласия указана в тексте шаблона"
+
+
+def _consent_revocation_label() -> str:
+    return "Согласие может быть отозвано письменным заявлением законного представителя."
+
+
+def consent_placeholders(consent: Consent) -> dict[str, str]:
+    child = consent.child
+    child_address = child.registration_address or child.residential_address
+    signer_link = consent.signatory_representative
+    signer = signer_link.representative if signer_link is not None else None
+    values = _empty_placeholder_values()
+    values.update(_center_placeholder_values())
+    values.update(
+        {
+            "child.full_name": child.full_name,
+            "child.birth_date": _date_label(child.birth_date),
+            "child.phone": _text(child.phone),
+            "child.email": _text(child.email),
+            "child.address": _text(child_address),
+            "consent.type": consent.get_consent_type_display(),
+            "consent.signed_on": _date_label(consent.signed_on),
+            "consent.expires_on": _date_label(consent.expires_on),
+            "consent.validity": _validity_label(consent.signed_on, consent.expires_on),
+            "consent.template": _template_label(consent.template),
+            "consent.purpose": _consent_purpose_label(consent),
+            "consent.revocation": _consent_revocation_label(),
+        }
+    )
+    if signer is not None and signer_link is not None:
+        values.update(
+            {
+                "representative.full_name": signer.full_name,
+                "representative.relationship": signer_link.get_relationship_type_display(),
+                "representative.phone": _text(signer.phone),
+                "representative.phone_alt": _text(signer.phone_alt),
+                "representative.email": _text(signer.email),
+                "representative.passport_series": _text(signer.passport_series),
+                "representative.passport_number": _text(signer.passport_number),
+                "representative.passport_issued_by": _text(signer.passport_issued_by),
+                "representative.passport_issued_on": _date_label(signer.passport_issued_on),
+                "representative.registration_address": _text(signer.registration_address),
+                "representative.signs_contract": _bool_label(signer_link.signs_contract),
+                "representative.receives_schedule": _bool_label(signer_link.receives_schedule),
+                "representative.is_payer": _bool_label(signer_link.is_payer),
+            }
+        )
+    return values
+
+
 def _replace_placeholders(text: str, values: dict[str, str]) -> str:
     result = text
     for key, value in values.items():
@@ -1188,6 +1264,32 @@ def _organization_service_fallback_document(contract: OrganizationServiceContrac
     return document
 
 
+def _consent_fallback_document(consent: Consent) -> WordDocumentType:
+    values = consent_placeholders(consent)
+    document = WordDocument()
+    document.add_heading(values["consent.type"], level=1)
+    document.add_paragraph(f"Дата подписания: {values['consent.signed_on']}")
+    document.add_paragraph(f"Срок действия: {values['consent.validity']}")
+
+    table = document.add_table(rows=0, cols=2)
+    table.style = "Table Grid"
+    for label, value in [
+        ("Получатель", values["child.full_name"]),
+        ("Дата рождения", values["child.birth_date"]),
+        ("Представитель", values["representative.full_name"]),
+        ("Роль представителя", values["representative.relationship"]),
+        ("Цель согласия", values["consent.purpose"]),
+    ]:
+        row = table.add_row()
+        row.cells[0].text = label
+        row.cells[1].text = value
+
+    document.add_paragraph(values["consent.revocation"])
+    document.add_paragraph("Подпись представителя: ______________________ /_______________/")
+    document.add_paragraph("Центр: _________________________________ /_______________/")
+    return document
+
+
 def _render_document(document: WordDocumentType) -> BytesIO:
     payload = BytesIO()
     document.save(payload)
@@ -1230,6 +1332,18 @@ def render_organization_service_contract_docx(
     return GeneratedContractFile(
         payload=_render_document(document),
         filename=_safe_filename("organization_service_contract", contract),
+    )
+
+
+def render_consent_docx(consent: Consent) -> GeneratedContractFile:
+    document = _load_template_document(consent)
+    if document is None:
+        document = _consent_fallback_document(consent)
+    else:
+        _replace_in_document(document, consent_placeholders(consent))
+    return GeneratedContractFile(
+        payload=_render_document(document),
+        filename=_safe_filename_from_source("consent", f"{consent.child_id}_{consent.pk or ''}"),
     )
 
 
@@ -1387,6 +1501,51 @@ def save_organization_service_contract_docx(
     )
 
 
+def save_consent_docx(consent: Consent, *, actor=None) -> GeneratedContractFile:
+    generated = render_consent_docx(consent)
+    document = consent.document
+    if document is not None:
+        if document.target_type != Document.TargetType.RECIPIENT:
+            raise ContractDocumentError(
+                "Связанное согласие должно быть документом получателя. Исправьте карточку согласия."
+            )
+        if document.child_id != consent.child_id:
+            raise ContractDocumentError(
+                "Связанный документ согласия относится к другому получателю."
+            )
+        if document.category != Document.Category.CONSENT:
+            raise ContractDocumentError(
+                "Связанный документ должен иметь категорию согласия."
+            )
+    else:
+        document = Document(
+            target_type=Document.TargetType.RECIPIENT,
+            child=consent.child,
+            category=Document.Category.CONSENT,
+        )
+
+    document.title = _consent_document_title(consent)
+    document.issued_on = consent.signed_on or timezone.localdate()
+    document.expires_on = consent.expires_on
+    if actor is not None and getattr(actor, "is_authenticated", False):
+        document.uploaded_by = actor
+    document.note = "Сформирован автоматически из карточки согласия и Word-шаблона."
+    document.file.save(generated.filename, ContentFile(generated.payload.getvalue()), save=False)
+    document.full_clean()
+    document.save()
+
+    if consent.document_id != document.pk:
+        consent.document = document
+        consent.save(update_fields=["document", "updated_at"])
+
+    generated.payload.seek(0)
+    return GeneratedContractFile(
+        payload=generated.payload,
+        filename=generated.filename,
+        document=document,
+    )
+
+
 def _service_document_title(contract: ServiceContract) -> str:
     number = contract.number or "б/н"
     title = f"Договор {number} — {contract.child.full_name}"
@@ -1402,4 +1561,9 @@ def _donation_document_title(contract: DonationContract) -> str:
 def _organization_service_document_title(contract: OrganizationServiceContract) -> str:
     number = contract.number or "б/н"
     title = f"B2B-договор услуг {number} — {contract.counterparty.name}"
+    return title[:200]
+
+
+def _consent_document_title(consent: Consent) -> str:
+    title = f"{consent.get_consent_type_display()} — {consent.child.full_name}"
     return title[:200]
