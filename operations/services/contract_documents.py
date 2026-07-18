@@ -221,6 +221,15 @@ def _money_label(value: Decimal | None) -> str:
     return f"{value:,.2f}".replace(",", " ").replace(".", ",") + " ₽"
 
 
+def _quantity_label(value: Decimal | None) -> str:
+    if value is None:
+        return PLACEHOLDER_BLANK
+    text = format(value.normalize(), "f")
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text or "0"
+
+
 def _text(value: object, fallback: str = PLACEHOLDER_BLANK) -> str:
     if value is None or value == "":
         return fallback
@@ -391,8 +400,10 @@ def _counterparty_snapshot(contract: DonationContract) -> dict[str, object]:
     }
 
 
-def _funding_source_snapshot(contract: DonationContract) -> dict[str, object]:
-    funding_source = contract.funding_source
+def _funding_source_snapshot(contract) -> dict[str, object]:
+    funding_source = getattr(contract, "funding_source", None)
+    if funding_source is None:
+        return {}
     return {
         "id": funding_source.pk,
         "name": funding_source.name,
@@ -406,16 +417,65 @@ def _funding_source_snapshot(contract: DonationContract) -> dict[str, object]:
     }
 
 
+def _line_period_label(line) -> str:
+    return _validity_label(line.starts_on, line.ends_on)
+
+
+def _line_hours_label(line) -> str:
+    if line.unit == line.Unit.HOUR:
+        return _quantity_label(line.quantity)
+    duration_minutes = getattr(line.service, "default_duration_minutes", None)
+    if line.unit == line.Unit.SESSION and duration_minutes:
+        hours = (line.quantity * Decimal(duration_minutes)) / Decimal("60")
+        return _quantity_label(hours.quantize(Decimal("0.01")))
+    return PLACEHOLDER_BLANK
+
+
+def _service_lines(contract: ServiceContract):
+    return list(contract.service_lines.select_related("service").order_by("sort_order", "pk"))
+
+
+def _service_line_snapshot(line) -> dict[str, object]:
+    return {
+        "id": line.pk,
+        "service_id": line.service_id,
+        "service_code": line.service.code,
+        "service_name": line.service_name or line.service.name,
+        "directory_service_name": line.service.name,
+        "quantity": _snapshot_decimal(line.quantity),
+        "unit": line.unit,
+        "unit_display": line.get_unit_display(),
+        "hours": _line_hours_label(line),
+        "unit_price": _snapshot_decimal(line.unit_price),
+        "amount": _snapshot_decimal(line.amount),
+        "starts_on": _snapshot_date(line.starts_on),
+        "ends_on": _snapshot_date(line.ends_on),
+        "period": _line_period_label(line),
+        "sort_order": line.sort_order,
+        "notes": line.notes,
+        "updated_at": _snapshot_datetime(line.updated_at),
+    }
+
+
+def _service_lines_snapshot(contract: ServiceContract) -> list[dict[str, object]]:
+    return [_service_line_snapshot(line) for line in _service_lines(contract)]
+
+
 def _service_contract_snapshot(contract: ServiceContract, document: Document) -> dict[str, object]:
+    service_lines = _service_lines_snapshot(contract)
+    total_amount = sum((Decimal(line["amount"] or "0") for line in service_lines), Decimal("0"))
     return {
         "id": contract.pk,
         "document_id": document.pk,
         "number": contract.number,
         "contract_type": contract.contract_type,
         "contract_type_display": contract.get_contract_type_display(),
+        "funding_source_id": contract.funding_source_id,
         "signed_on": _snapshot_date(contract.signed_on),
         "valid_from": _snapshot_date(contract.valid_from),
         "valid_until": _snapshot_date(contract.valid_until),
+        "amount": _snapshot_decimal(total_amount),
+        "service_lines": service_lines,
         "status": contract.status,
         "status_display": contract.get_status_display(),
         "updated_at": _snapshot_datetime(contract.updated_at),
@@ -495,7 +555,7 @@ def _save_service_legal_snapshot(
     snapshot.recipient_snapshot = _recipient_snapshot(contract)
     snapshot.representative_snapshot = _representative_snapshot(contract)
     snapshot.counterparty_snapshot = {}
-    snapshot.funding_source_snapshot = {}
+    snapshot.funding_source_snapshot = _funding_source_snapshot(contract)
     snapshot.template_snapshot = _template_snapshot(contract.template)
     snapshot.note = "Сформирован автоматически при генерации Word-файла договора с получателем."
     snapshot.full_clean()
@@ -560,12 +620,62 @@ def _center_placeholder_values() -> dict[str, str]:
     }
 
 
+def _funding_source_placeholder_values(contract) -> dict[str, str]:
+    funding_source = getattr(contract, "funding_source", None)
+    if funding_source is None:
+        return {}
+    return {
+        "funding_source.name": funding_source.name,
+        "funding_source.type": funding_source.get_source_type_display(),
+        "funding_source.starts_on": _date_label(funding_source.starts_on),
+        "funding_source.ends_on": _date_label(funding_source.ends_on),
+        "funding_source.transfer_policy": funding_source.get_transfer_policy_display(),
+        "funding_source.project_name": _text(getattr(funding_source, "project_name", "")),
+    }
+
+
+def _service_line_text(line) -> str:
+    return (
+        f"{line.service_name or line.service.name}: "
+        f"{_quantity_label(line.quantity)} {line.get_unit_display()} x "
+        f"{_money_label(line.unit_price)} = {_money_label(line.amount)}"
+    )
+
+
+def _service_spec_placeholder_values(contract: ServiceContract) -> dict[str, str]:
+    lines = _service_lines(contract)
+    total_amount = sum((line.amount for line in lines), Decimal("0"))
+    values = {
+        "contract.amount": _money_label(total_amount) if lines else PLACEHOLDER_BLANK,
+        "service_spec.rows": "\n".join(_service_line_text(line) for line in lines)
+        if lines
+        else PLACEHOLDER_BLANK,
+    }
+    if not lines:
+        return values
+    first = lines[0]
+    values.update(
+        {
+            "service_spec.service_name": _text(first.service_name or first.service.name),
+            "service_spec.quantity": _quantity_label(first.quantity),
+            "service_spec.unit": first.get_unit_display(),
+            "service_spec.hours": _line_hours_label(first),
+            "service_spec.price": _money_label(first.unit_price),
+            "service_spec.amount": _money_label(first.amount),
+            "service_spec.period": _line_period_label(first),
+        }
+    )
+    return values
+
+
 def service_contract_placeholders(contract: ServiceContract) -> dict[str, str]:
     signer_link = contract.representative_link
     signer = signer_link.representative
     child_address = contract.child.registration_address or contract.child.residential_address
     values = _empty_placeholder_values()
     values.update(_center_placeholder_values())
+    values.update(_funding_source_placeholder_values(contract))
+    values.update(_service_spec_placeholder_values(contract))
     values.update(
         {
             "contract.number": _text(contract.number, "б/н"),
@@ -601,9 +711,9 @@ def service_contract_placeholders(contract: ServiceContract) -> dict[str, str]:
 
 def donation_contract_placeholders(contract: DonationContract) -> dict[str, str]:
     counterparty = contract.counterparty
-    funding_source = contract.funding_source
     values = _empty_placeholder_values()
     values.update(_center_placeholder_values())
+    values.update(_funding_source_placeholder_values(contract))
     values.update(
         {
             "contract.number": _text(contract.number, "б/н"),
@@ -625,11 +735,6 @@ def donation_contract_placeholders(contract: DonationContract) -> dict[str, str]
             "counterparty.contact_person": _text(counterparty.contact_person),
             "counterparty.phone": _text(counterparty.phone),
             "counterparty.email": _text(counterparty.email),
-            "funding_source.name": funding_source.name,
-            "funding_source.type": funding_source.get_source_type_display(),
-            "funding_source.starts_on": _date_label(funding_source.starts_on),
-            "funding_source.ends_on": _date_label(funding_source.ends_on),
-            "funding_source.transfer_policy": funding_source.get_transfer_policy_display(),
             "donation.amount_limit": _money_label(contract.amount_limit),
             "donation.amount": _money_label(contract.amount_limit),
         }

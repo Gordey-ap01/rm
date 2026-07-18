@@ -18,7 +18,9 @@ from operations.models import (
     ParentGuardian,
     Payment,
     RecipientRepresentative,
+    Service,
     ServiceContract,
+    ServiceContractLine,
 )
 
 
@@ -71,6 +73,12 @@ class ContractRegistryValidationTests(TestCase):
             template_type=ContractTemplate.TemplateType.SPONSOR,
             title="Sponsor template",
             version="1",
+        )
+        cls.service = Service.objects.create(
+            name="Speech therapy",
+            code="SPEECH",
+            default_duration_minutes=30,
+            default_price=Decimal("1500.00"),
         )
         cls.contract_document = Document.objects.create(
             child=cls.child,
@@ -176,6 +184,7 @@ class ContractRegistryValidationTests(TestCase):
         contract = ServiceContract.objects.create(
             child=self.child,
             representative_link=self.signer_link,
+            funding_source=self.funding_source,
             contract_type=ServiceContract.ContractType.STANDARD,
             number="S-001",
             signed_on=self.today,
@@ -187,7 +196,58 @@ class ContractRegistryValidationTests(TestCase):
 
         self.assertEqual(contract.child, self.child)
         self.assertEqual(contract.representative_link, self.signer_link)
+        self.assertEqual(contract.funding_source, self.funding_source)
         self.assertEqual(contract.document, self.contract_document)
+
+    def test_service_contract_line_tracks_spec_without_financial_facts(self):
+        ledger_count = LedgerEntry.objects.count()
+        payment_count = Payment.objects.count()
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self.signer_link,
+            funding_source=self.funding_source,
+            number="S-SPEC",
+            signed_on=self.today,
+        )
+
+        line = ServiceContractLine.objects.create(
+            service_contract=contract,
+            service=self.service,
+            quantity=Decimal("10.00"),
+            unit=ServiceContractLine.Unit.SESSION,
+            unit_price=Decimal("1500.00"),
+            starts_on=self.today,
+            ends_on=self.today + timezone.timedelta(days=30),
+            sort_order=1,
+        )
+
+        self.assertEqual(line.service_name, self.service.name)
+        self.assertEqual(line.amount, Decimal("15000.00"))
+        self.assertEqual(contract.service_lines_total_amount, Decimal("15000.00"))
+        self.assertIn("Speech therapy", contract.service_lines_summary)
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
+        self.assertEqual(Payment.objects.count(), payment_count)
+
+    def test_service_contract_line_validates_quantity_price_and_dates(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self.signer_link,
+        )
+        line = ServiceContractLine(
+            service_contract=contract,
+            service=self.service,
+            quantity=Decimal("0.00"),
+            unit_price=Decimal("-1.00"),
+            starts_on=self.today,
+            ends_on=self.today - timezone.timedelta(days=1),
+        )
+
+        with self.assertRaises(ValidationError) as raised:
+            line.full_clean()
+
+        self.assertIn("quantity", raised.exception.message_dict)
+        self.assertIn("unit_price", raised.exception.message_dict)
+        self.assertIn("ends_on", raised.exception.message_dict)
 
     def test_service_contract_accepts_recipient_template_families(self):
         for template_type in (

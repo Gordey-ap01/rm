@@ -341,3 +341,16 @@ Browser QA - это проверка живого интерфейса в бра
 - Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused recipient/contract tests `44 passed`, full pytest `582 passed`, Python Playwright desktop/mobile QA with artifacts `%TEMP%\rmcodex-browser-qa-legal-fields`; runserver `8096` stopped.
 - Graphify code-index after this slice: `4826` nodes / `19603` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
 - Next safe slice: `service-contract-spec-and-funding` or `certificate-contract-link`. Keep B2B/consent/act generation, approve/pay and import write-path under separate contracts.
+
+## Latest Recovery Note 2026-07-18: service-contract-spec-and-funding
+
+- `docs/29-service-contract-spec-and-funding-contract.md` is added and implemented.
+- Migration `operations.0033_servicecontractline_servicecontract_funding_source_and_more` adds nullable `ServiceContract.funding_source` and `ServiceContractLine`.
+- `ServiceContractLine` stores service, legal service name, quantity, unit, unit price, period, sort order and notes. Line amount is computed, not stored.
+- Service contract create/edit saves line formset atomically with the contract and ignores untouched blank extra rows with default unit.
+- `/contracts/` shows service-contract funding source, spec summary and computed contract amount.
+- Word generation fills service-contract `funding_source.*`, `contract.amount`, `service_spec.rows` and first-line `service_spec.*`; `ContractLegalSnapshot` stores funding source, service lines and total amount.
+- No ledger/balance/payment/billing/payroll/grant/schedule/appointment-status semantics changed.
+- Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused contract tests `40 passed`, full pytest `588 passed`, Python Playwright desktop/mobile QA with artifacts `%TEMP%\rmcodex-browser-qa-service-contract-spec`; runserver `8097` stopped.
+- Graphify code-index after this slice: `4868` nodes / `20003` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
+- Next safe slice: `certificate-contract-link`, immutable signed-file archive, or a separate B2B/consent/act contract. Do not connect service contract lines to ledger/import write-path without a new contract.

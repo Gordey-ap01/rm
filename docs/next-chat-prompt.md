@@ -346,3 +346,18 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused recipient/contract tests `44 passed`, full pytest `582 passed`, Python Playwright desktop/mobile QA for representative/recipient forms and recipient detail with artifacts `%TEMP%\rmcodex-browser-qa-legal-fields`.
 - Graphify code-index after this slice: `4826` nodes / `19603` edges. Semantic extraction was not rerun; keep `docshablon/` private/ignored and do not send raw samples to semantic extraction.
 - Next safe step: `service-contract-spec-and-funding` or `certificate-contract-link`; B2B/consent/act generation, approve/pay and import write-path need separate contracts.
+
+## Latest clarification 2026-07-18: service-contract-spec-and-funding complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/29-service-contract-spec-and-funding-contract.md` is added and implemented.
+- Migration `operations.0033_servicecontractline_servicecontract_funding_source_and_more` adds nullable `ServiceContract.funding_source` and `ServiceContractLine`.
+- `ServiceContractLine` stores service, legal service name, quantity, unit, unit price, period, sort order and notes. Line amount is computed, not stored.
+- Service contract create/edit saves the spec line formset atomically with the contract and ignores untouched blank extra rows with default unit.
+- `/contracts/` shows funding source, spec summary and computed contract amount for service contracts.
+- Word generation fills `funding_source.*`, `contract.amount`, `service_spec.rows` and first-line `service_spec.*`; `ContractLegalSnapshot` stores funding source, service lines and total amount.
+- No ledger/balance/payment/billing/payroll/grant/schedule/status semantics changed.
+- Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused contract tests `40 passed`, full pytest `588 passed`, Python Playwright desktop/mobile QA for service contract form/list with artifacts `%TEMP%\rmcodex-browser-qa-service-contract-spec`.
+- Graphify code-index after this slice: `4868` nodes / `20003` edges. Semantic extraction was not rerun; keep `docshablon/` private/ignored and do not send raw samples to semantic extraction.
+- Next safe step: `certificate-contract-link`, immutable signed-file archive, or a separate B2B/consent/act contract. Do not connect service contract lines to ledger/import write-path without a new contract.

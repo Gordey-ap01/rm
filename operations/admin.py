@@ -44,6 +44,7 @@ from .models import (
     Room,
     Service,
     ServiceContract,
+    ServiceContractLine,
     StaffAvailability,
     StaffCompensationRule,
     StaffMember,
@@ -322,11 +323,28 @@ class DonationContractAdmin(admin.ModelAdmin):
     autocomplete_fields = ("counterparty", "funding_source", "template", "document")
 
 
+class ServiceContractLineInline(admin.TabularInline):
+    model = ServiceContractLine
+    extra = 0
+    fields = (
+        "sort_order",
+        "service",
+        "service_name",
+        "quantity",
+        "unit",
+        "unit_price",
+        "starts_on",
+        "ends_on",
+    )
+    autocomplete_fields = ("service",)
+
+
 @admin.register(ServiceContract)
 class ServiceContractAdmin(admin.ModelAdmin):
     list_display = (
         "child",
         "representative_link",
+        "funding_source",
         "contract_type",
         "number",
         "status",
@@ -340,11 +358,34 @@ class ServiceContractAdmin(admin.ModelAdmin):
         "child__first_name",
         "representative_link__representative__last_name",
         "representative_link__representative__first_name",
+        "funding_source__name",
         "template__title",
         "document__title",
     )
-    list_filter = ("status", "contract_type", "signed_on", "valid_until")
-    autocomplete_fields = ("child", "representative_link", "template", "document")
+    list_filter = ("status", "contract_type", "funding_source", "signed_on", "valid_until")
+    autocomplete_fields = (
+        "child",
+        "representative_link",
+        "funding_source",
+        "template",
+        "document",
+    )
+    inlines = (ServiceContractLineInline,)
+
+
+@admin.register(ServiceContractLine)
+class ServiceContractLineAdmin(admin.ModelAdmin):
+    list_display = ("service_contract", "service", "service_name", "quantity", "unit", "unit_price")
+    search_fields = (
+        "service_contract__number",
+        "service_contract__child__last_name",
+        "service_contract__child__first_name",
+        "service__name",
+        "service_name",
+        "notes",
+    )
+    list_filter = ("unit", "service")
+    autocomplete_fields = ("service_contract", "service")
 
 
 @admin.register(ContractLegalSnapshot)

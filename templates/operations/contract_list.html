@@ -82,6 +82,7 @@
               <th>Подписант</th>
               <th>Номер</th>
               <th>Срок</th>
+              <th>Спецификация</th>
               <th>Шаблон/файл</th>
               <th>Статус</th>
               <th></th>
@@ -93,6 +94,7 @@
               <td data-label="Получатель">
                 <strong>{{ contract.child.full_name }}</strong>
                 <div class="muted">{{ contract.get_contract_type_display }}</div>
+                {% if contract.funding_source %}<div class="muted">{{ contract.funding_source.name }}</div>{% endif %}
               </td>
               <td data-label="Подписант">{{ contract.representative_link.representative.full_name }}</td>
               <td data-label="Номер">
@@ -100,6 +102,10 @@
                 <div class="muted">подписан: {{ contract.ui_signed_on }}</div>
               </td>
               <td data-label="Срок">{{ contract.ui_validity }}</td>
+              <td data-label="Спецификация">
+                <div>{{ contract.ui_spec_summary }}</div>
+                <strong>{{ contract.ui_amount }}</strong>
+              </td>
               <td data-label="Шаблон/файл">
                 {% if contract.template %}<div>{{ contract.template }}</div>{% endif %}
                 {% if contract.document %}<div class="muted">{{ contract.document.title }}</div>{% else %}<span class="muted">файл не привязан</span>{% endif %}
@@ -127,7 +133,7 @@
             </tr>
           {% empty %}
             <tr>
-              <td colspan="7" data-label="Договоры">
+              <td colspan="8" data-label="Договоры">
                 <div class="empty-state">Договоры с получателями еще не добавлены.</div>
               </td>
             </tr>

@@ -2,7 +2,7 @@
 
 Дата: 2026-07-18
 
-Статус: контракт на DB-owner срез
+Статус: DB-owner срез выполнен
 
 Основание:
 - `docs/24-document-template-source-inventory.md`
@@ -58,3 +58,12 @@
 - Не пытаться в этом срезе привязать строки к каскадам или расписанию: это отдельный контракт после стабилизации договорной модели.
 - При генерации Word из нескольких строк нужен простой текстовый вывод, совместимый с текущим placeholder engine; настоящие Word-таблицы требуют отдельного шаблонного механизма.
 
+## Реализация 2026-07-18
+
+- Миграция `operations.0033_servicecontractline_servicecontract_funding_source_and_more` добавляет `ServiceContract.funding_source` и новую таблицу `ServiceContractLine`.
+- `ServiceContractLine` хранит услугу, юридическое наименование услуги, количество, единицу, цену, период, порядок и примечание; сумма строки вычисляется как `quantity * unit_price`.
+- `ServiceContractForm` фильтрует источники финансирования и сохраняет строки через `ServiceContractLineFormSet` атомарно вместе с договором.
+- Пустые extra-строки formset с default unit не считаются измененными, чтобы реальный браузерный submit не ломался из-за пустой второй строки.
+- `/contracts/` показывает источник финансирования, краткую спецификацию и вычисленную сумму договора.
+- Word generation заполняет `funding_source.*`, `contract.amount`, `service_spec.rows` и поля первой строки `service_spec.*`; `ContractLegalSnapshot` фиксирует источник, строки спецификации и сумму.
+- Проверки: Ruff, Django check, migration dry-run `No changes detected`, focused contract tests `40 passed`, full pytest `588 passed`, Python Playwright desktop/mobile QA для формы и реестра договоров; артефакты `%TEMP%\rmcodex-browser-qa-service-contract-spec`.

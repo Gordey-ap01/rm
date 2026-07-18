@@ -45,6 +45,7 @@ from .models import (
     Room,
     Service,
     ServiceContract,
+    ServiceContractLine,
     StaffAvailability,
     StaffCompensationRule,
     StaffMember,
@@ -2819,6 +2820,7 @@ class ServiceContractForm(forms.ModelForm):
         fields = (
             "child",
             "representative_link",
+            "funding_source",
             "contract_type",
             "number",
             "signed_on",
@@ -2832,6 +2834,7 @@ class ServiceContractForm(forms.ModelForm):
         labels = {
             "child": "Получатель",
             "representative_link": "Подписант",
+            "funding_source": "Источник финансирования",
             "contract_type": "Тип договора",
             "number": "Номер",
             "signed_on": "Дата подписания",
@@ -2876,6 +2879,14 @@ class ServiceContractForm(forms.ModelForm):
             )
         )
 
+        funding_filter = Q(archived_at__isnull=True)
+        if self.instance and self.instance.funding_source_id:
+            funding_filter |= Q(pk=self.instance.funding_source_id)
+        self.fields["funding_source"].queryset = FundingSource.all_objects.filter(
+            funding_filter
+        ).order_by("name")
+        self.fields["funding_source"].required = False
+
         template_filter = Q(
             template_type__in=ContractTemplate.service_contract_template_types(),
             is_active=True,
@@ -2909,6 +2920,89 @@ class ServiceContractForm(forms.ModelForm):
         if self.instance and self.instance.child_id:
             return self.instance.child_id
         return None
+
+
+class ServiceContractLineForm(forms.ModelForm):
+    meaningful_empty_check_fields = (
+        "service",
+        "service_name",
+        "quantity",
+        "unit_price",
+        "starts_on",
+        "ends_on",
+        "notes",
+    )
+
+    class Meta:
+        model = ServiceContractLine
+        fields = (
+            "sort_order",
+            "service",
+            "service_name",
+            "quantity",
+            "unit",
+            "unit_price",
+            "starts_on",
+            "ends_on",
+            "notes",
+        )
+        labels = {
+            "sort_order": "Порядок",
+            "service": "Услуга",
+            "service_name": "Наименование в договоре",
+            "quantity": "Количество",
+            "unit": "Ед.",
+            "unit_price": "Цена",
+            "starts_on": "Период с",
+            "ends_on": "Период по",
+            "notes": "Примечания",
+        }
+        widgets = {
+            "starts_on": DATE_INPUT,
+            "ends_on": DATE_INPUT,
+            "notes": forms.Textarea(attrs={"rows": 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        service_filter = Q(is_active=True)
+        if self.instance and self.instance.service_id:
+            service_filter |= Q(pk=self.instance.service_id)
+        self.fields["service"].queryset = Service.all_objects.filter(service_filter).order_by(
+            "name"
+        )
+        self.fields["service_name"].required = False
+
+    def has_changed(self) -> bool:
+        base_changed = super().has_changed()
+        if not base_changed:
+            return False
+        if self.instance and self.instance.pk:
+            return True
+        return any(
+            (self.data.get(self.add_prefix(field)) or "").strip()
+            for field in self.meaningful_empty_check_fields
+        )
+
+
+ServiceContractLineFormSet = inlineformset_factory(
+    ServiceContract,
+    ServiceContractLine,
+    form=ServiceContractLineForm,
+    fields=(
+        "sort_order",
+        "service",
+        "service_name",
+        "quantity",
+        "unit",
+        "unit_price",
+        "starts_on",
+        "ends_on",
+        "notes",
+    ),
+    extra=2,
+    can_delete=True,
+)
 
 
 class TimeSheetFilterForm(forms.Form):

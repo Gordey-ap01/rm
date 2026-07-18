@@ -35,6 +35,93 @@
         {% endfor %}
       </div>
     </section>
+
+    {% if service_line_formset %}
+    <section class="panel form-panel expense-split-panel">
+      <div class="object-form-head">
+        <div>
+          <h2>Спецификация услуг</h2>
+          <p>Строки используются для юридического текста договора и Word-файла. Они не создают списаний и не меняют баланс.</p>
+        </div>
+      </div>
+
+      {{ service_line_formset.management_form }}
+      {% if service_line_formset.non_form_errors %}
+        <div class="form-error">{{ service_line_formset.non_form_errors }}</div>
+      {% endif %}
+      <div class="table-wrap">
+        <table class="directory-table expense-split-table">
+          <thead>
+            <tr>
+              <th>Порядок</th>
+              <th>Услуга</th>
+              <th>Наименование</th>
+              <th>Кол-во</th>
+              <th>Ед.</th>
+              <th>Цена</th>
+              <th>Период</th>
+              <th>Примечание</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for line_form in service_line_formset.forms %}
+            <tr>
+              {% for hidden in line_form.hidden_fields %}{{ hidden }}{% endfor %}
+              <td data-label="Порядок">
+                {{ line_form.sort_order }}
+                {% if line_form.sort_order.errors %}<span class="form-error">{{ line_form.sort_order.errors }}</span>{% endif %}
+                {% if line_form.non_field_errors %}<span class="form-error">{{ line_form.non_field_errors }}</span>{% endif %}
+              </td>
+              <td data-label="Услуга">
+                {{ line_form.service }}
+                {% if line_form.service.errors %}<span class="form-error">{{ line_form.service.errors }}</span>{% endif %}
+              </td>
+              <td data-label="Наименование">
+                {{ line_form.service_name }}
+                {% if line_form.service_name.errors %}<span class="form-error">{{ line_form.service_name.errors }}</span>{% endif %}
+              </td>
+              <td data-label="Кол-во">
+                {{ line_form.quantity }}
+                {% if line_form.quantity.errors %}<span class="form-error">{{ line_form.quantity.errors }}</span>{% endif %}
+              </td>
+              <td data-label="Ед.">
+                {{ line_form.unit }}
+                {% if line_form.unit.errors %}<span class="form-error">{{ line_form.unit.errors }}</span>{% endif %}
+              </td>
+              <td data-label="Цена">
+                {{ line_form.unit_price }}
+                {% if line_form.unit_price.errors %}<span class="form-error">{{ line_form.unit_price.errors }}</span>{% endif %}
+              </td>
+              <td data-label="Период">
+                <div class="d-flex flex-column gap-1">
+                  {{ line_form.starts_on }}
+                  {{ line_form.ends_on }}
+                </div>
+                {% if line_form.starts_on.errors %}<span class="form-error">{{ line_form.starts_on.errors }}</span>{% endif %}
+                {% if line_form.ends_on.errors %}<span class="form-error">{{ line_form.ends_on.errors }}</span>{% endif %}
+              </td>
+              <td data-label="Примечание">
+                {{ line_form.notes }}
+                {% if line_form.notes.errors %}<span class="form-error">{{ line_form.notes.errors }}</span>{% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                {% if line_form.instance.pk %}
+                  <label class="expense-delete-check">
+                    {{ line_form.DELETE }}
+                    <span>Удалить</span>
+                  </label>
+                {% else %}
+                  <span class="muted">новая строка</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
   </section>
 
   <aside class="object-form-sidebar" aria-label="Контроль договора">

@@ -7,13 +7,19 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
-from operations.forms import ContractTemplateForm, DonationContractForm, ServiceContractForm
+from operations.forms import (
+    ContractTemplateForm,
+    DonationContractForm,
+    ServiceContractForm,
+    ServiceContractLineFormSet,
+)
 from operations.models import (
     ContractLegalSnapshot,
     ContractTemplate,
@@ -133,10 +139,11 @@ def _service_queryset(filters: dict[str, str]) -> list[ServiceContract]:
     queryset = ServiceContract.objects.select_related(
         "child",
         "representative_link__representative",
+        "funding_source",
         "template",
         "document",
         "document__contract_legal_snapshot",
-    )
+    ).prefetch_related("service_lines__service")
     if filters["kind"] not in {"", "service"}:
         return []
     if filters["status"] in {choice[0] for choice in ServiceContract.Status.choices}:
@@ -150,9 +157,12 @@ def _service_queryset(filters: dict[str, str]) -> list[ServiceContract]:
             | Q(child__first_name__icontains=query)
             | Q(representative_link__representative__last_name__icontains=query)
             | Q(representative_link__representative__first_name__icontains=query)
+            | Q(funding_source__name__icontains=query)
+            | Q(service_lines__service_name__icontains=query)
+            | Q(service_lines__service__name__icontains=query)
             | Q(template__title__icontains=query)
             | Q(document__title__icontains=query)
-        )
+        ).distinct()
     contracts = list(queryset.order_by("-signed_on", "-created_at")[:300])
     for contract in contracts:
         contract.ui_signed_on = _format_date(contract.signed_on)
@@ -160,6 +170,8 @@ def _service_queryset(filters: dict[str, str]) -> list[ServiceContract]:
         contract.ui_pdf_url = reverse("service_contract_pdf", args=[contract.pk])
         contract.ui_word_url = reverse("service_contract_word", args=[contract.pk])
         contract.ui_legal_snapshot = _legal_snapshot_label(contract)
+        contract.ui_spec_summary = contract.service_lines_summary or "спецификация не заполнена"
+        contract.ui_amount = _format_money(contract.service_lines_total_amount)
     return contracts
 
 
@@ -278,6 +290,10 @@ def contract_form_control_items(kind: str) -> list[dict[str, str]]:
         {
             "title": "Подписант",
             "detail": "Подписант берется из представителей выбранного получателя с флажком подписания договора.",
+        },
+        {
+            "title": "Спецификация",
+            "detail": "Строки договора описывают юридический план услуг и не создают списаний по балансу.",
         },
         {
             "title": "Документ получателя",
@@ -429,14 +445,26 @@ def donation_contract_edit(request, pk: int):
 @login_required
 @user_passes_test(is_admin_user)
 def service_contract_create(request):
+    contract = ServiceContract()
     if request.method == "POST":
-        form = ServiceContractForm(request.POST)
-        if form.is_valid():
-            contract = form.save()
+        form = ServiceContractForm(request.POST, instance=contract)
+        line_formset = ServiceContractLineFormSet(
+            request.POST,
+            instance=contract,
+            prefix="service_lines",
+        )
+        form_valid = form.is_valid()
+        line_formset_valid = line_formset.is_valid()
+        if form_valid and line_formset_valid:
+            with transaction.atomic():
+                contract = form.save()
+                line_formset.instance = contract
+                line_formset.save()
             messages.success(request, "Договор с получателем добавлен.")
             return redirect("service_contract_edit", pk=contract.pk)
     else:
-        form = ServiceContractForm()
+        form = ServiceContractForm(instance=contract)
+        line_formset = ServiceContractLineFormSet(instance=contract, prefix="service_lines")
     return render(
         request,
         "operations/contract_form.html",
@@ -444,6 +472,7 @@ def service_contract_create(request):
             "title": "Добавить договор с получателем",
             "subtitle": "Структурная запись договора и подписанта.",
             "form": form,
+            "service_line_formset": line_formset,
             "cancel_url": reverse("contract_list"),
             "control_items": contract_form_control_items("service"),
         },
@@ -454,17 +483,31 @@ def service_contract_create(request):
 @user_passes_test(is_admin_user)
 def service_contract_edit(request, pk: int):
     contract = get_object_or_404(
-        ServiceContract.objects.select_related("child", "representative_link__representative"),
+        ServiceContract.objects.select_related(
+            "child",
+            "representative_link__representative",
+            "funding_source",
+        ).prefetch_related("service_lines__service"),
         pk=pk,
     )
     if request.method == "POST":
         form = ServiceContractForm(request.POST, instance=contract)
-        if form.is_valid():
-            form.save()
+        line_formset = ServiceContractLineFormSet(
+            request.POST,
+            instance=contract,
+            prefix="service_lines",
+        )
+        form_valid = form.is_valid()
+        line_formset_valid = line_formset.is_valid()
+        if form_valid and line_formset_valid:
+            with transaction.atomic():
+                form.save()
+                line_formset.save()
             messages.success(request, "Договор с получателем обновлен.")
             return redirect("contract_list")
     else:
         form = ServiceContractForm(instance=contract)
+        line_formset = ServiceContractLineFormSet(instance=contract, prefix="service_lines")
     return render(
         request,
         "operations/contract_form.html",
@@ -472,6 +515,7 @@ def service_contract_edit(request, pk: int):
             "title": "Редактировать договор с получателем",
             "subtitle": str(contract),
             "form": form,
+            "service_line_formset": line_formset,
             "cancel_url": reverse("contract_list"),
             "control_items": contract_form_control_items("service"),
         },

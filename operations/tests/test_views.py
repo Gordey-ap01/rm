@@ -55,6 +55,7 @@ from operations.models import (
     Room,
     Service,
     ServiceContract,
+    ServiceContractLine,
     StaffCompensationRule,
     StaffMember,
     TreatmentProgram,
@@ -3678,14 +3679,68 @@ class ContractRegistryViewTests(NewViewsTestBase):
                 parts.extend(cell.text for cell in row.cells)
         return "\n".join(parts)
 
+    def _empty_service_line_formset_data(self) -> dict[str, str]:
+        return {
+            "service_lines-TOTAL_FORMS": "0",
+            "service_lines-INITIAL_FORMS": "0",
+            "service_lines-MIN_NUM_FORMS": "0",
+            "service_lines-MAX_NUM_FORMS": "1000",
+        }
+
+    def _service_contract_post_data(self, *, number: str = "S-FORM") -> dict[str, object]:
+        return {
+            "child": self.child.pk,
+            "representative_link": self._signer_link().pk,
+            "funding_source": self.funding.pk,
+            "contract_type": ServiceContract.ContractType.STANDARD,
+            "number": number,
+            "signed_on": timezone.localdate().isoformat(),
+            "valid_from": timezone.localdate().isoformat(),
+            "valid_until": "",
+            "status": ServiceContract.Status.DRAFT,
+            "template": "",
+            "document": "",
+            "notes": "",
+            "service_lines-TOTAL_FORMS": "2",
+            "service_lines-INITIAL_FORMS": "0",
+            "service_lines-MIN_NUM_FORMS": "0",
+            "service_lines-MAX_NUM_FORMS": "1000",
+            "service_lines-0-sort_order": "1",
+            "service_lines-0-service": self.service.pk,
+            "service_lines-0-service_name": "Индивидуальные занятия логопеда",
+            "service_lines-0-quantity": "10.00",
+            "service_lines-0-unit": ServiceContractLine.Unit.SESSION,
+            "service_lines-0-unit_price": "1500.00",
+            "service_lines-0-starts_on": timezone.localdate().isoformat(),
+            "service_lines-0-ends_on": "",
+            "service_lines-0-notes": "",
+            "service_lines-1-sort_order": "0",
+            "service_lines-1-service": "",
+            "service_lines-1-service_name": "",
+            "service_lines-1-quantity": "",
+            "service_lines-1-unit": ServiceContractLine.Unit.SESSION,
+            "service_lines-1-unit_price": "",
+            "service_lines-1-starts_on": "",
+            "service_lines-1-ends_on": "",
+            "service_lines-1-notes": "",
+        }
+
     def test_contract_list_renders(self):
         template = self._service_template()
         contract = ServiceContract.objects.create(
             child=self.child,
             representative_link=self._signer_link(),
+            funding_source=self.funding,
             number="S-001",
             signed_on=timezone.localdate(),
             template=template,
+        )
+        ServiceContractLine.objects.create(
+            service_contract=contract,
+            service=self.service,
+            service_name="Индивидуальные занятия логопеда",
+            quantity=Decimal("10.00"),
+            unit_price=Decimal("1500.00"),
         )
         document = self._contract_document(title="Договор S-001")
         contract.document = document
@@ -3706,10 +3761,95 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertContains(response, "Реестр договоров")
         self.assertContains(response, "Договоры с получателями")
         self.assertContains(response, "S-001")
+        self.assertContains(response, "Индивидуальные занятия логопеда")
+        self.assertContains(response, "15 000,00 ₽")
+        self.assertContains(response, "Личные средства")
         self.assertContains(response, reverse("service_contract_create"))
         self.assertContains(response, reverse("service_contract_word", args=[contract.pk]))
         self.assertContains(response, "Word")
         self.assertContains(response, "реквизиты зафиксированы:")
+
+    def test_service_contract_create_saves_funding_and_spec_lines(self):
+        ledger_count = LedgerEntry.objects.count()
+
+        response = self.client.post(
+            reverse("service_contract_create"),
+            self._service_contract_post_data(),
+        )
+
+        contract = ServiceContract.objects.get(number="S-FORM")
+        self.assertRedirects(response, reverse("service_contract_edit", args=[contract.pk]))
+        self.assertEqual(contract.funding_source, self.funding)
+        line = contract.service_lines.get()
+        self.assertEqual(line.service, self.service)
+        self.assertEqual(line.service_name, "Индивидуальные занятия логопеда")
+        self.assertEqual(line.quantity, Decimal("10.00"))
+        self.assertEqual(line.amount, Decimal("15000.00"))
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
+
+    def test_service_contract_create_keeps_form_on_invalid_spec_line(self):
+        data = self._service_contract_post_data(number="S-BAD")
+        data["service_lines-0-quantity"] = "0.00"
+
+        response = self.client.post(reverse("service_contract_create"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(ServiceContract.objects.filter(number="S-BAD").exists())
+        self.assertContains(response, "Количество должно быть больше нуля")
+
+    def test_service_contract_edit_updates_existing_spec_line_unit(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            funding_source=self.funding,
+            number="S-EDIT-LINE",
+            signed_on=timezone.localdate(),
+        )
+        line = ServiceContractLine.objects.create(
+            service_contract=contract,
+            service=self.service,
+            service_name="Индивидуальные занятия логопеда",
+            quantity=Decimal("10.00"),
+            unit=ServiceContractLine.Unit.SESSION,
+            unit_price=Decimal("1500.00"),
+            sort_order=1,
+        )
+        response = self.client.post(
+            reverse("service_contract_edit", args=[contract.pk]),
+            {
+                "child": self.child.pk,
+                "representative_link": self._signer_link().pk,
+                "funding_source": self.funding.pk,
+                "contract_type": contract.contract_type,
+                "number": contract.number,
+                "signed_on": contract.signed_on.isoformat(),
+                "valid_from": "",
+                "valid_until": "",
+                "status": contract.status,
+                "template": "",
+                "document": "",
+                "notes": "",
+                "service_lines-TOTAL_FORMS": "1",
+                "service_lines-INITIAL_FORMS": "1",
+                "service_lines-MIN_NUM_FORMS": "0",
+                "service_lines-MAX_NUM_FORMS": "1000",
+                "service_lines-0-id": line.pk,
+                "service_lines-0-sort_order": "2",
+                "service_lines-0-service": self.service.pk,
+                "service_lines-0-service_name": "Индивидуальные занятия логопеда",
+                "service_lines-0-quantity": "10.00",
+                "service_lines-0-unit": ServiceContractLine.Unit.HOUR,
+                "service_lines-0-unit_price": "1500.00",
+                "service_lines-0-starts_on": "",
+                "service_lines-0-ends_on": "",
+                "service_lines-0-notes": "",
+            },
+        )
+
+        self.assertRedirects(response, reverse("contract_list"))
+        line.refresh_from_db()
+        self.assertEqual(line.unit, ServiceContractLine.Unit.HOUR)
+        self.assertEqual(line.sort_order, 2)
 
     def test_contract_template_create(self):
         response = self.client.post(
@@ -3847,6 +3987,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
                 "template": template.pk,
                 "document": document.pk,
                 "notes": "Основной договор",
+                **self._empty_service_line_formset_data(),
             },
         )
 
@@ -3886,6 +4027,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
                 "template": "",
                 "document": "",
                 "notes": "",
+                **self._empty_service_line_formset_data(),
             },
         )
 
@@ -4191,6 +4333,60 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(
             snapshot.representative_snapshot["registration_address"],
             "690000, г. Владивосток, ул. Представителя, д. 3",
+        )
+
+    def test_service_contract_word_uses_funding_and_specification_lines(self):
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.RECIPIENT_SERVICE,
+            title="Service spec placeholders",
+            version="1",
+            file=self._docx_upload(
+                "service_spec.docx",
+                "Funding {{ funding_source.name }} total {{ contract.amount }} "
+                "rows {{ service_spec.rows }} first {{ service_spec.service_name }} "
+                "{{ service_spec.quantity }} {{ service_spec.unit }} {{ service_spec.price }} "
+                "{{ service_spec.amount }} {{ service_spec.period }} {{ service_spec.hours }}.",
+            ),
+        )
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            funding_source=self.funding,
+            number="S-SPEC",
+            signed_on=timezone.localdate(),
+            template=template,
+        )
+        ServiceContractLine.objects.create(
+            service_contract=contract,
+            service=self.service,
+            service_name="Индивидуальные занятия логопеда",
+            quantity=Decimal("10.00"),
+            unit=ServiceContractLine.Unit.SESSION,
+            unit_price=Decimal("1500.00"),
+            starts_on=timezone.localdate(),
+            sort_order=1,
+        )
+
+        response = self.client.post(reverse("service_contract_word", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        payload = b"".join(response.streaming_content)
+        generated_text = self._docx_text(payload)
+        self.assertIn("Личные средства", generated_text)
+        self.assertIn("15 000,00 ₽", generated_text)
+        self.assertIn("Индивидуальные занятия логопеда", generated_text)
+        self.assertIn("10", generated_text)
+        self.assertIn("занятие", generated_text)
+        self.assertIn("1 500,00 ₽", generated_text)
+        self.assertIn("5", generated_text)
+
+        contract.refresh_from_db()
+        snapshot = contract.document.contract_legal_snapshot
+        self.assertEqual(snapshot.funding_source_snapshot["name"], self.funding.name)
+        self.assertEqual(snapshot.contract_snapshot["amount"], "15000.00")
+        self.assertEqual(
+            snapshot.contract_snapshot["service_lines"][0]["service_name"],
+            "Индивидуальные занятия логопеда",
         )
 
     def test_service_contract_word_uses_active_center_legal_profile(self):

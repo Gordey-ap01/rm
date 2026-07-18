@@ -3843,6 +3843,14 @@ class ServiceContract(TimeStampedModel):
         on_delete=models.PROTECT,
         related_name="service_contracts",
     )
+    funding_source = models.ForeignKey(
+        FundingSource,
+        verbose_name="источник финансирования",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="service_contracts",
+    )
     contract_type = models.CharField(
         "тип договора",
         max_length=30,
@@ -3884,6 +3892,7 @@ class ServiceContract(TimeStampedModel):
         indexes = [
             models.Index(fields=["child", "status", "valid_from", "valid_until"]),
             models.Index(fields=["representative_link", "status"]),
+            models.Index(fields=["funding_source", "status", "valid_from", "valid_until"]),
         ]
         constraints = [
             models.CheckConstraint(
@@ -3902,6 +3911,19 @@ class ServiceContract(TimeStampedModel):
     def __str__(self) -> str:
         number = f" №{self.number}" if self.number else ""
         return f"{self.get_contract_type_display()}{number} — {self.child}"
+
+    @property
+    def service_lines_total_amount(self) -> Decimal:
+        return sum((line.amount for line in self.service_lines.all()), Decimal("0"))
+
+    @property
+    def service_lines_summary(self) -> str:
+        lines = list(self.service_lines.all())
+        if not lines:
+            return ""
+        first = lines[0]
+        suffix = f" + еще {len(lines) - 1}" if len(lines) > 1 else ""
+        return f"{first.service_name or first.service.name}: {first.quantity:g} {first.get_unit_display()}{suffix}"
 
     def clean(self) -> None:
         errors: dict[str, str] = {}
@@ -3929,6 +3951,95 @@ class ServiceContract(TimeStampedModel):
                 errors["document"] = "Документ договора должен относиться к выбранному получателю."
         if errors:
             raise ValidationError(errors)
+
+
+class ServiceContractLine(TimeStampedModel):
+    class Unit(models.TextChoices):
+        SESSION = "session", "занятие"
+        HOUR = "hour", "час"
+        COURSE = "course", "курс"
+        MONTH = "month", "месяц"
+        OTHER = "other", "другое"
+
+    service_contract = models.ForeignKey(
+        ServiceContract,
+        verbose_name="договор",
+        on_delete=models.CASCADE,
+        related_name="service_lines",
+    )
+    service = models.ForeignKey(
+        Service,
+        verbose_name="услуга",
+        on_delete=models.PROTECT,
+        related_name="contract_lines",
+    )
+    service_name = models.CharField(
+        "наименование услуги в договоре",
+        max_length=240,
+        blank=True,
+        help_text="Если оставить пустым, будет использовано название услуги.",
+    )
+    quantity = models.DecimalField("количество", max_digits=10, decimal_places=2, default=1)
+    unit = models.CharField(
+        "единица",
+        max_length=20,
+        choices=Unit.choices,
+        default=Unit.SESSION,
+    )
+    unit_price = models.DecimalField("цена за единицу", max_digits=12, decimal_places=2, default=0)
+    starts_on = models.DateField("период с", null=True, blank=True)
+    ends_on = models.DateField("период по", null=True, blank=True)
+    sort_order = models.PositiveIntegerField("порядок", default=0)
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "строка спецификации договора"
+        verbose_name_plural = "строки спецификации договора"
+        ordering = ["service_contract", "sort_order", "pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(quantity__gt=0),
+                name="service_contract_line_quantity_positive",
+            ),
+            models.CheckConstraint(
+                condition=Q(unit_price__gte=0),
+                name="service_contract_line_unit_price_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=Q(starts_on__isnull=True)
+                | Q(ends_on__isnull=True)
+                | Q(ends_on__gte=models.F("starts_on")),
+                name="service_contract_line_dates_order",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["service_contract", "sort_order"]),
+            models.Index(fields=["service", "unit"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.service_contract}: {self.service_name or self.service.name}"
+
+    @property
+    def amount(self) -> Decimal:
+        return (self.quantity * self.unit_price).quantize(Decimal("0.01"))
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.quantity <= 0:
+            errors["quantity"] = "Количество должно быть больше нуля."
+        if self.unit_price < 0:
+            errors["unit_price"] = "Цена не может быть отрицательной."
+        if self.starts_on and self.ends_on and self.ends_on < self.starts_on:
+            errors["ends_on"] = "Дата окончания не может быть раньше даты начала."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if not self.service_name and self.service_id:
+            self.service_name = self.service.name
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 
 class ContractLegalSnapshot(TimeStampedModel):
