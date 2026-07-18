@@ -2750,12 +2750,7 @@ class DonationContractForm(forms.ModelForm):
         ).order_by("name")
 
         template_filter = Q(
-            template_type__in=[
-                ContractTemplate.TemplateType.DONATION_ONE_TIME,
-                ContractTemplate.TemplateType.DONATION_MONTHLY,
-                ContractTemplate.TemplateType.SPONSOR,
-                ContractTemplate.TemplateType.OTHER,
-            ],
+            template_type__in=ContractTemplate.donation_contract_template_types(),
             is_active=True,
         )
         if self.instance and self.instance.template_id:
@@ -2861,10 +2856,7 @@ class ServiceContractForm(forms.ModelForm):
         )
 
         template_filter = Q(
-            template_type__in=[
-                ContractTemplate.TemplateType.RECIPIENT_SERVICE,
-                ContractTemplate.TemplateType.OTHER,
-            ],
+            template_type__in=ContractTemplate.service_contract_template_types(),
             is_active=True,
         )
         if self.instance and self.instance.template_id:

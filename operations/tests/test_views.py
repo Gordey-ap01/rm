@@ -3736,6 +3736,47 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertContains(response, "service_spec.rows")
         self.assertContains(response, "certificate.number")
         self.assertContains(response, ".docx")
+        self.assertContains(response, "Безвозмездные услуги получателю")
+        self.assertContains(response, "B2B-договор услуг организации")
+        self.assertContains(response, "Согласие на фото/видео")
+
+    def test_service_contract_form_filters_template_families(self):
+        free_template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.RECIPIENT_FREE_SERVICE,
+            title="Безвозмездный шаблон",
+        )
+        b2b_template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.ORGANIZATION_SERVICE,
+            title="B2B шаблон",
+        )
+        donation_template = self._donation_template()
+
+        response = self.client.get(reverse("service_contract_create"))
+
+        template_ids = set(
+            response.context["form"].fields["template"].queryset.values_list("pk", flat=True)
+        )
+        self.assertIn(free_template.pk, template_ids)
+        self.assertNotIn(b2b_template.pk, template_ids)
+        self.assertNotIn(donation_template.pk, template_ids)
+
+    def test_donation_contract_form_filters_template_families(self):
+        project_template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.DONATION_PROJECT,
+            title="Проектное пожертвование",
+        )
+        service_template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.RECIPIENT_CARE,
+            title="Присмотр и уход",
+        )
+
+        response = self.client.get(reverse("donation_contract_create"))
+
+        template_ids = set(
+            response.context["form"].fields["template"].queryset.values_list("pk", flat=True)
+        )
+        self.assertIn(project_template.pk, template_ids)
+        self.assertNotIn(service_template.pk, template_ids)
 
     def test_contract_template_rejects_legacy_doc_upload(self):
         response = self.client.post(

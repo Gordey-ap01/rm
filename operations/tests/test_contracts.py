@@ -126,6 +126,19 @@ class ContractRegistryValidationTests(TestCase):
         self.assertIn("template", raised.exception.message_dict)
         self.assertIn("document", raised.exception.message_dict)
 
+    def test_donation_contract_accepts_project_template_family(self):
+        project_template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.DONATION_PROJECT,
+            title="Project donation template",
+        )
+        contract = DonationContract(
+            counterparty=self.counterparty,
+            funding_source=self.funding_source,
+            template=project_template,
+        )
+
+        contract.full_clean()
+
     def test_contract_dates_and_amount_are_validated(self):
         contract = DonationContract(
             counterparty=self.counterparty,
@@ -175,6 +188,41 @@ class ContractRegistryValidationTests(TestCase):
         self.assertEqual(contract.child, self.child)
         self.assertEqual(contract.representative_link, self.signer_link)
         self.assertEqual(contract.document, self.contract_document)
+
+    def test_service_contract_accepts_recipient_template_families(self):
+        for template_type in (
+            ContractTemplate.TemplateType.RECIPIENT_FREE_SERVICE,
+            ContractTemplate.TemplateType.RECIPIENT_CARE,
+            ContractTemplate.TemplateType.RECIPIENT_CERTIFICATE,
+        ):
+            with self.subTest(template_type=template_type):
+                template = ContractTemplate.objects.create(
+                    template_type=template_type,
+                    title=f"Template {template_type}",
+                )
+                contract = ServiceContract(
+                    child=self.child,
+                    representative_link=self.signer_link,
+                    template=template,
+                )
+
+                contract.full_clean()
+
+    def test_service_contract_rejects_future_non_recipient_template_family(self):
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.ORGANIZATION_SERVICE,
+            title="B2B template",
+        )
+        contract = ServiceContract(
+            child=self.child,
+            representative_link=self.signer_link,
+            template=template,
+        )
+
+        with self.assertRaises(ValidationError) as raised:
+            contract.full_clean()
+
+        self.assertIn("template", raised.exception.message_dict)
 
     def test_service_contract_rejects_signer_from_other_child(self):
         contract = ServiceContract(

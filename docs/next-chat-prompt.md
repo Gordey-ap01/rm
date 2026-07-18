@@ -318,3 +318,17 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused snapshot/document/contract/audit tests `37 passed`, full pytest `574 passed`, Python Playwright desktop/mobile QA for `/contracts/` with artifacts `%TEMP%\rmcodex-browser-qa-contract-snapshots`.
 - Graphify code-index after this slice: `4790` nodes / `19559` edges. Semantic extraction was not rerun. Keep `docshablon/` private/ignored and do not send raw samples to semantic extraction.
 - Next safe step: draft/implement a new explicit contract for `legal-template-families` or immutable signed versions. Do not start B2B/consents/acts/approve-pay/import write-path without a new contract.
+
+## Latest clarification 2026-07-18: legal-template-families complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/27-legal-template-families-contract.md` is added and `template-family-choice-foundation` is implemented.
+- Migration `operations.0031_alter_contracttemplate_template_type` expands `ContractTemplate.TemplateType` choices while preserving existing values.
+- New families: recipient free service, recipient care, recipient certificate/maternity-capital, project donation, future B2B organization service, photo/video consent and acts.
+- `ContractTemplate.service_contract_template_types()` and `donation_contract_template_types()` are the shared allowlists for model validation and form querysets.
+- Current `ServiceContract` accepts only recipient-service families; current `DonationContract` accepts only donation/project/sponsor families. B2B/consent/act templates are catalog-only until separate domain contracts exist.
+- No ledger/balance/payment/billing/payroll/grant/schedule/status semantics changed.
+- Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused contract tests `33 passed`, full pytest `579 passed`, Python Playwright desktop/mobile QA for `/contracts/templates/new/` with artifacts `%TEMP%\rmcodex-browser-qa-template-families`.
+- Graphify code-index after this slice: `4810` nodes / `19584` edges. Semantic extraction was not rerun.
+- Next safe step: representative/child legal fields, service-contract spec/funding, or another explicit legal-document contract. Do not start B2B/consent/act generation without separate contracts.

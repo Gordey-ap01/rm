@@ -3622,10 +3622,20 @@ class EquipmentAsset(TimeStampedModel):
 class ContractTemplate(TimeStampedModel):
     class TemplateType(models.TextChoices):
         RECIPIENT_SERVICE = "recipient_service", "Договор с получателем услуг"
+        RECIPIENT_FREE_SERVICE = (
+            "recipient_free_service",
+            "Безвозмездные услуги получателю",
+        )
+        RECIPIENT_CARE = "recipient_care", "Присмотр и уход"
+        RECIPIENT_CERTIFICATE = "recipient_certificate", "Материнский капитал / сертификат"
         DONATION_ONE_TIME = "donation_one_time", "Разовое пожертвование"
         DONATION_MONTHLY = "donation_monthly", "Регулярная помощь"
+        DONATION_PROJECT = "donation_project", "Проектное пожертвование"
         SPONSOR = "sponsor", "Спонсорский договор"
+        ORGANIZATION_SERVICE = "organization_service", "B2B-договор услуг организации"
         VENDOR = "vendor", "Договор с поставщиком"
+        CONSENT_PHOTO_VIDEO = "consent_photo_video", "Согласие на фото/видео"
+        ACT = "act", "Акт"
         OTHER = "other", "Прочее"
 
     template_type = models.CharField(
@@ -3656,6 +3666,26 @@ class ContractTemplate(TimeStampedModel):
         if self.version:
             return f"{self.title} v{self.version}"
         return self.title
+
+    @classmethod
+    def service_contract_template_types(cls) -> set[str]:
+        return {
+            cls.TemplateType.RECIPIENT_SERVICE,
+            cls.TemplateType.RECIPIENT_FREE_SERVICE,
+            cls.TemplateType.RECIPIENT_CARE,
+            cls.TemplateType.RECIPIENT_CERTIFICATE,
+            cls.TemplateType.OTHER,
+        }
+
+    @classmethod
+    def donation_contract_template_types(cls) -> set[str]:
+        return {
+            cls.TemplateType.DONATION_ONE_TIME,
+            cls.TemplateType.DONATION_MONTHLY,
+            cls.TemplateType.DONATION_PROJECT,
+            cls.TemplateType.SPONSOR,
+            cls.TemplateType.OTHER,
+        }
 
 
 class DonationContract(TimeStampedModel):
@@ -3760,12 +3790,11 @@ class DonationContract(TimeStampedModel):
             errors["amount_limit"] = "Лимит суммы должен быть положительным."
         if self.valid_from and self.valid_until and self.valid_until < self.valid_from:
             errors["valid_until"] = "Дата окончания не может быть раньше даты начала."
-        if self.template_id and self.template.template_type not in {
-            ContractTemplate.TemplateType.DONATION_ONE_TIME,
-            ContractTemplate.TemplateType.DONATION_MONTHLY,
-            ContractTemplate.TemplateType.SPONSOR,
-            ContractTemplate.TemplateType.OTHER,
-        }:
+        if (
+            self.template_id
+            and self.template.template_type
+            not in ContractTemplate.donation_contract_template_types()
+        ):
             errors["template"] = "Выберите шаблон для пожертвования или спонсорского договора."
         if self.document_id and self.document.category != Document.Category.CONTRACT:
             errors["document"] = "Связанный документ должен иметь категорию договора."
@@ -3876,10 +3905,11 @@ class ServiceContract(TimeStampedModel):
                 errors["representative_link"] = "Подписант должен относиться к выбранному получателю."
             if not self.representative_link.signs_contract:
                 errors["representative_link"] = "У представителя должен быть флажок подписанта договора."
-        if self.template_id and self.template.template_type not in {
-            ContractTemplate.TemplateType.RECIPIENT_SERVICE,
-            ContractTemplate.TemplateType.OTHER,
-        }:
+        if (
+            self.template_id
+            and self.template.template_type
+            not in ContractTemplate.service_contract_template_types()
+        ):
             errors["template"] = "Выберите шаблон договора с получателем услуг."
         if self.document_id:
             if self.document.category != Document.Category.CONTRACT:

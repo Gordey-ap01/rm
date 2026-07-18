@@ -317,3 +317,15 @@ Browser QA - это проверка живого интерфейса в бра
 - Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused snapshot/document/contract/audit tests `37 passed`, full pytest `574 passed`, Python Playwright desktop/mobile QA for `/contracts/` with artifacts `%TEMP%\rmcodex-browser-qa-contract-snapshots`; runserver `8094` stopped.
 - Graphify code-index after this slice: `4790` nodes / `19559` edges. Semantic extraction was not rerun and raw `docshablon/` remains ignored/private.
 - Next safe slice: explicit contract for `legal-template-families` or immutable signed versions. Do not start B2B/consents/acts/approve-pay/import write-path without a new contract.
+
+## Latest Recovery Note 2026-07-18: legal-template-families
+
+- `docs/27-legal-template-families-contract.md` is added and its first slice is implemented.
+- Migration `operations.0031_alter_contracttemplate_template_type` expands `ContractTemplate.TemplateType` choices without changing existing stored values.
+- New families: recipient free service, recipient care, recipient certificate/maternity-capital, project donation, B2B organization service, photo/video consent and acts.
+- Shared allowlists on `ContractTemplate` drive both model validation and form querysets.
+- Current `ServiceContract` accepts only recipient-service families; current `DonationContract` accepts only donation/project/sponsor families. B2B/consent/act templates are catalog-only until separate domain contracts exist.
+- No ledger/balance/payment/billing/payroll/grant/schedule/appointment-status semantics changed.
+- Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused contract tests `33 passed`, full pytest `579 passed`, Python Playwright desktop/mobile QA for `/contracts/templates/new/` with artifacts `%TEMP%\rmcodex-browser-qa-template-families`; runserver `8095` stopped.
+- Graphify code-index after this slice: `4810` nodes / `19584` edges. Semantic extraction was not rerun.
+- Next safe slice: representative/child legal fields, service-contract spec/funding, or another explicit legal-document contract. Do not start B2B/consent/act generation without separate contracts.

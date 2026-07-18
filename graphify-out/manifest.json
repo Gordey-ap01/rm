@@ -25,8 +25,8 @@
     "semantic_hash": ""
   },
   "operations/forms.py": {
-    "mtime": 1784364241.8893583,
-    "ast_hash": "07e0bec818ad5d2458c445248d7350c5",
+    "mtime": 1784371129.1649423,
+    "ast_hash": "612a92ce0c280d0cad77653a2559b2ef",
     "semantic_hash": ""
   },
   "operations/management/__init__.py": {
@@ -105,8 +105,8 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/models.py": {
-    "mtime": 1784369650.7788217,
-    "ast_hash": "aaed2df588fe06f6156acd0b1cbc1fbd",
+    "mtime": 1784371120.6873593,
+    "ast_hash": "bbd06a8706da63450cf6ffa7db97a088",
     "semantic_hash": ""
   },
   "operations/services/__init__.py": {
@@ -170,8 +170,8 @@
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
-    "mtime": 1784370575.966857,
-    "ast_hash": "8445dcae816a37b41b86b877fbb41578",
+    "mtime": 1784371188.2240074,
+    "ast_hash": "98680f8a2c0fb72b5583bcffe3752c5c",
     "semantic_hash": ""
   },
   "operations/urls.py": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784370431.6590948,
-    "ast_hash": "a5dc949745e64e84456bafa66a4ba01c",
+    "mtime": 1784371515.0870063,
+    "ast_hash": "b40c35e81a133ac5ed39aeb8e21ef9c4",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784370475.943161,
-    "ast_hash": "5bbc33dc385b172e98bf3a66f66fcf57",
+    "mtime": 1784371545.4947736,
+    "ast_hash": "bdf2082fc69d7da0a5c11c926ca413fb",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784370469.898173,
-    "ast_hash": "3b5151edaf588954ef1164ef6b30b194",
+    "mtime": 1784371531.449746,
+    "ast_hash": "1265a7d5448ccfff0bb1207d840b5d8b",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1100,8 +1100,8 @@
     "semantic_hash": ""
   },
   "operations/tests/test_contracts.py": {
-    "mtime": 1784149489.641423,
-    "ast_hash": "58ccadb43b1cd107eb597c2187daa8a4",
+    "mtime": 1784371168.9259536,
+    "ast_hash": "7466f74c134bd4a2e89de4ee2bfda71e",
     "semantic_hash": ""
   },
   "operations/views/contracts.py": {
@@ -1165,8 +1165,8 @@
     "semantic_hash": ""
   },
   "docs/26-legal-document-targets-and-center-profile-contract.md": {
-    "mtime": 1784370487.3806984,
-    "ast_hash": "57a1a21967f719f93219519ec9b39f23",
+    "mtime": 1784370945.5506408,
+    "ast_hash": "9fbf05efcada2732c5fe82771ae95d06",
     "semantic_hash": ""
   },
   "operations/migrations/0029_centerlegalprofile.py": {
@@ -1182,6 +1182,16 @@
   "operations/migrations/0030_contractlegalsnapshot.py": {
     "mtime": 1784369810.086364,
     "ast_hash": "671a46974bf77e7dc46437965efcbfca",
+    "semantic_hash": ""
+  },
+  "operations/migrations/0031_alter_contracttemplate_template_type.py": {
+    "mtime": 1784371140.7439606,
+    "ast_hash": "b0bff59ecda3c8b66cad1295ee996f29",
+    "semantic_hash": ""
+  },
+  "docs/27-legal-template-families-contract.md": {
+    "mtime": 1784371501.1143045,
+    "ast_hash": "199b7d364c09567a98765c7052812da7",
     "semantic_hash": ""
   }
 }
