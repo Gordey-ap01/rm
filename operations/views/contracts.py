@@ -8,8 +8,8 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db import transaction
-from django.db.models import Q
-from django.http import FileResponse
+from django.db.models import Prefetch, Q
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -22,6 +22,7 @@ from operations.forms import (
 )
 from operations.models import (
     ContractLegalSnapshot,
+    ContractSignedFile,
     ContractTemplate,
     DonationContract,
     ServiceContract,
@@ -82,6 +83,30 @@ def _legal_snapshot_label(contract) -> str:
     )
 
 
+def _active_signed_files_prefetch() -> Prefetch:
+    return Prefetch(
+        "signed_files",
+        queryset=ContractSignedFile.objects.filter(
+            status=ContractSignedFile.Status.ACTIVE,
+        ).order_by("-signed_on", "-created_at"),
+        to_attr="ui_active_signed_files",
+    )
+
+
+def _attach_signed_file_ui(contract, *, archive_url_name: str) -> None:
+    signed_files = getattr(contract, "ui_active_signed_files", [])
+    signed_file = signed_files[0] if signed_files else None
+    contract.ui_signed_file = signed_file
+    contract.ui_signed_file_url = (
+        reverse("contract_signed_file_download", args=[signed_file.pk]) if signed_file else ""
+    )
+    contract.ui_archive_signed_url = (
+        reverse(archive_url_name, args=[contract.pk])
+        if contract.document_id and contract.ui_legal_snapshot
+        else ""
+    )
+
+
 def _contract_filters(request) -> dict[str, str]:
     return {
         "q": request.GET.get("q", "").strip(),
@@ -109,7 +134,7 @@ def _donation_queryset(filters: dict[str, str]) -> list[DonationContract]:
         "template",
         "document",
         "document__contract_legal_snapshot",
-    )
+    ).prefetch_related(_active_signed_files_prefetch())
     if filters["kind"] not in {"", "donation"}:
         return []
     if filters["status"] in {choice[0] for choice in DonationContract.Status.choices}:
@@ -132,6 +157,7 @@ def _donation_queryset(filters: dict[str, str]) -> list[DonationContract]:
         contract.ui_pdf_url = reverse("donation_contract_pdf", args=[contract.pk])
         contract.ui_word_url = reverse("donation_contract_word", args=[contract.pk])
         contract.ui_legal_snapshot = _legal_snapshot_label(contract)
+        _attach_signed_file_ui(contract, archive_url_name="donation_contract_archive_signed")
     return contracts
 
 
@@ -145,6 +171,7 @@ def _service_queryset(filters: dict[str, str]) -> list[ServiceContract]:
         "document",
         "document__contract_legal_snapshot",
     ).prefetch_related("service_lines__service")
+    queryset = queryset.prefetch_related(_active_signed_files_prefetch())
     if filters["kind"] not in {"", "service"}:
         return []
     if filters["status"] in {choice[0] for choice in ServiceContract.Status.choices}:
@@ -174,6 +201,7 @@ def _service_queryset(filters: dict[str, str]) -> list[ServiceContract]:
         contract.ui_legal_snapshot = _legal_snapshot_label(contract)
         contract.ui_spec_summary = contract.service_lines_summary or "спецификация не заполнена"
         contract.ui_amount = _format_money(contract.service_lines_total_amount)
+        _attach_signed_file_ui(contract, archive_url_name="service_contract_archive_signed")
     return contracts
 
 
@@ -565,6 +593,37 @@ def donation_contract_word(request, pk: int):
 
 @login_required
 @user_passes_test(is_admin_user)
+def donation_contract_archive_signed(request, pk: int):
+    contract = get_object_or_404(
+        DonationContract.objects.select_related(
+            "counterparty",
+            "funding_source",
+            "document",
+            "document__contract_legal_snapshot",
+        ),
+        pk=pk,
+    )
+    if request.method != "POST":
+        messages.warning(request, "Архив подписанного файла создается кнопкой в реестре.")
+        return redirect("contract_list")
+    try:
+        signed_file = contract_doc_svc.archive_donation_contract_signed_file(
+            contract,
+            actor=request.user,
+        )
+    except contract_doc_svc.ContractDocumentError as exc:
+        messages.error(request, str(exc))
+        return redirect("contract_list")
+    messages.success(
+        request,
+        f"Подписанный файл договора пожертвования сохранен в архиве: "
+        f"{signed_file.file_sha256[:12]}...",
+    )
+    return redirect("contract_list")
+
+
+@login_required
+@user_passes_test(is_admin_user)
 def service_contract_pdf(request, pk: int):
     contract = get_object_or_404(
         ServiceContract.objects.select_related(
@@ -604,3 +663,52 @@ def service_contract_word(request, pk: int):
         messages.error(request, str(exc))
         return redirect("contract_list")
     return _docx_response(generated)
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def service_contract_archive_signed(request, pk: int):
+    contract = get_object_or_404(
+        ServiceContract.objects.select_related(
+            "child",
+            "representative_link__representative",
+            "document",
+            "document__contract_legal_snapshot",
+        ),
+        pk=pk,
+    )
+    if request.method != "POST":
+        messages.warning(request, "Архив подписанного файла создается кнопкой в реестре.")
+        return redirect("contract_list")
+    try:
+        signed_file = contract_doc_svc.archive_service_contract_signed_file(
+            contract,
+            actor=request.user,
+        )
+    except contract_doc_svc.ContractDocumentError as exc:
+        messages.error(request, str(exc))
+        return redirect("contract_list")
+    messages.success(
+        request,
+        f"Подписанный файл договора с получателем сохранен в архиве: "
+        f"{signed_file.file_sha256[:12]}...",
+    )
+    return redirect("contract_list")
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def contract_signed_file_download(request, pk: int):
+    signed_file = get_object_or_404(ContractSignedFile, pk=pk)
+    if not signed_file.file:
+        raise Http404("Архивный файл не найден.")
+    try:
+        signed_file.file.open("rb")
+    except OSError as exc:
+        raise Http404("Архивный файл не найден.") from exc
+    return FileResponse(
+        signed_file.file,
+        as_attachment=True,
+        filename=signed_file.original_filename,
+        content_type=signed_file.content_type or "application/octet-stream",
+    )

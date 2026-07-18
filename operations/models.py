@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, QuerySet, Sum
 from django.utils import timezone
+from django.utils.text import get_valid_filename
 from django.utils.translation import gettext_lazy as _
 
 ACTIVE_APPOINTMENT_STATUSES = ["proposed", "confirmed", "completed", "reserved"]
@@ -3057,6 +3058,14 @@ def contract_template_upload_path(instance: ContractTemplate, filename: str) -> 
     return f"contract_templates/{instance.template_type}/{filename}"
 
 
+def contract_signed_file_upload_path(instance: ContractSignedFile, filename: str) -> str:
+    kind = instance.contract_kind or "contract"
+    contract_id = instance.service_contract_id or instance.donation_contract_id or "unassigned"
+    safe_name = get_valid_filename(filename.rsplit("/", 1)[-1].rsplit("\\", 1)[-1])
+    stamp = timezone.now().strftime("%Y%m%d%H%M%S")
+    return f"contract_signed_files/{kind}/{contract_id}/{stamp}_{uuid.uuid4().hex[:8]}_{safe_name}"
+
+
 class Document(TimeStampedModel):
     class Category(models.TextChoices):
         MEDICAL_REPORT = "medical_report", "Медицинское заключение"
@@ -4179,6 +4188,213 @@ class ContractLegalSnapshot(TimeStampedModel):
                     )
         if errors:
             raise ValidationError(errors)
+
+
+class ContractSignedFile(TimeStampedModel):
+    class ContractKind(models.TextChoices):
+        SERVICE = "service", "Договор с получателем"
+        DONATION = "donation", "Договор пожертвования"
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Действует"
+        VOID = "void", "Аннулирован"
+
+    contract_kind = models.CharField(
+        "тип договора",
+        max_length=30,
+        choices=ContractKind.choices,
+    )
+    service_contract = models.ForeignKey(
+        ServiceContract,
+        verbose_name="договор с получателем",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="signed_files",
+    )
+    donation_contract = models.ForeignKey(
+        DonationContract,
+        verbose_name="договор пожертвования",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="signed_files",
+    )
+    source_document = models.ForeignKey(
+        Document,
+        verbose_name="исходный файл договора",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="contract_signed_files",
+    )
+    file = models.FileField(
+        "архивный файл",
+        upload_to=contract_signed_file_upload_path,
+    )
+    original_filename = models.CharField("исходное имя файла", max_length=255)
+    content_type = models.CharField("тип содержимого", max_length=120, blank=True)
+    file_size = models.PositiveBigIntegerField("размер файла", default=0)
+    file_sha256 = models.CharField("SHA-256", max_length=64)
+    signed_on = models.DateField("дата подписания", default=timezone.localdate)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="загрузил",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="uploaded_contract_signed_files",
+    )
+    status = models.CharField(
+        "статус",
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
+    void_reason = models.TextField("причина аннулирования", blank=True)
+    contract_snapshot = models.JSONField("данные договора", default=dict, blank=True)
+    center_snapshot = models.JSONField("данные центра", default=dict, blank=True)
+    recipient_snapshot = models.JSONField("данные получателя", default=dict, blank=True)
+    representative_snapshot = models.JSONField("данные представителя", default=dict, blank=True)
+    counterparty_snapshot = models.JSONField("данные контрагента", default=dict, blank=True)
+    funding_source_snapshot = models.JSONField(
+        "данные источника финансирования",
+        default=dict,
+        blank=True,
+    )
+    template_snapshot = models.JSONField("данные шаблона", default=dict, blank=True)
+    note = models.TextField("комментарий", blank=True)
+
+    immutable_fields = (
+        "contract_kind",
+        "service_contract_id",
+        "donation_contract_id",
+        "source_document_id",
+        "file",
+        "original_filename",
+        "content_type",
+        "file_size",
+        "file_sha256",
+        "signed_on",
+        "uploaded_by_id",
+        "contract_snapshot",
+        "center_snapshot",
+        "recipient_snapshot",
+        "representative_snapshot",
+        "counterparty_snapshot",
+        "funding_source_snapshot",
+        "template_snapshot",
+    )
+
+    class Meta:
+        verbose_name = "архивный подписанный файл договора"
+        verbose_name_plural = "архивные подписанные файлы договоров"
+        ordering = ["-signed_on", "-created_at"]
+        indexes = [
+            models.Index(fields=["contract_kind", "status", "-signed_on"]),
+            models.Index(fields=["service_contract", "status", "-signed_on"]),
+            models.Index(fields=["donation_contract", "status", "-signed_on"]),
+            models.Index(fields=["file_sha256"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        contract_kind="service",
+                        service_contract__isnull=False,
+                        donation_contract__isnull=True,
+                    )
+                    | Q(
+                        contract_kind="donation",
+                        service_contract__isnull=True,
+                        donation_contract__isnull=False,
+                    )
+                ),
+                name="contract_signed_file_matches_contract_kind",
+            ),
+            models.CheckConstraint(
+                condition=Q(file_size__gt=0),
+                name="contract_signed_file_size_positive",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        contract = self.service_contract or self.donation_contract
+        return f"{self.get_contract_kind_display()} — {contract} — {self.signed_on:%d.%m.%Y}"
+
+    @property
+    def contract(self) -> ServiceContract | DonationContract | None:
+        return self.service_contract or self.donation_contract
+
+    def _immutable_value(self, field: str):
+        value = getattr(self, field)
+        if field == "file":
+            return value.name
+        return value
+
+    def _ensure_immutable_fields(self) -> None:
+        if not self.pk:
+            return
+        current = type(self).objects.get(pk=self.pk)
+        for field in self.immutable_fields:
+            if self._immutable_value(field) != current._immutable_value(field):
+                raise ValidationError(
+                    "Архивный подписанный файл нельзя изменять после создания. "
+                    "Можно только аннулировать запись отдельным статусом."
+                )
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.contract_kind == self.ContractKind.SERVICE:
+            if not self.service_contract_id:
+                errors["service_contract"] = "Выберите договор с получателем."
+            if self.donation_contract_id:
+                errors["donation_contract"] = (
+                    "Для договора с получателем договор пожертвования должен быть пустым."
+                )
+        elif self.contract_kind == self.ContractKind.DONATION:
+            if not self.donation_contract_id:
+                errors["donation_contract"] = "Выберите договор пожертвования."
+            if self.service_contract_id:
+                errors["service_contract"] = (
+                    "Для договора пожертвования договор с получателем должен быть пустым."
+                )
+        if self.source_document_id:
+            if self.source_document.category != Document.Category.CONTRACT:
+                errors["source_document"] = "Исходный файл должен быть документом договора."
+            if self.contract_kind == self.ContractKind.SERVICE and self.service_contract_id:
+                if self.source_document.target_type != Document.TargetType.RECIPIENT:
+                    errors["source_document"] = (
+                        "Подписанный файл договора с получателем должен исходить из документа получателя."
+                    )
+                elif self.source_document.child_id != self.service_contract.child_id:
+                    errors["source_document"] = (
+                        "Исходный файл должен относиться к получателю договора."
+                    )
+            if self.contract_kind == self.ContractKind.DONATION and self.donation_contract_id:
+                if self.source_document.target_type == Document.TargetType.RECIPIENT:
+                    errors["source_document"] = (
+                        "Подписанный файл пожертвования нельзя создавать из документа получателя."
+                    )
+                elif (
+                    self.source_document.target_type == Document.TargetType.COUNTERPARTY
+                    and self.source_document.counterparty_id
+                    != self.donation_contract.counterparty_id
+                ):
+                    errors["source_document"] = (
+                        "Исходный файл должен относиться к контрагенту договора."
+                    )
+        if self.file_sha256 and len(self.file_sha256) != 64:
+            errors["file_sha256"] = "SHA-256 должен состоять из 64 символов."
+        if self.status == self.Status.VOID and not self.void_reason:
+            errors["void_reason"] = "Для аннулирования укажите причину."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.full_clean()
+        self._ensure_immutable_fields()
+        super().save(*args, **kwargs)
 
 
 class Discount(TimeStampedModel):

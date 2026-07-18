@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import mimetypes
+from copy import deepcopy
 from dataclasses import dataclass
 from decimal import Decimal
 from io import BytesIO
@@ -15,6 +18,7 @@ from docx.document import Document as WordDocumentType
 from operations.models import (
     CenterLegalProfile,
     ContractLegalSnapshot,
+    ContractSignedFile,
     Document,
     DonationContract,
     ServiceContract,
@@ -610,6 +614,119 @@ def _save_donation_legal_snapshot(
     snapshot.full_clean()
     snapshot.save()
     return snapshot
+
+
+def _file_basename(name: str) -> str:
+    return name.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+
+
+def _read_document_file(document: Document) -> bytes:
+    if not document.file:
+        raise ContractDocumentError("У связанного документа нет файла для архива.")
+    try:
+        document.file.open("rb")
+        try:
+            return document.file.read()
+        finally:
+            document.file.close()
+    except OSError as exc:
+        raise ContractDocumentError("Не удалось прочитать файл договора для архива.") from exc
+
+
+def _signed_file_common_fields(snapshot: ContractLegalSnapshot) -> dict[str, object]:
+    return {
+        "contract_snapshot": deepcopy(snapshot.contract_snapshot),
+        "center_snapshot": deepcopy(snapshot.center_snapshot),
+        "recipient_snapshot": deepcopy(snapshot.recipient_snapshot),
+        "representative_snapshot": deepcopy(snapshot.representative_snapshot),
+        "counterparty_snapshot": deepcopy(snapshot.counterparty_snapshot),
+        "funding_source_snapshot": deepcopy(snapshot.funding_source_snapshot),
+        "template_snapshot": deepcopy(snapshot.template_snapshot),
+    }
+
+
+def _archive_contract_signed_file(
+    *,
+    contract_kind: str,
+    document: Document,
+    snapshot: ContractLegalSnapshot,
+    actor=None,
+    service_contract: ServiceContract | None = None,
+    donation_contract: DonationContract | None = None,
+) -> ContractSignedFile:
+    payload = _read_document_file(document)
+    if not payload:
+        raise ContractDocumentError("Нельзя архивировать пустой файл договора.")
+    original_filename = _file_basename(document.file.name)
+    signed_file = ContractSignedFile(
+        contract_kind=contract_kind,
+        service_contract=service_contract,
+        donation_contract=donation_contract,
+        source_document=document,
+        original_filename=original_filename,
+        content_type=mimetypes.guess_type(original_filename)[0] or "",
+        file_size=len(payload),
+        file_sha256=hashlib.sha256(payload).hexdigest(),
+        signed_on=(
+            service_contract.signed_on
+            if service_contract is not None and service_contract.signed_on
+            else donation_contract.signed_on
+            if donation_contract is not None and donation_contract.signed_on
+            else timezone.localdate()
+        ),
+        uploaded_by=_snapshot_actor(actor),
+        note="Архивная копия подписанного файла договора из текущего связанного документа.",
+        **_signed_file_common_fields(snapshot),
+    )
+    signed_file.file.save(original_filename, ContentFile(payload), save=False)
+    signed_file.save()
+    return signed_file
+
+
+def archive_service_contract_signed_file(
+    contract: ServiceContract,
+    *,
+    actor=None,
+) -> ContractSignedFile:
+    document = contract.document
+    if document is None:
+        raise ContractDocumentError("Сначала сформируйте Word-файл договора с получателем.")
+    _ensure_service_snapshot_owner(contract, document)
+    snapshot = _document_snapshot(document)
+    if snapshot is None:
+        raise ContractDocumentError(
+            "Сначала сформируйте Word-файл, чтобы зафиксировать юридический snapshot."
+        )
+    return _archive_contract_signed_file(
+        contract_kind=ContractSignedFile.ContractKind.SERVICE,
+        document=document,
+        snapshot=snapshot,
+        actor=actor,
+        service_contract=contract,
+    )
+
+
+def archive_donation_contract_signed_file(
+    contract: DonationContract,
+    *,
+    actor=None,
+) -> ContractSignedFile:
+    document = contract.document
+    if document is None:
+        raise ContractDocumentError("Сначала сформируйте Word-файл договора пожертвования.")
+    _ensure_donation_snapshot_owner(contract, document)
+    snapshot = _document_snapshot(document)
+    if snapshot is None:
+        raise ContractDocumentError(
+            "Сначала сформируйте Word-файл, чтобы зафиксировать юридический snapshot."
+        )
+    return _archive_contract_signed_file(
+        contract_kind=ContractSignedFile.ContractKind.DONATION,
+        document=document,
+        snapshot=snapshot,
+        actor=actor,
+        donation_contract=contract,
+    )
 
 
 def _center_placeholder_values() -> dict[str, str]:

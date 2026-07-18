@@ -378,3 +378,19 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused contract tests `43 passed`, full pytest `591 passed`, Python Playwright desktop/mobile QA for service contract certificate form/list with artifacts `%TEMP%\rmcodex-browser-qa-certificate-contract-link`.
 - Graphify code-index after this slice: `4885` nodes / `20203` edges. Semantic extraction was not rerun; keep `docshablon/` private/ignored and do not send raw samples to semantic extraction.
 - Next safe step: immutable signed-file archive, B2B contract contract, consent/act generation contract, or certificate payer/source modeling. Do not mutate certificate остатки or ledger from contracts without a new contract.
+
+## Latest clarification 2026-07-18: immutable-contract-signed-file-archive complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/31-immutable-contract-signed-file-archive-contract.md` is added and implemented.
+- Migration `operations.0035_contractsignedfile` adds `ContractSignedFile`.
+- `ContractSignedFile` stores one immutable signed archive for exactly one service/donation contract: source `Document`, archive file, original filename, content type, size, SHA-256, signed date, uploader, status and frozen snapshot copies.
+- Model save prevents changes to archived contract/file/checksum/snapshot fields after creation; void status is the non-destructive correction path.
+- Archive services require an existing generated `Document` with `ContractLegalSnapshot`, copy the file, compute checksum and do not create financial facts.
+- `/contracts/` shows latest active archive links and POST archive actions for contracts with snapshots; `/contracts/signed-files/<id>/download/` serves the archived file.
+- No ledger/balance/payment/billing/payroll/grant/certificate-balance/schedule/appointment-status semantics changed.
+- Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused contract tests `49 passed`, full pytest `597 passed`, in-app Browser desktop/mobile QA for service/donation archive links. In-app Browser does not support download events; download route is covered by Django test.
+- Runserver `8099` stopped; synthetic `BQA-SIGNED-*` QA data cleaned.
+- Graphify code-index after this slice: `4932` nodes / `20613` edges. Semantic extraction was not rerun; keep `docshablon/` private/ignored.
+- Next safe step: B2B organization-service contract contract, consent template generation, legal acts, or certificate payer/source modeling. Keep approve/pay/import write-path and certificate-balance mutation under separate contracts.

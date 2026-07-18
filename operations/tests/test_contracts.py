@@ -10,6 +10,7 @@ from django.utils import timezone
 from operations.models import (
     Certificate,
     Child,
+    ContractSignedFile,
     ContractTemplate,
     Counterparty,
     Document,
@@ -342,3 +343,50 @@ class ContractRegistryValidationTests(TestCase):
 
         self.assertIn("representative_link", raised.exception.message_dict)
         self.assertIn("document", raised.exception.message_dict)
+
+    def test_contract_signed_file_requires_matching_contract_kind(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self.signer_link,
+            number="S-SIGNED-KIND",
+            signed_on=self.today,
+        )
+        signed_file = ContractSignedFile(
+            contract_kind=ContractSignedFile.ContractKind.DONATION,
+            service_contract=contract,
+            source_document=self.contract_document,
+            file="contract_signed_files/service.docx",
+            original_filename="service.docx",
+            file_size=10,
+            file_sha256="a" * 64,
+            signed_on=self.today,
+        )
+
+        with self.assertRaises(ValidationError) as raised:
+            signed_file.full_clean()
+
+        self.assertIn("donation_contract", raised.exception.message_dict)
+        self.assertIn("service_contract", raised.exception.message_dict)
+
+    def test_contract_signed_file_is_immutable_after_creation(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self.signer_link,
+            number="S-SIGNED-IMMUTABLE",
+            signed_on=self.today,
+        )
+        signed_file = ContractSignedFile.objects.create(
+            contract_kind=ContractSignedFile.ContractKind.SERVICE,
+            service_contract=contract,
+            source_document=self.contract_document,
+            file="contract_signed_files/service.docx",
+            original_filename="service.docx",
+            file_size=10,
+            file_sha256="a" * 64,
+            signed_on=self.today,
+        )
+
+        signed_file.original_filename = "changed.docx"
+
+        with self.assertRaises(ValidationError):
+            signed_file.save()

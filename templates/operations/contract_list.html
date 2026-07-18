@@ -111,6 +111,12 @@
                 {% if contract.template %}<div>{{ contract.template }}</div>{% endif %}
                 {% if contract.document %}<div class="muted">{{ contract.document.title }}</div>{% else %}<span class="muted">файл не привязан</span>{% endif %}
                 {% if contract.ui_legal_snapshot %}<div class="muted">{{ contract.ui_legal_snapshot }}</div>{% endif %}
+                {% if contract.ui_signed_file %}
+                  <div class="muted">
+                    подписанный архив:
+                    <a href="{{ contract.ui_signed_file_url }}">{{ contract.ui_signed_file.signed_on|date:"d.m.Y" }}</a>
+                  </div>
+                {% endif %}
               </td>
               <td data-label="Статус">
                 {% if contract.status == "active" %}
@@ -130,6 +136,12 @@
                   <button class="secondary-button small-action" type="submit">Word</button>
                 </form>
                 <a class="small-action" href="{{ contract.ui_pdf_url }}">PDF</a>
+                {% if contract.ui_archive_signed_url %}
+                <form method="post" action="{{ contract.ui_archive_signed_url }}" class="inline-form compact-form">
+                  {% csrf_token %}
+                  <button class="secondary-button small-action" type="submit">Зафиксировать</button>
+                </form>
+                {% endif %}
               </td>
             </tr>
           {% empty %}
@@ -171,6 +183,12 @@
                 {% if contract.number %}{{ contract.number }}{% else %}<span class="muted">не указан</span>{% endif %}
                 <div class="muted">подписан: {{ contract.ui_signed_on }}</div>
                 {% if contract.ui_legal_snapshot %}<div class="muted">{{ contract.ui_legal_snapshot }}</div>{% endif %}
+                {% if contract.ui_signed_file %}
+                  <div class="muted">
+                    подписанный архив:
+                    <a href="{{ contract.ui_signed_file_url }}">{{ contract.ui_signed_file.signed_on|date:"d.m.Y" }}</a>
+                  </div>
+                {% endif %}
               </td>
               <td data-label="Срок">{{ contract.ui_validity }}</td>
               <td data-label="Лимит"><strong>{{ contract.ui_amount_limit }}</strong></td>
@@ -192,6 +210,12 @@
                   <button class="secondary-button small-action" type="submit">Word</button>
                 </form>
                 <a class="small-action" href="{{ contract.ui_pdf_url }}">PDF</a>
+                {% if contract.ui_archive_signed_url %}
+                <form method="post" action="{{ contract.ui_archive_signed_url }}" class="inline-form compact-form">
+                  {% csrf_token %}
+                  <button class="secondary-button small-action" type="submit">Зафиксировать</button>
+                </form>
+                {% endif %}
               </td>
             </tr>
           {% empty %}
@@ -273,7 +297,7 @@
         </li>
         <li>
           <strong>Word-файл</strong>
-          <span>Для договора с получателем Word сохраняется в документах получателя; пожертвование пока скачивается без привязки.</span>
+          <span>Word сохраняется как рабочий файл договора; подписанную версию можно зафиксировать отдельной архивной записью.</span>
         </li>
         <li>
           <strong>Excel только preview</strong>

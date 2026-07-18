@@ -33,6 +33,11 @@
 | `docs/24-document-template-source-inventory.md` | Обезличенная инвентаризация приватных source samples из `docshablon/`. | Перед расширением юридических шаблонов; raw `docshablon/` не коммитить и не отправлять в semantic extraction. |
 | `docs/25-template-placeholder-expansion-v2-contract.md` | Контракт расширения placeholder catalog/sidebar без миграций. | Перед изменениями grouped placeholders, `.docx` validation и sidebar reference шаблонов договоров. |
 | `docs/26-legal-document-targets-and-center-profile-contract.md` | Контракт DB-owner среза для generalized `Document` targets и будущего юрпрофиля центра/signed snapshots. | Перед изменениями `Document`, donation-document storage, center legal profile, legal snapshots, B2B/consents/acts. |
+| `docs/27-legal-template-families-contract.md` | Контракт семейства юридических шаблонов: service/donation allowlists, B2B/consent/act types only as future catalog entries. | Перед изменениями `ContractTemplate.TemplateType`, allowlists service/donation шаблонов или UI шаблонов. |
+| `docs/28-representative-child-legal-fields-contract.md` | Контракт юрполей представителя и получателя для договоров. | Перед изменениями паспортных/адресных полей `ParentGuardian`/`Child` и соответствующих Word placeholders. |
+| `docs/29-service-contract-spec-and-funding-contract.md` | Контракт спецификации услуг и источника финансирования service договора. | Перед изменениями `ServiceContractLine`, `ServiceContract.funding_source`, сумм договора и `service_spec.*` placeholders. |
+| `docs/30-certificate-contract-link-contract.md` | Контракт связи service договора с сертификатом/маткапиталом. | Перед изменениями `ServiceContract.certificate`, `certificate.*` placeholders или сертификатных договоров. |
+| `docs/31-immutable-contract-signed-file-archive-contract.md` | Контракт неизменяемого архива подписанных service/donation файлов. | Перед изменениями `ContractSignedFile`, signed archive actions/download или юридических подписанных версий. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -65,14 +70,15 @@
 13. Если задача затрагивает справочники категорий/контрагентов вне Django admin, прочитать `docs/22-category-counterparty-directory-contract.md`.
 14. Если задача затрагивает Word-генерацию договоров или placeholder catalog, прочитать `docs/23-contract-word-generation-contract.md`, `docs/24-document-template-source-inventory.md` и `docs/25-template-placeholder-expansion-v2-contract.md`.
 15. Если задача затрагивает `Document` без `Child`, donation-document storage, юрпрофиль центра, signed snapshots, B2B/consents/acts, прочитать `docs/26-legal-document-targets-and-center-profile-contract.md`.
-16. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
-17. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
-18. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
-19. Если задача затрагивает терминальные статусы или перепроверку планов переноса, прочитать `docs/11-plan-terminal-status-contract.md`.
-20. Если задача затрагивает параллельную работу, прочитать `docs/08-parallel-agent-execution-plan.md`.
-21. Если задача UX/UI, прочитать `docs/03-ux-ui-and-implementation-plan.md` и соответствующие шаблоны/JS.
-22. Если задача по коду, читать только релевантные файлы: модели, сервисы, формы, views, шаблоны и тесты вокруг изменяемого сценария.
-23. Перед широким поиском по проекту сначала выполнить `graphify query "<вопрос>" --budget 500-1500`, если граф доступен и актуален.
+16. Если задача затрагивает юридические семейства шаблонов, юрполя сторон, спецификацию договора, сертификаты или архив подписанных файлов, прочитать `docs/27-legal-template-families-contract.md` и соответствующий контракт `docs/28`-`docs/31`.
+17. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
+18. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
+19. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
+20. Если задача затрагивает терминальные статусы или перепроверку планов переноса, прочитать `docs/11-plan-terminal-status-contract.md`.
+21. Если задача затрагивает параллельную работу, прочитать `docs/08-parallel-agent-execution-plan.md`.
+22. Если задача UX/UI, прочитать `docs/03-ux-ui-and-implementation-plan.md` и соответствующие шаблоны/JS.
+23. Если задача по коду, читать только релевантные файлы: модели, сервисы, формы, views, шаблоны и тесты вокруг изменяемого сценария.
+24. Перед широким поиском по проекту сначала выполнить `graphify query "<вопрос>" --budget 500-1500`, если граф доступен и актуален.
 
 ## Skills и назначение
 
@@ -369,3 +375,16 @@ Browser QA - это проверка живого интерфейса в бра
 - Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused contract tests `43 passed`, full pytest `591 passed`, Python Playwright desktop/mobile QA with artifacts `%TEMP%\rmcodex-browser-qa-certificate-contract-link`; runserver `8098` stopped.
 - Graphify code-index after this slice: `4885` nodes / `20203` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
 - Next safe slice: immutable signed-file archive, B2B contract contract, consent/act generation contract, or certificate payer/source modeling. Do not mutate certificate остатки or ledger from contracts without a new contract.
+
+## Latest Recovery Note 2026-07-18: immutable-contract-signed-file-archive
+
+- `docs/31-immutable-contract-signed-file-archive-contract.md` is added and implemented.
+- Migration `operations.0035_contractsignedfile` adds `ContractSignedFile`.
+- `ContractSignedFile` stores one immutable signed archive for exactly one service/donation contract: source `Document`, archive file, original filename, content type, size, SHA-256, signed date, uploader, status and frozen snapshot copies.
+- `ContractSignedFile.save()` prevents changes to archived contract/file/checksum/snapshot fields after creation; void status remains the non-destructive correction path.
+- `archive_service_contract_signed_file()` and `archive_donation_contract_signed_file()` require an existing generated contract `Document` with `ContractLegalSnapshot`.
+- `/contracts/` shows the latest active signed archive link and POST archive action for service/donation contracts with a snapshot; `/contracts/signed-files/<id>/download/` downloads the archive.
+- No ledger/balance/payment/billing/payroll/grant/certificate-balance/schedule/appointment-status semantics changed.
+- Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused contract tests `49 passed`, full pytest `597 passed`, in-app Browser desktop/mobile QA for service/donation archive links; in-app Browser cannot handle downloads, download route is covered by Django test. Runserver `8099` stopped and synthetic `BQA-SIGNED-*` QA data cleaned.
+- Graphify code-index after this slice: `4932` nodes / `20613` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
+- Next safe slice: B2B organization-service contract contract, consent template generation, legal acts, or certificate payer/source modeling. Keep approve/pay/import write-path and certificate-balance mutation under separate contracts.

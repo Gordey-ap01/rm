@@ -30,6 +30,7 @@ from operations.models import (
     Child,
     Consent,
     ContractLegalSnapshot,
+    ContractSignedFile,
     ContractTemplate,
     Counterparty,
     Discount,
@@ -3679,6 +3680,22 @@ class ContractRegistryViewTests(NewViewsTestBase):
                 parts.extend(cell.text for cell in row.cells)
         return "\n".join(parts)
 
+    def _generate_service_contract_word(self, contract: ServiceContract) -> bytes:
+        response = self.client.post(reverse("service_contract_word", args=[contract.pk]))
+        self.assertEqual(response.status_code, 200)
+        payload = b"".join(response.streaming_content)
+        self.assertTrue(payload.startswith(b"PK"))
+        contract.refresh_from_db()
+        return payload
+
+    def _generate_donation_contract_word(self, contract: DonationContract) -> bytes:
+        response = self.client.post(reverse("donation_contract_word", args=[contract.pk]))
+        self.assertEqual(response.status_code, 200)
+        payload = b"".join(response.streaming_content)
+        self.assertTrue(payload.startswith(b"PK"))
+        contract.refresh_from_db()
+        return payload
+
     def _empty_service_line_formset_data(self) -> dict[str, str]:
         return {
             "service_lines-TOTAL_FORMS": "0",
@@ -4229,6 +4246,70 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(ContractLegalSnapshot.objects.count(), snapshot_count + 1)
         self.assertEqual(snapshot.contract_snapshot["number"], "S-REGEN-2")
 
+    def test_service_contract_archive_signed_file_copies_snapshot_and_file(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-SIGNED",
+            signed_on=timezone.localdate(),
+        )
+        self._generate_service_contract_word(contract)
+        counts_before = self._financial_counts()
+
+        response = self.client.post(reverse("service_contract_archive_signed", args=[contract.pk]))
+
+        self.assertRedirects(response, reverse("contract_list"))
+        signed_file = ContractSignedFile.objects.get(service_contract=contract)
+        self.assertEqual(signed_file.contract_kind, ContractSignedFile.ContractKind.SERVICE)
+        self.assertEqual(signed_file.source_document, contract.document)
+        self.assertEqual(signed_file.uploaded_by, self.admin)
+        self.assertEqual(signed_file.contract_snapshot["number"], "S-SIGNED")
+        self.assertEqual(signed_file.recipient_snapshot["full_name"], self.child.full_name)
+        self.assertEqual(len(signed_file.file_sha256), 64)
+        self.assertGreater(signed_file.file_size, 0)
+        self.assertTrue(signed_file.file.name.startswith("contract_signed_files/service/"))
+        self.assertEqual(self._financial_counts(), counts_before)
+
+    def test_service_contract_signed_file_survives_word_regeneration(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-SIGNED-REGEN",
+            signed_on=timezone.localdate(),
+        )
+        self._generate_service_contract_word(contract)
+        self.client.post(reverse("service_contract_archive_signed", args=[contract.pk]))
+        signed_file = ContractSignedFile.objects.get(service_contract=contract)
+        archived_sha = signed_file.file_sha256
+        archived_snapshot = signed_file.contract_snapshot
+
+        contract.number = "S-SIGNED-REGEN-2"
+        contract.save(update_fields=["number", "updated_at"])
+        self._generate_service_contract_word(contract)
+
+        signed_file.refresh_from_db()
+        contract.document.contract_legal_snapshot.refresh_from_db()
+        self.assertEqual(signed_file.file_sha256, archived_sha)
+        self.assertEqual(signed_file.contract_snapshot, archived_snapshot)
+        self.assertEqual(
+            contract.document.contract_legal_snapshot.contract_snapshot["number"],
+            "S-SIGNED-REGEN-2",
+        )
+
+    def test_service_contract_archive_signed_file_requires_snapshot(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-SIGNED-NO-SNAPSHOT",
+            signed_on=timezone.localdate(),
+            document=self._contract_document(title="Файл без snapshot"),
+        )
+
+        response = self.client.post(reverse("service_contract_archive_signed", args=[contract.pk]))
+
+        self.assertRedirects(response, reverse("contract_list"))
+        self.assertFalse(ContractSignedFile.objects.filter(service_contract=contract).exists())
+
     def test_service_contract_word_rejects_document_snapshot_from_other_contract(self):
         existing_document = self._contract_document(title="Старый файл договора")
         owner_contract = ServiceContract.objects.create(
@@ -4618,6 +4699,36 @@ class ContractRegistryViewTests(NewViewsTestBase):
         snapshot.refresh_from_db()
         self.assertEqual(ContractLegalSnapshot.objects.count(), snapshot_count + 1)
         self.assertEqual(snapshot.contract_snapshot["number"], "D-REGEN-2")
+
+    def test_donation_contract_archive_signed_file_and_download(self):
+        contract = DonationContract.objects.create(
+            counterparty=self.counterparty,
+            funding_source=self.funding_grant,
+            contract_type=DonationContract.ContractType.PROJECT,
+            number="D-SIGNED",
+            signed_on=timezone.localdate(),
+            amount_limit=Decimal("12000.00"),
+        )
+        generated_payload = self._generate_donation_contract_word(contract)
+        counts_before = self._financial_counts()
+
+        response = self.client.post(reverse("donation_contract_archive_signed", args=[contract.pk]))
+
+        self.assertRedirects(response, reverse("contract_list"))
+        signed_file = ContractSignedFile.objects.get(donation_contract=contract)
+        self.assertEqual(signed_file.contract_kind, ContractSignedFile.ContractKind.DONATION)
+        self.assertEqual(signed_file.source_document, contract.document)
+        self.assertEqual(signed_file.counterparty_snapshot["name"], self.counterparty.name)
+        self.assertEqual(signed_file.contract_snapshot["number"], "D-SIGNED")
+        self.assertTrue(signed_file.file.name.startswith("contract_signed_files/donation/"))
+        self.assertEqual(self._financial_counts(), counts_before)
+
+        download_response = self.client.get(
+            reverse("contract_signed_file_download", args=[signed_file.pk])
+        )
+        self.assertEqual(download_response.status_code, 200)
+        downloaded_payload = b"".join(download_response.streaming_content)
+        self.assertEqual(downloaded_payload, generated_payload)
 
     def test_donation_contract_word_rejects_document_snapshot_from_other_contract(self):
         existing_document = Document.objects.create(
