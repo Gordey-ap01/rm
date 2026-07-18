@@ -3894,6 +3894,134 @@ class ServiceContract(TimeStampedModel):
             raise ValidationError(errors)
 
 
+class ContractLegalSnapshot(TimeStampedModel):
+    class ContractKind(models.TextChoices):
+        SERVICE = "service", "Договор с получателем"
+        DONATION = "donation", "Договор пожертвования"
+
+    contract_kind = models.CharField(
+        "тип договора",
+        max_length=30,
+        choices=ContractKind.choices,
+    )
+    service_contract = models.ForeignKey(
+        ServiceContract,
+        verbose_name="договор с получателем",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="legal_snapshots",
+    )
+    donation_contract = models.ForeignKey(
+        DonationContract,
+        verbose_name="договор пожертвования",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="legal_snapshots",
+    )
+    document = models.OneToOneField(
+        Document,
+        verbose_name="файл договора",
+        on_delete=models.PROTECT,
+        related_name="contract_legal_snapshot",
+    )
+    generated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="сформировал",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="generated_contract_legal_snapshots",
+    )
+    contract_snapshot = models.JSONField("данные договора", default=dict, blank=True)
+    center_snapshot = models.JSONField("данные центра", default=dict, blank=True)
+    recipient_snapshot = models.JSONField("данные получателя", default=dict, blank=True)
+    representative_snapshot = models.JSONField("данные представителя", default=dict, blank=True)
+    counterparty_snapshot = models.JSONField("данные контрагента", default=dict, blank=True)
+    funding_source_snapshot = models.JSONField(
+        "данные источника финансирования",
+        default=dict,
+        blank=True,
+    )
+    template_snapshot = models.JSONField("данные шаблона", default=dict, blank=True)
+    note = models.TextField("комментарий", blank=True)
+
+    class Meta:
+        verbose_name = "юридический снимок договора"
+        verbose_name_plural = "юридические снимки договоров"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["contract_kind", "-created_at"]),
+            models.Index(fields=["service_contract", "-created_at"]),
+            models.Index(fields=["donation_contract", "-created_at"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        contract_kind="service",
+                        service_contract__isnull=False,
+                        donation_contract__isnull=True,
+                    )
+                    | Q(
+                        contract_kind="donation",
+                        service_contract__isnull=True,
+                        donation_contract__isnull=False,
+                    )
+                ),
+                name="contract_snapshot_matches_contract_kind",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        contract = self.service_contract or self.donation_contract
+        return f"{self.get_contract_kind_display()} — {contract}"
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.contract_kind == self.ContractKind.SERVICE:
+            if not self.service_contract_id:
+                errors["service_contract"] = "Выберите договор с получателем."
+            if self.donation_contract_id:
+                errors["donation_contract"] = (
+                    "Для договора с получателем договор пожертвования должен быть пустым."
+                )
+        elif self.contract_kind == self.ContractKind.DONATION:
+            if not self.donation_contract_id:
+                errors["donation_contract"] = "Выберите договор пожертвования."
+            if self.service_contract_id:
+                errors["service_contract"] = (
+                    "Для договора пожертвования договор с получателем должен быть пустым."
+                )
+        if self.document_id:
+            if self.document.category != Document.Category.CONTRACT:
+                errors["document"] = "Snapshot можно связать только с документом категории договора."
+            if self.contract_kind == self.ContractKind.SERVICE and self.service_contract_id:
+                if self.document.target_type != Document.TargetType.RECIPIENT:
+                    errors["document"] = (
+                        "Snapshot договора с получателем должен ссылаться на документ получателя."
+                    )
+                elif self.document.child_id != self.service_contract.child_id:
+                    errors["document"] = (
+                        "Документ snapshot должен относиться к получателю договора."
+                    )
+            if self.contract_kind == self.ContractKind.DONATION and self.donation_contract_id:
+                if self.document.target_type == Document.TargetType.RECIPIENT:
+                    errors["document"] = (
+                        "Snapshot договора пожертвования нельзя ссылать на документ получателя."
+                    )
+                elif (
+                    self.document.target_type == Document.TargetType.COUNTERPARTY
+                    and self.document.counterparty_id != self.donation_contract.counterparty_id
+                ):
+                    errors["document"] = (
+                        "Документ snapshot должен относиться к контрагенту договора."
+                    )
+        if errors:
+            raise ValidationError(errors)
+
+
 class Discount(TimeStampedModel):
     child = models.ForeignKey(
         Child, verbose_name="получатель", on_delete=models.CASCADE, related_name="discounts"

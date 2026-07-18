@@ -14,7 +14,12 @@ from django.urls import reverse
 from django.utils import timezone
 
 from operations.forms import ContractTemplateForm, DonationContractForm, ServiceContractForm
-from operations.models import ContractTemplate, DonationContract, ServiceContract
+from operations.models import (
+    ContractLegalSnapshot,
+    ContractTemplate,
+    DonationContract,
+    ServiceContract,
+)
 from operations.services import contract_documents as contract_doc_svc, pdf as pdf_svc
 
 from ._common import is_admin_user
@@ -59,6 +64,18 @@ def _validity_label(valid_from: date | None, valid_until: date | None) -> str:
     return "срок не указан"
 
 
+def _legal_snapshot_label(contract) -> str:
+    if not contract.document_id:
+        return ""
+    try:
+        snapshot = contract.document.contract_legal_snapshot
+    except ContractLegalSnapshot.DoesNotExist:
+        return ""
+    return "реквизиты зафиксированы: " + timezone.localtime(snapshot.updated_at).strftime(
+        "%d.%m.%Y %H:%M"
+    )
+
+
 def _contract_filters(request) -> dict[str, str]:
     return {
         "q": request.GET.get("q", "").strip(),
@@ -85,6 +102,7 @@ def _donation_queryset(filters: dict[str, str]) -> list[DonationContract]:
         "funding_source",
         "template",
         "document",
+        "document__contract_legal_snapshot",
     )
     if filters["kind"] not in {"", "donation"}:
         return []
@@ -107,6 +125,7 @@ def _donation_queryset(filters: dict[str, str]) -> list[DonationContract]:
         contract.ui_validity = _validity_label(contract.valid_from, contract.valid_until)
         contract.ui_pdf_url = reverse("donation_contract_pdf", args=[contract.pk])
         contract.ui_word_url = reverse("donation_contract_word", args=[contract.pk])
+        contract.ui_legal_snapshot = _legal_snapshot_label(contract)
     return contracts
 
 
@@ -116,6 +135,7 @@ def _service_queryset(filters: dict[str, str]) -> list[ServiceContract]:
         "representative_link__representative",
         "template",
         "document",
+        "document__contract_legal_snapshot",
     )
     if filters["kind"] not in {"", "service"}:
         return []
@@ -139,6 +159,7 @@ def _service_queryset(filters: dict[str, str]) -> list[ServiceContract]:
         contract.ui_validity = _validity_label(contract.valid_from, contract.valid_until)
         contract.ui_pdf_url = reverse("service_contract_pdf", args=[contract.pk])
         contract.ui_word_url = reverse("service_contract_word", args=[contract.pk])
+        contract.ui_legal_snapshot = _legal_snapshot_label(contract)
     return contracts
 
 

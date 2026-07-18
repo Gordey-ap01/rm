@@ -19,6 +19,7 @@ from operations.models import (
     CenterExpenseCategory,
     CenterLegalProfile,
     Child,
+    ContractLegalSnapshot,
     ContractTemplate,
     Counterparty,
     DonationContract,
@@ -90,6 +91,7 @@ class AuditLogTests(TestCase):
             CenterExpenseCategory,
             CenterLegalProfile,
             Child,
+            ContractLegalSnapshot,
             ContractTemplate,
             Counterparty,
             DonationContract,
@@ -123,6 +125,7 @@ class AuditLogTests(TestCase):
         self.assertIn(ContractTemplate, admin.site._registry)
         self.assertIn(DonationContract, admin.site._registry)
         self.assertIn(ServiceContract, admin.site._registry)
+        self.assertIn(ContractLegalSnapshot, admin.site._registry)
 
     def test_financial_integrity_finding_update_is_logged(self):
         now = timezone.now()

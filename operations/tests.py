@@ -24,6 +24,7 @@ from .models import (
     CenterLegalProfile,
     Child,
     Consent,
+    ContractLegalSnapshot,
     Counterparty,
     Document,
     FundingSource,
@@ -35,6 +36,7 @@ from .models import (
     Recommendation,
     Room,
     Service,
+    ServiceContract,
     StaffAvailability,
     StaffMember,
     TimeOffRequest,
@@ -2770,6 +2772,33 @@ class DocumentTests(TestCase):
         self.assertIsNone(doc.child_id)
         self.assertEqual(doc.target_label, counterparty.name)
         self.assertEqual(str(doc), f"Договор фонда — {counterparty.name}")
+
+    def test_contract_snapshot_rejects_service_contract_with_counterparty_document(self):
+        counterparty = Counterparty.objects.create(name="Фонд Радость")
+        document = Document.objects.create(
+            target_type=Document.TargetType.COUNTERPARTY,
+            counterparty=counterparty,
+            category=Document.Category.CONTRACT,
+            title="Чужой договор фонда",
+            file="documents/fund.docx",
+        )
+        signer = RecipientRepresentative.objects.get(
+            child=self.child,
+            representative=self.parent,
+        )
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=signer,
+            number="S-MISMATCH",
+        )
+        snapshot = ContractLegalSnapshot(
+            contract_kind=ContractLegalSnapshot.ContractKind.SERVICE,
+            service_contract=contract,
+            document=document,
+        )
+
+        with self.assertRaises(ValidationError):
+            snapshot.full_clean()
 
 
 class CenterLegalProfileTests(TestCase):

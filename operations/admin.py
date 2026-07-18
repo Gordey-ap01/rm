@@ -17,6 +17,7 @@ from .models import (
     CenterLegalProfile,
     Child,
     Consent,
+    ContractLegalSnapshot,
     ContractTemplate,
     Counterparty,
     Document,
@@ -333,6 +334,37 @@ class ServiceContractAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "contract_type", "signed_on", "valid_until")
     autocomplete_fields = ("child", "representative_link", "template", "document")
+
+
+@admin.register(ContractLegalSnapshot)
+class ContractLegalSnapshotAdmin(admin.ModelAdmin):
+    list_display = (
+        "contract_kind",
+        "service_contract",
+        "donation_contract",
+        "document",
+        "generated_by",
+        "created_at",
+    )
+    search_fields = (
+        "service_contract__number",
+        "service_contract__child__last_name",
+        "service_contract__child__first_name",
+        "donation_contract__number",
+        "donation_contract__counterparty__name",
+        "document__title",
+    )
+    list_filter = ("contract_kind", "created_at")
+    autocomplete_fields = ("service_contract", "donation_contract", "document", "generated_by")
+    readonly_fields = (
+        "contract_snapshot",
+        "center_snapshot",
+        "recipient_snapshot",
+        "representative_snapshot",
+        "counterparty_snapshot",
+        "funding_source_snapshot",
+        "template_snapshot",
+    )
 
 
 class FundingStaffAllocationInline(admin.TabularInline):

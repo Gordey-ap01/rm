@@ -103,6 +103,7 @@
               <td data-label="Шаблон/файл">
                 {% if contract.template %}<div>{{ contract.template }}</div>{% endif %}
                 {% if contract.document %}<div class="muted">{{ contract.document.title }}</div>{% else %}<span class="muted">файл не привязан</span>{% endif %}
+                {% if contract.ui_legal_snapshot %}<div class="muted">{{ contract.ui_legal_snapshot }}</div>{% endif %}
               </td>
               <td data-label="Статус">
                 {% if contract.status == "active" %}
@@ -162,6 +163,7 @@
               <td data-label="Номер">
                 {% if contract.number %}{{ contract.number }}{% else %}<span class="muted">не указан</span>{% endif %}
                 <div class="muted">подписан: {{ contract.ui_signed_on }}</div>
+                {% if contract.ui_legal_snapshot %}<div class="muted">{{ contract.ui_legal_snapshot }}</div>{% endif %}
               </td>
               <td data-label="Срок">{{ contract.ui_validity }}</td>
               <td data-label="Лимит"><strong>{{ contract.ui_amount_limit }}</strong></td>

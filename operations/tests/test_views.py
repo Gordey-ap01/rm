@@ -29,6 +29,7 @@ from operations.models import (
     Certificate,
     Child,
     Consent,
+    ContractLegalSnapshot,
     ContractTemplate,
     Counterparty,
     Discount,
@@ -3686,6 +3687,15 @@ class ContractRegistryViewTests(NewViewsTestBase):
             signed_on=timezone.localdate(),
             template=template,
         )
+        document = self._contract_document(title="Договор S-001")
+        contract.document = document
+        contract.save(update_fields=["document", "updated_at"])
+        ContractLegalSnapshot.objects.create(
+            contract_kind=ContractLegalSnapshot.ContractKind.SERVICE,
+            service_contract=contract,
+            document=document,
+            contract_snapshot={"number": "S-001"},
+        )
 
         response = self.client.get(reverse("contract_list"))
 
@@ -3699,6 +3709,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertContains(response, reverse("service_contract_create"))
         self.assertContains(response, reverse("service_contract_word", args=[contract.pk]))
         self.assertContains(response, "Word")
+        self.assertContains(response, "реквизиты зафиксированы:")
 
     def test_contract_template_create(self):
         response = self.client.post(
@@ -3942,6 +3953,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
             template=template,
         )
         document_count = Document.objects.count()
+        snapshot_count = ContractLegalSnapshot.objects.count()
         counts_before = self._financial_counts()
 
         response = self.client.post(reverse("service_contract_word", args=[contract.pk]))
@@ -3966,6 +3978,16 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(contract.document.category, Document.Category.CONTRACT)
         self.assertEqual(contract.document.uploaded_by, self.admin)
         self.assertTrue(contract.document.file.name.endswith(".docx"))
+        snapshot = contract.document.contract_legal_snapshot
+        self.assertEqual(ContractLegalSnapshot.objects.count(), snapshot_count + 1)
+        self.assertEqual(snapshot.contract_kind, ContractLegalSnapshot.ContractKind.SERVICE)
+        self.assertEqual(snapshot.service_contract, contract)
+        self.assertIsNone(snapshot.donation_contract_id)
+        self.assertEqual(snapshot.generated_by, self.admin)
+        self.assertEqual(snapshot.contract_snapshot["number"], "S-WORD")
+        self.assertEqual(snapshot.recipient_snapshot["full_name"], self.child.full_name)
+        self.assertEqual(snapshot.representative_snapshot["full_name"], self.parent.full_name)
+        self.assertEqual(snapshot.template_snapshot["title"], "Word шаблон услуг")
         self.assertEqual(self._financial_counts(), counts_before)
 
     def test_service_contract_word_updates_existing_document_without_duplicate(self):
@@ -3978,6 +4000,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
             document=existing_document,
         )
         document_count = Document.objects.count()
+        snapshot_count = ContractLegalSnapshot.objects.count()
         counts_before = self._financial_counts()
 
         response = self.client.post(reverse("service_contract_word", args=[contract.pk]))
@@ -3989,7 +4012,49 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(contract.document, existing_document)
         self.assertIn("S-REGEN", existing_document.title)
         self.assertTrue(existing_document.file.name.endswith(".docx"))
+        snapshot = existing_document.contract_legal_snapshot
+        self.assertEqual(ContractLegalSnapshot.objects.count(), snapshot_count + 1)
+        self.assertEqual(snapshot.service_contract, contract)
+        self.assertEqual(snapshot.contract_snapshot["number"], "S-REGEN")
         self.assertEqual(self._financial_counts(), counts_before)
+
+        contract.number = "S-REGEN-2"
+        contract.save(update_fields=["number", "updated_at"])
+        response = self.client.post(reverse("service_contract_word", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        snapshot.refresh_from_db()
+        self.assertEqual(ContractLegalSnapshot.objects.count(), snapshot_count + 1)
+        self.assertEqual(snapshot.contract_snapshot["number"], "S-REGEN-2")
+
+    def test_service_contract_word_rejects_document_snapshot_from_other_contract(self):
+        existing_document = self._contract_document(title="Старый файл договора")
+        owner_contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-OWNER",
+            signed_on=timezone.localdate(),
+            document=existing_document,
+        )
+        self.client.post(reverse("service_contract_word", args=[owner_contract.pk]))
+        existing_document.refresh_from_db()
+        self.assertIn("S-OWNER", existing_document.title)
+
+        other_contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-OTHER",
+            signed_on=timezone.localdate(),
+            document=existing_document,
+        )
+        response = self.client.post(reverse("service_contract_word", args=[other_contract.pk]))
+
+        self.assertRedirects(response, reverse("contract_list"))
+        existing_document.refresh_from_db()
+        snapshot = existing_document.contract_legal_snapshot
+        self.assertIn("S-OWNER", existing_document.title)
+        self.assertEqual(snapshot.service_contract, owner_contract)
+        self.assertEqual(snapshot.contract_snapshot["number"], "S-OWNER")
 
     def test_service_contract_word_replaces_v2_placeholders_with_blank_fallback(self):
         template = ContractTemplate.objects.create(
@@ -4024,7 +4089,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertNotIn("{{ service_spec.rows }}", generated_text)
 
     def test_service_contract_word_uses_active_center_legal_profile(self):
-        CenterLegalProfile.objects.create(
+        profile = CenterLegalProfile.objects.create(
             full_name="Автономная некоммерческая организация Радость моя",
             short_name="АНО Радость моя",
             director_full_name="Иванов Иван Иванович",
@@ -4063,6 +4128,20 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertIn("2500000000", generated_text)
         self.assertIn("040000001", generated_text)
         self.assertNotIn("{{ center.full_name }}", generated_text)
+        contract.refresh_from_db()
+        snapshot = contract.document.contract_legal_snapshot
+        self.assertEqual(
+            snapshot.center_snapshot["full_name"],
+            "Автономная некоммерческая организация Радость моя",
+        )
+
+        profile.full_name = "Новое юридическое название центра"
+        profile.save(update_fields=["full_name", "updated_at"])
+        snapshot.refresh_from_db()
+        self.assertEqual(
+            snapshot.center_snapshot["full_name"],
+            "Автономная некоммерческая организация Радость моя",
+        )
 
     def test_donation_contract_word_generates_document_without_financial_facts(self):
         template = ContractTemplate.objects.create(
@@ -4084,6 +4163,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
             template=template,
         )
         document_count = Document.objects.count()
+        snapshot_count = ContractLegalSnapshot.objects.count()
         counts_before = self._financial_counts()
 
         response = self.client.post(reverse("donation_contract_word", args=[contract.pk]))
@@ -4110,6 +4190,17 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertIsNone(contract.document.child_id)
         self.assertEqual(contract.document.uploaded_by, self.admin)
         self.assertTrue(contract.document.file.name.endswith(".docx"))
+        snapshot = contract.document.contract_legal_snapshot
+        self.assertEqual(ContractLegalSnapshot.objects.count(), snapshot_count + 1)
+        self.assertEqual(snapshot.contract_kind, ContractLegalSnapshot.ContractKind.DONATION)
+        self.assertEqual(snapshot.donation_contract, contract)
+        self.assertIsNone(snapshot.service_contract_id)
+        self.assertEqual(snapshot.generated_by, self.admin)
+        self.assertEqual(snapshot.contract_snapshot["number"], "D-WORD")
+        self.assertEqual(snapshot.contract_snapshot["amount_limit"], "12345.67")
+        self.assertEqual(snapshot.counterparty_snapshot["name"], self.counterparty.name)
+        self.assertEqual(snapshot.funding_source_snapshot["name"], self.funding_grant.name)
+        self.assertEqual(snapshot.template_snapshot["title"], "Word шаблон пожертвования")
         self.assertEqual(self._financial_counts(), counts_before)
 
     def test_donation_contract_word_updates_existing_document_without_duplicate(self):
@@ -4129,6 +4220,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
             document=existing_document,
         )
         document_count = Document.objects.count()
+        snapshot_count = ContractLegalSnapshot.objects.count()
         counts_before = self._financial_counts()
 
         response = self.client.post(reverse("donation_contract_word", args=[contract.pk]))
@@ -4141,7 +4233,57 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertIn("D-REGEN", existing_document.title)
         self.assertEqual(existing_document.counterparty, self.counterparty)
         self.assertTrue(existing_document.file.name.endswith(".docx"))
+        snapshot = existing_document.contract_legal_snapshot
+        self.assertEqual(ContractLegalSnapshot.objects.count(), snapshot_count + 1)
+        self.assertEqual(snapshot.donation_contract, contract)
+        self.assertEqual(snapshot.contract_snapshot["number"], "D-REGEN")
         self.assertEqual(self._financial_counts(), counts_before)
+
+        contract.number = "D-REGEN-2"
+        contract.save(update_fields=["number", "updated_at"])
+        response = self.client.post(reverse("donation_contract_word", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        snapshot.refresh_from_db()
+        self.assertEqual(ContractLegalSnapshot.objects.count(), snapshot_count + 1)
+        self.assertEqual(snapshot.contract_snapshot["number"], "D-REGEN-2")
+
+    def test_donation_contract_word_rejects_document_snapshot_from_other_contract(self):
+        existing_document = Document.objects.create(
+            target_type=Document.TargetType.COUNTERPARTY,
+            counterparty=self.counterparty,
+            category=Document.Category.CONTRACT,
+            title="Старый договор пожертвования",
+            file="documents/donation-old.txt",
+        )
+        owner_contract = DonationContract.objects.create(
+            counterparty=self.counterparty,
+            funding_source=self.funding_grant,
+            contract_type=DonationContract.ContractType.PROJECT,
+            number="D-OWNER",
+            signed_on=timezone.localdate(),
+            document=existing_document,
+        )
+        self.client.post(reverse("donation_contract_word", args=[owner_contract.pk]))
+        existing_document.refresh_from_db()
+        self.assertIn("D-OWNER", existing_document.title)
+
+        other_contract = DonationContract.objects.create(
+            counterparty=self.counterparty,
+            funding_source=self.funding_grant,
+            contract_type=DonationContract.ContractType.PROJECT,
+            number="D-OTHER",
+            signed_on=timezone.localdate(),
+            document=existing_document,
+        )
+        response = self.client.post(reverse("donation_contract_word", args=[other_contract.pk]))
+
+        self.assertRedirects(response, reverse("contract_list"))
+        existing_document.refresh_from_db()
+        snapshot = existing_document.contract_legal_snapshot
+        self.assertIn("D-OWNER", existing_document.title)
+        self.assertEqual(snapshot.donation_contract, owner_contract)
+        self.assertEqual(snapshot.contract_snapshot["number"], "D-OWNER")
 
     def test_donation_contract_word_replaces_v2_placeholders_with_blank_fallback(self):
         self.counterparty.contact_person = "Legal Contact"

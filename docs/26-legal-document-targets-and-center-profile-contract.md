@@ -63,6 +63,15 @@
 - фиксируют данные центра, контрагента, представителя, получателя и спецификации услуг на момент генерации/подписания;
 - нужны до полноценного юридического документооборота, актов и подписанных версий.
 
+### Semantics первого `contract-signed-snapshot` среза
+
+- Snapshot хранится отдельной моделью `ContractLegalSnapshot`, а не JSON-полем на `ServiceContract`/`DonationContract`, чтобы один `Document` имел один проверяемый юридический снимок.
+- Связи: `document` один-к-одному, один из FK `service_contract` или `donation_contract` обязателен, второй пустой. Тип договора фиксируется явным `contract_kind`.
+- `document`, `service_contract`, `donation_contract` защищены `PROTECT`: после создания snapshot нельзя случайно удалить юридическую связку через админку или shell без явного решения.
+- Snapshot создается или обновляется при Word generation. Повторная генерация того же связанного `Document` обновляет snapshot под новый файл.
+- Изменение `CenterLegalProfile`, карточки получателя, представителя, контрагента или источника финансирования после генерации не меняет уже сохраненный snapshot и старый файл, пока администратор явно не нажмет Word заново.
+- Это еще не полноценная неизменяемая подписанная версия: “каждая подпись = отдельный файл + статус подписи + архив неизменяемых файлов” остается будущим срезом после стабилизации договорных типов и актов.
+
 ## Опасные миграции
 
 - `Document.child` из обязательного `CASCADE` становится nullable. Перед изменением поведения удаления надо отдельно решить, какие документы должны сохраняться при архивировании/удалении получателя.
@@ -121,5 +130,15 @@ Completed `center-legal-profile-foundation`:
 - no snapshot layer yet: changing the profile affects future generation only by current lookup, while already saved files are not rewritten;
 - verification: Ruff, Django check, migration dry-run, focused related tests `43 passed`, full pytest `571 passed`, Browser QA center legal profile desktop/mobile.
 
+Completed `contract-signed-snapshot`:
+- migration `operations.0030_contractlegalsnapshot`;
+- `ContractLegalSnapshot` stores one legal snapshot per generated contract `Document` with explicit service/donation FK, `PROTECT` links and JSON snapshots for contract, center, recipient, representative, counterparty, funding source and template;
+- service and donation Word generation now creates/updates the snapshot together with the saved `Document`; PDF downloads stay read-only;
+- generation rejects a linked `Document` that already has a legal snapshot for another contract, before rewriting the file;
+- `/contracts/` shows compact snapshot status for generated files;
+- this is still not a full immutable signed-version archive: repeated Word generation updates the same document snapshot, while later signed-version/versioning flows need a separate contract;
+- verification: Ruff, Django check, migration dry-run, focused tests `37 passed`, full pytest `574 passed`, Python Playwright desktop/mobile QA for `/contracts/`.
+- Graphify code-index after this slice: `4790` nodes / `19559` edges; semantic extraction was not rerun.
+
 Next:
-- `contract-signed-snapshot` should freeze legal data at generation/signing time before expanding B2B contracts, consents and acts.
+- `legal-template-families` or another explicit legal-document contract should follow before B2B contracts, consents, acts or immutable signed versions.

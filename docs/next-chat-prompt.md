@@ -303,3 +303,18 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, related focused tests `43 passed`, full pytest `571 passed`, Python Playwright desktop/mobile QA for `/center/legal-profile/`.
 - Graphify code-index after this slice: `4757` nodes / `19251` edges. Semantic extraction was not rerun.
 - Next safe step: `contract-signed-snapshot` from docs/26. Do not start B2B/consents/acts or legally signed versions before snapshot semantics are explicit.
+
+## Latest clarification 2026-07-18: contract-signed-snapshot complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `ContractLegalSnapshot` is implemented by migration `operations.0030_contractlegalsnapshot`.
+- One generated contract `Document` has one legal snapshot. The snapshot links to exactly one `ServiceContract` or `DonationContract`, protects document/contract deletion with `PROTECT`, and stores JSON snapshots of contract, center, recipient, representative, counterparty, funding source and template values.
+- Service and donation Word generation creates/updates the snapshot together with the saved `Document`; repeated Word generation updates the same snapshot for the same document.
+- Generation rejects a linked `Document` that already has a legal snapshot for another contract, before rewriting the file.
+- `/contracts/` shows "реквизиты зафиксированы" for files with legal snapshots.
+- This is not immutable signed-file versioning yet; B2B contracts, consents, acts, signature status and signed version archives need separate contracts.
+- No ledger/balance/payment/billing/payroll/grant/schedule/status semantics changed.
+- Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused snapshot/document/contract/audit tests `37 passed`, full pytest `574 passed`, Python Playwright desktop/mobile QA for `/contracts/` with artifacts `%TEMP%\rmcodex-browser-qa-contract-snapshots`.
+- Graphify code-index after this slice: `4790` nodes / `19559` edges. Semantic extraction was not rerun. Keep `docshablon/` private/ignored and do not send raw samples to semantic extraction.
+- Next safe step: draft/implement a new explicit contract for `legal-template-families` or immutable signed versions. Do not start B2B/consents/acts/approve-pay/import write-path without a new contract.

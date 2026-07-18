@@ -303,3 +303,17 @@ Browser QA - это проверка живого интерфейса в бра
 - Verification: Ruff check, Django check, migration dry-run `No changes detected`, related focused tests `43 passed`, full pytest `571 passed`, Python Playwright desktop/mobile QA for `/center/legal-profile/` with artifacts `%TEMP%\rmcodex-browser-qa-center-profile`; runserver `8083` stopped.
 - Graphify code-index after this slice: `4757` nodes / `19251` edges. Semantic extraction was not rerun.
 - Next safe slice: `contract-signed-snapshot` from docs/26 before B2B contracts, consents, acts or legally significant signed versions.
+
+## Latest Recovery Note 2026-07-18: contract-signed-snapshot
+
+- Third slice from `docs/26-legal-document-targets-and-center-profile-contract.md` is implemented.
+- Migration `operations.0030_contractlegalsnapshot` adds `ContractLegalSnapshot`.
+- Each generated contract `Document` can have one legal snapshot. The snapshot links to exactly one `ServiceContract` or `DonationContract`, stores `contract_kind`, uses `PROTECT` for document/contract links and stores JSON snapshots of contract, center, recipient, representative, counterparty, funding source and template values.
+- Service and donation Word generation creates or updates this snapshot after saving/updating the related `Document`; repeated Word generation updates the same document snapshot instead of creating duplicates.
+- Generation rejects a linked `Document` that already has a legal snapshot for another contract, before rewriting the file.
+- `/contracts/` shows a compact "реквизиты зафиксированы" status for files with snapshots.
+- This is not yet an immutable signed-version archive: signed file versioning, signature status, B2B contracts, consents and acts remain separate future contracts.
+- No ledger/balance/payment/billing/payroll/grant/schedule/appointment-status semantics changed.
+- Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused snapshot/document/contract/audit tests `37 passed`, full pytest `574 passed`, Python Playwright desktop/mobile QA for `/contracts/` with artifacts `%TEMP%\rmcodex-browser-qa-contract-snapshots`; runserver `8094` stopped.
+- Graphify code-index after this slice: `4790` nodes / `19559` edges. Semantic extraction was not rerun and raw `docshablon/` remains ignored/private.
+- Next safe slice: explicit contract for `legal-template-families` or immutable signed versions. Do not start B2B/consents/acts/approve-pay/import write-path without a new contract.

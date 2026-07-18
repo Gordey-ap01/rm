@@ -12,7 +12,13 @@ from django.utils import timezone
 from docx import Document as WordDocument
 from docx.document import Document as WordDocumentType
 
-from operations.models import CenterLegalProfile, Document, DonationContract, ServiceContract
+from operations.models import (
+    CenterLegalProfile,
+    ContractLegalSnapshot,
+    Document,
+    DonationContract,
+    ServiceContract,
+)
 
 DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 MAX_TEMPLATE_BYTES = 5 * 1024 * 1024
@@ -242,6 +248,278 @@ def _template_label(template) -> str:
         return "Базовый системный шаблон"
     version = f" v{template.version}" if template.version else ""
     return f"{template.title}{version}"
+
+
+def _snapshot_date(value) -> str:
+    if not value:
+        return ""
+    return value.isoformat()
+
+
+def _snapshot_datetime(value) -> str:
+    if not value:
+        return ""
+    return timezone.localtime(value).isoformat()
+
+
+def _snapshot_decimal(value: Decimal | None) -> str:
+    if value is None:
+        return ""
+    return str(value)
+
+
+def _template_snapshot(template) -> dict[str, object]:
+    if template is None:
+        return {
+            "id": None,
+            "title": "Базовый системный шаблон",
+            "version": "",
+            "template_type": "",
+            "template_type_display": "",
+            "file_name": "",
+            "updated_at": "",
+        }
+    return {
+        "id": template.pk,
+        "title": template.title,
+        "version": template.version,
+        "template_type": template.template_type,
+        "template_type_display": template.get_template_type_display(),
+        "file_name": template.file.name if template.file else "",
+        "updated_at": _snapshot_datetime(template.updated_at),
+    }
+
+
+def _center_snapshot() -> dict[str, object]:
+    profile = CenterLegalProfile.get_active()
+    if profile is None:
+        return {}
+    return {
+        "id": profile.pk,
+        "full_name": profile.full_name,
+        "short_name": profile.short_name,
+        "director_full_name": profile.director_full_name,
+        "director_short_name": profile.director_short_name,
+        "director_position": profile.director_position,
+        "authority_basis": profile.authority_basis,
+        "license_number": profile.license_number,
+        "license_date": _snapshot_date(profile.license_date),
+        "license_authority": profile.license_authority,
+        "ogrn": profile.ogrn,
+        "inn": profile.inn,
+        "kpp": profile.kpp,
+        "legal_address": profile.legal_address,
+        "location_address": profile.location_address,
+        "phone": profile.phone,
+        "email": profile.email,
+        "site": profile.site,
+        "bank_name": profile.bank_name,
+        "bank_bik": profile.bank_bik,
+        "bank_account": profile.bank_account,
+        "bank_corr_account": profile.bank_corr_account,
+        "updated_at": _snapshot_datetime(profile.updated_at),
+    }
+
+
+def _recipient_snapshot(contract: ServiceContract) -> dict[str, object]:
+    child = contract.child
+    return {
+        "id": child.pk,
+        "full_name": child.full_name,
+        "last_name": child.last_name,
+        "first_name": child.first_name,
+        "middle_name": child.middle_name,
+        "birth_date": _snapshot_date(child.birth_date),
+        "phone": child.phone,
+        "email": child.email,
+        "status": child.status,
+        "status_display": child.get_status_display(),
+        "updated_at": _snapshot_datetime(child.updated_at),
+    }
+
+
+def _representative_snapshot(contract: ServiceContract) -> dict[str, object]:
+    link = contract.representative_link
+    representative = link.representative
+    return {
+        "link_id": link.pk,
+        "representative_id": representative.pk,
+        "full_name": representative.full_name,
+        "last_name": representative.last_name,
+        "first_name": representative.first_name,
+        "middle_name": representative.middle_name,
+        "relationship_type": link.relationship_type,
+        "relationship_type_display": link.get_relationship_type_display(),
+        "phone": representative.phone,
+        "phone_alt": representative.phone_alt,
+        "email": representative.email,
+        "is_primary": link.is_primary,
+        "signs_contract": link.signs_contract,
+        "receives_schedule": link.receives_schedule,
+        "is_payer": link.is_payer,
+        "representative_updated_at": _snapshot_datetime(representative.updated_at),
+        "link_updated_at": _snapshot_datetime(link.updated_at),
+    }
+
+
+def _counterparty_snapshot(contract: DonationContract) -> dict[str, object]:
+    counterparty = contract.counterparty
+    return {
+        "id": counterparty.pk,
+        "name": counterparty.name,
+        "counterparty_type": counterparty.counterparty_type,
+        "counterparty_type_display": counterparty.get_counterparty_type_display(),
+        "inn": counterparty.inn,
+        "kpp": counterparty.kpp,
+        "ogrn": counterparty.ogrn,
+        "legal_address": counterparty.legal_address,
+        "postal_address": counterparty.postal_address,
+        "bank_details": counterparty.bank_details,
+        "contact_person": counterparty.contact_person,
+        "phone": counterparty.phone,
+        "email": counterparty.email,
+        "updated_at": _snapshot_datetime(counterparty.updated_at),
+    }
+
+
+def _funding_source_snapshot(contract: DonationContract) -> dict[str, object]:
+    funding_source = contract.funding_source
+    return {
+        "id": funding_source.pk,
+        "name": funding_source.name,
+        "source_type": funding_source.source_type,
+        "source_type_display": funding_source.get_source_type_display(),
+        "starts_on": _snapshot_date(funding_source.starts_on),
+        "ends_on": _snapshot_date(funding_source.ends_on),
+        "transfer_policy": funding_source.transfer_policy,
+        "transfer_policy_display": funding_source.get_transfer_policy_display(),
+        "updated_at": _snapshot_datetime(funding_source.updated_at),
+    }
+
+
+def _service_contract_snapshot(contract: ServiceContract, document: Document) -> dict[str, object]:
+    return {
+        "id": contract.pk,
+        "document_id": document.pk,
+        "number": contract.number,
+        "contract_type": contract.contract_type,
+        "contract_type_display": contract.get_contract_type_display(),
+        "signed_on": _snapshot_date(contract.signed_on),
+        "valid_from": _snapshot_date(contract.valid_from),
+        "valid_until": _snapshot_date(contract.valid_until),
+        "status": contract.status,
+        "status_display": contract.get_status_display(),
+        "updated_at": _snapshot_datetime(contract.updated_at),
+    }
+
+
+def _donation_contract_snapshot(contract: DonationContract, document: Document) -> dict[str, object]:
+    return {
+        "id": contract.pk,
+        "document_id": document.pk,
+        "number": contract.number,
+        "contract_type": contract.contract_type,
+        "contract_type_display": contract.get_contract_type_display(),
+        "signed_on": _snapshot_date(contract.signed_on),
+        "valid_from": _snapshot_date(contract.valid_from),
+        "valid_until": _snapshot_date(contract.valid_until),
+        "amount_limit": _snapshot_decimal(contract.amount_limit),
+        "status": contract.status,
+        "status_display": contract.get_status_display(),
+        "updated_at": _snapshot_datetime(contract.updated_at),
+    }
+
+
+def _snapshot_actor(actor):
+    if actor is not None and getattr(actor, "is_authenticated", False):
+        return actor
+    return None
+
+
+def _document_snapshot(document: Document) -> ContractLegalSnapshot | None:
+    return getattr(document, "contract_legal_snapshot", None)
+
+
+def _ensure_service_snapshot_owner(contract: ServiceContract, document: Document) -> None:
+    snapshot = _document_snapshot(document)
+    if snapshot is None:
+        return
+    if (
+        snapshot.contract_kind != ContractLegalSnapshot.ContractKind.SERVICE
+        or snapshot.service_contract_id != contract.pk
+    ):
+        raise ContractDocumentError(
+            "Связанный документ уже имеет юридический snapshot другого договора."
+        )
+
+
+def _ensure_donation_snapshot_owner(contract: DonationContract, document: Document) -> None:
+    snapshot = _document_snapshot(document)
+    if snapshot is None:
+        return
+    if (
+        snapshot.contract_kind != ContractLegalSnapshot.ContractKind.DONATION
+        or snapshot.donation_contract_id != contract.pk
+    ):
+        raise ContractDocumentError(
+            "Связанный документ уже имеет юридический snapshot другого договора."
+        )
+
+
+def _save_service_legal_snapshot(
+    contract: ServiceContract,
+    document: Document,
+    *,
+    actor=None,
+) -> ContractLegalSnapshot:
+    snapshot = _document_snapshot(document)
+    if snapshot is None:
+        snapshot = ContractLegalSnapshot(document=document)
+    else:
+        _ensure_service_snapshot_owner(contract, document)
+    snapshot.contract_kind = ContractLegalSnapshot.ContractKind.SERVICE
+    snapshot.service_contract = contract
+    snapshot.donation_contract = None
+    snapshot.generated_by = _snapshot_actor(actor)
+    snapshot.contract_snapshot = _service_contract_snapshot(contract, document)
+    snapshot.center_snapshot = _center_snapshot()
+    snapshot.recipient_snapshot = _recipient_snapshot(contract)
+    snapshot.representative_snapshot = _representative_snapshot(contract)
+    snapshot.counterparty_snapshot = {}
+    snapshot.funding_source_snapshot = {}
+    snapshot.template_snapshot = _template_snapshot(contract.template)
+    snapshot.note = "Сформирован автоматически при генерации Word-файла договора с получателем."
+    snapshot.full_clean()
+    snapshot.save()
+    return snapshot
+
+
+def _save_donation_legal_snapshot(
+    contract: DonationContract,
+    document: Document,
+    *,
+    actor=None,
+) -> ContractLegalSnapshot:
+    snapshot = _document_snapshot(document)
+    if snapshot is None:
+        snapshot = ContractLegalSnapshot(document=document)
+    else:
+        _ensure_donation_snapshot_owner(contract, document)
+    snapshot.contract_kind = ContractLegalSnapshot.ContractKind.DONATION
+    snapshot.service_contract = None
+    snapshot.donation_contract = contract
+    snapshot.generated_by = _snapshot_actor(actor)
+    snapshot.contract_snapshot = _donation_contract_snapshot(contract, document)
+    snapshot.center_snapshot = _center_snapshot()
+    snapshot.recipient_snapshot = {}
+    snapshot.representative_snapshot = {}
+    snapshot.counterparty_snapshot = _counterparty_snapshot(contract)
+    snapshot.funding_source_snapshot = _funding_source_snapshot(contract)
+    snapshot.template_snapshot = _template_snapshot(contract.template)
+    snapshot.note = "Сформирован автоматически при генерации Word-файла договора пожертвования."
+    snapshot.full_clean()
+    snapshot.save()
+    return snapshot
 
 
 def _center_placeholder_values() -> dict[str, str]:
@@ -512,6 +790,7 @@ def save_service_contract_docx(contract: ServiceContract, *, actor=None) -> Gene
             raise ContractDocumentError(
                 "Связанный документ должен быть категорией договора. Исправьте карточку договора."
             )
+        _ensure_service_snapshot_owner(contract, document)
     else:
         document = Document(
             target_type=Document.TargetType.RECIPIENT,
@@ -532,6 +811,8 @@ def save_service_contract_docx(contract: ServiceContract, *, actor=None) -> Gene
     if contract.document_id != document.pk:
         contract.document = document
         contract.save(update_fields=["document", "updated_at"])
+
+    _save_service_legal_snapshot(contract, document, actor=actor)
 
     generated.payload.seek(0)
     return GeneratedContractFile(
@@ -560,6 +841,7 @@ def save_donation_contract_docx(contract: DonationContract, *, actor=None) -> Ge
             raise ContractDocumentError(
                 "Связанный документ относится к другому контрагенту. Исправьте карточку договора."
             )
+        _ensure_donation_snapshot_owner(contract, document)
     else:
         document = Document(
             target_type=Document.TargetType.COUNTERPARTY,
@@ -580,6 +862,8 @@ def save_donation_contract_docx(contract: DonationContract, *, actor=None) -> Ge
     if contract.document_id != document.pk:
         contract.document = document
         contract.save(update_fields=["document", "updated_at"])
+
+    _save_donation_legal_snapshot(contract, document, actor=actor)
 
     generated.payload.seek(0)
     return GeneratedContractFile(
