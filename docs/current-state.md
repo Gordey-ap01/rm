@@ -1681,3 +1681,17 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA artifacts: `%TEMP%\rmcodex-browser-qa-document-targets`; local runserver `8082` was stopped.
 - Graphify code-index after this slice: `4731` nodes / `18868` edges. Semantic extraction was not rerun; keep raw `docshablon/` out of semantic extraction and project commits.
 - Next safe work: `center-legal-profile-foundation` from docs/26, then signed legal snapshot layer. Keep B2B contracts, consents, acts, approve/pay and import write-path separate unless a new contract explicitly combines them.
+
+## Update 2026-07-18: center-legal-profile-foundation
+
+- Implemented second slice from `docs/26-legal-document-targets-and-center-profile-contract.md`.
+- Added model/migration `operations.0029_centerlegalprofile` with one active legal profile constraint.
+- Added Django admin and auditlog registration for `CenterLegalProfile`.
+- Added product UI `/center/legal-profile/` and navigation item "Центр" for maintaining center legal, license, address, contact and bank requisites.
+- `operations.services.contract_documents` now fills `center.*` placeholders from the active profile for new service/donation Word generation; missing profile or empty fields still fall back to `_______________`.
+- Already generated files are not rewritten; signed legal snapshot layer is still not implemented.
+- No `LedgerEntry`, `BalanceAccount`, `Payment`, billing, payroll, grant, schedule or appointment-status semantics changed.
+- Verification passed: Ruff check, Django check, migration dry-run `No changes detected`, focused related tests `43 passed`, full pytest `571 passed` with the existing django-tasks warning, Python Playwright desktop/mobile QA for `/center/legal-profile/`.
+- Browser QA artifacts: `%TEMP%\rmcodex-browser-qa-center-profile`; local runserver `8083` was stopped.
+- Graphify code-index after this slice: `4757` nodes / `19251` edges. Semantic extraction was not rerun.
+- Next safe work: `contract-signed-snapshot` from docs/26 before B2B contracts, consents, acts or legally significant signed versions.

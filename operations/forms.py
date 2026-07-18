@@ -23,6 +23,7 @@ from .models import (
     BalanceAccount,
     CenterExpense,
     CenterExpenseCategory,
+    CenterLegalProfile,
     Child,
     Consent,
     ContractTemplate,
@@ -2424,6 +2425,76 @@ class CounterpartyForm(forms.ModelForm):
 
     def clean_name(self):
         return self.cleaned_data["name"].strip()
+
+
+class CenterLegalProfileForm(forms.ModelForm):
+    class Meta:
+        model = CenterLegalProfile
+        fields = (
+            "full_name",
+            "short_name",
+            "director_full_name",
+            "director_short_name",
+            "director_position",
+            "authority_basis",
+            "license_number",
+            "license_date",
+            "license_authority",
+            "ogrn",
+            "inn",
+            "kpp",
+            "legal_address",
+            "location_address",
+            "phone",
+            "email",
+            "site",
+            "bank_name",
+            "bank_bik",
+            "bank_account",
+            "bank_corr_account",
+            "is_active",
+            "notes",
+        )
+        labels = {
+            "full_name": "Полное наименование",
+            "short_name": "Краткое наименование",
+            "director_full_name": "ФИО руководителя",
+            "director_short_name": "ФИО руководителя кратко",
+            "director_position": "Должность руководителя",
+            "authority_basis": "Основание полномочий",
+            "license_number": "Номер лицензии",
+            "license_date": "Дата лицензии",
+            "license_authority": "Кем выдана лицензия",
+            "ogrn": "ОГРН",
+            "inn": "ИНН",
+            "kpp": "КПП",
+            "legal_address": "Юридический адрес",
+            "location_address": "Адрес места оказания услуг",
+            "phone": "Телефон",
+            "email": "Email",
+            "site": "Сайт",
+            "bank_name": "Банк",
+            "bank_bik": "БИК",
+            "bank_account": "Расчетный счет",
+            "bank_corr_account": "Корреспондентский счет",
+            "is_active": "Использовать для новых документов",
+            "notes": "Примечания",
+        }
+        help_texts = {
+            "short_name": "Если оставить пустым, в шаблонах можно использовать полное наименование.",
+            "director_short_name": "Например: И. И. Иванов.",
+            "authority_basis": "Например: Устава или доверенности.",
+            "is_active": "Только один профиль может быть активным.",
+        }
+        widgets = {
+            "license_date": DATE_INPUT,
+            "legal_address": forms.Textarea(attrs={"rows": 3}),
+            "location_address": forms.Textarea(attrs={"rows": 3}),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def clean_full_name(self):
+        return self.cleaned_data["full_name"].strip()
 
 
 class CenterExpenseForm(forms.ModelForm):

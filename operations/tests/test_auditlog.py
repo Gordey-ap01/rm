@@ -17,6 +17,7 @@ from operations.models import (
     AppointmentStaffAssignment,
     CenterExpense,
     CenterExpenseCategory,
+    CenterLegalProfile,
     Child,
     ContractTemplate,
     Counterparty,
@@ -87,6 +88,7 @@ class AuditLogTests(TestCase):
             AppointmentStaffAssignment,
             CenterExpense,
             CenterExpenseCategory,
+            CenterLegalProfile,
             Child,
             ContractTemplate,
             Counterparty,
@@ -114,6 +116,7 @@ class AuditLogTests(TestCase):
     def test_expense_models_registered_in_admin(self):
         self.assertIn(Counterparty, admin.site._registry)
         self.assertIn(CenterExpenseCategory, admin.site._registry)
+        self.assertIn(CenterLegalProfile, admin.site._registry)
         self.assertIn(CenterExpense, admin.site._registry)
         self.assertIn(ExpenseFundingSplit, admin.site._registry)
         self.assertIn(EquipmentAsset, admin.site._registry)

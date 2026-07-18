@@ -3293,6 +3293,60 @@ class Counterparty(TimeStampedModel, SoftDeleteMixin):
         return self.name
 
 
+class CenterLegalProfile(TimeStampedModel):
+    full_name = models.CharField("полное наименование", max_length=255)
+    short_name = models.CharField("краткое наименование", max_length=160, blank=True)
+    director_full_name = models.CharField("ФИО руководителя", max_length=200, blank=True)
+    director_short_name = models.CharField("ФИО руководителя кратко", max_length=120, blank=True)
+    director_position = models.CharField("должность руководителя", max_length=120, blank=True)
+    authority_basis = models.CharField("основание полномочий", max_length=200, blank=True)
+    license_number = models.CharField("номер лицензии", max_length=120, blank=True)
+    license_date = models.DateField("дата лицензии", null=True, blank=True)
+    license_authority = models.CharField("кем выдана лицензия", max_length=255, blank=True)
+    ogrn = models.CharField("ОГРН", max_length=20, blank=True)
+    inn = models.CharField("ИНН", max_length=20, blank=True)
+    kpp = models.CharField("КПП", max_length=20, blank=True)
+    legal_address = models.TextField("юридический адрес", blank=True)
+    location_address = models.TextField("адрес места оказания услуг", blank=True)
+    phone = models.CharField("телефон", max_length=40, blank=True)
+    email = models.EmailField("email", blank=True)
+    site = models.CharField("сайт", max_length=160, blank=True)
+    bank_name = models.CharField("банк", max_length=200, blank=True)
+    bank_bik = models.CharField("БИК", max_length=20, blank=True)
+    bank_account = models.CharField("расчетный счет", max_length=40, blank=True)
+    bank_corr_account = models.CharField("корреспондентский счет", max_length=40, blank=True)
+    is_active = models.BooleanField("активный профиль", default=True)
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "юридический профиль центра"
+        verbose_name_plural = "юридические профили центра"
+        ordering = ["-is_active", "-updated_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_active"],
+                condition=Q(is_active=True),
+                name="unique_active_center_legal_profile",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return self.short_name or self.full_name
+
+    def clean(self) -> None:
+        if not self.is_active:
+            return
+        active_profiles = CenterLegalProfile.objects.filter(is_active=True)
+        if self.pk:
+            active_profiles = active_profiles.exclude(pk=self.pk)
+        if active_profiles.exists():
+            raise ValidationError({"is_active": "Активный юридический профиль центра уже есть."})
+
+    @classmethod
+    def get_active(cls) -> CenterLegalProfile | None:
+        return cls.objects.filter(is_active=True).order_by("-updated_at", "-pk").first()
+
+
 class CenterExpenseCategory(TimeStampedModel):
     class ExpenseType(models.TextChoices):
         HOUSEHOLD = "household", "Хозяйственные расходы"

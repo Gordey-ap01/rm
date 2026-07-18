@@ -14,6 +14,7 @@ from .models import (
     BalanceAccount,
     CenterExpense,
     CenterExpenseCategory,
+    CenterLegalProfile,
     Child,
     Consent,
     ContractTemplate,
@@ -205,6 +206,13 @@ class CounterpartyAdmin(admin.ModelAdmin):
     list_display = ("name", "counterparty_type", "phone", "email", "archived_at")
     search_fields = ("name", "inn", "kpp", "ogrn", "contact_person", "phone", "email")
     list_filter = ("counterparty_type", SoftDeletedFilter)
+
+
+@admin.register(CenterLegalProfile)
+class CenterLegalProfileAdmin(admin.ModelAdmin):
+    list_display = ("full_name", "short_name", "inn", "ogrn", "is_active", "updated_at")
+    search_fields = ("full_name", "short_name", "inn", "ogrn", "director_full_name")
+    list_filter = ("is_active",)
 
 
 @admin.register(CenterExpenseCategory)

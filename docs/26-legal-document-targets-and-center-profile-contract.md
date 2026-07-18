@@ -53,7 +53,7 @@
 - Word generation продолжает создавать `Document(target_type=recipient, child=<contract.child>, category=contract)`;
 - валидация продолжает запрещать документ другого получателя для договора с получателем.
 
-## Следующие модели, но не в первом срезе
+## Следующие модели после первого среза
 
 `CenterLegalProfile`:
 - активная карточка центра с полным/кратким названием, директором, основанием полномочий, лицензией, ОГРН, ИНН, КПП, адресами, контактами и банковскими реквизитами;
@@ -104,3 +104,22 @@
 - Service Word продолжает создавать или обновлять один связанный `Document` и не создает financial facts.
 - PDF downloads остаются read-only.
 - Полный тестовый прогон проходит.
+
+## Implementation 2026-07-18
+
+Completed `document-target-foundation`:
+- migration `operations.0028_document_counterparty_document_target_type_and_more`;
+- generalized `Document.target_type`, nullable `child`, optional `counterparty`, indexes and constraints;
+- document list/form target UI;
+- donation Word now saves/updates counterparty `Document`; service Word remains recipient-scoped;
+- verification: Ruff, Django check, migration dry-run, focused tests `31 passed`, full pytest `566 passed`, Browser QA documents list/form.
+
+Completed `center-legal-profile-foundation`:
+- migration `operations.0029_centerlegalprofile`;
+- `CenterLegalProfile` model with one active profile constraint, admin/auditlog registration and product UI `/center/legal-profile/`;
+- active profile values fill `center.*` placeholders in service/donation Word generation;
+- no snapshot layer yet: changing the profile affects future generation only by current lookup, while already saved files are not rewritten;
+- verification: Ruff, Django check, migration dry-run, focused related tests `43 passed`, full pytest `571 passed`, Browser QA center legal profile desktop/mobile.
+
+Next:
+- `contract-signed-snapshot` should freeze legal data at generation/signing time before expanding B2B contracts, consents and acts.

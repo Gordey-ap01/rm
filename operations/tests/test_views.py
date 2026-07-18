@@ -25,6 +25,7 @@ from operations.models import (
     BalanceAccount,
     CenterExpense,
     CenterExpenseCategory,
+    CenterLegalProfile,
     Certificate,
     Child,
     Consent,
@@ -3227,6 +3228,53 @@ class ExpenseDirectoryViewTests(NewViewsTestBase):
         self.assertEqual(response.status_code, 302)
 
 
+class CenterLegalProfileViewTests(NewViewsTestBase):
+    def test_center_legal_profile_get_renders_form(self):
+        response = self.client.get(reverse("center_legal_profile"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Юридический профиль центра")
+        self.assertContains(response, "Реквизиты центра")
+        self.assertContains(response, "Один активный профиль")
+        self.assertContains(response, 'name="full_name"')
+
+    def test_center_legal_profile_post_creates_active_profile(self):
+        response = self.client.post(
+            reverse("center_legal_profile"),
+            {
+                "full_name": "Автономная некоммерческая организация Радость моя",
+                "short_name": "АНО Радость моя",
+                "director_full_name": "Иванов Иван Иванович",
+                "director_short_name": "И. И. Иванов",
+                "director_position": "Директор",
+                "authority_basis": "Устава",
+                "license_number": "Л-25-000001",
+                "license_date": "2026-01-15",
+                "license_authority": "Министерство здравоохранения",
+                "ogrn": "1234567890123",
+                "inn": "2500000000",
+                "kpp": "250001001",
+                "legal_address": "г. Владивосток, ул. Юридическая, 1",
+                "location_address": "г. Владивосток, ул. Рабочая, 2",
+                "phone": "+7 900 000-00-01",
+                "email": "center@example.local",
+                "site": "rm.example.local",
+                "bank_name": "Тест Банк",
+                "bank_bik": "040000001",
+                "bank_account": "40703810000000000001",
+                "bank_corr_account": "30101810000000000001",
+                "is_active": "on",
+                "notes": "",
+            },
+        )
+
+        self.assertRedirects(response, reverse("center_legal_profile"))
+        profile = CenterLegalProfile.objects.get()
+        self.assertTrue(profile.is_active)
+        self.assertEqual(profile.short_name, "АНО Радость моя")
+        self.assertEqual(CenterLegalProfile.get_active(), profile)
+
+
 class CenterExpenseViewTests(NewViewsTestBase):
     def _expense_post_data(
         self,
@@ -3974,6 +4022,47 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertNotIn("{{ representative.phone }}", generated_text)
         self.assertNotIn("{{ center.full_name }}", generated_text)
         self.assertNotIn("{{ service_spec.rows }}", generated_text)
+
+    def test_service_contract_word_uses_active_center_legal_profile(self):
+        CenterLegalProfile.objects.create(
+            full_name="Автономная некоммерческая организация Радость моя",
+            short_name="АНО Радость моя",
+            director_full_name="Иванов Иван Иванович",
+            director_position="Директор",
+            authority_basis="Устава",
+            inn="2500000000",
+            bank_bik="040000001",
+        )
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.RECIPIENT_SERVICE,
+            title="Center profile placeholders",
+            version="1",
+            file=self._docx_upload(
+                "service_center_profile.docx",
+                "{{ center.full_name }} {{ center.short_name }} {{ center.director_position }} "
+                "{{ center.authority_basis }} {{ center.inn }} {{ center.bank_bik }}",
+            ),
+        )
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-CENTER",
+            signed_on=timezone.localdate(),
+            template=template,
+        )
+
+        response = self.client.post(reverse("service_contract_word", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        payload = b"".join(response.streaming_content)
+        generated_text = self._docx_text(payload)
+        self.assertIn("Автономная некоммерческая организация Радость моя", generated_text)
+        self.assertIn("АНО Радость моя", generated_text)
+        self.assertIn("Директор", generated_text)
+        self.assertIn("Устава", generated_text)
+        self.assertIn("2500000000", generated_text)
+        self.assertIn("040000001", generated_text)
+        self.assertNotIn("{{ center.full_name }}", generated_text)
 
     def test_donation_contract_word_generates_document_without_financial_facts(self):
         template = ContractTemplate.objects.create(

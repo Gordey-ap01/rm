@@ -16,6 +16,7 @@ from .appointments import (
 )
 from .assets import equipment_asset_create, equipment_asset_edit, equipment_asset_list
 from .balances import balance_account_create, balance_account_delete, balance_account_edit, balances
+from .center_profile import center_legal_profile_edit
 from .compensation_rules import (
     staff_compensation_rule_create,
     staff_compensation_rule_edit,
@@ -158,6 +159,7 @@ __all__ = [
     "center_expense_edit",
     "center_expense_list",
     "center_expense_report",
+    "center_legal_profile_edit",
     "consent_create",
     "consent_list",
     "contract_import_preview",

@@ -21,6 +21,7 @@ from .models import (
     AppointmentSeries,
     AppointmentStaffAssignment,
     BalanceAccount,
+    CenterLegalProfile,
     Child,
     Consent,
     Counterparty,
@@ -2769,6 +2770,31 @@ class DocumentTests(TestCase):
         self.assertIsNone(doc.child_id)
         self.assertEqual(doc.target_label, counterparty.name)
         self.assertEqual(str(doc), f"Договор фонда — {counterparty.name}")
+
+
+class CenterLegalProfileTests(TestCase):
+    def test_active_profile_is_returned(self):
+        old = CenterLegalProfile.objects.create(
+            full_name="Автономная некоммерческая организация Старый центр",
+            short_name="Старый центр",
+            is_active=False,
+        )
+        active = CenterLegalProfile.objects.create(
+            full_name="Автономная некоммерческая организация Радость моя",
+            short_name="АНО Радость моя",
+            inn="2500000000",
+        )
+
+        self.assertEqual(CenterLegalProfile.get_active(), active)
+        self.assertNotEqual(CenterLegalProfile.get_active(), old)
+        self.assertEqual(str(active), "АНО Радость моя")
+
+    def test_only_one_active_profile_allowed(self):
+        CenterLegalProfile.objects.create(full_name="АНО Радость моя")
+        duplicate = CenterLegalProfile(full_name="Другой активный профиль")
+
+        with self.assertRaises(ValidationError):
+            duplicate.full_clean()
 
 
 class ConsentTests(TestCase):

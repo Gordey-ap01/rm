@@ -290,3 +290,16 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused document/contract tests `31 passed`, full pytest `566 passed`, Python Playwright desktop/mobile QA for documents list/form.
 - Graphify code-index after this slice: `4731` nodes / `18868` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and must not be sent to semantic extraction.
 - Next safe step: `center-legal-profile-foundation` from docs/26, then signed legal snapshots. Keep B2B/consents/acts, approve/pay and import write-path separate unless a new contract explicitly combines them.
+
+## Latest clarification 2026-07-18: center-legal-profile-foundation complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `CenterLegalProfile` is implemented by migration `operations.0029_centerlegalprofile`.
+- UI route: `/center/legal-profile/`; navigation item: "Центр".
+- The profile stores center legal, license, address, contact and bank requisites; only one active profile is allowed.
+- `center.*` placeholders in new service/donation Word generation use the active profile. Existing generated files are not rewritten.
+- No ledger/balance/payment/billing/payroll/grant/schedule/status semantics changed.
+- Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, related focused tests `43 passed`, full pytest `571 passed`, Python Playwright desktop/mobile QA for `/center/legal-profile/`.
+- Graphify code-index after this slice: `4757` nodes / `19251` edges. Semantic extraction was not rerun.
+- Next safe step: `contract-signed-snapshot` from docs/26. Do not start B2B/consents/acts or legally signed versions before snapshot semantics are explicit.

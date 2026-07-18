@@ -10,8 +10,8 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/admin.py": {
-    "mtime": 1784362772.3624346,
-    "ast_hash": "002a969484e01f79797482d57a67f32e",
+    "mtime": 1784364316.9319336,
+    "ast_hash": "65b4250daf1691b0f353fdd9f924b3d1",
     "semantic_hash": ""
   },
   "operations/api.py": {
@@ -20,13 +20,13 @@
     "semantic_hash": ""
   },
   "operations/apps.py": {
-    "mtime": 1784149187.2711446,
-    "ast_hash": "eaabf9e311d5ae492a89c0974b8b2602",
+    "mtime": 1784364322.7670717,
+    "ast_hash": "d5803c8caf06ed9057782fba9254bcc3",
     "semantic_hash": ""
   },
   "operations/forms.py": {
-    "mtime": 1784363588.9403784,
-    "ast_hash": "b01470827901161a510db1281271fb2b",
+    "mtime": 1784364241.8893583,
+    "ast_hash": "07e0bec818ad5d2458c445248d7350c5",
     "semantic_hash": ""
   },
   "operations/management/__init__.py": {
@@ -105,8 +105,8 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/models.py": {
-    "mtime": 1784363574.8368478,
-    "ast_hash": "3bde36e49bde4606d1bcace934aaef02",
+    "mtime": 1784364223.9674358,
+    "ast_hash": "cf58884ccb5143c986b148288a3abe7c",
     "semantic_hash": ""
   },
   "operations/services/__init__.py": {
@@ -155,13 +155,13 @@
     "semantic_hash": "50782352c5fa9df21258784a69f4da41"
   },
   "operations/tests.py": {
-    "mtime": 1784362957.5418482,
-    "ast_hash": "03739bfbc34eaf57d05ceb90199e0ef7",
+    "mtime": 1784364500.0558467,
+    "ast_hash": "3cdd62eac51f67efef5a125f033b77a5",
     "semantic_hash": ""
   },
   "operations/tests/test_auditlog.py": {
-    "mtime": 1784149554.2848675,
-    "ast_hash": "c42e844f0f70330a679f7bbb9a05ff7f",
+    "mtime": 1784364398.788863,
+    "ast_hash": "8d9f161f31b9b0be47a8b8c04c438562",
     "semantic_hash": ""
   },
   "operations/tests/test_services.py": {
@@ -170,18 +170,18 @@
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
-    "mtime": 1784363715.1502159,
-    "ast_hash": "fc6c241445a7c5569c645b43653561e7",
+    "mtime": 1784364478.090069,
+    "ast_hash": "d41dba66a7380a7adf90359a07a0af50",
     "semantic_hash": ""
   },
   "operations/urls.py": {
-    "mtime": 1784352314.2727695,
-    "ast_hash": "2ea662b491f36ee3714cecb7561278db",
+    "mtime": 1784364279.189518,
+    "ast_hash": "b2bcc00f9ce4c90a2e29ba15030d48b0",
     "semantic_hash": ""
   },
   "operations/views/__init__.py": {
-    "mtime": 1784352314.2744064,
-    "ast_hash": "f340647589a2570f43536922ed3c22e2",
+    "mtime": 1784364507.365834,
+    "ast_hash": "bf602a154044b0c83b5eea70ac7b63a9",
     "semantic_hash": ""
   },
   "operations/views/_common.py": {
@@ -515,8 +515,8 @@
     "semantic_hash": "929b035a1aeaf7a9482b03a04df8a13e"
   },
   "templates/base.html": {
-    "mtime": 1784350502.0249014,
-    "ast_hash": "e0a355b8c00b8541183c60d159fac08c",
+    "mtime": 1784364289.4644127,
+    "ast_hash": "f8ed846680805a5736c1444ed108889a",
     "semantic_hash": ""
   },
   "templates/operations/appointment_cancel.html": {
@@ -580,8 +580,8 @@
     "semantic_hash": ""
   },
   "templates/operations/object_form.html": {
-    "mtime": 1784350502.0233948,
-    "ast_hash": "e8686027ff95f2b469178f80d6fb905b",
+    "mtime": 1784364298.188063,
+    "ast_hash": "bdd6f313b2a34c68dcecb2578d142033",
     "semantic_hash": ""
   },
   "templates/operations/payment_form.html": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784363468.9185207,
-    "ast_hash": "cca20fc5dfabbdf33fceee026aff6ab2",
+    "mtime": 1784364862.3741508,
+    "ast_hash": "b7b510808efeb75c6fb4183f49c0b108",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784363500.27345,
-    "ast_hash": "296384b15361bd9f19bea51b08f6e214",
+    "mtime": 1784364886.5680091,
+    "ast_hash": "c7fedc87cba5976e5a96a82fb7e6debe",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784363484.847234,
-    "ast_hash": "5f7aea689d228f8e0c51d858af61a672",
+    "mtime": 1784364876.035467,
+    "ast_hash": "1e8c16c758592ebce2374a733ff74dfb",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1140,8 +1140,8 @@
     "semantic_hash": ""
   },
   "operations/services/contract_documents.py": {
-    "mtime": 1784362957.5044754,
-    "ast_hash": "cb346f6af087f0cc727d16200da6b96c",
+    "mtime": 1784364349.8180666,
+    "ast_hash": "4eb461c3f88133dc0e60517eb35e2c8b",
     "semantic_hash": ""
   },
   "docs/23-contract-word-generation-contract.md": {
@@ -1165,8 +1165,18 @@
     "semantic_hash": ""
   },
   "docs/26-legal-document-targets-and-center-profile-contract.md": {
-    "mtime": 1784362705.1657705,
-    "ast_hash": "0c0899c50818f4c2ada19a35cfd52309",
+    "mtime": 1784364847.4643524,
+    "ast_hash": "e5172e8ad00b758d902b44c071c57adc",
+    "semantic_hash": ""
+  },
+  "operations/migrations/0029_centerlegalprofile.py": {
+    "mtime": 1784364360.1112306,
+    "ast_hash": "e03bd447f17b408c242adb16b345ae64",
+    "semantic_hash": ""
+  },
+  "operations/views/center_profile.py": {
+    "mtime": 1784364257.5416944,
+    "ast_hash": "644768b2c7f5170771d418b719df390b",
     "semantic_hash": ""
   }
 }

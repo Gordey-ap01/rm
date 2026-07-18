@@ -12,7 +12,7 @@ from django.utils import timezone
 from docx import Document as WordDocument
 from docx.document import Document as WordDocumentType
 
-from operations.models import Document, DonationContract, ServiceContract
+from operations.models import CenterLegalProfile, Document, DonationContract, ServiceContract
 
 DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 MAX_TEMPLATE_BYTES = 5 * 1024 * 1024
@@ -49,6 +49,7 @@ PLACEHOLDER_GROUPS = (
             "center.short_name",
             "center.director_full_name",
             "center.director_short_name",
+            "center.director_position",
             "center.authority_basis",
             "center.license_number",
             "center.license_date",
@@ -243,10 +244,40 @@ def _template_label(template) -> str:
     return f"{template.title}{version}"
 
 
+def _center_placeholder_values() -> dict[str, str]:
+    profile = CenterLegalProfile.get_active()
+    if profile is None:
+        return {}
+    return {
+        "center.full_name": _text(profile.full_name),
+        "center.short_name": _text(profile.short_name, profile.full_name),
+        "center.director_full_name": _text(profile.director_full_name),
+        "center.director_short_name": _text(profile.director_short_name),
+        "center.director_position": _text(profile.director_position),
+        "center.authority_basis": _text(profile.authority_basis),
+        "center.license_number": _text(profile.license_number),
+        "center.license_date": _date_label(profile.license_date),
+        "center.license_authority": _text(profile.license_authority),
+        "center.ogrn": _text(profile.ogrn),
+        "center.inn": _text(profile.inn),
+        "center.kpp": _text(profile.kpp),
+        "center.legal_address": _text(profile.legal_address),
+        "center.location_address": _text(profile.location_address),
+        "center.phone": _text(profile.phone),
+        "center.email": _text(profile.email),
+        "center.site": _text(profile.site),
+        "center.bank_name": _text(profile.bank_name),
+        "center.bank_bik": _text(profile.bank_bik),
+        "center.bank_account": _text(profile.bank_account),
+        "center.bank_corr_account": _text(profile.bank_corr_account),
+    }
+
+
 def service_contract_placeholders(contract: ServiceContract) -> dict[str, str]:
     signer_link = contract.representative_link
     signer = signer_link.representative
     values = _empty_placeholder_values()
+    values.update(_center_placeholder_values())
     values.update(
         {
             "contract.number": _text(contract.number, "б/н"),
@@ -278,6 +309,7 @@ def donation_contract_placeholders(contract: DonationContract) -> dict[str, str]
     counterparty = contract.counterparty
     funding_source = contract.funding_source
     values = _empty_placeholder_values()
+    values.update(_center_placeholder_values())
     values.update(
         {
             "contract.number": _text(contract.number, "б/н"),

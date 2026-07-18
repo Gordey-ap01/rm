@@ -291,3 +291,15 @@ Browser QA - это проверка живого интерфейса в бра
 - Verification: Ruff format/check, Django check, migration dry-run `No changes detected`, focused document/contract tests `31 passed`, full pytest `566 passed`, Python Playwright desktop/mobile QA for documents list/form with artifacts `%TEMP%\rmcodex-browser-qa-document-targets`; runserver `8082` stopped.
 - Graphify code-index after this slice: `4731` nodes / `18868` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and must not be sent to semantic extraction.
 - Next safe slice: `center-legal-profile-foundation` from docs/26. Signed legal snapshots should follow after center profile. B2B/consents/acts, approve/pay and import write-path remain separate contracts.
+
+## Latest Recovery Note 2026-07-18: center-legal-profile-foundation
+
+- Second slice from `docs/26-legal-document-targets-and-center-profile-contract.md` is implemented.
+- Migration `operations.0029_centerlegalprofile` adds `CenterLegalProfile` with one active profile constraint.
+- Product UI `/center/legal-profile/` stores center legal, license, address, contact and bank requisites; base navigation has item "Центр".
+- `center.*` Word placeholders now use the active profile for new service/donation contract generation; blank/missing fields keep blank fallback.
+- Already generated files are not rewritten and no signed snapshot layer exists yet.
+- No ledger/balance/payment/billing/payroll/grant/schedule/appointment-status semantics changed.
+- Verification: Ruff check, Django check, migration dry-run `No changes detected`, related focused tests `43 passed`, full pytest `571 passed`, Python Playwright desktop/mobile QA for `/center/legal-profile/` with artifacts `%TEMP%\rmcodex-browser-qa-center-profile`; runserver `8083` stopped.
+- Graphify code-index after this slice: `4757` nodes / `19251` edges. Semantic extraction was not rerun.
+- Next safe slice: `contract-signed-snapshot` from docs/26 before B2B contracts, consents, acts or legally significant signed versions.

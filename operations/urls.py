@@ -135,6 +135,11 @@ urlpatterns = [
     ),
     path("contracts/", views.contract_list, name="contract_list"),
     path(
+        "center/legal-profile/",
+        views.center_legal_profile_edit,
+        name="center_legal_profile",
+    ),
+    path(
         "contracts/templates/new/",
         views.contract_template_create,
         name="contract_template_create",
