@@ -323,6 +323,7 @@ def _center_snapshot() -> dict[str, object]:
 
 def _recipient_snapshot(contract: ServiceContract) -> dict[str, object]:
     child = contract.child
+    address = child.registration_address or child.residential_address
     return {
         "id": child.pk,
         "full_name": child.full_name,
@@ -332,6 +333,9 @@ def _recipient_snapshot(contract: ServiceContract) -> dict[str, object]:
         "birth_date": _snapshot_date(child.birth_date),
         "phone": child.phone,
         "email": child.email,
+        "address": address,
+        "registration_address": child.registration_address,
+        "residential_address": child.residential_address,
         "status": child.status,
         "status_display": child.get_status_display(),
         "updated_at": _snapshot_datetime(child.updated_at),
@@ -353,6 +357,11 @@ def _representative_snapshot(contract: ServiceContract) -> dict[str, object]:
         "phone": representative.phone,
         "phone_alt": representative.phone_alt,
         "email": representative.email,
+        "passport_series": representative.passport_series,
+        "passport_number": representative.passport_number,
+        "passport_issued_by": representative.passport_issued_by,
+        "passport_issued_on": _snapshot_date(representative.passport_issued_on),
+        "registration_address": representative.registration_address,
         "is_primary": link.is_primary,
         "signs_contract": link.signs_contract,
         "receives_schedule": link.receives_schedule,
@@ -554,6 +563,7 @@ def _center_placeholder_values() -> dict[str, str]:
 def service_contract_placeholders(contract: ServiceContract) -> dict[str, str]:
     signer_link = contract.representative_link
     signer = signer_link.representative
+    child_address = contract.child.registration_address or contract.child.residential_address
     values = _empty_placeholder_values()
     values.update(_center_placeholder_values())
     values.update(
@@ -570,11 +580,17 @@ def service_contract_placeholders(contract: ServiceContract) -> dict[str, str]:
             "child.birth_date": _date_label(contract.child.birth_date),
             "child.phone": _text(contract.child.phone),
             "child.email": _text(contract.child.email),
+            "child.address": _text(child_address),
             "representative.full_name": signer.full_name,
             "representative.relationship": signer_link.get_relationship_type_display(),
             "representative.phone": _text(signer.phone),
             "representative.phone_alt": _text(signer.phone_alt),
             "representative.email": _text(signer.email),
+            "representative.passport_series": _text(signer.passport_series),
+            "representative.passport_number": _text(signer.passport_number),
+            "representative.passport_issued_by": _text(signer.passport_issued_by),
+            "representative.passport_issued_on": _date_label(signer.passport_issued_on),
+            "representative.registration_address": _text(signer.registration_address),
             "representative.signs_contract": _bool_label(signer_link.signs_contract),
             "representative.receives_schedule": _bool_label(signer_link.receives_schedule),
             "representative.is_payer": _bool_label(signer_link.is_payer),

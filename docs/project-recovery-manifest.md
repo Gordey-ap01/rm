@@ -329,3 +329,15 @@ Browser QA - это проверка живого интерфейса в бра
 - Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused contract tests `33 passed`, full pytest `579 passed`, Python Playwright desktop/mobile QA for `/contracts/templates/new/` with artifacts `%TEMP%\rmcodex-browser-qa-template-families`; runserver `8095` stopped.
 - Graphify code-index after this slice: `4810` nodes / `19584` edges. Semantic extraction was not rerun.
 - Next safe slice: representative/child legal fields, service-contract spec/funding, or another explicit legal-document contract. Do not start B2B/consent/act generation without separate contracts.
+
+## Latest Recovery Note 2026-07-18: representative-child-legal-fields
+
+- `docs/28-representative-child-legal-fields-contract.md` is added and implemented.
+- Migration `operations.0032_child_registration_address_child_residential_address_and_more` adds additive legal fields only.
+- `ParentGuardian` now stores passport series/number, issuing authority/date and registration address. `Child` now stores registration and residential addresses.
+- `RepresentativeForm` and `RecipientForm` expose these fields; recipient detail shows registration/residential addresses.
+- Service-contract Word placeholders fill representative passport/address and recipient address fields; `ContractLegalSnapshot` stores the same legal values at generation time.
+- No ledger/balance/payment/billing/payroll/grant/schedule/appointment-status semantics changed.
+- Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused recipient/contract tests `44 passed`, full pytest `582 passed`, Python Playwright desktop/mobile QA with artifacts `%TEMP%\rmcodex-browser-qa-legal-fields`; runserver `8096` stopped.
+- Graphify code-index after this slice: `4826` nodes / `19603` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
+- Next safe slice: `service-contract-spec-and-funding` or `certificate-contract-link`. Keep B2B/consent/act generation, approve/pay and import write-path under separate contracts.

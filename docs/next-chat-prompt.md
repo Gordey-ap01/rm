@@ -332,3 +332,17 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused contract tests `33 passed`, full pytest `579 passed`, Python Playwright desktop/mobile QA for `/contracts/templates/new/` with artifacts `%TEMP%\rmcodex-browser-qa-template-families`.
 - Graphify code-index after this slice: `4810` nodes / `19584` edges. Semantic extraction was not rerun.
 - Next safe step: representative/child legal fields, service-contract spec/funding, or another explicit legal-document contract. Do not start B2B/consent/act generation without separate contracts.
+
+## Latest clarification 2026-07-18: representative-child-legal-fields complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/28-representative-child-legal-fields-contract.md` is added and implemented.
+- Migration `operations.0032_child_registration_address_child_residential_address_and_more` adds additive legal fields only.
+- `ParentGuardian` stores passport series/number, issuing authority/date and registration address. `Child` stores registration and residential addresses.
+- Forms for representatives/recipients expose the new fields; recipient detail shows recipient registration/residential addresses.
+- Service-contract Word generation fills representative passport/address and recipient address placeholders, and `ContractLegalSnapshot` stores the same legal values at generation time.
+- No ledger/balance/payment/billing/payroll/grant/schedule/status semantics changed.
+- Tests/QA passed: Ruff, Django check, migration dry-run `No changes detected`, focused recipient/contract tests `44 passed`, full pytest `582 passed`, Python Playwright desktop/mobile QA for representative/recipient forms and recipient detail with artifacts `%TEMP%\rmcodex-browser-qa-legal-fields`.
+- Graphify code-index after this slice: `4826` nodes / `19603` edges. Semantic extraction was not rerun; keep `docshablon/` private/ignored and do not send raw samples to semantic extraction.
+- Next safe step: `service-contract-spec-and-funding` or `certificate-contract-link`; B2B/consent/act generation, approve/pay and import write-path need separate contracts.

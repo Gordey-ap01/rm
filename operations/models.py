@@ -104,6 +104,11 @@ class ParentGuardian(TimeStampedModel, SoftDeleteMixin):
     phone = models.CharField("телефон", max_length=40)
     phone_alt = models.CharField("дополнительный телефон", max_length=40, blank=True)
     email = models.EmailField("email", blank=True)
+    passport_series = models.CharField("серия паспорта", max_length=20, blank=True)
+    passport_number = models.CharField("номер паспорта", max_length=30, blank=True)
+    passport_issued_by = models.TextField("кем выдан паспорт", blank=True)
+    passport_issued_on = models.DateField("дата выдачи паспорта", null=True, blank=True)
+    registration_address = models.TextField("адрес регистрации", blank=True)
     relationship_type = models.CharField(
         "тип связи",
         max_length=30,
@@ -140,6 +145,8 @@ class Child(TimeStampedModel, SoftDeleteMixin):
     birth_date = models.DateField("дата рождения", null=True, blank=True)
     phone = models.CharField("телефон получателя", max_length=40, blank=True)
     email = models.EmailField("email получателя", blank=True)
+    registration_address = models.TextField("адрес регистрации", blank=True)
+    residential_address = models.TextField("адрес проживания", blank=True)
     status = models.CharField(
         "статус", max_length=30, choices=Status.choices, default=Status.ACTIVE
     )

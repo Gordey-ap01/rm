@@ -1269,6 +1269,11 @@ class RepresentativeForm(forms.ModelForm):
             "phone",
             "phone_alt",
             "email",
+            "passport_series",
+            "passport_number",
+            "passport_issued_by",
+            "passport_issued_on",
+            "registration_address",
             "notes",
         )
         labels = {
@@ -1278,9 +1283,19 @@ class RepresentativeForm(forms.ModelForm):
             "relationship_type": "Тип представительства",
             "phone": "Телефон",
             "phone_alt": "Дополнительный телефон",
+            "passport_series": "Серия паспорта",
+            "passport_number": "Номер паспорта",
+            "passport_issued_by": "Кем выдан паспорт",
+            "passport_issued_on": "Дата выдачи паспорта",
+            "registration_address": "Адрес регистрации",
             "notes": "Примечания",
         }
-        widgets = {"notes": forms.Textarea(attrs={"rows": 3})}
+        widgets = {
+            "passport_issued_on": DATE_INPUT,
+            "passport_issued_by": forms.Textarea(attrs={"rows": 3}),
+            "registration_address": forms.Textarea(attrs={"rows": 3}),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
 
 
 class RecipientForm(forms.ModelForm):
@@ -1293,6 +1308,8 @@ class RecipientForm(forms.ModelForm):
             "birth_date",
             "phone",
             "email",
+            "registration_address",
+            "residential_address",
             "status",
             "color",
             "primary_parent",
@@ -1306,6 +1323,8 @@ class RecipientForm(forms.ModelForm):
             "birth_date": "Дата рождения",
             "phone": "Телефон получателя",
             "email": "Email получателя",
+            "registration_address": "Адрес регистрации",
+            "residential_address": "Адрес проживания",
             "status": "Статус",
             "color": "Цветовая метка",
             "primary_parent": "Основной представитель",
@@ -1315,6 +1334,8 @@ class RecipientForm(forms.ModelForm):
         widgets = {
             "birth_date": DATE_INPUT,
             "color": forms.TextInput(attrs={"type": "color"}),
+            "registration_address": forms.Textarea(attrs={"rows": 3}),
+            "residential_address": forms.Textarea(attrs={"rows": 3}),
             "diagnosis": forms.Textarea(attrs={"rows": 3}),
             "notes": forms.Textarea(attrs={"rows": 3}),
         }

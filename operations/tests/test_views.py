@@ -4129,6 +4129,70 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertNotIn("{{ center.full_name }}", generated_text)
         self.assertNotIn("{{ service_spec.rows }}", generated_text)
 
+    def test_service_contract_word_uses_recipient_and_representative_legal_fields(self):
+        passport_date = timezone.localdate()
+        self.child.registration_address = "690000, г. Владивосток, ул. Получателя, д. 1"
+        self.child.residential_address = "690000, г. Владивосток, ул. Проживания, д. 2"
+        self.child.save(update_fields=["registration_address", "residential_address", "updated_at"])
+        self.parent.passport_series = "2500"
+        self.parent.passport_number = "123456"
+        self.parent.passport_issued_by = "УМВД по тестовому району"
+        self.parent.passport_issued_on = passport_date
+        self.parent.registration_address = "690000, г. Владивосток, ул. Представителя, д. 3"
+        self.parent.save(
+            update_fields=[
+                "passport_series",
+                "passport_number",
+                "passport_issued_by",
+                "passport_issued_on",
+                "registration_address",
+                "updated_at",
+            ]
+        )
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.RECIPIENT_SERVICE,
+            title="Legal fields placeholders",
+            version="1",
+            file=self._docx_upload(
+                "service_legal_fields.docx",
+                "Child {{ child.address }} passport {{ representative.passport_series }} "
+                "{{ representative.passport_number }} issued {{ representative.passport_issued_by }} "
+                "{{ representative.passport_issued_on }} address {{ representative.registration_address }}.",
+            ),
+        )
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-LEGAL",
+            signed_on=timezone.localdate(),
+            template=template,
+        )
+
+        response = self.client.post(reverse("service_contract_word", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        payload = b"".join(response.streaming_content)
+        generated_text = self._docx_text(payload)
+        self.assertIn("ул. Получателя", generated_text)
+        self.assertIn("2500", generated_text)
+        self.assertIn("123456", generated_text)
+        self.assertIn("УМВД по тестовому району", generated_text)
+        self.assertIn(passport_date.strftime("%d.%m.%Y"), generated_text)
+        self.assertIn("ул. Представителя", generated_text)
+
+        contract.refresh_from_db()
+        snapshot = contract.document.contract_legal_snapshot
+        self.assertEqual(
+            snapshot.recipient_snapshot["address"],
+            "690000, г. Владивосток, ул. Получателя, д. 1",
+        )
+        self.assertEqual(snapshot.representative_snapshot["passport_series"], "2500")
+        self.assertEqual(snapshot.representative_snapshot["passport_number"], "123456")
+        self.assertEqual(
+            snapshot.representative_snapshot["registration_address"],
+            "690000, г. Владивосток, ул. Представителя, д. 3",
+        )
+
     def test_service_contract_word_uses_active_center_legal_profile(self):
         profile = CenterLegalProfile.objects.create(
             full_name="Автономная некоммерческая организация Радость моя",
@@ -7922,6 +7986,74 @@ class RecipientEditTests(NewViewsTestBase):
         self.assertContains(response, "recipient-balance-table")
         self.assertContains(response, 'data-label="Расписание"')
         self.assertContains(response, 'data-label="Действия"')
+
+    def test_recipient_form_saves_legal_addresses(self):
+        response = self.client.post(
+            reverse("recipient_edit", args=[self.child.pk]),
+            {
+                "last_name": self.child.last_name,
+                "first_name": self.child.first_name,
+                "middle_name": self.child.middle_name,
+                "birth_date": "",
+                "phone": self.child.phone,
+                "email": self.child.email,
+                "registration_address": "690000, г. Владивосток, ул. Регистрации, д. 1",
+                "residential_address": "690000, г. Владивосток, ул. Проживания, д. 2",
+                "status": self.child.status,
+                "color": self.child.color,
+                "primary_parent": self.parent.pk,
+                "diagnosis": self.child.diagnosis,
+                "notes": self.child.notes,
+            },
+        )
+
+        self.assertRedirects(response, reverse("recipient_detail", args=[self.child.pk]))
+        self.child.refresh_from_db()
+        self.assertEqual(
+            self.child.registration_address,
+            "690000, г. Владивосток, ул. Регистрации, д. 1",
+        )
+        self.assertEqual(
+            self.child.residential_address,
+            "690000, г. Владивосток, ул. Проживания, д. 2",
+        )
+
+        response = self.client.get(reverse("recipient_detail", args=[self.child.pk]))
+
+        self.assertContains(response, "ул. Регистрации")
+        self.assertContains(response, "ул. Проживания")
+
+    def test_representative_form_saves_passport_and_registration_address(self):
+        passport_date = timezone.localdate()
+        response = self.client.post(
+            reverse("representative_edit", args=[self.parent.pk]),
+            {
+                "last_name": self.parent.last_name,
+                "first_name": self.parent.first_name,
+                "middle_name": self.parent.middle_name,
+                "relationship_type": self.parent.relationship_type,
+                "phone": self.parent.phone,
+                "phone_alt": self.parent.phone_alt,
+                "email": self.parent.email,
+                "passport_series": "2500",
+                "passport_number": "654321",
+                "passport_issued_by": "УМВД по тестовому району",
+                "passport_issued_on": passport_date.isoformat(),
+                "registration_address": "690000, г. Владивосток, ул. Представителя, д. 3",
+                "notes": self.parent.notes,
+            },
+        )
+
+        self.assertRedirects(response, reverse("recipient_list"))
+        self.parent.refresh_from_db()
+        self.assertEqual(self.parent.passport_series, "2500")
+        self.assertEqual(self.parent.passport_number, "654321")
+        self.assertEqual(self.parent.passport_issued_by, "УМВД по тестовому району")
+        self.assertEqual(self.parent.passport_issued_on, passport_date)
+        self.assertEqual(
+            self.parent.registration_address,
+            "690000, г. Владивосток, ул. Представителя, д. 3",
+        )
 
     def test_recipient_detail_tables_have_mobile_labels(self):
         program = TreatmentProgram.objects.create(child=self.child, title="Карточная программа")

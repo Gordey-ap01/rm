@@ -46,6 +46,8 @@
     <dl class="facts" style="display:grid;gap:8px">
       <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">Телефон</dt><dd class="mb-0">{% if recipient.phone %}{{ recipient.phone }}{% else %}<span class="text-muted">Не указан</span>{% endif %}</dd></div>
       <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">Email</dt><dd class="mb-0">{% if recipient.email %}{{ recipient.email }}{% else %}<span class="text-muted">Не указан</span>{% endif %}</dd></div>
+      <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">Регистрация</dt><dd class="mb-0">{% if recipient.registration_address %}{{ recipient.registration_address }}{% else %}<span class="text-muted">Не указан</span>{% endif %}</dd></div>
+      <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">Проживание</dt><dd class="mb-0">{% if recipient.residential_address %}{{ recipient.residential_address }}{% else %}<span class="text-muted">Не указан</span>{% endif %}</dd></div>
       <div class="d-flex gap-2"><dt class="text-muted small fw-semibold" style="min-width:120px">Диагноз</dt><dd class="mb-0">{% if recipient.diagnosis %}{{ recipient.diagnosis }}{% else %}<span class="text-muted">—</span>{% endif %}</dd></div>
     </dl>
   </article>

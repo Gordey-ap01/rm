@@ -77,7 +77,16 @@ class SoftDeletedFilter(admin.SimpleListFilter):
 @admin.register(ParentGuardian)
 class ParentGuardianAdmin(admin.ModelAdmin):
     list_display = ("full_name", "phone", "relationship_type", "email", "archived_at")
-    search_fields = ("last_name", "first_name", "middle_name", "phone", "email")
+    search_fields = (
+        "last_name",
+        "first_name",
+        "middle_name",
+        "phone",
+        "email",
+        "passport_series",
+        "passport_number",
+        "registration_address",
+    )
     list_filter = ("relationship_type", SoftDeletedFilter)
     list_select_related = ()
 
@@ -113,6 +122,8 @@ class ChildAdmin(admin.ModelAdmin):
         "middle_name",
         "phone",
         "email",
+        "registration_address",
+        "residential_address",
         "primary_parent__last_name",
         "primary_parent__phone",
     )
