@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime, time, timedelta
 from decimal import Decimal
+from io import BytesIO
 
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -3521,6 +3523,14 @@ class EquipmentAssetViewTests(NewViewsTestBase):
 
 
 class ContractRegistryViewTests(NewViewsTestBase):
+    def _financial_counts(self):
+        return {
+            "balances": BalanceAccount.objects.count(),
+            "ledger": LedgerEntry.objects.count(),
+            "payments": Payment.objects.count(),
+            "payroll": PayrollAccrual.objects.count(),
+        }
+
     def _signer_link(self) -> RecipientRepresentative:
         return RecipientRepresentative.objects.get(child=self.child, representative=self.parent)
 
@@ -3546,9 +3556,32 @@ class ContractRegistryViewTests(NewViewsTestBase):
             file="documents/contract.txt",
         )
 
+    def _docx_upload(self, filename: str, text: str) -> SimpleUploadedFile:
+        from docx import Document as WordDocument
+
+        payload = BytesIO()
+        document = WordDocument()
+        document.add_paragraph(text)
+        document.save(payload)
+        return SimpleUploadedFile(
+            filename,
+            payload.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+
+    def _docx_text(self, payload: bytes) -> str:
+        from docx import Document as WordDocument
+
+        document = WordDocument(BytesIO(payload))
+        parts = [paragraph.text for paragraph in document.paragraphs]
+        for table in document.tables:
+            for row in table.rows:
+                parts.extend(cell.text for cell in row.cells)
+        return "\n".join(parts)
+
     def test_contract_list_renders(self):
         template = self._service_template()
-        ServiceContract.objects.create(
+        contract = ServiceContract.objects.create(
             child=self.child,
             representative_link=self._signer_link(),
             number="S-001",
@@ -3566,6 +3599,8 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertContains(response, "Договоры с получателями")
         self.assertContains(response, "S-001")
         self.assertContains(response, reverse("service_contract_create"))
+        self.assertContains(response, reverse("service_contract_word", args=[contract.pk]))
+        self.assertContains(response, "Word")
 
     def test_contract_template_create(self):
         response = self.client.post(
@@ -3759,6 +3794,142 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(Document.objects.count(), document_count)
         self.assertEqual(LedgerEntry.objects.count(), ledger_count)
         self.assertEqual(Payment.objects.count(), payment_count)
+
+    def test_service_contract_word_generates_document_from_template_without_financial_facts(self):
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.RECIPIENT_SERVICE,
+            title="Word шаблон услуг",
+            version="1",
+            file=self._docx_upload(
+                "service_template.docx",
+                "Договор {{ contract.number }} для {{ child.full_name }}, подписант {{ representative.full_name }}.",
+            ),
+        )
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-WORD",
+            signed_on=timezone.localdate(),
+            template=template,
+        )
+        document_count = Document.objects.count()
+        counts_before = self._financial_counts()
+
+        response = self.client.post(reverse("service_contract_word", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        payload = b"".join(response.streaming_content)
+        self.assertTrue(payload.startswith(b"PK"))
+        generated_text = self._docx_text(payload)
+        self.assertIn("S-WORD", generated_text)
+        self.assertIn(self.child.full_name, generated_text)
+        self.assertIn(self.parent.full_name, generated_text)
+        self.assertNotIn("{{ contract.number }}", generated_text)
+
+        contract.refresh_from_db()
+        self.assertIsNotNone(contract.document_id)
+        self.assertEqual(Document.objects.count(), document_count + 1)
+        self.assertEqual(contract.document.child, self.child)
+        self.assertEqual(contract.document.category, Document.Category.CONTRACT)
+        self.assertEqual(contract.document.uploaded_by, self.admin)
+        self.assertTrue(contract.document.file.name.endswith(".docx"))
+        self.assertEqual(self._financial_counts(), counts_before)
+
+    def test_service_contract_word_updates_existing_document_without_duplicate(self):
+        existing_document = self._contract_document(title="Старый файл договора")
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-REGEN",
+            signed_on=timezone.localdate(),
+            document=existing_document,
+        )
+        document_count = Document.objects.count()
+        counts_before = self._financial_counts()
+
+        response = self.client.post(reverse("service_contract_word", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        contract.refresh_from_db()
+        existing_document.refresh_from_db()
+        self.assertEqual(Document.objects.count(), document_count)
+        self.assertEqual(contract.document, existing_document)
+        self.assertIn("S-REGEN", existing_document.title)
+        self.assertTrue(existing_document.file.name.endswith(".docx"))
+        self.assertEqual(self._financial_counts(), counts_before)
+
+    def test_donation_contract_word_download_does_not_create_document_or_financial_facts(self):
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.SPONSOR,
+            title="Word шаблон пожертвования",
+            version="1",
+            file=self._docx_upload(
+                "donation_template.docx",
+                "Пожертвование {{ contract.number }}: {{ counterparty.name }} / {{ funding_source.name }} / {{ donation.amount_limit }}.",
+            ),
+        )
+        contract = DonationContract.objects.create(
+            counterparty=self.counterparty,
+            funding_source=self.funding_grant,
+            contract_type=DonationContract.ContractType.PROJECT,
+            number="D-WORD",
+            signed_on=timezone.localdate(),
+            amount_limit=Decimal("12345.67"),
+            template=template,
+        )
+        document_count = Document.objects.count()
+        counts_before = self._financial_counts()
+
+        response = self.client.post(reverse("donation_contract_word", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        payload = b"".join(response.streaming_content)
+        self.assertTrue(payload.startswith(b"PK"))
+        generated_text = self._docx_text(payload)
+        self.assertIn("D-WORD", generated_text)
+        self.assertIn(self.counterparty.name, generated_text)
+        self.assertIn(self.funding_grant.name, generated_text)
+        self.assertIn("12 345,67 ₽", generated_text)
+
+        contract.refresh_from_db()
+        self.assertIsNone(contract.document_id)
+        self.assertEqual(Document.objects.count(), document_count)
+        self.assertEqual(self._financial_counts(), counts_before)
+
+    def test_service_contract_word_invalid_template_does_not_create_document(self):
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.RECIPIENT_SERVICE,
+            title="Битый шаблон",
+            version="1",
+            file=SimpleUploadedFile(
+                "broken.docx",
+                b"not a docx",
+                content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ),
+        )
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-BROKEN",
+            signed_on=timezone.localdate(),
+            template=template,
+        )
+        document_count = Document.objects.count()
+
+        response = self.client.post(reverse("service_contract_word", args=[contract.pk]))
+
+        self.assertRedirects(response, reverse("contract_list"))
+        contract.refresh_from_db()
+        self.assertIsNone(contract.document_id)
+        self.assertEqual(Document.objects.count(), document_count)
 
 
 class StaffCompensationRuleViewTests(NewViewsTestBase):

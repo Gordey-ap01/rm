@@ -31,9 +31,11 @@ from .contracts import (
     donation_contract_create,
     donation_contract_edit,
     donation_contract_pdf,
+    donation_contract_word,
     service_contract_create,
     service_contract_edit,
     service_contract_pdf,
+    service_contract_word,
 )
 from .dashboard import (
     dashboard,
@@ -173,6 +175,7 @@ __all__ = [
     "donation_contract_create",
     "donation_contract_edit",
     "donation_contract_pdf",
+    "donation_contract_word",
     "equipment_asset_create",
     "equipment_asset_edit",
     "equipment_asset_list",
@@ -235,6 +238,7 @@ __all__ = [
     "service_contract_create",
     "service_contract_edit",
     "service_contract_pdf",
+    "service_contract_word",
     "service_create",
     "service_edit",
     "service_list",

@@ -1629,3 +1629,17 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA: in-app Browser проверил list/forms/actions, create/edit категории, create/edit/archive/restore контрагента, ссылки из расходов/договоров/import preview, desktop и mobile без console errors и horizontal overflow. Артефакты: `%TEMP%\rmcodex-browser-qa-expense-directories`; runserver `8079` остановлен.
 - Graphify code-index after category/counterparty directory UI: `4614` nodes / `18538` edges; semantic extraction was not rerun and no API key was written to project files.
 - Следующие безопасные направления только отдельными контрактами: Word-template legal generation, approve/pay расходов центра, import write-path с записью в БД, расширение юридических реквизитов контрагентов.
+
+## Обновление 2026-07-18: contract-word-generation
+
+- Выполнен срез `docs/23-contract-word-generation-contract.md`: Word-генерация договоров из структурной карточки и optional `.docx` шаблона.
+- Добавлена runtime dependency `python-docx==1.2.0` и сервис `operations.services.contract_documents` для `ServiceContract`/`DonationContract`.
+- Реестр договоров получил POST-действия `Word` рядом с PDF: `/contracts/services/<id>/word/` и `/contracts/donations/<id>/word/`.
+- Для договора с получателем Word-файл сохраняется/обновляется как `Document(category=contract)` у этого получателя и привязывается к `ServiceContract.document`.
+- Для договора пожертвования Word-файл скачивается без создания `Document`, потому что текущая модель `Document` обязательна к `Child`; привязка пожертвований к файлам требует отдельной модельной правки.
+- Поддержан placeholder v1 из контракта: номер, даты, статус, тип, шаблон, получатель, подписант, контрагент, реквизиты контрагента, источник финансирования и лимит пожертвования. Если файл шаблона отсутствует, формируется системный fallback `.docx`.
+- Новых моделей и миграций нет. `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing decisions, grant semantics и статусы занятий не менялись.
+- Проверки прошли: Ruff touched Python, `manage.py check --settings=rehab_center.settings_test`, migration dry-run `No changes detected`, focused contract tests `13 passed`, related document/contract/directory tests `24 passed`, full `pytest -q --tb=short` `557 passed` с прежним предупреждением django-tasks.
+- Browser QA: Python Playwright проверил `/contracts/` desktop/mobile, POST-download Word для service/donation contracts, отсутствие console/page errors и horizontal overflow. Артефакты: `%TEMP%\rmcodex-browser-qa-contract-word`; runserver `8080` остановлен.
+- Graphify code-index after contract Word generation: `4670` nodes / `18767` edges; semantic extraction was not rerun and no API key was written to project files.
+- Следующие безопасные направления только отдельными контрактами: модель документов для договоров пожертвования без `Child`, юридические реквизиты центра/контрагентов, approve/pay расходов центра, import write-path с записью в БД.

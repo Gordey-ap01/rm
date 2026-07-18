@@ -40,7 +40,7 @@
       <div class="directory-panel-head">
         <div>
           <h2>Реестр договоров</h2>
-          <p>Запись договора отделена от файла. Генерация документов и импорт Excel будут отдельным срезом.</p>
+          <p>Запись договора отделена от файла. Word и PDF формируются из структурных полей договора.</p>
         </div>
       </div>
 
@@ -117,6 +117,10 @@
               </td>
               <td class="table-actions" data-label="Действия">
                 <a class="small-action" href="{% url 'service_contract_edit' contract.pk %}">Открыть</a>
+                <form method="post" action="{{ contract.ui_word_url }}" class="inline-form compact-form">
+                  {% csrf_token %}
+                  <button class="secondary-button small-action" type="submit">Word</button>
+                </form>
                 <a class="small-action" href="{{ contract.ui_pdf_url }}">PDF</a>
               </td>
             </tr>
@@ -174,6 +178,10 @@
               </td>
               <td class="table-actions" data-label="Действия">
                 <a class="small-action" href="{% url 'donation_contract_edit' contract.pk %}">Открыть</a>
+                <form method="post" action="{{ contract.ui_word_url }}" class="inline-form compact-form">
+                  {% csrf_token %}
+                  <button class="secondary-button small-action" type="submit">Word</button>
+                </form>
                 <a class="small-action" href="{{ contract.ui_pdf_url }}">PDF</a>
               </td>
             </tr>
@@ -253,6 +261,10 @@
         <li>
           <strong>Без финансовых проводок</strong>
           <span>Договоры не создают платежи, балансы, списания, payroll или ledger-записи.</span>
+        </li>
+        <li>
+          <strong>Word-файл</strong>
+          <span>Для договора с получателем Word сохраняется в документах получателя; пожертвование пока скачивается без привязки.</span>
         </li>
         <li>
           <strong>Excel только preview</strong>

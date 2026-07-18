@@ -235,3 +235,18 @@
 - Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, related tests `24 passed`, full pytest `553 passed`, Browser QA desktop/mobile.
 - Graphify code-index after slice: `4614` nodes / `18538` edges; semantic extraction was not rerun and no API key was written to project files.
 - Следующее безопасное направление: отдельный контракт на Word-template legal generation, approve/pay расходов, import write-path или расширение юридических реквизитов контрагентов.
+
+## Последнее уточнение 2026-07-18: contract-word-generation выполнен
+
+После текста промпта выше считать актуальным:
+
+- `docs/23-contract-word-generation-contract.md` добавлен и выполнен.
+- Добавлена runtime dependency `python-docx==1.2.0`.
+- Добавлен `operations.services.contract_documents`: генерация `.docx` для `ServiceContract` и `DonationContract`, replacement placeholders в загруженном `.docx`, fallback `.docx` без файла шаблона.
+- В `/contracts/` добавлены POST-кнопки `Word`; URL: `/contracts/services/<id>/word/`, `/contracts/donations/<id>/word/`.
+- Договор с получателем создает или обновляет `Document(category=contract)` у получателя и привязывает его к `ServiceContract.document`.
+- Договор пожертвования пока только скачивает `.docx`, без создания `Document`, потому что текущая модель `Document` требует `child`.
+- Новых моделей/миграций нет; `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing decisions, grant semantics и статусы занятий не менялись.
+- Проверки прошли: Ruff, Django check, migration dry-run `No changes detected`, focused contract tests `13 passed`, related tests `24 passed`, full pytest `557 passed`, Python Playwright desktop/mobile Browser QA.
+- Graphify code-index after slice: `4670` nodes / `18767` edges; semantic extraction was not rerun and no API key was written to project files.
+- Следующее безопасное направление: отдельный контракт на модель документов для договоров пожертвования без `Child`, юридические реквизиты центра/контрагентов, approve/pay расходов или import write-path.

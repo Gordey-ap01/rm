@@ -15,7 +15,7 @@ from django.utils import timezone
 
 from operations.forms import ContractTemplateForm, DonationContractForm, ServiceContractForm
 from operations.models import ContractTemplate, DonationContract, ServiceContract
-from operations.services import pdf as pdf_svc
+from operations.services import contract_documents as contract_doc_svc, pdf as pdf_svc
 
 from ._common import is_admin_user
 
@@ -37,6 +37,16 @@ def _pdf_filename(prefix: str, number: str, pk: int) -> str:
     safe_number = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in number).strip("_")
     suffix = safe_number or str(pk)
     return f"{prefix}_{suffix}.pdf"
+
+
+def _docx_response(generated: contract_doc_svc.GeneratedContractFile) -> FileResponse:
+    generated.payload.seek(0)
+    return FileResponse(
+        generated.payload,
+        as_attachment=True,
+        filename=generated.filename,
+        content_type=contract_doc_svc.DOCX_CONTENT_TYPE,
+    )
 
 
 def _validity_label(valid_from: date | None, valid_until: date | None) -> str:
@@ -96,6 +106,7 @@ def _donation_queryset(filters: dict[str, str]) -> list[DonationContract]:
         contract.ui_signed_on = _format_date(contract.signed_on)
         contract.ui_validity = _validity_label(contract.valid_from, contract.valid_until)
         contract.ui_pdf_url = reverse("donation_contract_pdf", args=[contract.pk])
+        contract.ui_word_url = reverse("donation_contract_word", args=[contract.pk])
     return contracts
 
 
@@ -127,6 +138,7 @@ def _service_queryset(filters: dict[str, str]) -> list[ServiceContract]:
         contract.ui_signed_on = _format_date(contract.signed_on)
         contract.ui_validity = _validity_label(contract.valid_from, contract.valid_until)
         contract.ui_pdf_url = reverse("service_contract_pdf", args=[contract.pk])
+        contract.ui_word_url = reverse("service_contract_word", args=[contract.pk])
     return contracts
 
 
@@ -177,7 +189,7 @@ def contract_next_action(
             "tone": "warning",
             "label": "Следующий шаг",
             "title": "Добавить шаблон",
-            "detail": "Договоры можно вести без шаблона, но шаблон понадобится для будущей генерации файла.",
+            "detail": "Договоры можно вести без шаблона, но шаблон нужен для юридического Word-файла.",
             "href": reverse("contract_template_create"),
         }
     if not contracts:
@@ -210,7 +222,7 @@ def contract_form_control_items(kind: str) -> list[dict[str, str]]:
     common = [
         {
             "title": "Файл не обязателен",
-            "detail": "Черновик договора можно создать без файла. Файл привязывается позже через документ.",
+            "detail": "Черновик договора можно создать без файла. Word можно сформировать позже из карточки договора.",
         },
         {
             "title": "Номер договора",
@@ -221,7 +233,7 @@ def contract_form_control_items(kind: str) -> list[dict[str, str]]:
         return [
             {
                 "title": "Шаблон не договор",
-                "detail": "Шаблон используется для будущей генерации, но не заменяет подписанный договор.",
+                "detail": "Шаблон используется для Word-генерации, но не заменяет подписанный договор.",
             },
             {
                 "title": "Версии",
@@ -306,7 +318,7 @@ def contract_template_create(request):
         "operations/contract_form.html",
         {
             "title": "Добавить шаблон договора",
-            "subtitle": "Версия шаблона для будущей генерации файлов.",
+            "subtitle": "Версия шаблона для генерации Word-файлов.",
             "form": form,
             "cancel_url": reverse("contract_list"),
             "control_items": contract_form_control_items("template"),
@@ -461,6 +473,24 @@ def donation_contract_pdf(request, pk: int):
 
 @login_required
 @user_passes_test(is_admin_user)
+def donation_contract_word(request, pk: int):
+    contract = get_object_or_404(
+        DonationContract.objects.select_related("counterparty", "funding_source", "template"),
+        pk=pk,
+    )
+    if request.method != "POST":
+        messages.warning(request, "Сформируйте Word-файл кнопкой в реестре договоров.")
+        return redirect("contract_list")
+    try:
+        generated = contract_doc_svc.render_donation_contract_docx(contract)
+    except contract_doc_svc.ContractDocumentError as exc:
+        messages.error(request, str(exc))
+        return redirect("contract_list")
+    return _docx_response(generated)
+
+
+@login_required
+@user_passes_test(is_admin_user)
 def service_contract_pdf(request, pk: int):
     contract = get_object_or_404(
         ServiceContract.objects.select_related(
@@ -477,3 +507,26 @@ def service_contract_pdf(request, pk: int):
         filename=filename,
         content_type="application/pdf",
     )
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def service_contract_word(request, pk: int):
+    contract = get_object_or_404(
+        ServiceContract.objects.select_related(
+            "child",
+            "representative_link__representative",
+            "template",
+            "document",
+        ),
+        pk=pk,
+    )
+    if request.method != "POST":
+        messages.warning(request, "Сформируйте Word-файл кнопкой в реестре договоров.")
+        return redirect("contract_list")
+    try:
+        generated = contract_doc_svc.save_service_contract_docx(contract, actor=request.user)
+    except contract_doc_svc.ContractDocumentError as exc:
+        messages.error(request, str(exc))
+        return redirect("contract_list")
+    return _docx_response(generated)

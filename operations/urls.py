@@ -160,6 +160,11 @@ urlpatterns = [
         name="donation_contract_pdf",
     ),
     path(
+        "contracts/donations/<int:pk>/word/",
+        views.donation_contract_word,
+        name="donation_contract_word",
+    ),
+    path(
         "contracts/services/new/",
         views.service_contract_create,
         name="service_contract_create",
@@ -173,6 +178,11 @@ urlpatterns = [
         "contracts/services/<int:pk>/pdf/",
         views.service_contract_pdf,
         name="service_contract_pdf",
+    ),
+    path(
+        "contracts/services/<int:pk>/word/",
+        views.service_contract_word,
+        name="service_contract_word",
     ),
     path(
         "contracts/import-preview/",

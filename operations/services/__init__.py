@@ -7,6 +7,7 @@
 from . import (
     appointments,
     billing,
+    contract_documents,
     expense_reports,
     expenses,
     financial_facts,
@@ -26,6 +27,7 @@ from . import (
 __all__ = [
     "appointments",
     "billing",
+    "contract_documents",
     "expense_reports",
     "expenses",
     "financial_facts",
