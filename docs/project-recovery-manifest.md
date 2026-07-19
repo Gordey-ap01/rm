@@ -42,6 +42,9 @@
 | `docs/33-consent-template-generation-contract.md` | Контракт генерации Word-согласий получателя. | Перед изменениями `Consent`, consent templates, consent Word generation или consent document ownership. |
 | `docs/34-contract-acts-generation-contract.md` | Контракт генерации актов оказанных услуг по service/B2B договорам. | Перед изменениями `ContractAct`, act Word generation, act document ownership или act snapshots. |
 | `docs/35-act-signed-file-archive-contract.md` | Контракт неизменяемого архива подписанных актов оказанных услуг. | Перед изменениями `ContractActSignedFile`, act signed archive actions/download или подписанных версий актов. |
+| `docs/36-consent-signed-file-archive-contract.md` | Контракт неизменяемого архива подписанных согласий. | Перед изменениями `ConsentSignedFile`, consent signed archive actions/download или подписанных версий согласий. |
+| `docs/37-external-signed-file-upload-contract.md` | Контракт загрузки внешне подписанных PDF/DOCX/изображений в архив. | Перед изменениями signed archive upload forms/actions/download для договоров, актов или согласий. |
+| `docs/38-certificate-payer-source-contract.md` | Контракт реквизитов плательщика и источника у сертификата. | Перед изменениями `Certificate.funding_source`, `Certificate.payer_*` или `certificate.payer_name` placeholders. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -471,3 +474,17 @@ Browser QA - это проверка живого интерфейса в бра
 - Verification passed: Ruff touched Python, Django check, migration dry-run `No changes detected`, focused upload/view tests `13 passed`, full pytest `624 passed`, Playwright desktop/mobile QA for service contract + consent upload/download; synthetic `BQA-SIGNED-UPLOAD*` data was cleaned and runserver `8105` stopped.
 - Graphify code-index after this slice: `5186` nodes / `22856` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: certificate payer/source modeling, consent legal snapshot if needed, or another explicit contract. Do not connect document uploads to finance/schedule/grants/public permission flows/import write-path without a new contract.
+
+## Latest Recovery Note 2026-07-19: certificate-payer-source
+
+- `docs/38-certificate-payer-source-contract.md` is added and implemented.
+- Migration `operations.0041_certificate_funding_source_certificate_payer_name_and_more` adds nullable certificate payer/source fields and lookup indexes.
+- `Certificate` now has nullable `funding_source`, `payer_representative`, `payer_name` plus lookup indexes.
+- `Certificate.clean()` rejects a payer representative from another recipient; `payer_display_name` resolves explicit payer name, then representative, then funding source.
+- Word generation fills `certificate.funding_source`, `certificate.payer_name`, `certificate.payer_relationship` and stores payer/source details in legal snapshots.
+- `/contracts/` shows the certificate payer for linked service contracts when set; Django admin shows/searches source and payer fields; `Certificate` is registered in auditlog.
+- No certificate balance mutation, ledger/balance/payment/billing/payroll/grant/schedule/status/import semantics changed.
+- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused contract/view/auditlog tests, full pytest `626 passed`, Playwright desktop/mobile QA for `/contracts/`.
+- Browser QA synthetic `BQA-CERTPAYER*` data was cleaned and local runserver `8106` stopped.
+- Graphify code-index after this slice: `5206` nodes / `22885` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: consent legal snapshot if needed, certificate CRUD/import preview, or another explicit contract. Do not connect certificates to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.

@@ -18,6 +18,7 @@ from operations.models import (
     CenterExpense,
     CenterExpenseCategory,
     CenterLegalProfile,
+    Certificate,
     Child,
     ContractLegalSnapshot,
     ContractTemplate,
@@ -90,6 +91,7 @@ class AuditLogTests(TestCase):
             CenterExpense,
             CenterExpenseCategory,
             CenterLegalProfile,
+            Certificate,
             Child,
             ContractLegalSnapshot,
             ContractTemplate,
@@ -125,6 +127,7 @@ class AuditLogTests(TestCase):
         self.assertIn(ContractTemplate, admin.site._registry)
         self.assertIn(DonationContract, admin.site._registry)
         self.assertIn(ServiceContract, admin.site._registry)
+        self.assertIn(Certificate, admin.site._registry)
         self.assertIn(ContractLegalSnapshot, admin.site._registry)
 
     def test_financial_integrity_finding_update_is_logged(self):

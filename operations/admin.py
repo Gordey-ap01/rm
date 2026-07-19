@@ -708,13 +708,24 @@ class CertificateAdmin(admin.ModelAdmin):
         "child",
         "certificate_type",
         "number",
+        "funding_source",
+        "payer_display_name",
         "total_amount",
         "remaining_amount",
         "valid_until",
     )
-    search_fields = ("number", "child__last_name", "child__first_name", "note")
-    list_filter = ("certificate_type", "valid_until")
-    autocomplete_fields = ("child",)
+    search_fields = (
+        "number",
+        "child__last_name",
+        "child__first_name",
+        "funding_source__name",
+        "payer_representative__representative__last_name",
+        "payer_representative__representative__first_name",
+        "payer_name",
+        "note",
+    )
+    list_filter = ("certificate_type", "funding_source", "valid_until")
+    autocomplete_fields = ("child", "funding_source", "payer_representative")
 
 
 class FundingStaffAllocationInline(admin.TabularInline):

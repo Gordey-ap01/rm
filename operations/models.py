@@ -5326,6 +5326,23 @@ class Certificate(TimeStampedModel):
     child = models.ForeignKey(
         Child, verbose_name="получатель", on_delete=models.CASCADE, related_name="certificates"
     )
+    funding_source = models.ForeignKey(
+        FundingSource,
+        verbose_name="источник финансирования",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="certificates",
+    )
+    payer_representative = models.ForeignKey(
+        RecipientRepresentative,
+        verbose_name="представитель-плательщик",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="payer_certificates",
+    )
+    payer_name = models.CharField("плательщик по сертификату", max_length=255, blank=True)
     certificate_type = models.CharField("тип", max_length=30, choices=CertificateType.choices)
     number = models.CharField("номер", max_length=100, blank=True)
     total_amount = models.DecimalField("полная сумма", max_digits=12, decimal_places=2)
@@ -5338,6 +5355,11 @@ class Certificate(TimeStampedModel):
         verbose_name = "сертификат"
         verbose_name_plural = "сертификаты"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["child", "certificate_type"]),
+            models.Index(fields=["funding_source", "certificate_type"]),
+            models.Index(fields=["payer_representative"]),
+        ]
 
     def __str__(self) -> str:
         return f"{self.get_certificate_type_display()} №{self.number} — {self.child}"
@@ -5345,3 +5367,32 @@ class Certificate(TimeStampedModel):
     @property
     def is_available(self) -> bool:
         return self.remaining_amount > 0
+
+    @property
+    def payer_display_name(self) -> str:
+        if self.payer_name.strip():
+            return self.payer_name.strip()
+        if self.payer_representative_id:
+            return self.payer_representative.representative.full_name
+        if self.funding_source_id:
+            return self.funding_source.name
+        return ""
+
+    @property
+    def payer_relationship_display(self) -> str:
+        if not self.payer_representative_id:
+            return ""
+        return self.payer_representative.get_relationship_type_display()
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if (
+            self.payer_representative_id
+            and self.child_id
+            and self.payer_representative.child_id != self.child_id
+        ):
+            errors["payer_representative"] = (
+                "Представитель-плательщик должен относиться к выбранному получателю."
+            )
+        if errors:
+            raise ValidationError(errors)

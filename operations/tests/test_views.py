@@ -4003,10 +4003,20 @@ class ContractRegistryViewTests(NewViewsTestBase):
 
     def test_contract_list_renders(self):
         template = self._service_template()
+        certificate = Certificate.objects.create(
+            child=self.child,
+            certificate_type=Certificate.CertificateType.SPONSOR,
+            number="CERT-LIST",
+            total_amount=Decimal("100000.00"),
+            remaining_amount=Decimal("75000.00"),
+            funding_source=self.funding,
+            payer_representative=self._signer_link(),
+        )
         contract = ServiceContract.objects.create(
             child=self.child,
             representative_link=self._signer_link(),
             funding_source=self.funding,
+            certificate=certificate,
             number="S-001",
             signed_on=timezone.localdate(),
             template=template,
@@ -4040,6 +4050,8 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertContains(response, "Индивидуальные занятия логопеда")
         self.assertContains(response, "15 000,00 ₽")
         self.assertContains(response, "Личные средства")
+        self.assertContains(response, "CERT-LIST")
+        self.assertContains(response, f"плательщик: {self.parent.full_name}")
         self.assertContains(response, reverse("service_contract_create"))
         self.assertContains(response, reverse("service_contract_word", args=[contract.pk]))
         self.assertContains(response, "Word")
@@ -4301,6 +4313,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertContains(response, "representative.passport_number")
         self.assertContains(response, "service_spec.rows")
         self.assertContains(response, "certificate.number")
+        self.assertContains(response, "certificate.payer_relationship")
         self.assertContains(response, ".docx")
         self.assertContains(response, "Безвозмездные услуги получателю")
         self.assertContains(response, "B2B-договор услуг организации")
@@ -5273,6 +5286,8 @@ class ContractRegistryViewTests(NewViewsTestBase):
     def test_service_contract_word_uses_certificate_placeholders(self):
         certificate = Certificate.objects.create(
             child=self.child,
+            funding_source=self.funding_grant,
+            payer_representative=self._signer_link(),
             certificate_type=Certificate.CertificateType.MATERNITY_CAPITAL,
             number="CERT-WORD",
             total_amount=Decimal("100000.00"),
@@ -5288,7 +5303,9 @@ class ContractRegistryViewTests(NewViewsTestBase):
                 "certificate_service.docx",
                 "Certificate {{ certificate.type }} №{{ certificate.number }} "
                 "total {{ certificate.total_amount }} remaining {{ certificate.remaining_amount }} "
-                "{{ certificate.valid_from }} {{ certificate.valid_until }} payer {{ certificate.payer_name }}.",
+                "{{ certificate.valid_from }} {{ certificate.valid_until }} "
+                "source {{ certificate.funding_source }} payer {{ certificate.payer_name }} "
+                "as {{ certificate.payer_relationship }}.",
             ),
         )
         contract = ServiceContract.objects.create(
@@ -5312,6 +5329,9 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertIn("75 000,00 ₽", generated_text)
         self.assertIn(certificate.valid_from.strftime("%d.%m.%Y"), generated_text)
         self.assertIn(certificate.valid_until.strftime("%d.%m.%Y"), generated_text)
+        self.assertIn(self.funding_grant.name, generated_text)
+        self.assertIn(self.parent.full_name, generated_text)
+        self.assertIn(self._signer_link().get_relationship_type_display(), generated_text)
 
         contract.refresh_from_db()
         snapshot = contract.document.contract_legal_snapshot
@@ -5319,6 +5339,14 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(
             snapshot.contract_snapshot["certificate"]["remaining_amount"],
             "75000.00",
+        )
+        self.assertEqual(
+            snapshot.contract_snapshot["certificate"]["funding_source"]["name"],
+            self.funding_grant.name,
+        )
+        self.assertEqual(
+            snapshot.contract_snapshot["certificate"]["payer_display_name"],
+            self.parent.full_name,
         )
 
     def test_service_contract_word_uses_active_center_legal_profile(self):

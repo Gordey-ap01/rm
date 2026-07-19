@@ -1792,3 +1792,17 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA synthetic `BQA-SIGNED-UPLOAD*` data was cleaned; local runserver `8105` was stopped.
 - Graphify code-index after this slice: `5186` nodes / `22856` edges. Semantic extraction was not rerun; keep raw `docshablon/` ignored/private and do not store API keys in project files.
 - Next safe work after this slice: certificate payer/source modeling, consent legal snapshot if needed, or another explicit contract. Do not connect document uploads to finance, schedule, grants, public permission flows or import write-path without a new contract.
+
+## Update 2026-07-19: certificate-payer-source
+
+- Implemented `docs/38-certificate-payer-source-contract.md` as a DB-owner legal-document slice for certificate payer/source requisites.
+- Added migration `operations.0041_certificate_funding_source_certificate_payer_name_and_more` with nullable `Certificate.funding_source`, `Certificate.payer_representative`, `Certificate.payer_name` and lookup indexes.
+- `Certificate.clean()` rejects a payer representative from another recipient; legacy certificates can remain without payer/source.
+- `Certificate.payer_display_name` resolves explicit `payer_name`, then payer representative full name, then funding source name. It does not auto-substitute the service-contract signatory.
+- Word generation fills `certificate.funding_source`, `certificate.payer_name`, `certificate.payer_relationship`; `ContractLegalSnapshot.contract_snapshot["certificate"]` stores payer/source details.
+- `/contracts/` shows certificate payer under linked service contracts when it is set; Django admin shows/searches certificate source and payer fields; `Certificate` is registered in auditlog.
+- No certificate balance mutation, ledger/balance/payment/billing/payroll/grant/schedule/status/import semantics changed.
+- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused contract/view/auditlog tests, full pytest `626 passed`, Playwright desktop/mobile QA for `/contracts/` certificate payer display and no horizontal overflow.
+- Browser QA synthetic `BQA-CERTPAYER*` data was cleaned; local runserver `8106` was stopped.
+- Graphify code-index after this slice: `5206` nodes / `22885` edges. Semantic extraction was not rerun; keep raw `docshablon/` ignored/private and do not store API keys in project files.
+- Next safe work after this slice: consent legal snapshot if needed, certificate CRUD/import preview, or another explicit contract. Do not connect certificates to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.

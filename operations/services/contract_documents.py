@@ -210,7 +210,9 @@ PLACEHOLDER_GROUPS = (
             "certificate.remaining_amount",
             "certificate.valid_from",
             "certificate.valid_until",
+            "certificate.funding_source",
             "certificate.payer_name",
+            "certificate.payer_relationship",
         ),
     ),
     PlaceholderGroup(
@@ -541,9 +543,28 @@ def _certificate_snapshot(contract: ServiceContract) -> dict[str, object]:
     certificate = getattr(contract, "certificate", None)
     if certificate is None:
         return {}
+    funding_source = getattr(certificate, "funding_source", None)
+    payer_link = getattr(certificate, "payer_representative", None)
     return {
         "id": certificate.pk,
         "child_id": certificate.child_id,
+        "funding_source_id": certificate.funding_source_id,
+        "funding_source": _funding_source_snapshot(certificate)
+        if funding_source is not None
+        else {},
+        "payer_representative_id": certificate.payer_representative_id,
+        "payer_representative": {
+            "id": payer_link.pk,
+            "representative_id": payer_link.representative_id,
+            "full_name": payer_link.representative.full_name,
+            "relationship_type": payer_link.relationship_type,
+            "relationship_type_display": payer_link.get_relationship_type_display(),
+            "is_payer": payer_link.is_payer,
+        }
+        if payer_link is not None
+        else {},
+        "payer_name": certificate.payer_name,
+        "payer_display_name": certificate.payer_display_name,
         "certificate_type": certificate.certificate_type,
         "certificate_type_display": certificate.get_certificate_type_display(),
         "number": certificate.number,
@@ -1323,6 +1344,7 @@ def _certificate_placeholder_values(contract: ServiceContract) -> dict[str, str]
     certificate = getattr(contract, "certificate", None)
     if certificate is None:
         return {}
+    funding_source = getattr(certificate, "funding_source", None)
     return {
         "certificate.type": certificate.get_certificate_type_display(),
         "certificate.number": _text(certificate.number),
@@ -1330,7 +1352,9 @@ def _certificate_placeholder_values(contract: ServiceContract) -> dict[str, str]
         "certificate.remaining_amount": _money_label(certificate.remaining_amount),
         "certificate.valid_from": _date_label(certificate.valid_from),
         "certificate.valid_until": _date_label(certificate.valid_until),
-        "certificate.payer_name": PLACEHOLDER_BLANK,
+        "certificate.funding_source": _text(funding_source.name if funding_source else ""),
+        "certificate.payer_name": _text(certificate.payer_display_name),
+        "certificate.payer_relationship": _text(certificate.payer_relationship_display),
     }
 
 

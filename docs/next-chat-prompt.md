@@ -490,3 +490,18 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Browser QA synthetic `BQA-SIGNED-UPLOAD*` data was cleaned and local runserver `8105` stopped.
 - Graphify code-index after this slice: `5186` nodes / `22856` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: certificate payer/source modeling, consent legal snapshot if needed, or another explicit contract. Do not connect document uploads to finance/schedule/grants/public permission flows/import write-path without a new contract.
+
+## Latest clarification 2026-07-19: certificate-payer-source complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/38-certificate-payer-source-contract.md` is added and implemented.
+- Migration `operations.0041_certificate_funding_source_certificate_payer_name_and_more` adds nullable certificate payer/source fields and lookup indexes.
+- `Certificate` now has nullable `funding_source`, `payer_representative`, `payer_name` plus `payer_display_name` and same-child validation for payer representative.
+- Word generation fills `certificate.funding_source`, `certificate.payer_name`, `certificate.payer_relationship`; legal snapshots store certificate payer/source details.
+- `/contracts/` shows the certificate payer for linked service contracts when set; Django admin shows/searches source and payer fields; `Certificate` is registered in auditlog.
+- No certificate balance mutation, ledger/balance/payment/billing/payroll/grant/schedule/status/import semantics changed.
+- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused contract/view/auditlog tests, full pytest `626 passed`, Playwright desktop/mobile QA for `/contracts/`.
+- Browser QA synthetic `BQA-CERTPAYER*` data was cleaned and local runserver `8106` stopped.
+- Graphify code-index after this slice: `5206` nodes / `22885` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: consent legal snapshot if needed, certificate CRUD/import preview, or another explicit contract. Do not connect certificates to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.

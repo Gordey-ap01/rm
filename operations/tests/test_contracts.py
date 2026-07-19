@@ -235,6 +235,34 @@ class ContractRegistryValidationTests(TestCase):
 
         self.assertIn("certificate", raised.exception.message_dict)
 
+    def test_certificate_rejects_payer_representative_from_other_child(self):
+        certificate = Certificate(
+            child=self.child,
+            certificate_type=Certificate.CertificateType.SPONSOR,
+            total_amount=Decimal("10000.00"),
+            remaining_amount=Decimal("10000.00"),
+            payer_representative=self.other_signer_link,
+        )
+
+        with self.assertRaises(ValidationError) as raised:
+            certificate.full_clean()
+
+        self.assertIn("payer_representative", raised.exception.message_dict)
+
+    def test_certificate_payer_display_prefers_explicit_name(self):
+        certificate = Certificate.objects.create(
+            child=self.child,
+            certificate_type=Certificate.CertificateType.SPONSOR,
+            number="CERT-PAYER",
+            total_amount=Decimal("10000.00"),
+            remaining_amount=Decimal("10000.00"),
+            funding_source=self.funding_source,
+            payer_representative=self.signer_link,
+            payer_name="Администрация Приморского края",
+        )
+
+        self.assertEqual(certificate.payer_display_name, "Администрация Приморского края")
+
     def test_service_contract_line_tracks_spec_without_financial_facts(self):
         ledger_count = LedgerEntry.objects.count()
         payment_count = Payment.objects.count()

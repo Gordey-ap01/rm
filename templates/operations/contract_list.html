@@ -97,7 +97,10 @@
                 <strong>{{ contract.child.full_name }}</strong>
                 <div class="muted">{{ contract.get_contract_type_display }}</div>
                 {% if contract.funding_source %}<div class="muted">{{ contract.funding_source.name }}</div>{% endif %}
-                {% if contract.certificate %}<div class="muted">{{ contract.certificate.get_certificate_type_display }} №{{ contract.certificate.number|default:"б/н" }}</div>{% endif %}
+                {% if contract.certificate %}
+                  <div class="muted">{{ contract.certificate.get_certificate_type_display }} №{{ contract.certificate.number|default:"б/н" }}</div>
+                  {% if contract.certificate.payer_display_name %}<div class="muted">плательщик: {{ contract.certificate.payer_display_name }}</div>{% endif %}
+                {% endif %}
               </td>
               <td data-label="Подписант">{{ contract.representative_link.representative.full_name }}</td>
               <td data-label="Номер">

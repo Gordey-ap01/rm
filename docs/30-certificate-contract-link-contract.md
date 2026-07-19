@@ -52,3 +52,5 @@
 - Word generation заполняет `certificate.type`, `certificate.number`, `certificate.total_amount`, `certificate.remaining_amount`, `certificate.valid_from`, `certificate.valid_until`, а `certificate.payer_name` пока остается blank fallback.
 - `ContractLegalSnapshot.contract_snapshot["certificate"]` фиксирует id, тип, номер, суммы и даты сертификата.
 - Проверки: Ruff, Django check, migration dry-run `No changes detected`, focused contract tests `43 passed`, full pytest `591 passed`, Python Playwright desktop/mobile QA для формы/реестра; артефакты `%TEMP%\rmcodex-browser-qa-certificate-contract-link`.
+
+Примечание 2026-07-19: исторический blank fallback для `certificate.payer_name` закрыт отдельным срезом `docs/38-certificate-payer-source-contract.md`.
