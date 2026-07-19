@@ -29,6 +29,7 @@ from operations.models import (
     Certificate,
     Child,
     Consent,
+    ConsentSignedFile,
     ContractAct,
     ContractActSignedFile,
     ContractLegalSnapshot,
@@ -2574,6 +2575,68 @@ class ConsentViewTests(NewViewsTestBase):
         consent.refresh_from_db()
         self.assertEqual(consent.document_id, document_pk)
         self.assertEqual(Document.objects.count(), document_count)
+
+    def test_consent_archive_signed_file_copies_snapshot_and_file(self):
+        signer = self._signer_link()
+        consent = Consent.objects.create(
+            child=self.child,
+            consent_type=Consent.ConsentType.PHOTO_VIDEO,
+            signatory_representative=signer,
+            signed_on=timezone.localdate(),
+        )
+        generated = self.client.post(reverse("consent_word", args=[consent.pk]))
+        generated_payload = b"".join(generated.streaming_content)
+        consent.refresh_from_db()
+
+        response = self.client.post(reverse("consent_archive_signed", args=[consent.pk]))
+
+        self.assertRedirects(response, reverse("consent_list"))
+        signed_file = ConsentSignedFile.objects.get(consent=consent)
+        self.assertEqual(signed_file.source_document, consent.document)
+        self.assertEqual(signed_file.uploaded_by, self.admin)
+        self.assertEqual(signed_file.consent_snapshot["consent_type"], Consent.ConsentType.PHOTO_VIDEO)
+        self.assertEqual(signed_file.recipient_snapshot["full_name"], self.child.full_name)
+        self.assertEqual(signed_file.representative_snapshot["full_name"], self.parent.full_name)
+        self.assertEqual(len(signed_file.file_sha256), 64)
+        self.assertGreater(signed_file.file_size, 0)
+        self.assertTrue(signed_file.file.name.startswith(f"consent_signed_files/{consent.pk}/"))
+
+        list_response = self.client.get(reverse("consent_list"))
+        self.assertContains(
+            list_response,
+            reverse("consent_signed_file_download", args=[signed_file.pk]),
+        )
+        self.assertContains(list_response, "Зафиксировать")
+
+        download_response = self.client.get(
+            reverse("consent_signed_file_download", args=[signed_file.pk])
+        )
+        self.assertEqual(download_response.status_code, 200)
+        self.assertEqual(b"".join(download_response.streaming_content), generated_payload)
+
+        archived_sha = signed_file.file_sha256
+        archived_snapshot = signed_file.consent_snapshot
+        consent.note = "Changed after archive"
+        consent.save(update_fields=["note", "updated_at"])
+        repeat = self.client.post(reverse("consent_word", args=[consent.pk]))
+        self.assertEqual(repeat.status_code, 200)
+
+        signed_file.refresh_from_db()
+        self.assertEqual(signed_file.file_sha256, archived_sha)
+        self.assertEqual(signed_file.consent_snapshot, archived_snapshot)
+
+    def test_consent_archive_signed_file_requires_generated_document(self):
+        consent = Consent.objects.create(
+            child=self.child,
+            consent_type=Consent.ConsentType.PHOTO_VIDEO,
+            signatory_representative=self._signer_link(),
+            signed_on=timezone.localdate(),
+        )
+
+        response = self.client.post(reverse("consent_archive_signed", args=[consent.pk]))
+
+        self.assertRedirects(response, reverse("consent_list"))
+        self.assertFalse(ConsentSignedFile.objects.filter(consent=consent).exists())
 
 
 class PaymentViewTests(NewViewsTestBase):

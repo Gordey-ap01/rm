@@ -456,3 +456,19 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Browser QA synthetic `BQA-ACTARCH-*` data was cleaned and local runserver `8103` stopped.
 - Graphify code-index after this slice: `5122` nodes / `22406` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
 - Next safe work: signed archive/snapshot for consents, certificate payer/source modeling, or another explicit contract. Do not connect acts to appointments, finance, grants, payroll or import write-path without a new contract.
+
+## Latest clarification 2026-07-19: consent-signed-file-archive complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/36-consent-signed-file-archive-contract.md` is added and implemented.
+- Migration `operations.0040_consentsignedfile` adds `ConsentSignedFile`.
+- `ConsentSignedFile` stores immutable signed archive copies for generated consents: one `Consent`, source `Document(category=consent, target_type=recipient)`, archive file, original filename, content type, size, SHA-256, signed date, uploaded user, active/void status and frozen consent/center/recipient/representative/template snapshots.
+- Immutable fields cannot be changed after creation; correction path is `status=void` with `void_reason`.
+- `/consents/` shows latest active signed archive links and POST `Зафиксировать` after Word generation. Download route: `/consents/signed-files/<id>/download/`.
+- Existing `ContractSignedFile` for contracts and `ContractActSignedFile` for acts were not changed.
+- No schedule blocking, public consent flow, appointment linkage, ledger/balance/payment/billing/payroll/grant/status/import semantics changed.
+- Verification passed: Ruff touched Python/migration, Django check, migration dry-run `No changes detected`, focused model/view tests `34 passed`, full pytest `620 passed`, Playwright desktop/mobile QA for consent archive UI/download.
+- Browser QA synthetic `BQA-CONSENTARCH*` data was cleaned and local runserver `8104` stopped.
+- Graphify code-index after this slice: `5157` nodes / `22691` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: certificate payer/source modeling, external signed-file upload flow, consent legal snapshot if needed, or another explicit contract. Do not connect consents to schedule blocking/public permissions/finance/grants/import write-path without a new contract.

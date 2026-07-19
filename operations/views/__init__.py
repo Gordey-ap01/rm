@@ -24,7 +24,13 @@ from .compensation_rules import (
     staff_compensation_rule_toggle,
 )
 from .confirmations import appointment_confirmation_public, appointment_send_confirmation
-from .consents import consent_create, consent_list, consent_word
+from .consents import (
+    consent_archive_signed,
+    consent_create,
+    consent_list,
+    consent_signed_file_download,
+    consent_word,
+)
 from .contracts import (
     contract_act_archive_signed,
     contract_act_create,
@@ -173,8 +179,10 @@ __all__ = [
     "center_expense_list",
     "center_expense_report",
     "center_legal_profile_edit",
+    "consent_archive_signed",
     "consent_create",
     "consent_list",
+    "consent_signed_file_download",
     "consent_word",
     "contract_act_archive_signed",
     "contract_act_create",

@@ -18,6 +18,7 @@ from docx.document import Document as WordDocumentType
 from operations.models import (
     CenterLegalProfile,
     Consent,
+    ConsentSignedFile,
     ContractAct,
     ContractActSignedFile,
     ContractLegalSnapshot,
@@ -394,6 +395,36 @@ def _recipient_snapshot(contract: ServiceContract) -> dict[str, object]:
 
 def _representative_snapshot(contract: ServiceContract) -> dict[str, object]:
     link = contract.representative_link
+    representative = link.representative
+    return {
+        "link_id": link.pk,
+        "representative_id": representative.pk,
+        "full_name": representative.full_name,
+        "last_name": representative.last_name,
+        "first_name": representative.first_name,
+        "middle_name": representative.middle_name,
+        "relationship_type": link.relationship_type,
+        "relationship_type_display": link.get_relationship_type_display(),
+        "phone": representative.phone,
+        "phone_alt": representative.phone_alt,
+        "email": representative.email,
+        "passport_series": representative.passport_series,
+        "passport_number": representative.passport_number,
+        "passport_issued_by": representative.passport_issued_by,
+        "passport_issued_on": _snapshot_date(representative.passport_issued_on),
+        "registration_address": representative.registration_address,
+        "is_primary": link.is_primary,
+        "signs_contract": link.signs_contract,
+        "receives_schedule": link.receives_schedule,
+        "is_payer": link.is_payer,
+        "representative_updated_at": _snapshot_datetime(representative.updated_at),
+        "link_updated_at": _snapshot_datetime(link.updated_at),
+    }
+
+
+def _consent_representative_snapshot(link) -> dict[str, object]:
+    if link is None:
+        return {}
     representative = link.representative
     return {
         "link_id": link.pk,
@@ -920,6 +951,74 @@ def archive_contract_act_signed_file(
         uploaded_by=_snapshot_actor(actor),
         note="Архивная копия подписанного файла акта из текущего связанного документа.",
         **_act_signed_file_common_fields(act),
+    )
+    signed_file.file.save(original_filename, ContentFile(payload), save=False)
+    signed_file.save()
+    return signed_file
+
+
+def _consent_snapshot(consent: Consent, document: Document) -> dict[str, object]:
+    return {
+        "id": consent.pk,
+        "consent_type": consent.consent_type,
+        "consent_type_display": consent.get_consent_type_display(),
+        "signed_on": _snapshot_date(consent.signed_on),
+        "expires_on": _snapshot_date(consent.expires_on),
+        "is_valid": consent.is_valid,
+        "template_id": consent.template_id,
+        "document_id": document.pk,
+        "document_title": document.title,
+        "document_file_name": document.file.name if document.file else "",
+        "note": consent.note,
+        "updated_at": _snapshot_datetime(consent.updated_at),
+    }
+
+
+def _consent_signed_file_common_fields(
+    consent: Consent,
+    document: Document,
+) -> dict[str, object]:
+    return {
+        "consent_snapshot": _consent_snapshot(consent, document),
+        "center_snapshot": _center_snapshot(),
+        "recipient_snapshot": _recipient_snapshot(consent),
+        "representative_snapshot": _consent_representative_snapshot(
+            consent.signatory_representative,
+        ),
+        "template_snapshot": _template_snapshot(consent.template),
+    }
+
+
+def archive_consent_signed_file(
+    consent: Consent,
+    *,
+    actor=None,
+) -> ConsentSignedFile:
+    document = consent.document
+    if document is None:
+        raise ContractDocumentError("Сначала сформируйте Word-файл согласия.")
+    if document.category != Document.Category.CONSENT:
+        raise ContractDocumentError("Связанный документ должен иметь категорию согласия.")
+    if document.target_type != Document.TargetType.RECIPIENT:
+        raise ContractDocumentError("Подписанное согласие должно быть документом получателя.")
+    if document.child_id != consent.child_id:
+        raise ContractDocumentError("Связанный документ согласия относится к другому получателю.")
+
+    payload = _read_document_file(document)
+    if not payload:
+        raise ContractDocumentError("Нельзя архивировать пустой файл согласия.")
+    original_filename = _file_basename(document.file.name)
+    signed_file = ConsentSignedFile(
+        consent=consent,
+        source_document=document,
+        original_filename=original_filename,
+        content_type=mimetypes.guess_type(original_filename)[0] or "",
+        file_size=len(payload),
+        file_sha256=hashlib.sha256(payload).hexdigest(),
+        signed_on=consent.signed_on or timezone.localdate(),
+        uploaded_by=_snapshot_actor(actor),
+        note="Архивная копия подписанного файла согласия из текущего связанного документа.",
+        **_consent_signed_file_common_fields(consent, document),
     )
     signed_file.file.save(original_filename, ContentFile(payload), save=False)
     signed_file.save()

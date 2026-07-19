@@ -81,6 +81,12 @@
                 {% else %}
                   —
                 {% endif %}
+                {% if c.ui_signed_file %}
+                  <small>
+                    Архив:
+                    <a href="{{ c.ui_signed_file_url }}">{{ c.ui_signed_file.signed_on|date:"d.m.Y" }}</a>
+                  </small>
+                {% endif %}
               </td>
               <td data-label="Статус">
                 {% if c.is_valid %}
@@ -94,6 +100,12 @@
                   {% csrf_token %}
                   <button class="secondary-button small-action" type="submit">Word</button>
                 </form>
+                {% if c.ui_archive_signed_url %}
+                <form method="post" action="{{ c.ui_archive_signed_url }}" class="inline-form compact-form">
+                  {% csrf_token %}
+                  <button class="secondary-button small-action" type="submit">Зафиксировать</button>
+                </form>
+                {% endif %}
               </td>
             </tr>
           {% empty %}

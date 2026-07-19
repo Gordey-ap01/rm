@@ -11,6 +11,7 @@ from operations.models import (
     Certificate,
     Child,
     Consent,
+    ConsentSignedFile,
     ContractAct,
     ContractActSignedFile,
     ContractSignedFile,
@@ -448,6 +449,67 @@ class ContractRegistryValidationTests(TestCase):
         )
 
         consent.full_clean()
+
+    def test_consent_signed_file_validates_source_document_and_void_reason(self):
+        consent = Consent.objects.create(
+            child=self.child,
+            consent_type=Consent.ConsentType.PHOTO_VIDEO,
+            signatory_representative=self.signer_link,
+            signed_on=self.today,
+        )
+        other_consent_document = Document.objects.create(
+            target_type=Document.TargetType.RECIPIENT,
+            child=self.other_child,
+            category=Document.Category.CONSENT,
+            title="Other consent",
+            file="documents/other-consent.docx",
+        )
+        signed_file = ConsentSignedFile(
+            consent=consent,
+            source_document=other_consent_document,
+            file="consent_signed_files/consent.docx",
+            original_filename="consent.docx",
+            file_size=10,
+            file_sha256="a" * 64,
+            signed_on=self.today,
+            status=ConsentSignedFile.Status.VOID,
+        )
+
+        with self.assertRaises(ValidationError) as raised:
+            signed_file.full_clean()
+
+        self.assertIn("source_document", raised.exception.message_dict)
+        self.assertIn("void_reason", raised.exception.message_dict)
+
+    def test_consent_signed_file_is_immutable_after_creation(self):
+        consent_document = Document.objects.create(
+            target_type=Document.TargetType.RECIPIENT,
+            child=self.child,
+            category=Document.Category.CONSENT,
+            title="Consent",
+            file="documents/consent.docx",
+        )
+        consent = Consent.objects.create(
+            child=self.child,
+            consent_type=Consent.ConsentType.PHOTO_VIDEO,
+            signatory_representative=self.signer_link,
+            signed_on=self.today,
+            document=consent_document,
+        )
+        signed_file = ConsentSignedFile.objects.create(
+            consent=consent,
+            source_document=consent_document,
+            file="consent_signed_files/consent.docx",
+            original_filename="consent.docx",
+            file_size=10,
+            file_sha256="a" * 64,
+            signed_on=self.today,
+        )
+
+        signed_file.file_sha256 = "b" * 64
+
+        with self.assertRaises(ValidationError):
+            signed_file.save()
 
     def test_service_contract_accepts_recipient_template_families(self):
         for template_type in (
