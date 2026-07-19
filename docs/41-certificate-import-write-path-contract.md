@@ -2,7 +2,7 @@
 
 Дата: 2026-07-19
 
-Статус: выполнен: import-batch-foundation + certificate-import-apply; certificate balance mutation остается вне среза
+Статус: выполнен: import-batch-foundation + certificate-import-apply + import-batch-detail; certificate balance mutation остается вне среза
 
 Основание:
 - `docs/38-certificate-payer-source-contract.md`
@@ -193,10 +193,33 @@ Write-path создает только `Certificate`.
 - Full pytest: `638 passed`, only existing `django-tasks` deprecation warning.
 - Playwright browser QA on local runserver `8110`: certificate CSV preview, desktop/mobile no horizontal overflow, hold-to-confirm apply, DB result verified, BQA data cleaned, runserver stopped.
 
+## Реализация 2026-07-19: import-batch-detail
+
+Выполнен follow-up UI срез без миграций:
+
+- Добавлена read-only страница `/imports/batches/<id>/`.
+- Detail показывает status/filename/SHA prefix/row counters/applied/skipped counts.
+- Detail показывает строки batch с сохраненными значениями, status, errors, warnings.
+- Для applied certificate rows detail подтягивает `Certificate` по `target_model=operations.Certificate` и `target_pk`.
+- Целевой сертификат ведет в карточку получателя на `#recipient-certificates`.
+- Apply endpoint теперь после POST редиректит на detail page, чтобы результат не терялся после redirect.
+- Detail page показывает hold-to-confirm apply action только для применимого certificate batch.
+- `/contracts/import-preview/` получила ссылку "Открыть пакет".
+- No `BalanceAccount`, `Payment`, `LedgerEntry`, payroll, grants, schedules, appointment billing/statuses or contracts changed.
+
+Проверки:
+
+- Ruff touched Python and full `operations`: passed.
+- Django check: passed.
+- Migration dry-run: `No changes detected`.
+- Focused `ContractRegistryViewTests`: `50 passed`.
+- Full pytest: `639 passed`, only existing `django-tasks` deprecation warning.
+- Playwright browser QA on local runserver `8111`: preview -> open batch detail -> desktop/mobile no horizontal overflow -> hold apply -> detail target link verified, BQA data hard-cleaned, runserver stopped.
+
 Остается отдельными контрактами:
 
 - Связь сертификата с `BalanceAccount`.
 - Списание/пересчет остатка сертификата при занятиях.
 - Upsert/update существующих сертификатов из файла.
-- Batch history page and links to created recipient certificates.
+- Batch list/history page across many imports.
 - Optional DB unique constraint for certificate number after production duplicate preflight.

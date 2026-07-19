@@ -4566,6 +4566,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(response.context["preview"].valid_count, 1)
         self.assertContains(response, "Сохраненный preview")
         self.assertContains(response, "Сертификаты")
+        self.assertContains(response, "Открыть пакет")
         self.assertContains(response, "Удерживать, чтобы создать сертификаты")
         self.assertContains(response, "CERT-VIEW")
 
@@ -4589,7 +4590,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
 
         response = self.client.post(reverse("import_batch_apply", args=[batch.pk]))
 
-        self.assertRedirects(response, reverse("contract_import_preview"))
+        self.assertRedirects(response, reverse("import_batch_detail", args=[batch.pk]))
         batch.refresh_from_db()
         self.assertEqual(batch.status, ImportBatch.Status.PREVIEWED)
         self.assertEqual(Certificate.objects.count(), before_count)
@@ -4628,7 +4629,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
             {"confirm_apply": "1"},
         )
 
-        self.assertRedirects(response, reverse("contract_import_preview"))
+        self.assertRedirects(response, reverse("import_batch_detail", args=[batch.pk]))
         batch.refresh_from_db()
         row = batch.rows.get()
         certificate = Certificate.objects.get(number="CERT-VIEW-APPLY")
@@ -4642,6 +4643,61 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(LedgerEntry.objects.count(), before_counts["ledger"])
         self.assertEqual(Payment.objects.count(), before_counts["payments"])
         self.assertEqual(BalanceAccount.objects.count(), before_counts["accounts"])
+
+    def test_import_batch_detail_shows_rows_and_certificate_targets(self):
+        certificate = Certificate.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            certificate_type=Certificate.CertificateType.MATERNITY_CAPITAL,
+            number="CERT-DETAIL",
+            total_amount=Decimal("100000"),
+            remaining_amount=Decimal("75000"),
+        )
+        batch = ImportBatch.objects.create(
+            import_kind=ImportBatch.ImportKind.CERTIFICATES,
+            status=ImportBatch.Status.APPLIED,
+            original_filename="certificates.csv",
+            source_sha256="2" * 64,
+            total_rows=1,
+            valid_rows=1,
+            applied_rows=1,
+            applied_by=self.admin,
+            applied_at=timezone.now(),
+        )
+        ImportBatchRow.objects.create(
+            batch=batch,
+            row_number=2,
+            status=ImportBatchRow.Status.APPLIED,
+            raw_values={
+                "recipient_last_name": self.child.last_name,
+                "recipient_first_name": self.child.first_name,
+                "certificate_type": "Материнский капитал",
+                "number": certificate.number,
+                "total_amount": "100000",
+                "remaining_amount": "75000",
+                "funding_source": self.funding.name,
+            },
+            normalized_values={
+                "recipient_last_name": self.child.last_name,
+                "recipient_first_name": self.child.first_name,
+                "certificate_type": "Материнский капитал",
+                "number": certificate.number,
+                "total_amount": "100000",
+                "remaining_amount": "75000",
+                "funding_source": self.funding.name,
+            },
+            target_model="operations.Certificate",
+            target_pk=certificate.pk,
+        )
+
+        response = self.client.get(reverse("import_batch_detail", args=[batch.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f"Пакет импорта #{batch.pk}")
+        self.assertContains(response, "CERT-DETAIL")
+        self.assertContains(response, self.child.full_name)
+        self.assertContains(response, "#recipient-certificates")
+        self.assertContains(response, "Финансы не создаются")
 
     def test_service_contract_pdf_download_does_not_create_document_or_financial_facts(self):
         template = self._service_template()

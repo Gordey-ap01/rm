@@ -47,7 +47,7 @@
 | `docs/38-certificate-payer-source-contract.md` | Контракт реквизитов плательщика и источника у сертификата. | Перед изменениями `Certificate.funding_source`, `Certificate.payer_*` или `certificate.payer_name` placeholders. |
 | `docs/39-recipient-certificate-crud-contract.md` | Контракт CRUD сертификатов в карточке получателя. | Перед изменениями `CertificateForm`, recipient certificate create/edit routes или таблицы сертификатов в карточке получателя. |
 | `docs/40-certificate-import-preview-contract.md` | Контракт read-only предпросмотра Excel/CSV сертификатов. | Перед изменениями certificate import preview, валидации строк сертификатов или будущим import write-path по сертификатам. |
-| `docs/41-certificate-import-write-path-contract.md` | DB-owner контракт реального импорта сертификатов через persisted import batch; foundation и apply выполнены, certificate balance mutation вне среза. | Перед любыми изменениями import batch/row, apply idempotency, созданием `Certificate` из файла или будущей связкой сертификатов с балансом. |
+| `docs/41-certificate-import-write-path-contract.md` | DB-owner контракт реального импорта сертификатов через persisted import batch; foundation, apply и batch detail выполнены, certificate balance mutation вне среза. | Перед любыми изменениями import batch/row, apply idempotency, созданием `Certificate` из файла, batch history или будущей связкой сертификатов с балансом. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -557,3 +557,15 @@ Browser QA - это проверка живого интерфейса в бра
 - Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused import/view tests `59 passed`, full pytest `638 passed`, Playwright desktop/mobile QA for preview + hold-to-confirm apply. Synthetic `BQA-CERT-APPLY-*` data was cleaned and runserver `8110` stopped.
 - Graphify code-index after this slice: `5308` nodes / `23671` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: batch result/history links or a separate certificate-balance contract. Do not connect certificates to balances, payments, ledger, grants, schedules or appointment statuses without a new contract.
+
+## Latest Recovery Note 2026-07-19: import-batch-detail
+
+- Follow-up UI slice from `docs/41-certificate-import-write-path-contract.md` is implemented without new migrations.
+- Added read-only `/imports/batches/<id>/` detail page with batch counters and row-level statuses/errors/warnings.
+- Applied certificate rows resolve target `Certificate` and link to the recipient card `#recipient-certificates`.
+- Apply endpoint redirects to detail after success, validation error or missing hold confirmation.
+- `/contracts/import-preview/` links saved preview batches to detail; detail keeps hold-to-confirm apply when applicable.
+- No balance/payment/ledger/payroll/grant/schedule/status/contract semantics changed.
+- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `ContractRegistryViewTests` `50 passed`, full pytest `639 passed`, Playwright desktop/mobile QA for preview -> detail -> hold apply -> certificate target link. Synthetic `BQA-CERT-DETAIL-*` data was hard-cleaned and runserver `8111` stopped.
+- Graphify code-index after this slice: `5320` nodes / `23709` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: batch list/history page across many imports or a separate certificate-balance contract.

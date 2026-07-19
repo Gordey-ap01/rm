@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Пакет импорта #{{ batch.pk }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Пакет импорта #{{ batch.pk }}</h1>
+    <p>{{ batch.get_import_kind_display }} · {{ batch.original_filename }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="button-link secondary" href="{{ contract_import_preview_url }}">К preview импорта</a>
+  </div>
+</section>
+
+<section class="import-command">
+  <div class="import-next-action is-info">
+    <span>Состояние</span>
+    <strong>{{ batch.get_status_display }}</strong>
+    <small>
+      {% if batch.applied_at %}
+        применено {{ batch.applied_at|date:"d.m.Y H:i" }}
+      {% else %}
+        ожидает решения администратора
+      {% endif %}
+    </small>
+  </div>
+  <div class="import-summary-grid" aria-label="Сводка пакета импорта">
+    {% for item in summary_items %}
+      <div>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.hint }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="import-layout">
+  <div class="import-main">
+    <section class="panel import-panel">
+      <div class="import-panel-head">
+        <div>
+          <h2>Строки пакета</h2>
+          <p>Результаты применения фиксируются по каждой строке. Созданные сертификаты ведут в карточку получателя.</p>
+        </div>
+      </div>
+      <div class="table-wrap import-table-wrap">
+        <table class="import-rows-table">
+          <thead>
+            <tr>
+              <th>Строка</th>
+              <th>Данные</th>
+              <th>Результат</th>
+              <th>Цель</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for item in display_rows %}
+            <tr class="{% if item.errors %}is-invalid{% elif item.warnings %}is-warning{% endif %}">
+              <td data-label="Строка">{{ item.row.row_number }}</td>
+              <td data-label="Данные">
+                <div class="import-cell-grid">
+                  {% for cell in item.cells %}
+                    <div>
+                      <span>{{ cell.label }}</span>
+                      <strong>{{ cell.value }}</strong>
+                    </div>
+                  {% empty %}
+                    <span class="muted">значения не сохранены</span>
+                  {% endfor %}
+                </div>
+              </td>
+              <td data-label="Результат">
+                <div class="import-row-status">
+                  <span class="status-pill {{ item.status_class }}">{{ item.row.get_status_display }}</span>
+                  {% for error in item.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+                  {% for warning in item.warnings %}<div class="import-warning">{{ warning }}</div>{% endfor %}
+                </div>
+              </td>
+              <td data-label="Цель">
+                {% if item.certificate %}
+                  <div>
+                    <strong>{{ item.certificate.get_certificate_type_display }} №{{ item.certificate.number }}</strong>
+                  </div>
+                  <a href="{% url 'recipient_detail' item.certificate.child.pk %}#recipient-certificates">
+                    {{ item.certificate.child.full_name }}
+                  </a>
+                {% elif item.row.target_pk %}
+                  <span class="muted">целевая запись недоступна</span>
+                {% else %}
+                  <span class="muted">не создано</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" data-label="Строки">В пакете нет строк.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="import-sidebar" aria-label="Контроль пакета импорта">
+    <section class="panel import-control-panel">
+      <h2>Контроль</h2>
+      <ul class="import-check-list">
+        <li>
+          <strong>Финансы не создаются</strong>
+          <span>Apply создает только сертификаты. Балансы, платежи, ledger, зарплата, гранты и расписание не меняются.</span>
+        </li>
+        <li>
+          <strong>Повтор безопасен</strong>
+          <span>Если пакет уже применен, повторный POST не создаст дубликаты.</span>
+        </li>
+        <li>
+          <strong>Дубликаты пропускаются</strong>
+          <span>Существующий сертификат с тем же номером у получателя не обновляется и не дублируется.</span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="panel import-control-panel">
+      <h2>Действие</h2>
+      {% if can_apply %}
+        <form method="post" action="{% url 'import_batch_apply' batch.pk %}" class="hold-confirm-card">
+          {% csrf_token %}
+          <input
+            type="hidden"
+            id="confirm-import-apply-{{ batch.pk }}"
+            name="confirm_apply"
+            value="0"
+          >
+          <p>Создать сертификаты из этого пакета.</p>
+          <button
+            type="submit"
+            class="hold-confirm-button"
+            data-hold-submit="true"
+            data-target-id="confirm-import-apply-{{ batch.pk }}"
+            data-hold-ms="1400"
+          >
+            <span class="hold-confirm-progress" aria-hidden="true"></span>
+            <span class="hold-confirm-label">Удерживать, чтобы создать сертификаты</span>
+          </button>
+        </form>
+      {% elif batch.invalid_rows %}
+        <p>Применение недоступно, пока в пакете есть строки с ошибками.</p>
+      {% else %}
+        <p>Для этого статуса нет доступных действий.</p>
+      {% endif %}
+    </section>
+  </aside>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'operations/hold_confirm.js' %}"></script>
+{% endblock %}

@@ -119,6 +119,9 @@
               <small>строк не применять</small>
             </div>
           </div>
+          <div class="form-actions">
+            <a class="button-link secondary" href="{% url 'import_batch_detail' import_batch.pk %}">Открыть пакет</a>
+          </div>
           {% if import_batch.invalid_rows %}
             <p class="note-block">Применение недоступно, пока в пакете есть строки с ошибками. Исправьте файл и загрузите его заново.</p>
           {% elif import_batch.valid_rows %}

@@ -583,3 +583,18 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Browser QA synthetic `BQA-CERT-APPLY-*` data was cleaned and local runserver `8110` stopped.
 - Graphify code-index after this slice: `5308` nodes / `23671` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: batch result/history links or a separate certificate-balance contract. Do not connect certificates to balances, payments, ledger, grants, schedules or appointment statuses without a new contract.
+
+## Latest clarification 2026-07-19: import-batch-detail complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- Follow-up UI slice from `docs/41-certificate-import-write-path-contract.md` is implemented without new migrations.
+- Added read-only `/imports/batches/<id>/` detail page with batch status/counters and row-level statuses/errors/warnings.
+- Applied certificate rows resolve `target_model=operations.Certificate` + `target_pk` and link to the recipient card `#recipient-certificates`.
+- Apply endpoint redirects to detail after success, validation error or missing hold confirmation.
+- `/contracts/import-preview/` links saved preview batches to detail; detail keeps hold-to-confirm apply when applicable.
+- No `BalanceAccount`, `Payment`, `LedgerEntry`, payroll, grants, schedules, appointment billing/statuses or contracts changed.
+- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused `ContractRegistryViewTests` `50 passed`, full pytest `639 passed`, Playwright desktop/mobile QA for preview -> detail -> hold apply -> certificate target link.
+- Browser QA synthetic `BQA-CERT-DETAIL-*` data was hard-cleaned and local runserver `8111` stopped.
+- Graphify code-index after this slice: `5320` nodes / `23709` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: batch list/history page across many imports or a separate certificate-balance contract. Do not connect certificates to balances, payments, ledger, grants, schedules or appointment statuses without a new contract.

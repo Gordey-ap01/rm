@@ -3,10 +3,11 @@ from __future__ import annotations
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import ValidationError
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from operations.forms import ContractImportPreviewForm, RecipientImportPreviewForm
+from operations.models import Certificate, ImportBatch, ImportBatchRow
 from operations.services.import_preview import (
     CERTIFICATE_IMPORT,
     FINANCE_CONTRACT_IMPORT_SPECS,
@@ -18,6 +19,13 @@ from operations.services.import_preview import (
 )
 
 from ._common import is_admin_user
+
+IMPORT_BATCH_TERMINAL_STATUSES = {
+    ImportBatch.Status.APPLIED,
+    ImportBatch.Status.PARTIALLY_APPLIED,
+    ImportBatch.Status.FAILED,
+    ImportBatch.Status.CANCELLED,
+}
 
 
 def recipient_import_summary_items(preview: ImportPreview | None) -> list[dict[str, str]]:
@@ -217,6 +225,74 @@ def contract_import_display_rows(preview: ImportPreview | None) -> list[dict[str
     return rows
 
 
+def import_batch_summary_items(batch: ImportBatch) -> list[dict[str, str]]:
+    return [
+        {
+            "label": "Статус",
+            "value": batch.get_status_display(),
+            "hint": f"пакет #{batch.pk}",
+        },
+        {
+            "label": "Файл",
+            "value": batch.original_filename,
+            "hint": f"SHA-256 {batch.source_sha256[:12]}...",
+        },
+        {
+            "label": "Строк",
+            "value": str(batch.total_rows),
+            "hint": f"готово {batch.valid_rows}, ошибок {batch.invalid_rows}",
+        },
+        {
+            "label": "Применено",
+            "value": str(batch.applied_rows),
+            "hint": f"пропущено {batch.skipped_rows}",
+        },
+    ]
+
+
+def _import_batch_row_status_class(row: ImportBatchRow) -> str:
+    if row.status in {ImportBatchRow.Status.INVALID, ImportBatchRow.Status.FAILED}:
+        return "danger-pill"
+    if row.status == ImportBatchRow.Status.SKIPPED:
+        return "muted-pill"
+    return ""
+
+
+def _certificate_import_row_cells(row: ImportBatchRow) -> list[dict[str, str]]:
+    values = row.normalized_values or row.raw_values or {}
+    spec = FINANCE_CONTRACT_IMPORT_SPECS[CERTIFICATE_IMPORT]
+    return [
+        {"label": column.label, "value": str(values.get(column.key, ""))}
+        for column in spec.columns
+        if values.get(column.key)
+    ]
+
+
+def import_batch_display_rows(batch: ImportBatch) -> list[dict[str, object]]:
+    rows = list(batch.rows.order_by("row_number"))
+    certificate_ids = [
+        row.target_pk
+        for row in rows
+        if row.target_model == "operations.Certificate" and row.target_pk
+    ]
+    certificates = Certificate.objects.select_related(
+        "child",
+        "funding_source",
+        "payer_representative__representative",
+    ).in_bulk(certificate_ids)
+    return [
+        {
+            "row": row,
+            "status_class": _import_batch_row_status_class(row),
+            "cells": _certificate_import_row_cells(row),
+            "certificate": certificates.get(row.target_pk),
+            "errors": row.errors or [],
+            "warnings": row.warnings or [],
+        }
+        for row in rows
+    ]
+
+
 @login_required
 @user_passes_test(is_admin_user)
 def recipient_import_preview(request):
@@ -317,18 +393,46 @@ def contract_import_preview(request):
 
 @login_required
 @user_passes_test(is_admin_user)
+def import_batch_detail(request, pk: int):
+    batch = get_object_or_404(
+        ImportBatch.objects.select_related("uploaded_by", "applied_by").prefetch_related("rows"),
+        pk=pk,
+    )
+    can_apply = (
+        batch.import_kind == ImportBatch.ImportKind.CERTIFICATES
+        and batch.status not in IMPORT_BATCH_TERMINAL_STATUSES
+        and batch.invalid_rows == 0
+        and batch.valid_rows > 0
+    )
+    return render(
+        request,
+        "operations/import_batch_detail.html",
+        {
+            "batch": batch,
+            "summary_items": import_batch_summary_items(batch),
+            "display_rows": import_batch_display_rows(batch),
+            "can_apply": can_apply,
+            "contract_import_preview_url": reverse("contract_import_preview"),
+        },
+    )
+
+
+@login_required
+@user_passes_test(is_admin_user)
 def import_batch_apply(request, pk: int):
+    batch = get_object_or_404(ImportBatch, pk=pk)
     if request.method != "POST":
-        return redirect("contract_import_preview")
+        return redirect("import_batch_detail", pk=batch.pk)
     confirmed = request.POST.get("confirm_apply") == "1"
     if not confirmed:
         messages.error(request, "Удерживайте кнопку, чтобы применить пакет импорта.")
-        return redirect("contract_import_preview")
+        return redirect("import_batch_detail", pk=batch.pk)
     try:
-        result = apply_certificate_import_batch(pk, applied_by=request.user)
+        result = apply_certificate_import_batch(batch.pk, applied_by=request.user)
     except ValidationError as exc:
         detail = "; ".join(getattr(exc, "messages", [str(exc)]))
         messages.error(request, detail)
+        return redirect("import_batch_detail", pk=batch.pk)
     else:
         if result.already_terminal:
             messages.info(
@@ -352,4 +456,4 @@ def import_batch_apply(request, pk: int):
                     f"{result.applied_count}, пропущено {result.skipped_count}."
                 ),
             )
-    return redirect("contract_import_preview")
+    return redirect("import_batch_detail", pk=result.batch.pk)
