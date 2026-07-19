@@ -354,6 +354,12 @@
                 {% else %}
                   <span class="muted">файл не привязан</span>
                 {% endif %}
+                {% if act.ui_signed_file %}
+                  <div class="muted">
+                    подписанный архив:
+                    <a href="{{ act.ui_signed_file_url }}">{{ act.ui_signed_file.signed_on|date:"d.m.Y" }}</a>
+                  </div>
+                {% endif %}
               </td>
               <td data-label="Статус">
                 {% if act.status == "signed" %}
@@ -372,6 +378,12 @@
                   {% csrf_token %}
                   <button class="secondary-button small-action" type="submit">Word</button>
                 </form>
+                {% if act.ui_archive_signed_url %}
+                <form method="post" action="{{ act.ui_archive_signed_url }}" class="inline-form compact-form">
+                  {% csrf_token %}
+                  <button class="secondary-button small-action" type="submit">Зафиксировать</button>
+                </form>
+                {% endif %}
               </td>
             </tr>
           {% empty %}

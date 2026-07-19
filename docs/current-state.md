@@ -1750,3 +1750,17 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA artifacts: `%TEMP%\rmcodex-browser-qa-contract-acts`; synthetic `BQAAct*` QA data and generated media file were cleaned; local runserver `8102` was stopped.
 - Graphify code-index after this slice: `5086` nodes / `22128` edges. Semantic extraction was not rerun; keep raw `docshablon/` ignored/private.
 - Next safe work after this slice: immutable signed archive for acts, signed archive/snapshot for consents, certificate payer/source modeling, or a separate explicit contract. Do not connect acts to appointment facts, finance, grants, payroll or import write-path without a new contract.
+
+## Update 2026-07-19: act-signed-file-archive
+
+- Implemented `docs/35-act-signed-file-archive-contract.md` as a DB-owner legal-document slice for immutable signed archives of acts.
+- Added migration `operations.0039_contractactsignedfile` with new `ContractActSignedFile`.
+- The archive belongs to one `ContractAct`, copies the current generated act `Document(category=act)`, stores original filename, content type, file size, SHA-256, signed date, uploaded user, status and frozen act/contract/center/recipient/representative/counterparty/funding/template snapshots.
+- `ContractActSignedFile` validates source document ownership and prevents immutable fields from changing after creation; correction path is `status=void` with `void_reason`.
+- `/contracts/` now shows the latest active signed archive for acts and exposes POST `Зафиксировать` only after Word generation and act snapshot. Download route: `/contracts/acts/signed-files/<id>/download/`.
+- Existing `ContractSignedFile` for contracts was not changed.
+- No appointment linkage, act payment workflow, ledger/balance/payment/billing/payroll/grant/status/schedule/import semantics changed.
+- Verification passed: Ruff touched Python/migration, Django check, migration dry-run `No changes detected`, focused contract/view tests `66 passed`, full pytest `616 passed`, Playwright desktop/mobile QA for act archive UI/download and no horizontal overflow.
+- Browser QA synthetic `BQA-ACTARCH-*` data was cleaned; local runserver `8103` was stopped.
+- Graphify code-index after this slice: `5122` nodes / `22406` edges. Semantic extraction was not rerun; keep raw `docshablon/` ignored/private.
+- Next safe work after this slice: signed archive/snapshot for consents, certificate payer/source modeling, or a separate explicit contract. Do not connect acts to appointments, finance, grants, payroll or import write-path without a new contract.

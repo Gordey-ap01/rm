@@ -19,6 +19,7 @@ from .models import (
     Child,
     Consent,
     ContractAct,
+    ContractActSignedFile,
     ContractLegalSnapshot,
     ContractSignedFile,
     ContractTemplate,
@@ -592,6 +593,57 @@ class ContractSignedFileAdmin(admin.ModelAdmin):
         "file_sha256",
         "signed_on",
         "uploaded_by",
+        "contract_snapshot",
+        "center_snapshot",
+        "recipient_snapshot",
+        "representative_snapshot",
+        "counterparty_snapshot",
+        "funding_source_snapshot",
+        "template_snapshot",
+    )
+
+    def has_add_permission(self, request) -> bool:
+        return False
+
+
+@admin.register(ContractActSignedFile)
+class ContractActSignedFileAdmin(admin.ModelAdmin):
+    list_display = (
+        "act",
+        "signed_on",
+        "status",
+        "file_size",
+        "uploaded_by",
+        "created_at",
+    )
+    search_fields = (
+        "act__number",
+        "act__service_contract__number",
+        "act__service_contract__child__last_name",
+        "act__service_contract__child__first_name",
+        "act__organization_contract__number",
+        "act__organization_contract__counterparty__name",
+        "original_filename",
+        "file_sha256",
+        "note",
+    )
+    list_filter = ("status", "signed_on", "created_at")
+    autocomplete_fields = (
+        "act",
+        "source_document",
+        "uploaded_by",
+    )
+    readonly_fields = (
+        "act",
+        "source_document",
+        "file",
+        "original_filename",
+        "content_type",
+        "file_size",
+        "file_sha256",
+        "signed_on",
+        "uploaded_by",
+        "act_snapshot",
         "contract_snapshot",
         "center_snapshot",
         "recipient_snapshot",

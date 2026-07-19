@@ -25,6 +25,7 @@ from operations.forms import (
 )
 from operations.models import (
     ContractAct,
+    ContractActSignedFile,
     ContractLegalSnapshot,
     ContractSignedFile,
     ContractTemplate,
@@ -98,6 +99,16 @@ def _active_signed_files_prefetch() -> Prefetch:
     )
 
 
+def _active_act_signed_files_prefetch() -> Prefetch:
+    return Prefetch(
+        "signed_files",
+        queryset=ContractActSignedFile.objects.filter(
+            status=ContractActSignedFile.Status.ACTIVE,
+        ).order_by("-signed_on", "-created_at"),
+        to_attr="ui_active_signed_files",
+    )
+
+
 def _attach_signed_file_ui(contract, *, archive_url_name: str) -> None:
     signed_files = getattr(contract, "ui_active_signed_files", [])
     signed_file = signed_files[0] if signed_files else None
@@ -108,6 +119,22 @@ def _attach_signed_file_ui(contract, *, archive_url_name: str) -> None:
     contract.ui_archive_signed_url = (
         reverse(archive_url_name, args=[contract.pk])
         if contract.document_id and contract.ui_legal_snapshot
+        else ""
+    )
+
+
+def _attach_act_signed_file_ui(act: ContractAct) -> None:
+    signed_files = getattr(act, "ui_active_signed_files", [])
+    signed_file = signed_files[0] if signed_files else None
+    act.ui_signed_file = signed_file
+    act.ui_signed_file_url = (
+        reverse("contract_act_signed_file_download", args=[signed_file.pk])
+        if signed_file
+        else ""
+    )
+    act.ui_archive_signed_url = (
+        reverse("contract_act_archive_signed", args=[act.pk])
+        if act.document_id and act.act_snapshot
         else ""
     )
 
@@ -258,7 +285,7 @@ def _act_queryset(filters: dict[str, str]) -> list[ContractAct]:
         "organization_contract__counterparty",
         "template",
         "document",
-    )
+    ).prefetch_related(_active_act_signed_files_prefetch())
     if filters["kind"] not in {"", "act"}:
         return []
     if filters["status"] in {choice[0] for choice in ContractAct.Status.choices}:
@@ -283,6 +310,7 @@ def _act_queryset(filters: dict[str, str]) -> list[ContractAct]:
         act.ui_amount = _format_money(act.amount)
         act.ui_word_url = reverse("contract_act_word", args=[act.pk])
         act.ui_target = act.target_label
+        _attach_act_signed_file_ui(act)
     return acts
 
 
@@ -1031,6 +1059,35 @@ def contract_act_word(request, pk: int):
 
 @login_required
 @user_passes_test(is_admin_user)
+def contract_act_archive_signed(request, pk: int):
+    act = get_object_or_404(
+        ContractAct.objects.select_related(
+            "service_contract__child",
+            "organization_contract__counterparty",
+            "document",
+        ),
+        pk=pk,
+    )
+    if request.method != "POST":
+        messages.warning(request, "Архив подписанного акта создается кнопкой в реестре.")
+        return redirect("contract_list")
+    try:
+        signed_file = contract_doc_svc.archive_contract_act_signed_file(
+            act,
+            actor=request.user,
+        )
+    except contract_doc_svc.ContractDocumentError as exc:
+        messages.error(request, str(exc))
+        return redirect("contract_list")
+    messages.success(
+        request,
+        f"Подписанный файл акта сохранен в архиве: {signed_file.file_sha256[:12]}...",
+    )
+    return redirect("contract_list")
+
+
+@login_required
+@user_passes_test(is_admin_user)
 def service_contract_archive_signed(request, pk: int):
     contract = get_object_or_404(
         ServiceContract.objects.select_related(
@@ -1100,6 +1157,24 @@ def contract_signed_file_download(request, pk: int):
         signed_file.file.open("rb")
     except OSError as exc:
         raise Http404("Архивный файл не найден.") from exc
+    return FileResponse(
+        signed_file.file,
+        as_attachment=True,
+        filename=signed_file.original_filename,
+        content_type=signed_file.content_type or "application/octet-stream",
+    )
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def contract_act_signed_file_download(request, pk: int):
+    signed_file = get_object_or_404(ContractActSignedFile, pk=pk)
+    if not signed_file.file:
+        raise Http404("Архивный файл акта не найден.")
+    try:
+        signed_file.file.open("rb")
+    except OSError as exc:
+        raise Http404("Архивный файл акта не найден.") from exc
     return FileResponse(
         signed_file.file,
         as_attachment=True,

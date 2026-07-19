@@ -12,6 +12,7 @@ from operations.models import (
     Child,
     Consent,
     ContractAct,
+    ContractActSignedFile,
     ContractSignedFile,
     ContractTemplate,
     Counterparty,
@@ -556,6 +557,79 @@ class ContractRegistryValidationTests(TestCase):
         )
 
         signed_file.original_filename = "changed.docx"
+
+        with self.assertRaises(ValidationError):
+            signed_file.save()
+
+    def test_contract_act_signed_file_validates_source_document_and_void_reason(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self.signer_link,
+            number="S-ACT-SIGNED-KIND",
+            signed_on=self.today,
+        )
+        act = ContractAct.objects.create(
+            act_kind=ContractAct.ActKind.SERVICE,
+            service_contract=contract,
+            number="ACT-SIGNED-KIND",
+            act_on=self.today,
+        )
+        other_act_document = Document.objects.create(
+            target_type=Document.TargetType.RECIPIENT,
+            child=self.other_child,
+            category=Document.Category.ACT,
+            title="Other act",
+            file="documents/other-act.docx",
+        )
+        signed_file = ContractActSignedFile(
+            act=act,
+            source_document=other_act_document,
+            file="contract_act_signed_files/act.docx",
+            original_filename="act.docx",
+            file_size=10,
+            file_sha256="a" * 64,
+            signed_on=self.today,
+            status=ContractActSignedFile.Status.VOID,
+        )
+
+        with self.assertRaises(ValidationError) as raised:
+            signed_file.full_clean()
+
+        self.assertIn("source_document", raised.exception.message_dict)
+        self.assertIn("void_reason", raised.exception.message_dict)
+
+    def test_contract_act_signed_file_is_immutable_after_creation(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self.signer_link,
+            number="S-ACT-SIGNED-IMMUTABLE",
+            signed_on=self.today,
+        )
+        act_document = Document.objects.create(
+            target_type=Document.TargetType.RECIPIENT,
+            child=self.child,
+            category=Document.Category.ACT,
+            title="Act",
+            file="documents/act.docx",
+        )
+        act = ContractAct.objects.create(
+            act_kind=ContractAct.ActKind.SERVICE,
+            service_contract=contract,
+            number="ACT-SIGNED-IMMUTABLE",
+            act_on=self.today,
+            document=act_document,
+        )
+        signed_file = ContractActSignedFile.objects.create(
+            act=act,
+            source_document=act_document,
+            file="contract_act_signed_files/act.docx",
+            original_filename="act.docx",
+            file_size=10,
+            file_sha256="a" * 64,
+            signed_on=self.today,
+        )
+
+        signed_file.file_sha256 = "b" * 64
 
         with self.assertRaises(ValidationError):
             signed_file.save()

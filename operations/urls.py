@@ -228,6 +228,16 @@ urlpatterns = [
     path("contracts/acts/<int:pk>/edit/", views.contract_act_edit, name="contract_act_edit"),
     path("contracts/acts/<int:pk>/word/", views.contract_act_word, name="contract_act_word"),
     path(
+        "contracts/acts/<int:pk>/archive-signed/",
+        views.contract_act_archive_signed,
+        name="contract_act_archive_signed",
+    ),
+    path(
+        "contracts/acts/signed-files/<int:pk>/download/",
+        views.contract_act_signed_file_download,
+        name="contract_act_signed_file_download",
+    ),
+    path(
         "contracts/signed-files/<int:pk>/download/",
         views.contract_signed_file_download,
         name="contract_signed_file_download",

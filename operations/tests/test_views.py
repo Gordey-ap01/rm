@@ -30,6 +30,7 @@ from operations.models import (
     Child,
     Consent,
     ContractAct,
+    ContractActSignedFile,
     ContractLegalSnapshot,
     ContractSignedFile,
     ContractTemplate,
@@ -4540,6 +4541,101 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(Document.objects.count(), document_count + 1)
         self.assertEqual(act.document, original_document)
         self.assertEqual(act.act_snapshot["number"], "ACT-WORD-2")
+
+    def test_contract_act_archive_signed_file_copies_snapshot_and_file(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            funding_source=self.funding,
+            number="S-ACT-SIGNED",
+            signed_on=timezone.localdate(),
+        )
+        ServiceContractLine.objects.create(
+            service_contract=contract,
+            service=self.service,
+            service_name="Индивидуальные занятия логопеда",
+            quantity=Decimal("2.00"),
+            unit=ServiceContractLine.Unit.SESSION,
+            unit_price=Decimal("1500.00"),
+            sort_order=1,
+        )
+        act = ContractAct.objects.create(
+            act_kind=ContractAct.ActKind.SERVICE,
+            service_contract=contract,
+            number="ACT-SIGNED",
+            act_on=timezone.localdate(),
+            period_from=timezone.localdate(),
+            period_until=timezone.localdate(),
+            amount=Decimal("3000.00"),
+            status=ContractAct.Status.ISSUED,
+        )
+        generated_payload = self._generate_contract_act_word(act)
+        counts_before = self._financial_counts()
+
+        response = self.client.post(reverse("contract_act_archive_signed", args=[act.pk]))
+
+        self.assertRedirects(response, reverse("contract_list"))
+        signed_file = ContractActSignedFile.objects.get(act=act)
+        self.assertEqual(signed_file.source_document, act.document)
+        self.assertEqual(signed_file.uploaded_by, self.admin)
+        self.assertEqual(signed_file.act_snapshot["number"], "ACT-SIGNED")
+        self.assertEqual(signed_file.contract_snapshot["number"], "S-ACT-SIGNED")
+        self.assertEqual(signed_file.recipient_snapshot["full_name"], self.child.full_name)
+        self.assertEqual(len(signed_file.file_sha256), 64)
+        self.assertGreater(signed_file.file_size, 0)
+        self.assertTrue(signed_file.file.name.startswith(f"contract_act_signed_files/{act.pk}/"))
+        self.assertEqual(self._financial_counts(), counts_before)
+
+        list_response = self.client.get(reverse("contract_list"), {"kind": "act"})
+        self.assertContains(
+            list_response,
+            reverse("contract_act_signed_file_download", args=[signed_file.pk]),
+        )
+
+        download_response = self.client.get(
+            reverse("contract_act_signed_file_download", args=[signed_file.pk])
+        )
+        self.assertEqual(download_response.status_code, 200)
+        self.assertEqual(b"".join(download_response.streaming_content), generated_payload)
+
+        archived_sha = signed_file.file_sha256
+        archived_snapshot = signed_file.act_snapshot
+        act.number = "ACT-SIGNED-2"
+        act.save(update_fields=["number", "updated_at"])
+        self._generate_contract_act_word(act)
+
+        signed_file.refresh_from_db()
+        self.assertEqual(signed_file.file_sha256, archived_sha)
+        self.assertEqual(signed_file.act_snapshot, archived_snapshot)
+        act.refresh_from_db()
+        self.assertEqual(act.act_snapshot["number"], "ACT-SIGNED-2")
+
+    def test_contract_act_archive_signed_file_requires_generated_snapshot(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-ACT-NO-SNAPSHOT",
+            signed_on=timezone.localdate(),
+        )
+        act_document = Document.objects.create(
+            target_type=Document.TargetType.RECIPIENT,
+            child=self.child,
+            category=Document.Category.ACT,
+            title="Файл акта без snapshot",
+            file="documents/act-without-snapshot.docx",
+        )
+        act = ContractAct.objects.create(
+            act_kind=ContractAct.ActKind.SERVICE,
+            service_contract=contract,
+            number="ACT-NO-SNAPSHOT",
+            act_on=timezone.localdate(),
+            document=act_document,
+        )
+
+        response = self.client.post(reverse("contract_act_archive_signed", args=[act.pk]))
+
+        self.assertRedirects(response, reverse("contract_list"))
+        self.assertFalse(ContractActSignedFile.objects.filter(act=act).exists())
 
     def test_service_contract_word_generates_document_from_template_without_financial_facts(self):
         template = ContractTemplate.objects.create(

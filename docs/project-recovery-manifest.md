@@ -41,6 +41,7 @@
 | `docs/32-organization-service-contract-contract.md` | Контракт B2B-договора оказания услуг организации. | Перед изменениями `OrganizationServiceContract`, B2B Word/PDF/archive, organization-service snapshots или B2B спецификации услуг. |
 | `docs/33-consent-template-generation-contract.md` | Контракт генерации Word-согласий получателя. | Перед изменениями `Consent`, consent templates, consent Word generation или consent document ownership. |
 | `docs/34-contract-acts-generation-contract.md` | Контракт генерации актов оказанных услуг по service/B2B договорам. | Перед изменениями `ContractAct`, act Word generation, act document ownership или act snapshots. |
+| `docs/35-act-signed-file-archive-contract.md` | Контракт неизменяемого архива подписанных актов оказанных услуг. | Перед изменениями `ContractActSignedFile`, act signed archive actions/download или подписанных версий актов. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -73,7 +74,7 @@
 13. Если задача затрагивает справочники категорий/контрагентов вне Django admin, прочитать `docs/22-category-counterparty-directory-contract.md`.
 14. Если задача затрагивает Word-генерацию договоров или placeholder catalog, прочитать `docs/23-contract-word-generation-contract.md`, `docs/24-document-template-source-inventory.md` и `docs/25-template-placeholder-expansion-v2-contract.md`.
 15. Если задача затрагивает `Document` без `Child`, donation-document storage, юрпрофиль центра, signed snapshots, B2B/consents/acts, прочитать `docs/26-legal-document-targets-and-center-profile-contract.md`.
-16. Если задача затрагивает юридические семейства шаблонов, юрполя сторон, спецификацию договора, сертификаты, архив подписанных файлов, B2B-договоры организации, согласия или акты, прочитать `docs/27-legal-template-families-contract.md` и соответствующий контракт `docs/28`-`docs/34`.
+16. Если задача затрагивает юридические семейства шаблонов, юрполя сторон, спецификацию договора, сертификаты, архив подписанных файлов, B2B-договоры организации, согласия или акты, прочитать `docs/27-legal-template-families-contract.md` и соответствующий контракт `docs/28`-`docs/35`.
 17. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
 18. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
 19. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
@@ -431,3 +432,16 @@ Browser QA - это проверка живого интерфейса в бра
 - Verification passed: Ruff touched Python/migration, Django check, migration dry-run `No changes detected`, focused contract/view tests `62 passed`, full pytest `612 passed`, Playwright desktop/mobile QA for acts; QA data and generated media file were cleaned and runserver `8102` stopped.
 - Graphify code-index after this slice: `5086` nodes / `22128` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
 - Save-point commit created: `48c491a feat: add contract act generation`; final secret scan and `git diff --check` passed before commit.
+
+## Latest Recovery Note 2026-07-19: act-signed-file-archive
+
+- `docs/35-act-signed-file-archive-contract.md` is added and implemented.
+- Migration `operations.0039_contractactsignedfile` adds `ContractActSignedFile`.
+- `ContractActSignedFile` stores immutable signed archive copies for generated acts: one `ContractAct`, source `Document(category=act)`, archive file, original filename, content type, size, SHA-256, signed date, uploaded user, active/void status and frozen snapshots.
+- Source documents are validated against act ownership. Immutable fields cannot be changed after creation; correction path is `status=void` with `void_reason`.
+- `/contracts/` shows latest active signed archive links for acts and POST `Зафиксировать` after Word generation/snapshot; `/contracts/acts/signed-files/<id>/download/` serves archive files.
+- Existing `ContractSignedFile` for contracts was not changed.
+- No appointment linkage, act payment workflow, ledger/balance/payment/billing/payroll/grant/status/schedule/import semantics changed.
+- Verification passed: Ruff touched Python/migration, Django check, migration dry-run `No changes detected`, focused contract/view tests `66 passed`, full pytest `616 passed`, Playwright desktop/mobile QA for act archive UI/download; synthetic `BQA-ACTARCH-*` data was cleaned and runserver `8103` stopped.
+- Graphify code-index after this slice: `5122` nodes / `22406` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
+- Next safe work: signed archive/snapshot for consents, certificate payer/source modeling, or another explicit contract. Do not connect acts to appointments, finance, grants, payroll or import write-path without a new contract.

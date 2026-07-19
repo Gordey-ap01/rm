@@ -440,3 +440,19 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Verification passed: Ruff touched Python/migration, Django check, migration dry-run `No changes detected`, focused contract/view tests `62 passed`, full pytest `612 passed`, Playwright desktop/mobile QA for acts; QA data was cleaned and runserver `8102` stopped.
 - Graphify code-index after this slice: `5086` nodes / `22128` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
 - Save-point commit created: `48c491a feat: add contract act generation`; final secret scan and `git diff --check` passed before commit.
+
+## Latest clarification 2026-07-19: act-signed-file-archive complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/35-act-signed-file-archive-contract.md` is added and implemented.
+- Migration `operations.0039_contractactsignedfile` adds `ContractActSignedFile`.
+- `ContractActSignedFile` stores immutable signed archive copies for generated acts: one `ContractAct`, source `Document(category=act)`, archive file, original filename, content type, size, SHA-256, signed date, uploaded user, active/void status and frozen snapshots.
+- Immutable fields cannot be changed after creation; correction path is `status=void` with `void_reason`.
+- `/contracts/` shows latest active signed archive links for acts and POST `Зафиксировать` after Word generation/snapshot. Download route: `/contracts/acts/signed-files/<id>/download/`.
+- Existing `ContractSignedFile` for contracts was not changed.
+- No appointment linkage, act payment workflow, ledger/balance/payment/billing/payroll/grant/status/schedule/import semantics changed.
+- Verification passed: Ruff touched Python/migration, Django check, migration dry-run `No changes detected`, focused contract/view tests `66 passed`, full pytest `616 passed`, Playwright desktop/mobile QA for act archive UI/download.
+- Browser QA synthetic `BQA-ACTARCH-*` data was cleaned and local runserver `8103` stopped.
+- Graphify code-index after this slice: `5122` nodes / `22406` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
+- Next safe work: signed archive/snapshot for consents, certificate payer/source modeling, or another explicit contract. Do not connect acts to appointments, finance, grants, payroll or import write-path without a new contract.

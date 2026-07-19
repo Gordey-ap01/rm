@@ -19,6 +19,7 @@ from operations.models import (
     CenterLegalProfile,
     Consent,
     ContractAct,
+    ContractActSignedFile,
     ContractLegalSnapshot,
     ContractSignedFile,
     Document,
@@ -877,6 +878,52 @@ def archive_organization_service_contract_signed_file(
         actor=actor,
         organization_contract=contract,
     )
+
+
+def _act_signed_file_common_fields(act: ContractAct) -> dict[str, object]:
+    return {
+        "act_snapshot": deepcopy(act.act_snapshot),
+        "contract_snapshot": deepcopy(act.contract_snapshot),
+        "center_snapshot": deepcopy(act.center_snapshot),
+        "recipient_snapshot": deepcopy(act.recipient_snapshot),
+        "representative_snapshot": deepcopy(act.representative_snapshot),
+        "counterparty_snapshot": deepcopy(act.counterparty_snapshot),
+        "funding_source_snapshot": deepcopy(act.funding_source_snapshot),
+        "template_snapshot": deepcopy(act.template_snapshot),
+    }
+
+
+def archive_contract_act_signed_file(
+    act: ContractAct,
+    *,
+    actor=None,
+) -> ContractActSignedFile:
+    document = act.document
+    if document is None:
+        raise ContractDocumentError("Сначала сформируйте Word-файл акта.")
+    if not act.act_snapshot:
+        raise ContractDocumentError(
+            "Сначала сформируйте Word-файл акта, чтобы зафиксировать snapshot."
+        )
+    payload = _read_document_file(document)
+    if not payload:
+        raise ContractDocumentError("Нельзя архивировать пустой файл акта.")
+    original_filename = _file_basename(document.file.name)
+    signed_file = ContractActSignedFile(
+        act=act,
+        source_document=document,
+        original_filename=original_filename,
+        content_type=mimetypes.guess_type(original_filename)[0] or "",
+        file_size=len(payload),
+        file_sha256=hashlib.sha256(payload).hexdigest(),
+        signed_on=act.act_on or timezone.localdate(),
+        uploaded_by=_snapshot_actor(actor),
+        note="Архивная копия подписанного файла акта из текущего связанного документа.",
+        **_act_signed_file_common_fields(act),
+    )
+    signed_file.file.save(original_filename, ContentFile(payload), save=False)
+    signed_file.save()
+    return signed_file
 
 
 def _center_placeholder_values() -> dict[str, str]:
