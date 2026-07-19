@@ -48,6 +48,7 @@
 | `docs/39-recipient-certificate-crud-contract.md` | Контракт CRUD сертификатов в карточке получателя. | Перед изменениями `CertificateForm`, recipient certificate create/edit routes или таблицы сертификатов в карточке получателя. |
 | `docs/40-certificate-import-preview-contract.md` | Контракт read-only предпросмотра Excel/CSV сертификатов. | Перед изменениями certificate import preview, валидации строк сертификатов или будущим import write-path по сертификатам. |
 | `docs/41-certificate-import-write-path-contract.md` | DB-owner контракт реального импорта сертификатов через persisted import batch; foundation, apply, batch detail и batch list выполнены, certificate balance mutation вне среза. | Перед любыми изменениями import batch/row, apply idempotency, созданием `Certificate` из файла, batch history или будущей связкой сертификатов с балансом. |
+| `docs/42-certificate-balance-ledger-contract.md` | Proposed DB-owner контракт связки сертификата с `BalanceAccount`/`LedgerEntry`; сертификат не становится вторым финансовым ledger. | Перед любыми изменениями `Certificate.balance_account`, созданием счетов по сертификатам, списанием сертификатов занятиями или отображением effective certificate balance. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -580,3 +581,14 @@ Browser QA - это проверка живого интерфейса в бра
 - Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `ContractRegistryViewTests` `51 passed`, full pytest `640 passed`, Playwright desktop/mobile QA for preview -> batch list -> detail. Synthetic batch-list data was cleaned and runserver `8112` stopped.
 - Graphify code-index after this slice: `5326` nodes / `23716` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: filtering/search/pagination for long import history or a separate certificate-balance contract.
+
+## Latest Recovery Note 2026-07-19: certificate-balance-ledger-contract
+
+- Added docs-only `docs/42-certificate-balance-ledger-contract.md`.
+- Decision: `Certificate` remains legal/source data; spendable current остаток should be derived from linked `BalanceAccount.current_balance`.
+- Proposed model: nullable one-to-one `Certificate.balance_account` with same-child, money-unit and funding consistency validation.
+- Proposed service: idempotently create linked money account with `initial_amount=0` and opening `LedgerEntry(CREDIT)`; do not create `Payment`.
+- Appointment charging should debit the linked account through existing billing flow and must not mutate `Certificate.remaining_amount`.
+- Deferred risks: renaming `remaining_amount`, auto-backfill, DB amount constraints without preflight and certificate-number uniqueness.
+- Code/models/migrations/templates/tests were not changed in this docs-only slice.
+- Graphify code-index after this slice: `5344` nodes / `23733` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.

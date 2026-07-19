@@ -1902,3 +1902,15 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA synthetic `BQA batch-list` data was cleaned; local runserver `8112` stopped.
 - Graphify code-index after this slice: `5326` nodes / `23716` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: filtering/search/pagination for long import history or a separate certificate-balance contract. Do not connect certificates to balances, payments, ledger, grants, schedules or appointment statuses without a new contract.
+
+## Update 2026-07-19: certificate-balance-ledger-contract
+
+- Added docs-only `docs/42-certificate-balance-ledger-contract.md`.
+- Contract states that `Certificate` is not a second financial ledger; spendable current balance must come from linked `BalanceAccount.current_balance`.
+- Proposed first DB-owner slice: nullable one-to-one `Certificate.balance_account`, validation for same child/money unit/funding consistency, and idempotent service to create a linked money account.
+- Opening certificate balance should be represented by `LedgerEntry(CREDIT)` with `BalanceAccount.initial_amount=0`, not by `Payment`.
+- Appointment debits should use the existing billing path against the linked `BalanceAccount`; `Certificate.remaining_amount` must not be mutated by appointment charging.
+- The contract explicitly keeps Payment, payroll, grants, contracts, schedules and statuses out of account creation.
+- Risky work deferred: renaming `Certificate.remaining_amount`, auto-backfilling all certificates, amount DB constraints without preflight, and certificate-number unique constraints.
+- Code, models, migrations, templates and tests were not changed in this docs-only slice.
+- Graphify code-index after this slice: `5344` nodes / `23733` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.

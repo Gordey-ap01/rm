@@ -38375,6 +38375,126 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_42_certificate_balance_ledger_contract",
+      "label": "42-certificate-balance-ledger-contract.md",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_42_certificate_balance_ledger_contract_certificate_balance_ledger_contract",
+      "label": "Certificate Balance Ledger Contract",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_42_certificate_balance_ledger_contract_цель",
+      "label": "Цель",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L13",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_42_certificate_balance_ledger_contract_ключевое_решение",
+      "label": "Ключевое решение",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L17",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_42_certificate_balance_ledger_contract_почему_так",
+      "label": "Почему так",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L34",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_42_certificate_balance_ledger_contract_предлагаемая_доменная_модель",
+      "label": "Предлагаемая доменная модель",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L44",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_42_certificate_balance_ledger_contract_certificate_balance_account",
+      "label": "Certificate.balance_account",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L46",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_42_certificate_balance_ledger_contract_effective_remaining_amount",
+      "label": "Effective remaining amount",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L65",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_42_certificate_balance_ledger_contract_account_creation_service",
+      "label": "Account creation service",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L78",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_42_certificate_balance_ledger_contract_appointment_billing_integration",
+      "label": "Appointment billing integration",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L117",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_42_certificate_balance_ledger_contract_ui_ux",
+      "label": "UI/UX",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L131",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_42_certificate_balance_ledger_contract_financial_boundaries",
+      "label": "Financial boundaries",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L150",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_42_certificate_balance_ledger_contract_migration_risks",
+      "label": "Migration risks",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L174",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_42_certificate_balance_ledger_contract_acceptance_criteria_for_first_vertical_slice",
+      "label": "Acceptance criteria for first vertical slice",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L196",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_42_certificate_balance_ledger_contract_parallel_agent_rule",
+      "label": "Parallel-agent rule",
+      "file_type": "document",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L209",
+      "_origin": "ast"
+    },
+    {
       "id": "docs_critical_stack_ux_review_2026_06_10",
       "label": "CRITICAL_STACK_UX_REVIEW_2026-06-10.md",
       "file_type": "document",
@@ -40023,6 +40143,14 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_current_state_update_2026_07_19_certificate_balance_ledger_contract",
+      "label": "Update 2026-07-19: certificate-balance-ledger-contract",
+      "file_type": "document",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1906",
+      "_origin": "ast"
+    },
+    {
       "id": "decisions_adr_001_django_postgresql_local_first",
       "label": "ADR-001-django-postgresql-local-first.md",
       "file_type": "document",
@@ -40663,6 +40791,14 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_next_chat_prompt_latest_clarification_2026_07_19_certificate_balance_ledger_contract_proposed",
+      "label": "Latest clarification 2026-07-19: certificate-balance-ledger contract proposed",
+      "file_type": "document",
+      "source_file": "docs/next-chat-prompt.md",
+      "source_location": "L617",
+      "_origin": "ast"
+    },
+    {
       "id": "docs_project_recovery_manifest",
       "label": "project-recovery-manifest.md",
       "file_type": "document",
@@ -40699,7 +40835,7 @@
       "label": "Порядок восстановления контекста",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L66",
+      "source_location": "L67",
       "_origin": "ast"
     },
     {
@@ -40707,7 +40843,7 @@
       "label": "Skills и назначение",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L93",
+      "source_location": "L94",
       "_origin": "ast"
     },
     {
@@ -40715,7 +40851,7 @@
       "label": "Восстановление инструментов",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L106",
+      "source_location": "L107",
       "_origin": "ast"
     },
     {
@@ -40723,7 +40859,7 @@
       "label": "Graphify",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L108",
+      "source_location": "L109",
       "_origin": "ast"
     },
     {
@@ -40731,7 +40867,7 @@
       "label": "Browser QA",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L127",
+      "source_location": "L128",
       "_origin": "ast"
     },
     {
@@ -40739,7 +40875,7 @@
       "label": "Протокол контрольной точки",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L136",
+      "source_location": "L137",
       "_origin": "ast"
     },
     {
@@ -40747,7 +40883,7 @@
       "label": "Текущее состояние восстановления",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L148",
+      "source_location": "L149",
       "_origin": "ast"
     },
     {
@@ -40755,7 +40891,7 @@
       "label": "Ближайшие задачи",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L192",
+      "source_location": "L193",
       "_origin": "ast"
     },
     {
@@ -40763,7 +40899,7 @@
       "label": "Постоянные риски",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L199",
+      "source_location": "L200",
       "_origin": "ast"
     },
     {
@@ -40771,7 +40907,7 @@
       "label": "Latest Recovery Note 2026-07-18: template-placeholder-expansion-v2",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L287",
+      "source_location": "L288",
       "_origin": "ast"
     },
     {
@@ -40779,7 +40915,7 @@
       "label": "Latest Recovery Note 2026-07-18: document-target-foundation",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L298",
+      "source_location": "L299",
       "_origin": "ast"
     },
     {
@@ -40787,7 +40923,7 @@
       "label": "Latest Recovery Note 2026-07-18: center-legal-profile-foundation",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L311",
+      "source_location": "L312",
       "_origin": "ast"
     },
     {
@@ -40795,7 +40931,7 @@
       "label": "Latest Recovery Note 2026-07-18: contract-signed-snapshot",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L323",
+      "source_location": "L324",
       "_origin": "ast"
     },
     {
@@ -40803,7 +40939,7 @@
       "label": "Latest Recovery Note 2026-07-18: legal-template-families",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L337",
+      "source_location": "L338",
       "_origin": "ast"
     },
     {
@@ -40811,7 +40947,7 @@
       "label": "Latest Recovery Note 2026-07-18: representative-child-legal-fields",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L349",
+      "source_location": "L350",
       "_origin": "ast"
     },
     {
@@ -40819,7 +40955,7 @@
       "label": "Latest Recovery Note 2026-07-18: service-contract-spec-and-funding",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L361",
+      "source_location": "L362",
       "_origin": "ast"
     },
     {
@@ -40827,7 +40963,7 @@
       "label": "Latest Recovery Note 2026-07-18: certificate-contract-link",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L374",
+      "source_location": "L375",
       "_origin": "ast"
     },
     {
@@ -40835,7 +40971,7 @@
       "label": "Latest Recovery Note 2026-07-18: immutable-contract-signed-file-archive",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L389",
+      "source_location": "L390",
       "_origin": "ast"
     },
     {
@@ -40843,7 +40979,7 @@
       "label": "Latest Recovery Note 2026-07-18: organization-service-contract",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L402",
+      "source_location": "L403",
       "_origin": "ast"
     },
     {
@@ -40851,7 +40987,7 @@
       "label": "Latest Recovery Note 2026-07-19: consent-template-generation",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L415",
+      "source_location": "L416",
       "_origin": "ast"
     },
     {
@@ -40859,7 +40995,7 @@
       "label": "Latest Recovery Note 2026-07-19: contract-acts-generation",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L428",
+      "source_location": "L429",
       "_origin": "ast"
     },
     {
@@ -40867,7 +41003,7 @@
       "label": "Latest Recovery Note 2026-07-19: act-signed-file-archive",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L442",
+      "source_location": "L443",
       "_origin": "ast"
     },
     {
@@ -40875,7 +41011,7 @@
       "label": "Latest Recovery Note 2026-07-19: consent-signed-file-archive",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L455",
+      "source_location": "L456",
       "_origin": "ast"
     },
     {
@@ -40883,7 +41019,7 @@
       "label": "Latest Recovery Note 2026-07-19: external-signed-file-upload",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L468",
+      "source_location": "L469",
       "_origin": "ast"
     },
     {
@@ -40891,7 +41027,7 @@
       "label": "Latest Recovery Note 2026-07-19: certificate-payer-source",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L481",
+      "source_location": "L482",
       "_origin": "ast"
     },
     {
@@ -40899,7 +41035,7 @@
       "label": "Latest Recovery Note 2026-07-19: recipient-certificate-crud",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L495",
+      "source_location": "L496",
       "_origin": "ast"
     },
     {
@@ -40907,7 +41043,7 @@
       "label": "Latest Recovery Note 2026-07-19: certificate-import-preview",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L508",
+      "source_location": "L509",
       "_origin": "ast"
     },
     {
@@ -40915,7 +41051,7 @@
       "label": "Latest Recovery Note 2026-07-19: certificate-import-write-path-contract",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L522",
+      "source_location": "L523",
       "_origin": "ast"
     },
     {
@@ -40923,7 +41059,7 @@
       "label": "Latest Recovery Note 2026-07-19: import-batch-foundation",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L533",
+      "source_location": "L534",
       "_origin": "ast"
     },
     {
@@ -40931,7 +41067,7 @@
       "label": "Latest Recovery Note 2026-07-19: certificate-import-apply",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L548",
+      "source_location": "L549",
       "_origin": "ast"
     },
     {
@@ -40939,7 +41075,7 @@
       "label": "Latest Recovery Note 2026-07-19: import-batch-detail",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L561",
+      "source_location": "L562",
       "_origin": "ast"
     },
     {
@@ -40947,7 +41083,15 @@
       "label": "Latest Recovery Note 2026-07-19: import-batch-list",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L573",
+      "source_location": "L574",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_project_recovery_manifest_latest_recovery_note_2026_07_19_certificate_balance_ledger_contract",
+      "label": "Latest Recovery Note 2026-07-19: certificate-balance-ledger-contract",
+      "file_type": "document",
+      "source_file": "docs/project-recovery-manifest.md",
+      "source_location": "L585",
       "_origin": "ast"
     },
     {
@@ -132818,6 +132962,132 @@
       "weight": 1.0
     },
     {
+      "source": "docs_42_certificate_balance_ledger_contract",
+      "target": "docs_42_certificate_balance_ledger_contract_certificate_balance_ledger_contract",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_42_certificate_balance_ledger_contract_certificate_balance_ledger_contract",
+      "target": "docs_42_certificate_balance_ledger_contract_цель",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L13",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_42_certificate_balance_ledger_contract_certificate_balance_ledger_contract",
+      "target": "docs_42_certificate_balance_ledger_contract_ключевое_решение",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L17",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_42_certificate_balance_ledger_contract_certificate_balance_ledger_contract",
+      "target": "docs_42_certificate_balance_ledger_contract_почему_так",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L34",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_42_certificate_balance_ledger_contract_certificate_balance_ledger_contract",
+      "target": "docs_42_certificate_balance_ledger_contract_предлагаемая_доменная_модель",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L44",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_42_certificate_balance_ledger_contract_предлагаемая_доменная_модель",
+      "target": "docs_42_certificate_balance_ledger_contract_certificate_balance_account",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L46",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_42_certificate_balance_ledger_contract_предлагаемая_доменная_модель",
+      "target": "docs_42_certificate_balance_ledger_contract_effective_remaining_amount",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L65",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_42_certificate_balance_ledger_contract_certificate_balance_ledger_contract",
+      "target": "docs_42_certificate_balance_ledger_contract_account_creation_service",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L78",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_42_certificate_balance_ledger_contract_certificate_balance_ledger_contract",
+      "target": "docs_42_certificate_balance_ledger_contract_appointment_billing_integration",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L117",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_42_certificate_balance_ledger_contract_certificate_balance_ledger_contract",
+      "target": "docs_42_certificate_balance_ledger_contract_ui_ux",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L131",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_42_certificate_balance_ledger_contract_certificate_balance_ledger_contract",
+      "target": "docs_42_certificate_balance_ledger_contract_financial_boundaries",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L150",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_42_certificate_balance_ledger_contract_certificate_balance_ledger_contract",
+      "target": "docs_42_certificate_balance_ledger_contract_migration_risks",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L174",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_42_certificate_balance_ledger_contract_certificate_balance_ledger_contract",
+      "target": "docs_42_certificate_balance_ledger_contract_acceptance_criteria_for_first_vertical_slice",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L196",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_42_certificate_balance_ledger_contract_certificate_balance_ledger_contract",
+      "target": "docs_42_certificate_balance_ledger_contract_parallel_agent_rule",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/42-certificate-balance-ledger-contract.md",
+      "source_location": "L209",
+      "weight": 1.0
+    },
+    {
       "source": "docs_critical_stack_ux_review_2026_06_10",
       "target": "docs_critical_stack_ux_review_2026_06_10_критический_срез_проекта_rmcodex",
       "relation": "contains",
@@ -134636,6 +134906,15 @@
       "weight": 1.0
     },
     {
+      "source": "docs_current_state_текущее_состояние_проекта_радость_моя",
+      "target": "docs_current_state_update_2026_07_19_certificate_balance_ledger_contract",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1906",
+      "weight": 1.0
+    },
+    {
       "source": "decisions_adr_001_django_postgresql_local_first",
       "target": "decisions_adr_001_django_postgresql_local_first_adr_001_django_postgresql_локальный_first_deployment",
       "relation": "contains",
@@ -135302,6 +135581,15 @@
       "weight": 1.0
     },
     {
+      "source": "docs_next_chat_prompt_промпт_для_следующего_чата_по_проекту_радость_моя",
+      "target": "docs_next_chat_prompt_latest_clarification_2026_07_19_certificate_balance_ledger_contract_proposed",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/next-chat-prompt.md",
+      "source_location": "L617",
+      "weight": 1.0
+    },
+    {
       "source": "docs_project_recovery_manifest",
       "target": "docs_project_recovery_manifest_манифест_восстановления_проекта",
       "relation": "contains",
@@ -135334,7 +135622,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L66",
+      "source_location": "L67",
       "weight": 1.0
     },
     {
@@ -135343,7 +135631,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L93",
+      "source_location": "L94",
       "weight": 1.0
     },
     {
@@ -135352,7 +135640,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L106",
+      "source_location": "L107",
       "weight": 1.0
     },
     {
@@ -135361,7 +135649,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L108",
+      "source_location": "L109",
       "weight": 1.0
     },
     {
@@ -135370,7 +135658,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L127",
+      "source_location": "L128",
       "weight": 1.0
     },
     {
@@ -135379,7 +135667,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L136",
+      "source_location": "L137",
       "weight": 1.0
     },
     {
@@ -135388,7 +135676,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L148",
+      "source_location": "L149",
       "weight": 1.0
     },
     {
@@ -135397,7 +135685,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L192",
+      "source_location": "L193",
       "weight": 1.0
     },
     {
@@ -135406,7 +135694,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L199",
+      "source_location": "L200",
       "weight": 1.0
     },
     {
@@ -135415,7 +135703,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L287",
+      "source_location": "L288",
       "weight": 1.0
     },
     {
@@ -135424,7 +135712,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L298",
+      "source_location": "L299",
       "weight": 1.0
     },
     {
@@ -135433,7 +135721,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L311",
+      "source_location": "L312",
       "weight": 1.0
     },
     {
@@ -135442,7 +135730,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L323",
+      "source_location": "L324",
       "weight": 1.0
     },
     {
@@ -135451,7 +135739,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L337",
+      "source_location": "L338",
       "weight": 1.0
     },
     {
@@ -135460,7 +135748,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L349",
+      "source_location": "L350",
       "weight": 1.0
     },
     {
@@ -135469,7 +135757,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L361",
+      "source_location": "L362",
       "weight": 1.0
     },
     {
@@ -135478,7 +135766,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L374",
+      "source_location": "L375",
       "weight": 1.0
     },
     {
@@ -135487,7 +135775,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L389",
+      "source_location": "L390",
       "weight": 1.0
     },
     {
@@ -135496,7 +135784,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L402",
+      "source_location": "L403",
       "weight": 1.0
     },
     {
@@ -135505,7 +135793,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L415",
+      "source_location": "L416",
       "weight": 1.0
     },
     {
@@ -135514,7 +135802,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L428",
+      "source_location": "L429",
       "weight": 1.0
     },
     {
@@ -135523,7 +135811,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L442",
+      "source_location": "L443",
       "weight": 1.0
     },
     {
@@ -135532,7 +135820,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L455",
+      "source_location": "L456",
       "weight": 1.0
     },
     {
@@ -135541,7 +135829,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L468",
+      "source_location": "L469",
       "weight": 1.0
     },
     {
@@ -135550,7 +135838,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L481",
+      "source_location": "L482",
       "weight": 1.0
     },
     {
@@ -135559,7 +135847,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L495",
+      "source_location": "L496",
       "weight": 1.0
     },
     {
@@ -135568,7 +135856,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L508",
+      "source_location": "L509",
       "weight": 1.0
     },
     {
@@ -135577,7 +135865,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L522",
+      "source_location": "L523",
       "weight": 1.0
     },
     {
@@ -135586,7 +135874,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L533",
+      "source_location": "L534",
       "weight": 1.0
     },
     {
@@ -135595,7 +135883,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L548",
+      "source_location": "L549",
       "weight": 1.0
     },
     {
@@ -135604,7 +135892,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L561",
+      "source_location": "L562",
       "weight": 1.0
     },
     {
@@ -135613,7 +135901,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L573",
+      "source_location": "L574",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_project_recovery_manifest_манифест_восстановления_проекта",
+      "target": "docs_project_recovery_manifest_latest_recovery_note_2026_07_19_certificate_balance_ledger_contract",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/project-recovery-manifest.md",
+      "source_location": "L585",
       "weight": 1.0
     },
     {

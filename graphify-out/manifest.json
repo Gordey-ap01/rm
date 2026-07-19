@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784435755.0925775,
-    "ast_hash": "77d7bf3dfdcc883d579a8d0260f849f3",
+    "mtime": 1784443963.0255585,
+    "ast_hash": "2a4f205c0f33bd70fd2d5ae466fdd6fe",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784435782.4791317,
-    "ast_hash": "79b4332d3fc3c82399971304f8ec670a",
+    "mtime": 1784443992.4918592,
+    "ast_hash": "65e0a209f2b702588772841b4072e3ce",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784435769.7798474,
-    "ast_hash": "3d0690df5d753c295f3f33f6e71e1b9e",
+    "mtime": 1784443980.1235645,
+    "ast_hash": "6903a864380952f02656c2830166ccf0",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1327,6 +1327,11 @@
   "templates/operations/import_batch_list.html": {
     "mtime": 1784435383.8579116,
     "ast_hash": "c1c6d4a06effc10f357e2e0fb0cd2b4f",
+    "semantic_hash": ""
+  },
+  "docs/42-certificate-balance-ledger-contract.md": {
+    "mtime": 1784443947.6256897,
+    "ast_hash": "f154a3bcc1ea93d571cb00b8941adad4",
     "semantic_hash": ""
   }
 }
