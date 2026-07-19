@@ -3671,6 +3671,27 @@ th {
   vertical-align: top;
 }
 
+.balance-account-source,
+.account-origin {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.account-origin {
+  flex-wrap: wrap;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.account-origin .status-pill {
+  padding: 2px 7px;
+  font-size: 11px;
+}
+
 .recipient-overview {
   display: grid;
   grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);

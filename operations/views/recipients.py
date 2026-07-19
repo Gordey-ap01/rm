@@ -47,7 +47,9 @@ def _recipient_detail_summary_items(
         {
             "label": "Статус",
             "value": recipient.get_status_display(),
-            "hint": recipient.birth_date.strftime("%d.%m.%Y") if recipient.birth_date else "дата рождения не указана",
+            "hint": recipient.birth_date.strftime("%d.%m.%Y")
+            if recipient.birth_date
+            else "дата рождения не указана",
         },
         {
             "label": "Представители",
@@ -361,8 +363,7 @@ def recipient_list(request):
         )
     matching_count = filtered_qs.count()
     recipients = list(
-        filtered_qs
-        .annotate(
+        filtered_qs.annotate(
             legacy_appointments_count=Count("appointments", distinct=True),
             participant_only_appointments_count=Count(
                 "appointment_participations__appointment",
@@ -417,10 +418,9 @@ def recipient_detail(request, pk: int):
     now = timezone.now()
     representative_links = list(recipient.representative_links.all())
     accounts = list(
-        recipient.balance_accounts.select_related("funding_source", "service").order_by(
-            "funding_source__name",
-            "service__name",
-        )
+        recipient.balance_accounts.select_related(
+            "funding_source", "service", "certificate"
+        ).order_by("funding_source__name", "service__name")
     )
     certificates = list(
         recipient.certificates.select_related(
@@ -560,7 +560,9 @@ def recipient_certificate_balance_account_create(request, pk: int):
         Certificate.objects.select_related("child", "funding_source", "balance_account"),
         pk=pk,
     )
-    redirect_url = f"{reverse('recipient_detail', args=[certificate.child_id])}#recipient-certificates"
+    redirect_url = (
+        f"{reverse('recipient_detail', args=[certificate.child_id])}#recipient-certificates"
+    )
     if request.POST.get("confirm_create_balance") != "1":
         messages.error(request, "Удерживайте кнопку, чтобы подтвердить создание счета баланса.")
         return redirect(redirect_url)

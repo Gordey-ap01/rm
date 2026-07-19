@@ -26,7 +26,9 @@ def _balance_summary_items(accounts: list[BalanceAccount]) -> list[dict[str, str
         account for account in accounts if account.status == BalanceAccount.Status.ACTIVE
     ]
     low_accounts = [account for account in accounts if account.warning_level != "ok"]
-    session_accounts = [account for account in accounts if account.unit == BalanceAccount.Unit.SESSIONS]
+    session_accounts = [
+        account for account in accounts if account.unit == BalanceAccount.Unit.SESSIONS
+    ]
     money_accounts = [account for account in accounts if account.unit == BalanceAccount.Unit.MONEY]
     funding_count = len({account.funding_source_id for account in accounts})
     return [
@@ -88,26 +90,17 @@ def _balance_next_action(accounts: list[BalanceAccount]) -> dict[str, str]:
 
 
 def _balance_account_control_items(account: BalanceAccount | None = None) -> list[dict[str, str]]:
-    unit_detail = (
-        "Счета в занятиях списываются целыми занятиями; рублевые счета используются для денежных остатков."
-    )
-    source_detail = (
-        "Источник отделяет личные оплаты, гранты, фонды и спонсоров; услуга ограничивает, где счет можно выбрать."
-    )
-    ledger_detail = (
-        "Начальный остаток входит в расчет текущего баланса, а платежи и списания остаются отдельными ledger-операциями."
-    )
-    status_detail = (
-        "Активный счет доступен для занятий и программ; даты действия помогают не выбрать счет вне периода финансирования."
-    )
+    unit_detail = "Счета в занятиях списываются целыми занятиями; рублевые счета используются для денежных остатков."
+    source_detail = "Источник отделяет личные оплаты, гранты, фонды и спонсоров; услуга ограничивает, где счет можно выбрать."
+    ledger_detail = "Начальный остаток входит в расчет текущего баланса, а платежи и списания остаются отдельными ledger-операциями."
+    status_detail = "Активный счет доступен для занятий и программ; даты действия помогают не выбрать счет вне периода финансирования."
     if account:
         unit_detail = (
             f"Сейчас: {account.get_unit_display()}, остаток {account.current_balance}. "
             "При смене единицы проверьте связанные занятия и программы."
         )
         source_detail = (
-            f"Источник: {account.funding_source}. "
-            f"Услуга: {account.service or 'любые услуги'}."
+            f"Источник: {account.funding_source}. " f"Услуга: {account.service or 'любые услуги'}."
         )
         ledger_detail = (
             "Изменение начального остатка сразу меняет расчет текущего баланса; "
@@ -206,9 +199,9 @@ def balance_account_edit(request, pk: int):
 @user_passes_test(is_admin_user)
 def balances(request):
     accounts = list(
-        BalanceAccount.objects.select_related("child", "funding_source", "service").order_by(
-            "child__last_name", "funding_source__name"
-        )
+        BalanceAccount.objects.select_related(
+            "child", "funding_source", "service", "certificate"
+        ).order_by("child__last_name", "funding_source__name")
     )
     return render(
         request,
@@ -239,12 +232,7 @@ def balance_account_delete(request, pk: int):
     linked_grant_allocations = GrantRecipientAllocation.objects.filter(
         balance_account=account
     ).count()
-    if (
-        linked_appointments
-        or linked_payments
-        or linked_ledger_entries
-        or linked_grant_allocations
-    ):
+    if linked_appointments or linked_payments or linked_ledger_entries or linked_grant_allocations:
         messages.error(
             request,
             (

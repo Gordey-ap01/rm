@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Any
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
 from django.db.models import Q, QuerySet, Sum
 from django.utils import timezone
@@ -764,6 +764,19 @@ class BalanceAccount(TimeStampedModel, SoftDeleteMixin):
         scope = self.service.name if self.service else self.get_service_scope_display()
         return f"{self.child}: {self.funding_source} / {scope} / {self.get_unit_display()}"
 
+    @property
+    def certificate_link_label(self) -> str:
+        try:
+            certificate = self.certificate
+        except ObjectDoesNotExist:
+            return ""
+        number = certificate.number or "б/н"
+        return f"{certificate.get_certificate_type_display()} №{number}"
+
+    @property
+    def is_certificate_linked(self) -> bool:
+        return bool(self.certificate_link_label)
+
     def clean(self) -> None:
         if self.service_scope == self.ServiceScope.SPECIFIC_SERVICE and not self.service_id:
             raise ValidationError(
@@ -1342,9 +1355,7 @@ class Appointment(TimeStampedModel):
 
         messages = []
         if self.pk:
-            assignments = list(
-                self.staff_assignments.select_related("staff_member").order_by("pk")
-            )
+            assignments = list(self.staff_assignments.select_related("staff_member").order_by("pk"))
             if assignments:
                 for assignment in assignments:
                     if assignment.override_availability:
@@ -1572,7 +1583,10 @@ class AppointmentParticipant(TimeStampedModel):
                 self.appointment.service
             ):
                 raise ValidationError({"billing_account": "Счет не подходит для услуги занятия."})
-        if self.billing_decision == Appointment.BillingDecision.CHARGE and not self.billing_account_id:
+        if (
+            self.billing_decision == Appointment.BillingDecision.CHARGE
+            and not self.billing_account_id
+        ):
             raise ValidationError({"billing_account": "Для списания нужно выбрать счет баланса."})
         if self.program_block_id and self.program_block.program.child_id != self.child_id:
             raise ValidationError(
@@ -1842,17 +1856,19 @@ class AppointmentReschedulePlan(TimeStampedModel):
     def clean(self) -> None:
         if self.date_from and self.date_to and self.date_to < self.date_from:
             raise ValidationError({"date_to": "Дата окончания не может быть раньше даты начала."})
-        if self.plan_type in {
-            self.PlanType.SINGLE_MOVE,
-            self.PlanType.CASCADE_SHIFT,
-        } and not self.root_appointment_id:
+        if (
+            self.plan_type
+            in {
+                self.PlanType.SINGLE_MOVE,
+                self.PlanType.CASCADE_SHIFT,
+            }
+            and not self.root_appointment_id
+        ):
             raise ValidationError(
                 {"root_appointment": "Для плана переноса нужно исходное занятие."}
             )
         if self.plan_type == self.PlanType.STAFF_ABSENCE and not self.staff_member_id:
-            raise ValidationError(
-                {"staff_member": "Для плана отсутствия нужен специалист."}
-            )
+            raise ValidationError({"staff_member": "Для плана отсутствия нужен специалист."})
 
 
 class AppointmentRescheduleChain(TimeStampedModel):
@@ -1956,7 +1972,9 @@ class AppointmentRescheduleStep(TimeStampedModel):
     action_type = models.CharField(
         "действие", max_length=30, choices=ActionType.choices, default=ActionType.MOVE
     )
-    status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.PENDING)
+    status = models.CharField(
+        "статус", max_length=30, choices=Status.choices, default=Status.PENDING
+    )
     source_appointment = models.ForeignKey(
         Appointment,
         verbose_name="исходное занятие",
@@ -2008,7 +2026,9 @@ class AppointmentRescheduleStep(TimeStampedModel):
         default=ConfirmationStatus.NOT_REQUESTED,
     )
     confirmation_summary = models.JSONField("сводка согласования", default=dict, blank=True)
-    requires_staff_override = models.BooleanField("требует разрешение выхода вне графика", default=False)
+    requires_staff_override = models.BooleanField(
+        "требует разрешение выхода вне графика", default=False
+    )
     requires_room_override = models.BooleanField("требует разрешение кабинета", default=False)
     admin_note = models.TextField("заметка администратора", blank=True)
 
@@ -2017,7 +2037,9 @@ class AppointmentRescheduleStep(TimeStampedModel):
         verbose_name_plural = "шаги плана переноса"
         ordering = ["plan", "position"]
         constraints = [
-            models.UniqueConstraint(fields=["plan", "position"], name="unique_reschedule_step_position"),
+            models.UniqueConstraint(
+                fields=["plan", "position"], name="unique_reschedule_step_position"
+            ),
             models.UniqueConstraint(
                 fields=["chain", "chain_position"],
                 condition=Q(chain__isnull=False),
@@ -3772,7 +3794,9 @@ class EquipmentAsset(TimeStampedModel):
         blank=True,
         related_name="equipment_assets",
     )
-    total_amount = models.DecimalField("стоимость", max_digits=12, decimal_places=2, null=True, blank=True)
+    total_amount = models.DecimalField(
+        "стоимость", max_digits=12, decimal_places=2, null=True, blank=True
+    )
     status = models.CharField(
         "статус",
         max_length=30,
@@ -3825,7 +3849,9 @@ class EquipmentAsset(TimeStampedModel):
             and self.purchase_expense.category.expense_type
             != CenterExpenseCategory.ExpenseType.EQUIPMENT
         ):
-            errors["purchase_expense"] = "Расход покупки должен относиться к категории оборудования."
+            errors["purchase_expense"] = (
+                "Расход покупки должен относиться к категории оборудования."
+            )
         if errors:
             raise ValidationError(errors)
 
@@ -4165,9 +4191,13 @@ class ServiceContract(TimeStampedModel):
             errors["valid_until"] = "Дата окончания не может быть раньше даты начала."
         if self.representative_link_id:
             if self.child_id and self.representative_link.child_id != self.child_id:
-                errors["representative_link"] = "Подписант должен относиться к выбранному получателю."
+                errors["representative_link"] = (
+                    "Подписант должен относиться к выбранному получателю."
+                )
             if not self.representative_link.signs_contract:
-                errors["representative_link"] = "У представителя должен быть флажок подписанта договора."
+                errors["representative_link"] = (
+                    "У представителя должен быть флажок подписанта договора."
+                )
         if self.certificate_id and self.child_id and self.certificate.child_id != self.child_id:
             errors["certificate"] = "Сертификат должен относиться к выбранному получателю."
         if (
@@ -4668,10 +4698,14 @@ class ContractAct(TimeStampedModel):
                 errors["document"] = "Связанный документ должен иметь категорию акта."
             elif self.act_kind == self.ActKind.SERVICE and self.service_contract_id:
                 if self.document.target_type != Document.TargetType.RECIPIENT:
-                    errors["document"] = "Акт к договору с получателем должен быть документом получателя."
+                    errors["document"] = (
+                        "Акт к договору с получателем должен быть документом получателя."
+                    )
                 elif self.document.child_id != self.service_contract.child_id:
                     errors["document"] = "Документ акта должен относиться к получателю договора."
-            elif self.act_kind == self.ActKind.ORGANIZATION_SERVICE and self.organization_contract_id:
+            elif (
+                self.act_kind == self.ActKind.ORGANIZATION_SERVICE and self.organization_contract_id
+            ):
                 if self.document.target_type == Document.TargetType.RECIPIENT:
                     errors["document"] = "B2B-акт нельзя связывать с документом получателя."
                 elif (
@@ -4986,7 +5020,9 @@ class ContractLegalSnapshot(TimeStampedModel):
                 )
         if self.document_id:
             if self.document.category != Document.Category.CONTRACT:
-                errors["document"] = "Snapshot можно связать только с документом категории договора."
+                errors["document"] = (
+                    "Snapshot можно связать только с документом категории договора."
+                )
             if self.contract_kind == self.ContractKind.SERVICE and self.service_contract_id:
                 if self.document.target_type != Document.TargetType.RECIPIENT:
                     errors["document"] = (
@@ -5018,8 +5054,7 @@ class ContractLegalSnapshot(TimeStampedModel):
                     )
                 elif (
                     self.document.target_type == Document.TargetType.COUNTERPARTY
-                    and self.document.counterparty_id
-                    != self.organization_contract.counterparty_id
+                    and self.document.counterparty_id != self.organization_contract.counterparty_id
                 ):
                     errors["document"] = (
                         "Документ snapshot должен относиться к организации договора."

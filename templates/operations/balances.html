@@ -59,8 +59,16 @@
                   {{ account.child }}
                 </td>
                 <td data-label="Источник">
-                  <span class="color-dot" style="background:{{ account.color }}"></span>
-                  {{ account.funding_source }}
+                  <div class="balance-account-source">
+                    <span class="color-dot" style="background:{{ account.color }}"></span>
+                    <span>{{ account.funding_source }}</span>
+                  </div>
+                  {% if account.certificate_link_label %}
+                    <div class="account-origin">
+                      <span class="status-pill muted-pill">Сертификат</span>
+                      <span>{{ account.certificate_link_label }}</span>
+                    </div>
+                  {% endif %}
                 </td>
                 <td data-label="Тип">{{ account.get_unit_display }}</td>
                 <td data-label="Услуга">{% if account.service %}{{ account.service }}{% else %}<span class="muted">Любые</span>{% endif %}</td>

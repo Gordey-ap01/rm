@@ -51,6 +51,7 @@
 | `docs/42-certificate-balance-ledger-contract.md` | DB-owner контракт связки сертификата с `BalanceAccount`/`LedgerEntry`; первый срез реализован через nullable `Certificate.balance_account`, idempotent account service and recipient hold action. | Перед любыми изменениями `Certificate.balance_account`, созданием счетов по сертификатам, списанием сертификатов занятиями, backfill, rename `remaining_amount` или отображением effective certificate balance. |
 | `docs/43-certificate-balance-backfill-preflight-contract.md` | Read-only контракт preflight перед массовым backfill счетов сертификатов; команда `audit_certificate_balance_backfill` считает кандидатов, проблемы данных и дубликаты без записи в БД. | Перед запуском backfill сертификатов, ручной чисткой данных, добавлением constraints по суммам/датам или уникальности номера сертификата. |
 | `docs/44-certificate-balance-backfill-command-contract.md` | Контракт controlled backfill-команды: dry-run by default, `--apply --confirm`, блокировка при preflight issues unless explicit override, idempotent creation через certificate balance service. | Перед изменениями `backfill_certificate_balance_accounts`, запуском apply, политикой zero-balance сертификатов или расширением backfill на production/staging. |
+| `docs/45-certificate-account-labels-contract.md` | No-migration UI/read-only контракт маркировки `BalanceAccount`, связанных с сертификатами, в списке балансов, карточке получателя и селекторах счета списания. | Перед изменениями provenance labels для сертификатных счетов, account choice labels или отображением certificate-linked accounts. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -83,7 +84,7 @@
 13. Если задача затрагивает справочники категорий/контрагентов вне Django admin, прочитать `docs/22-category-counterparty-directory-contract.md`.
 14. Если задача затрагивает Word-генерацию договоров или placeholder catalog, прочитать `docs/23-contract-word-generation-contract.md`, `docs/24-document-template-source-inventory.md` и `docs/25-template-placeholder-expansion-v2-contract.md`.
 15. Если задача затрагивает `Document` без `Child`, donation-document storage, юрпрофиль центра, signed snapshots, B2B/consents/acts, прочитать `docs/26-legal-document-targets-and-center-profile-contract.md`.
-16. Если задача затрагивает юридические семейства шаблонов, юрполя сторон, спецификацию договора, сертификаты, архив подписанных файлов, B2B-договоры организации, согласия или акты, прочитать `docs/27-legal-template-families-contract.md` и соответствующий контракт `docs/28`-`docs/44`.
+16. Если задача затрагивает юридические семейства шаблонов, юрполя сторон, спецификацию договора, сертификаты, архив подписанных файлов, B2B-договоры организации, согласия или акты, прочитать `docs/27-legal-template-families-contract.md` и соответствующий контракт `docs/28`-`docs/45`.
 17. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
 18. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
 19. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
@@ -636,3 +637,15 @@ Browser QA - это проверка живого интерфейса в бра
 - Browser QA was not needed because there are no UI changes.
 - Graphify code-index after this slice: `5433` nodes / `24183` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: run dry-run/preflight on staging/production and review counts before any apply. Still deferred: zero-balance policy, data cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.
+
+## Latest Recovery Note 2026-07-19: certificate-account-labels
+
+- `docs/45-certificate-account-labels-contract.md` is added and implemented as a no-migration UI/read-only slice.
+- `BalanceAccount` has read-only `certificate_link_label` and `is_certificate_linked` for accounts connected through `Certificate.balance_account`.
+- `BalanceAccount.__str__()` is unchanged to keep legacy report/audit/export labels stable.
+- `/balances/` and recipient detail show a compact `Сертификат` provenance marker with certificate type and number.
+- Appointment/billing/payment account selectors append `сертификат: ...` for linked certificate accounts.
+- No certificate balance, `Certificate.remaining_amount`, ledger, payment, appointment billing/status, payroll, grant, contract, schedule or import semantics changed.
+- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `BalancesViewTests` `10 passed`, full pytest `657 passed`, Playwright Browser QA fallback desktop/mobile for balances and recipient detail. Synthetic `BQA-Labels-*` data was cleaned and runserver `8114` stopped.
+- Graphify code-index after this slice: `5454` nodes / `24356` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: run certificate backfill dry-run/preflight on staging/production, or choose a new explicit contract. Still deferred: zero-balance policy, data cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.

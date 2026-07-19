@@ -677,3 +677,16 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Browser QA was not needed because this slice has no UI changes.
 - Graphify code-index after this slice: `5433` nodes / `24183` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: run dry-run/preflight on staging/production and review counts before any real apply. Still deferred: zero-balance policy, data cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.
+
+## Latest clarification 2026-07-19: certificate-account-labels complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/45-certificate-account-labels-contract.md` is added and implemented as a no-migration UI/read-only slice.
+- `BalanceAccount` exposes read-only `certificate_link_label` and `is_certificate_linked` for accounts linked through `Certificate.balance_account`; `BalanceAccount.__str__()` is intentionally unchanged.
+- `/balances/` and recipient detail show a compact `Сертификат` provenance marker with certificate type and number.
+- Appointment/billing/payment account selectors append `сертификат: ...` for linked certificate accounts.
+- No certificate balance, `Certificate.remaining_amount`, ledger, payment, appointment billing/status, payroll, grant, contract, schedule or import semantics changed.
+- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `BalancesViewTests` `10 passed`, full pytest `657 passed`, Playwright Browser QA fallback desktop/mobile for balances and recipient detail. Synthetic `BQA-Labels-*` data was cleaned and runserver `8114` stopped.
+- Graphify code-index after this slice: `5454` nodes / `24356` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: run certificate backfill dry-run/preflight on staging/production, or choose a new explicit contract. Still deferred: zero-balance policy, data cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.

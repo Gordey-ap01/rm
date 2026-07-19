@@ -65,9 +65,7 @@ from .schedule_validation import (
 
 DATE_INPUT = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
 TIME_INPUT = forms.TimeInput(attrs={"type": "time"}, format="%H:%M")
-GROUP_BILLING_PARTICIPANT_REQUIRED = (
-    "Для группового занятия выберите конкретного участника."
-)
+GROUP_BILLING_PARTICIPANT_REQUIRED = "Для группового занятия выберите конкретного участника."
 CONTRACT_IMPORT_TYPE_CHOICES = (
     ("counterparties", "Контрагенты"),
     ("expenses", "Расходы"),
@@ -85,6 +83,17 @@ def default_charge_amount(account, appointment):
     if account.unit == BalanceAccount.Unit.SESSIONS:
         return Decimal("-1")
     return -appointment.service.default_price
+
+
+def balance_account_choice_label(account: BalanceAccount) -> str:
+    certificate_label = account.certificate_link_label
+    if certificate_label:
+        return f"{account} · сертификат: {certificate_label}"
+    return str(account)
+
+
+def configure_balance_account_choice_field(field) -> None:
+    field.label_from_instance = balance_account_choice_label
 
 
 def single_participant_or_none(appointment):
@@ -307,6 +316,7 @@ class AppointmentForm(forms.ModelForm):
         ).order_by("program__child__last_name", "program__title", "number")
         self.fields["program_block"].required = False
         self.fields["billing_account"].required = False
+        configure_balance_account_choice_field(self.fields["billing_account"])
         self.fields["billing_account"].queryset = self._billing_accounts_queryset()
         self.fields["admin_note"].required = False
         self.fields["staff_availability_override"].initial = bool(
@@ -368,9 +378,9 @@ class AppointmentForm(forms.ModelForm):
         return getattr(initial, "id", initial)
 
     def _billing_accounts_queryset(self):
-        qs = BalanceAccount.objects.select_related("child", "funding_source", "service").filter(
-            status=BalanceAccount.Status.ACTIVE
-        )
+        qs = BalanceAccount.objects.select_related(
+            "child", "funding_source", "service", "certificate"
+        ).filter(status=BalanceAccount.Status.ACTIVE)
         service_id = self._selected_service_id()
         if service_id:
             qs = qs.filter(
@@ -588,7 +598,9 @@ class AppointmentForm(forms.ModelForm):
                 unavailable and self.cleaned_data.get("staff_availability_override")
             )
             override_reason = (
-                unavailable if unavailable and self.cleaned_data.get("staff_availability_override") else ""
+                unavailable
+                if unavailable and self.cleaned_data.get("staff_availability_override")
+                else ""
             )
             role = (
                 AppointmentStaffAssignment.Role.PRIMARY
@@ -828,9 +840,7 @@ class AppointmentMoveForm(forms.Form):
                 unavailable = "; ".join(unavailable_messages)
                 self.availability_warning = unavailable
                 if not self._staff_override_requested():
-                    raise forms.ValidationError(
-                        "Недоступность специалиста: " + unavailable + "."
-                    )
+                    raise forms.ValidationError("Недоступность специалиста: " + unavailable + ".")
                 cleaned["staff_availability_override"] = True
                 cleaned["staff_availability_override_reason"] = unavailable
         return cleaned
@@ -928,7 +938,9 @@ class AppointmentMoveForm(forms.Form):
         )
         legacy_child = old.child
         legacy_billing_account = old.billing_account
-        if participants and all(participant.child_id != old.child_id for participant in participants):
+        if participants and all(
+            participant.child_id != old.child_id for participant in participants
+        ):
             legacy_child = participants[0].child
             legacy_billing_account = participants[0].billing_account
         local_start = timezone.localtime(starts_at)
@@ -1085,8 +1097,11 @@ class BillingDecisionForm(forms.Form):
                 self.participant_required_error = GROUP_BILLING_PARTICIPANT_REQUIRED
         super().__init__(*args, **kwargs)
         target_child = self.participant.child if self.participant else appointment.child
+        configure_balance_account_choice_field(self.fields["billing_account"])
         self.fields["billing_account"].queryset = (
-            BalanceAccount.objects.select_related("child", "funding_source", "service")
+            BalanceAccount.objects.select_related(
+                "child", "funding_source", "service", "certificate"
+            )
             .filter(
                 Q(service_scope=BalanceAccount.ServiceScope.ANY) | Q(service=appointment.service),
                 child=target_child,
@@ -2080,9 +2095,13 @@ class AppointmentConfirmationSendForm(forms.Form):
         self.appointment_staff_assignments = self._appointment_staff_assignments(appointment)
         self.appointment_children = self._appointment_children(appointment)
         child_names = ", ".join(child.full_name for child in self.appointment_children)
-        staff_names = ", ".join(
-            assignment.staff_member.full_name for assignment in self.appointment_staff_assignments
-        ) or appointment.staff_member.full_name
+        staff_names = (
+            ", ".join(
+                assignment.staff_member.full_name
+                for assignment in self.appointment_staff_assignments
+            )
+            or appointment.staff_member.full_name
+        )
         self.targets = self._build_targets(appointment)
         if self.targets:
             self.fields["target_type"].choices = [
@@ -2226,10 +2245,7 @@ class AppointmentConfirmationSendForm(forms.Form):
             if representative_links:
                 for link in representative_links:
                     representative = link.representative
-                    if (
-                        not link.receives_schedule
-                        or not representative.email
-                    ):
+                    if not link.receives_schedule or not representative.email:
                         continue
                     key = (
                         AppointmentConfirmation.TargetType.REPRESENTATIVE
@@ -2564,6 +2580,13 @@ class PaymentForm(forms.ModelForm):
             "comment": forms.Textarea(attrs={"rows": 3}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        configure_balance_account_choice_field(self.fields["balance_account"])
+        self.fields["balance_account"].queryset = BalanceAccount.objects.select_related(
+            "child", "funding_source", "service", "certificate"
+        ).order_by("child__last_name", "funding_source__name", "service__name")
+
 
 class CenterExpenseCategoryForm(forms.ModelForm):
     class Meta:
@@ -2586,7 +2609,10 @@ class CenterExpenseCategoryForm(forms.ModelForm):
         duplicate_names = CenterExpenseCategory.objects.all()
         if self.instance.pk:
             duplicate_names = duplicate_names.exclude(pk=self.instance.pk)
-        if any(existing_name.casefold() == normalized_name for existing_name in duplicate_names.values_list("name", flat=True)):
+        if any(
+            existing_name.casefold() == normalized_name
+            for existing_name in duplicate_names.values_list("name", flat=True)
+        ):
             raise forms.ValidationError("Категория с таким названием уже есть.")
         return name
 
@@ -2851,9 +2877,9 @@ class EquipmentAssetForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        expense_filter = Q(
-            category__expense_type=CenterExpenseCategory.ExpenseType.EQUIPMENT
-        ) & ~Q(status=CenterExpense.Status.CANCELLED)
+        expense_filter = Q(category__expense_type=CenterExpenseCategory.ExpenseType.EQUIPMENT) & ~Q(
+            status=CenterExpense.Status.CANCELLED
+        )
         if self.instance and self.instance.purchase_expense_id:
             expense_filter |= Q(pk=self.instance.purchase_expense_id)
         self.fields["purchase_expense"].queryset = (
@@ -3288,7 +3314,9 @@ class ContractActForm(forms.ModelForm):
 
         self.fields["document"].queryset = self._document_queryset()
         self.fields["document"].required = False
-        self.fields["document"].help_text = (
+        self.fields[
+            "document"
+        ].help_text = (
             "Если оставить пустым, Word создаст новый документ акта для выбранного договора."
         )
 
@@ -3326,9 +3354,7 @@ class ContractActForm(forms.ModelForm):
             service_contract_id = self._selected_service_contract_id()
             if service_contract_id:
                 try:
-                    contract = ServiceContract.objects.only("child_id").get(
-                        pk=service_contract_id
-                    )
+                    contract = ServiceContract.objects.only("child_id").get(pk=service_contract_id)
                 except ServiceContract.DoesNotExist:
                     document_filter &= Q(pk__isnull=True)
                 else:
@@ -3342,9 +3368,9 @@ class ContractActForm(forms.ModelForm):
             organization_contract_id = self._selected_organization_contract_id()
             if organization_contract_id:
                 try:
-                    contract = OrganizationServiceContract.objects.only(
-                        "counterparty_id"
-                    ).get(pk=organization_contract_id)
+                    contract = OrganizationServiceContract.objects.only("counterparty_id").get(
+                        pk=organization_contract_id
+                    )
                 except OrganizationServiceContract.DoesNotExist:
                     document_filter &= Q(pk__isnull=True)
                 else:

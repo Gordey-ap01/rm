@@ -12,7 +12,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from operations.forms import AppointmentConfirmationSendForm
+from operations.forms import AppointmentConfirmationSendForm, BillingDecisionForm
 from operations.models import (
     Appointment,
     AppointmentConfirmation,
@@ -70,6 +70,7 @@ from operations.models import (
 )
 from operations.services import (
     billing as billing_svc,
+    certificates as certificate_svc,
     financial_integrity_checks as financial_integrity_checks_svc,
     rescheduling_plans as plan_svc,
 )
@@ -264,7 +265,6 @@ class TomorrowViewTests(NewViewsTestBase):
         self.assertContains(response, participant_child.full_name)
         self.assertContains(response, assigned_staff.full_name)
 
-
     def test_tomorrow_shows_confirmation_targets_and_low_balances(self):
         day = timezone.localdate() + timedelta(days=1)
         start = _local_dt(day, time(12, 0))
@@ -448,7 +448,9 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertContains(response, "Debit ledger-проводка")
         self.assertContains(response, reverse("appointment_detail", args=[appointment.pk]))
         finding = FinancialIntegrityFinding.objects.get()
-        self.assertContains(response, reverse("financial_integrity_finding_detail", args=[finding.pk]))
+        self.assertContains(
+            response, reverse("financial_integrity_finding_detail", args=[finding.pk])
+        )
         self.assertContains(response, reverse("financial_integrity_report"))
         self.assertNotContains(response, "Исправить автоматически")
 
@@ -510,7 +512,9 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertEqual(report["run_counts"]["issues"], 1)
         self.assertEqual(report["period"]["selected_period"], "30")
         self.assertContains(response, "financial-report-summary-grid")
-        self.assertContains(response, reverse("financial_integrity_finding_detail", args=[finding.pk]))
+        self.assertContains(
+            response, reverse("financial_integrity_finding_detail", args=[finding.pk])
+        )
         self.assertContains(response, f'{reverse("work_queue")}#queue-financial-integrity')
 
     def test_financial_integrity_report_custom_period_keeps_current_active_snapshot(self):
@@ -556,10 +560,14 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertContains(response, finding.message)
         self.assertContains(response, reverse("appointment_detail", args=[finding.appointment_id]))
         self.assertContains(response, reverse("balance_account_edit", args=[finding.account_id]))
-        self.assertContains(response, reverse("funding_source_edit", args=[finding.funding_source_id]))
+        self.assertContains(
+            response, reverse("funding_source_edit", args=[finding.funding_source_id])
+        )
         self.assertContains(response, 'name="action" value="acknowledge"')
         self.assertContains(response, 'name="action" value="ignore"')
-        self.assertContains(response, reverse("financial_integrity_finding_recheck", args=[finding.pk]))
+        self.assertContains(
+            response, reverse("financial_integrity_finding_recheck", args=[finding.pk])
+        )
         self.assertContains(response, "financial-integrity-history")
         self.assertContains(response, "financial-integrity-event")
         self.assertContains(response, "financial-integrity-payload")
@@ -601,7 +609,9 @@ class WorkQueueViewTests(NewViewsTestBase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, appointment_url)
-        self.assertNotContains(response, reverse("financial_integrity_finding_recheck", args=[finding.pk]))
+        self.assertNotContains(
+            response, reverse("financial_integrity_finding_recheck", args=[finding.pk])
+        )
         self.assertContains(response, "Detached Participant")
         self.assertContains(response, "Detached Account")
         self.assertContains(response, "Detached Funding")
@@ -734,9 +744,13 @@ class WorkQueueViewTests(NewViewsTestBase):
         queue_response = self.client.get(reverse("work_queue"))
         self.assertEqual(queue_response.context["financial_integrity_issue_count"], 0)
         self.assertNotContains(queue_response, "stale_debit_ledger_without_charge_fact")
-        detail_response = self.client.get(reverse("financial_integrity_finding_detail", args=[finding.pk]))
+        detail_response = self.client.get(
+            reverse("financial_integrity_finding_detail", args=[finding.pk])
+        )
         self.assertContains(detail_response, "financial-integrity-event-note")
-        self.assertEqual(detail_response.context["event_rows"][0]["event"].note, finding.triage_note)
+        self.assertEqual(
+            detail_response.context["event_rows"][0]["event"].note, finding.triage_note
+        )
 
     def test_work_queue_financial_integrity_triage_rejects_external_next(self):
         self._financial_integrity_fixture()
@@ -1173,7 +1187,9 @@ class WorkQueueViewTests(NewViewsTestBase):
             response,
             f'{reverse("appointment_reschedule_plan_detail", args=[plan.pk])}#step-{step.pk}',
         )
-        self.assertNotContains(response, f'{reverse("appointment_detail", args=[appointment.pk])}">Открыть занятие')
+        self.assertNotContains(
+            response, f'{reverse("appointment_detail", args=[appointment.pk])}">Открыть занятие'
+        )
 
     def test_reschedule_step_confirmation_ignores_terminal_plan_in_queue(self):
         day = timezone.localdate() + timedelta(days=5)
@@ -2185,7 +2201,9 @@ class StaffMassRescheduleViewTests(NewViewsTestBase):
             plan_type=AppointmentReschedulePlan.PlanType.STAFF_ABSENCE,
             staff_member=self.staff,
         )
-        self.assertRedirects(response, reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+        self.assertRedirects(
+            response, reverse("appointment_reschedule_plan_detail", args=[plan.pk])
+        )
         self.assertEqual(plan.steps.count(), 1)
         appt.refresh_from_db()
         self.assertEqual(appt.status, Appointment.Status.CONFIRMED)
@@ -2267,7 +2285,9 @@ class RecommendationViewTests(NewViewsTestBase):
         response = self.client.get(reverse("recommendation_list"), {"child_id": self.child.pk})
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual([item.child_id for item in response.context["recommendations"]], [self.child.pk])
+        self.assertEqual(
+            [item.child_id for item in response.context["recommendations"]], [self.child.pk]
+        )
         self.assertContains(response, "Рекомендация нужного получателя")
         self.assertNotContains(response, "Рекомендация другого получателя")
         self.assertEqual(
@@ -2544,7 +2564,9 @@ class ConsentViewTests(NewViewsTestBase):
         form = response.context["form"]
         self.assertIn(consent_template, form.fields["template"].queryset)
         self.assertNotIn(service_template, form.fields["template"].queryset)
-        self.assertEqual(list(form.fields["signatory_representative"].queryset), [self._signer_link()])
+        self.assertEqual(
+            list(form.fields["signatory_representative"].queryset), [self._signer_link()]
+        )
 
     def test_word_generation_creates_and_reuses_consent_document(self):
         signer = self._signer_link()
@@ -2596,7 +2618,9 @@ class ConsentViewTests(NewViewsTestBase):
         signed_file = ConsentSignedFile.objects.get(consent=consent)
         self.assertEqual(signed_file.source_document, consent.document)
         self.assertEqual(signed_file.uploaded_by, self.admin)
-        self.assertEqual(signed_file.consent_snapshot["consent_type"], Consent.ConsentType.PHOTO_VIDEO)
+        self.assertEqual(
+            signed_file.consent_snapshot["consent_type"], Consent.ConsentType.PHOTO_VIDEO
+        )
         self.assertEqual(signed_file.recipient_snapshot["full_name"], self.child.full_name)
         self.assertEqual(signed_file.representative_snapshot["full_name"], self.parent.full_name)
         self.assertEqual(len(signed_file.file_sha256), 64)
@@ -2655,7 +2679,9 @@ class ConsentViewTests(NewViewsTestBase):
         self.assertEqual(signed_file.content_type, "application/pdf")
         self.assertEqual(signed_file.file_size, len(uploaded_payload))
         self.assertEqual(signed_file.source_document, consent.document)
-        self.assertEqual(signed_file.consent_snapshot["consent_type"], Consent.ConsentType.PHOTO_VIDEO)
+        self.assertEqual(
+            signed_file.consent_snapshot["consent_type"], Consent.ConsentType.PHOTO_VIDEO
+        )
 
         download = self.client.get(reverse("consent_signed_file_download", args=[signed_file.pk]))
         self.assertEqual(download.status_code, 200)
@@ -2731,6 +2757,17 @@ class PaymentViewTests(NewViewsTestBase):
 
 
 class BalancesViewTests(NewViewsTestBase):
+    def _certificate_account(self, number: str = "CERT-LABEL") -> BalanceAccount:
+        certificate = Certificate.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            certificate_type=Certificate.CertificateType.REGIONAL,
+            number=number,
+            total_amount=Decimal("5000.00"),
+            remaining_amount=Decimal("5000.00"),
+        )
+        return certificate_svc.ensure_certificate_balance_account(certificate, actor=self.admin)
+
     def test_balances_renders(self):
         response = self.client.get(reverse("balances"))
         self.assertEqual(response.status_code, 200)
@@ -2742,6 +2779,47 @@ class BalancesViewTests(NewViewsTestBase):
         self.assertContains(response, "balance-table")
         self.assertContains(response, 'data-label="Остаток"')
         self.assertContains(response, 'data-label="Действия"')
+
+    def test_balances_marks_certificate_linked_account(self):
+        account = self._certificate_account("CERT-BALANCE-LABEL")
+
+        response = self.client.get(reverse("balances"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Сертификат")
+        self.assertContains(response, "Региональный сертификат №CERT-BALANCE-LABEL")
+        self.assertContains(response, reverse("balance_account_edit", args=[account.pk]))
+
+    def test_recipient_balance_marks_certificate_linked_account(self):
+        self._certificate_account("CERT-RECIPIENT-LABEL")
+
+        response = self.client.get(reverse("recipient_detail", args=[self.child.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Региональный сертификат №CERT-RECIPIENT-LABEL")
+        self.assertContains(response, "Сертификат")
+
+    def test_billing_decision_account_choices_mark_certificate_source(self):
+        certificate_account = self._certificate_account("CERT-CHOICE-LABEL")
+        appointment = Appointment.objects.create(
+            child=self.child,
+            service=self.service,
+            staff_member=self.staff,
+            room=self.room,
+            starts_at=_local_dt(timezone.localdate() + timedelta(days=1), time(10, 0)),
+            ends_at=_local_dt(timezone.localdate() + timedelta(days=1), time(10, 30)),
+            billing_account=certificate_account,
+        )
+
+        form = BillingDecisionForm(appointment=appointment)
+        labels = [label for _, label in form.fields["billing_account"].choices]
+
+        self.assertTrue(
+            any(
+                "сертификат: Региональный сертификат №CERT-CHOICE-LABEL" in str(label)
+                for label in labels
+            )
+        )
 
     def test_balance_account_forms_show_operator_control(self):
         cases = [
@@ -4960,7 +5038,9 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(signed_file.act_snapshot["number"], "ACT-UPLOAD")
         self.assertEqual(self._financial_counts(), counts_before)
 
-        download = self.client.get(reverse("contract_act_signed_file_download", args=[signed_file.pk]))
+        download = self.client.get(
+            reverse("contract_act_signed_file_download", args=[signed_file.pk])
+        )
         self.assertEqual(download.status_code, 200)
         self.assertEqual(b"".join(download.streaming_content), uploaded_payload)
 
@@ -5899,7 +5979,9 @@ class StaffCompensationRuleViewTests(NewViewsTestBase):
 
         self.assertEqual(response.status_code, 200)
         active_summary = next(
-            item for item in response.context["compensation_summary_items"] if item["label"] == "Активны"
+            item
+            for item in response.context["compensation_summary_items"]
+            if item["label"] == "Активны"
         )
         self.assertEqual(active_summary["value"], "1")
         self.assertEqual(
@@ -7850,7 +7932,9 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         )
 
         plan = AppointmentReschedulePlan.objects.get(root_appointment=appointment)
-        self.assertRedirects(response, reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
+        self.assertRedirects(
+            response, reverse("appointment_reschedule_plan_detail", args=[plan.pk])
+        )
         self.assertEqual(plan.status, AppointmentReschedulePlan.Status.READY)
         self.assertGreater(plan.steps.count(), 0)
         appointment.refresh_from_db()
@@ -7858,9 +7942,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
 
     def test_reschedule_plan_list_shows_active_plan(self):
         appointment = self._appointment()
-        plan = plan_svc.create_plan_for_appointment(
-            appointment, actor=self.admin, days=2, limit=1
-        )
+        plan = plan_svc.create_plan_for_appointment(appointment, actor=self.admin, days=2, limit=1)
 
         response = self.client.get(reverse("reschedule_plan_list"))
 
@@ -7919,9 +8001,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.staff.email = "qa-plan-list-staff@example.local"
         self.staff.save(update_fields=["email", "updated_at"])
         appointment = self._appointment()
-        plan = plan_svc.create_plan_for_appointment(
-            appointment, actor=self.admin, days=2, limit=1
-        )
+        plan = plan_svc.create_plan_for_appointment(appointment, actor=self.admin, days=2, limit=1)
         step = plan.steps.get()
         plan_svc.create_confirmations_for_step(step, actor=self.admin)
 
@@ -7954,9 +8034,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
 
     def test_reschedule_plan_list_filters_stale_focus(self):
         appointment = self._appointment()
-        plan = plan_svc.create_plan_for_appointment(
-            appointment, actor=self.admin, days=2, limit=1
-        )
+        plan = plan_svc.create_plan_for_appointment(appointment, actor=self.admin, days=2, limit=1)
         step = plan.steps.get()
         step.status = AppointmentRescheduleStep.Status.STALE
         step.save(update_fields=["status", "updated_at"])
@@ -7969,9 +8047,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
 
     def test_reschedule_plan_list_filters_ready_to_apply_focus(self):
         appointment = self._appointment()
-        plan = plan_svc.create_plan_for_appointment(
-            appointment, actor=self.admin, days=2, limit=1
-        )
+        plan = plan_svc.create_plan_for_appointment(appointment, actor=self.admin, days=2, limit=1)
 
         response = self.client.get(reverse("reschedule_plan_list"), {"focus": "ready_to_apply"})
 
@@ -7988,7 +8064,9 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertEqual(response.status_code, 200)
         chain.refresh_from_db()
         self.assertEqual(chain.status, AppointmentRescheduleChain.Status.READY)
-        summary_values = {item["label"]: item["value"] for item in response.context["summary_items"]}
+        summary_values = {
+            item["label"]: item["value"] for item in response.context["summary_items"]
+        }
         metric_values = {item["label"]: item["value"] for item in response.context["metric_items"]}
         self.assertEqual(summary_values["Цепочки"], 1)
         self.assertEqual(summary_values["Готовые цепочки"], 1)
@@ -8379,9 +8457,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
 
         self.assertEqual(response.status_code, 200)
         chain_items = [
-            item
-            for item in response.context["dashboard_focus_items"]
-            if "chain_" in item["href"]
+            item for item in response.context["dashboard_focus_items"] if "chain_" in item["href"]
         ]
         self.assertEqual(
             [item["href"].split("focus=")[1] for item in chain_items],
@@ -8467,9 +8543,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
 
     def test_reschedule_plan_detail_hides_revalidate_for_terminal_plan(self):
         appointment = self._appointment()
-        plan = plan_svc.create_plan_for_appointment(
-            appointment, actor=self.admin, days=2, limit=1
-        )
+        plan = plan_svc.create_plan_for_appointment(appointment, actor=self.admin, days=2, limit=1)
         plan.status = AppointmentReschedulePlan.Status.APPLIED
         plan.save(update_fields=["status", "updated_at"])
 
@@ -8501,9 +8575,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
 
     def test_reschedule_plan_detail_rejects_terminal_plan_revalidate_post(self):
         appointment = self._appointment()
-        plan = plan_svc.create_plan_for_appointment(
-            appointment, actor=self.admin, days=2, limit=1
-        )
+        plan = plan_svc.create_plan_for_appointment(appointment, actor=self.admin, days=2, limit=1)
         step = plan.steps.get()
         step.status = AppointmentRescheduleStep.Status.STALE
         step.validation_messages = ["Сохраненная причина"]
@@ -8536,9 +8608,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         chain.save(update_fields=["status", "validation_summary", "updated_at"])
         plan.status = AppointmentReschedulePlan.Status.CANCELLED
         plan.save(update_fields=["status", "updated_at"])
-        plan.steps.update(
-            confirmation_status=AppointmentRescheduleStep.ConfirmationStatus.WAITING
-        )
+        plan.steps.update(confirmation_status=AppointmentRescheduleStep.ConfirmationStatus.WAITING)
 
         response = self.client.get(reverse("appointment_reschedule_plan_detail", args=[plan.pk]))
 
@@ -8570,9 +8640,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
 
     def test_reschedule_plan_detail_rejects_terminal_plan_step_post(self):
         appointment = self._appointment()
-        plan = plan_svc.create_plan_for_appointment(
-            appointment, actor=self.admin, days=2, limit=1
-        )
+        plan = plan_svc.create_plan_for_appointment(appointment, actor=self.admin, days=2, limit=1)
         step = plan.steps.get()
         plan.status = AppointmentReschedulePlan.Status.CANCELLED
         plan.validation_summary = {"locked": "cancelled"}
@@ -9008,9 +9076,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.assertContains(response, "Шаг переноса применен с одноразовым разрешением кабинета.")
         step.refresh_from_db()
         self.assertEqual(step.status, AppointmentRescheduleStep.Status.APPLIED)
-        override = AppointmentRoomOverride.objects.get(
-            appointment=step.created_appointment
-        )
+        override = AppointmentRoomOverride.objects.get(appointment=step.created_appointment)
         self.assertEqual(override.created_by, self.admin)
 
     def test_reschedule_plan_detail_can_send_step_confirmations(self):
@@ -9063,9 +9129,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         self.staff.email = "qa-plan-approved-staff@example.local"
         self.staff.save(update_fields=["email", "updated_at"])
         appointment = self._appointment()
-        plan = plan_svc.create_plan_for_appointment(
-            appointment, actor=self.admin, days=2, limit=1
-        )
+        plan = plan_svc.create_plan_for_appointment(appointment, actor=self.admin, days=2, limit=1)
         step = plan.steps.get()
         plan_svc.create_confirmations_for_step(step, actor=self.admin)
         AppointmentConfirmation.objects.filter(reschedule_step=step).update(
@@ -9104,9 +9168,7 @@ class ReschedulePlanViewTests(NewViewsTestBase):
         appointment = self._appointment()
         appointment.status = Appointment.Status.PROPOSED
         appointment.save(update_fields=["status", "updated_at"])
-        plan = plan_svc.create_plan_for_appointment(
-            appointment, actor=self.admin, days=2, limit=1
-        )
+        plan = plan_svc.create_plan_for_appointment(appointment, actor=self.admin, days=2, limit=1)
         step = plan.steps.get()
         confirmation = AppointmentConfirmation.objects.create(
             appointment=appointment,
@@ -9300,8 +9362,7 @@ class RecipientEditTests(NewViewsTestBase):
         upload = SimpleUploadedFile(
             "recipients.csv",
             (
-                "Фамилия получателя;Имя получателя;Телефон представителя\n"
-                "Сидоров;Илья;+7 900\n"
+                "Фамилия получателя;Имя получателя;Телефон представителя\n" "Сидоров;Илья;+7 900\n"
             ).encode(),
             content_type="text/csv",
         )
@@ -9319,8 +9380,7 @@ class RecipientEditTests(NewViewsTestBase):
         upload = SimpleUploadedFile(
             "recipients.csv",
             (
-                "Фамилия получателя;Имя получателя;Получает расписание\n"
-                "Сидоров;Илья;да\n"
+                "Фамилия получателя;Имя получателя;Получает расписание\n" "Сидоров;Илья;да\n"
             ).encode(),
             content_type="text/csv",
         )
@@ -9496,7 +9556,9 @@ class RecipientEditTests(NewViewsTestBase):
 
         self.assertEqual(response.status_code, 200)
         payer_ids = set(
-            response.context["form"].fields["payer_representative"].queryset.values_list(
+            response.context["form"]
+            .fields["payer_representative"]
+            .queryset.values_list(
                 "pk",
                 flat=True,
             )

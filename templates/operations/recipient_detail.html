@@ -97,7 +97,18 @@
         <tbody>
         {% for acc in accounts %}
           <tr>
-            <td data-label="Источник"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ acc.color }}"></span> {{ acc.funding_source }}{% if acc.service %} ({{ acc.service }}){% endif %}</td>
+            <td data-label="Источник">
+              <div class="balance-account-source">
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ acc.color }}"></span>
+                <span>{{ acc.funding_source }}{% if acc.service %} ({{ acc.service }}){% endif %}</span>
+              </div>
+              {% if acc.certificate_link_label %}
+                <div class="account-origin">
+                  <span class="status-pill muted-pill">Сертификат</span>
+                  <span>{{ acc.certificate_link_label }}</span>
+                </div>
+              {% endif %}
+            </td>
             <td class="fw-semibold" data-label="Остаток">{{ acc.current_balance }} {{ acc.get_unit_display }}</td>
             <td data-label="Риск"><span class="status-pill balance-{{ acc.warning_level }}">{{ acc.warning_label }}</span></td>
             <td class="text-end text-nowrap recipient-balance-actions" data-label="Действия">

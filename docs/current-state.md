@@ -1960,3 +1960,16 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA was not needed because this slice has no product UI changes.
 - Graphify code-index after this slice: `5433` nodes / `24183` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: run dry-run/preflight on staging/production and review counts before any real apply. Still deferred: zero-balance policy, data cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.
+
+## Update 2026-07-19: certificate-account-labels
+
+- Added and implemented `docs/45-certificate-account-labels-contract.md` as a no-migration UI/read-only slice.
+- `BalanceAccount` now exposes read-only `certificate_link_label` and `is_certificate_linked` for accounts connected through `Certificate.balance_account`.
+- `BalanceAccount.__str__()` remains unchanged so old reports, audit labels and exports keep their previous text.
+- `/balances/` and recipient detail show a compact `Сертификат` provenance marker with certificate type and number for linked accounts.
+- Appointment/billing/payment account selectors now append `сертификат: ...` for linked certificate accounts.
+- Querysets that render the marker use `select_related("certificate")` to avoid per-row certificate lookups.
+- No migrations were created and no certificate balance, `Certificate.remaining_amount`, `LedgerEntry`, `Payment`, appointment billing/status, payroll, grant, contract, schedule or import semantics changed.
+- Verification passed: Ruff touched Python, Django check, migration dry-run `No changes detected`, focused `BalancesViewTests` `10 passed`, full pytest `657 passed`, Playwright Browser QA fallback for `/balances/` and recipient detail on desktop/mobile with synthetic QA data cleaned and runserver `8114` stopped.
+- Graphify code-index after this slice: `5454` nodes / `24356` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: run certificate backfill dry-run/preflight on staging/production, or choose a new explicit contract. Still deferred: zero-balance policy, data cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.
