@@ -439,4 +439,4 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - No signed archive for acts, consent archive, appointment linkage, ledger/balance/payment/billing/payroll/grant/status/import semantics changed.
 - Verification passed: Ruff touched Python/migration, Django check, migration dry-run `No changes detected`, focused contract/view tests `62 passed`, full pytest `612 passed`, Playwright desktop/mobile QA for acts; QA data was cleaned and runserver `8102` stopped.
 - Graphify code-index after this slice: `5086` nodes / `22128` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
-- Still needed before save-point commit: final secret scan, `git diff --check`, commit.
+- Save-point commit created: `48c491a feat: add contract act generation`; final secret scan and `git diff --check` passed before commit.
