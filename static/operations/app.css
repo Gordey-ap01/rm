@@ -4838,6 +4838,19 @@ textarea:focus {
   min-width: 280px;
 }
 
+.signed-archive-upload {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.signed-archive-upload input[type="file"] {
+  font-size: 12px;
+  min-height: 30px;
+  max-width: 170px;
+  padding: 4px 6px;
+}
+
 .facts {
   display: grid;
   gap: 10px;
@@ -6186,6 +6199,16 @@ code {
   .directory-table .table-actions .small-action,
   .directory-table .table-actions button,
   .directory-table .table-actions form {
+    width: 100%;
+  }
+
+  .directory-table .signed-archive-upload {
+    display: grid;
+    gap: 6px;
+  }
+
+  .directory-table .signed-archive-upload input[type="file"] {
+    max-width: 100%;
     width: 100%;
   }
 

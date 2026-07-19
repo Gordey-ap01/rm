@@ -22,6 +22,7 @@ from operations.forms import (
     OrganizationServiceContractLineFormSet,
     ServiceContractForm,
     ServiceContractLineFormSet,
+    SignedArchiveUploadForm,
 )
 from operations.models import (
     ContractAct,
@@ -65,6 +66,15 @@ def _docx_response(generated: contract_doc_svc.GeneratedContractFile) -> FileRes
         filename=generated.filename,
         content_type=contract_doc_svc.DOCX_CONTENT_TYPE,
     )
+
+
+def _uploaded_signed_file_or_error(request):
+    if not request.FILES:
+        return None, ""
+    form = SignedArchiveUploadForm(request.POST, request.FILES)
+    if form.is_valid():
+        return form.cleaned_data["signed_file"], ""
+    return None, " ".join(error for errors in form.errors.values() for error in errors)
 
 
 def _validity_label(valid_from: date | None, valid_until: date | None) -> str:
@@ -918,11 +928,22 @@ def donation_contract_archive_signed(request, pk: int):
     if request.method != "POST":
         messages.warning(request, "Архив подписанного файла создается кнопкой в реестре.")
         return redirect("contract_list")
+    uploaded_file, upload_error = _uploaded_signed_file_or_error(request)
+    if upload_error:
+        messages.error(request, upload_error)
+        return redirect("contract_list")
     try:
-        signed_file = contract_doc_svc.archive_donation_contract_signed_file(
-            contract,
-            actor=request.user,
-        )
+        if uploaded_file is not None:
+            signed_file = contract_doc_svc.archive_donation_contract_uploaded_signed_file(
+                contract,
+                uploaded_file,
+                actor=request.user,
+            )
+        else:
+            signed_file = contract_doc_svc.archive_donation_contract_signed_file(
+                contract,
+                actor=request.user,
+            )
     except contract_doc_svc.ContractDocumentError as exc:
         messages.error(request, str(exc))
         return redirect("contract_list")
@@ -1071,11 +1092,22 @@ def contract_act_archive_signed(request, pk: int):
     if request.method != "POST":
         messages.warning(request, "Архив подписанного акта создается кнопкой в реестре.")
         return redirect("contract_list")
+    uploaded_file, upload_error = _uploaded_signed_file_or_error(request)
+    if upload_error:
+        messages.error(request, upload_error)
+        return redirect("contract_list")
     try:
-        signed_file = contract_doc_svc.archive_contract_act_signed_file(
-            act,
-            actor=request.user,
-        )
+        if uploaded_file is not None:
+            signed_file = contract_doc_svc.archive_contract_act_uploaded_signed_file(
+                act,
+                uploaded_file,
+                actor=request.user,
+            )
+        else:
+            signed_file = contract_doc_svc.archive_contract_act_signed_file(
+                act,
+                actor=request.user,
+            )
     except contract_doc_svc.ContractDocumentError as exc:
         messages.error(request, str(exc))
         return redirect("contract_list")
@@ -1101,11 +1133,22 @@ def service_contract_archive_signed(request, pk: int):
     if request.method != "POST":
         messages.warning(request, "Архив подписанного файла создается кнопкой в реестре.")
         return redirect("contract_list")
+    uploaded_file, upload_error = _uploaded_signed_file_or_error(request)
+    if upload_error:
+        messages.error(request, upload_error)
+        return redirect("contract_list")
     try:
-        signed_file = contract_doc_svc.archive_service_contract_signed_file(
-            contract,
-            actor=request.user,
-        )
+        if uploaded_file is not None:
+            signed_file = contract_doc_svc.archive_service_contract_uploaded_signed_file(
+                contract,
+                uploaded_file,
+                actor=request.user,
+            )
+        else:
+            signed_file = contract_doc_svc.archive_service_contract_signed_file(
+                contract,
+                actor=request.user,
+            )
     except contract_doc_svc.ContractDocumentError as exc:
         messages.error(request, str(exc))
         return redirect("contract_list")
@@ -1131,11 +1174,22 @@ def organization_service_contract_archive_signed(request, pk: int):
     if request.method != "POST":
         messages.warning(request, "Архив подписанного файла создается кнопкой в реестре.")
         return redirect("contract_list")
+    uploaded_file, upload_error = _uploaded_signed_file_or_error(request)
+    if upload_error:
+        messages.error(request, upload_error)
+        return redirect("contract_list")
     try:
-        signed_file = contract_doc_svc.archive_organization_service_contract_signed_file(
-            contract,
-            actor=request.user,
-        )
+        if uploaded_file is not None:
+            signed_file = contract_doc_svc.archive_organization_service_contract_uploaded_signed_file(
+                contract,
+                uploaded_file,
+                actor=request.user,
+            )
+        else:
+            signed_file = contract_doc_svc.archive_organization_service_contract_signed_file(
+                contract,
+                actor=request.user,
+            )
     except contract_doc_svc.ContractDocumentError as exc:
         messages.error(request, str(exc))
         return redirect("contract_list")

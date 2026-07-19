@@ -2625,6 +2625,40 @@ class ConsentViewTests(NewViewsTestBase):
         self.assertEqual(signed_file.file_sha256, archived_sha)
         self.assertEqual(signed_file.consent_snapshot, archived_snapshot)
 
+    def test_consent_archive_uploaded_signed_file_uses_uploaded_payload(self):
+        signer = self._signer_link()
+        consent = Consent.objects.create(
+            child=self.child,
+            consent_type=Consent.ConsentType.PHOTO_VIDEO,
+            signatory_representative=signer,
+            signed_on=timezone.localdate(),
+        )
+        self.client.post(reverse("consent_word", args=[consent.pk]))
+        consent.refresh_from_db()
+        uploaded_payload = b"%PDF-1.4 signed consent"
+        upload = SimpleUploadedFile(
+            "signed-consent.pdf",
+            uploaded_payload,
+            content_type="application/pdf",
+        )
+
+        response = self.client.post(
+            reverse("consent_archive_signed", args=[consent.pk]),
+            {"signed_file": upload},
+        )
+
+        self.assertRedirects(response, reverse("consent_list"))
+        signed_file = ConsentSignedFile.objects.get(consent=consent)
+        self.assertEqual(signed_file.original_filename, "signed-consent.pdf")
+        self.assertEqual(signed_file.content_type, "application/pdf")
+        self.assertEqual(signed_file.file_size, len(uploaded_payload))
+        self.assertEqual(signed_file.source_document, consent.document)
+        self.assertEqual(signed_file.consent_snapshot["consent_type"], Consent.ConsentType.PHOTO_VIDEO)
+
+        download = self.client.get(reverse("consent_signed_file_download", args=[signed_file.pk]))
+        self.assertEqual(download.status_code, 200)
+        self.assertEqual(b"".join(download.streaming_content), uploaded_payload)
+
     def test_consent_archive_signed_file_requires_generated_document(self):
         consent = Consent.objects.create(
             child=self.child,
@@ -4673,6 +4707,60 @@ class ContractRegistryViewTests(NewViewsTestBase):
         act.refresh_from_db()
         self.assertEqual(act.act_snapshot["number"], "ACT-SIGNED-2")
 
+    def test_contract_act_archive_uploaded_signed_file_uses_uploaded_payload(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            funding_source=self.funding,
+            number="S-ACT-UPLOAD",
+            signed_on=timezone.localdate(),
+        )
+        ServiceContractLine.objects.create(
+            service_contract=contract,
+            service=self.service,
+            service_name="Индивидуальные занятия логопеда",
+            quantity=Decimal("1.00"),
+            unit=ServiceContractLine.Unit.SESSION,
+            unit_price=Decimal("1500.00"),
+            sort_order=1,
+        )
+        act = ContractAct.objects.create(
+            act_kind=ContractAct.ActKind.SERVICE,
+            service_contract=contract,
+            number="ACT-UPLOAD",
+            act_on=timezone.localdate(),
+            period_from=timezone.localdate(),
+            period_until=timezone.localdate(),
+            amount=Decimal("1500.00"),
+            status=ContractAct.Status.ISSUED,
+        )
+        self._generate_contract_act_word(act)
+        uploaded_payload = b"%PDF-1.4 signed act"
+        upload = SimpleUploadedFile(
+            "signed-act.pdf",
+            uploaded_payload,
+            content_type="application/pdf",
+        )
+        counts_before = self._financial_counts()
+
+        response = self.client.post(
+            reverse("contract_act_archive_signed", args=[act.pk]),
+            {"signed_file": upload},
+        )
+
+        self.assertRedirects(response, reverse("contract_list"))
+        signed_file = ContractActSignedFile.objects.get(act=act)
+        self.assertEqual(signed_file.original_filename, "signed-act.pdf")
+        self.assertEqual(signed_file.content_type, "application/pdf")
+        self.assertEqual(signed_file.file_size, len(uploaded_payload))
+        self.assertEqual(signed_file.source_document, act.document)
+        self.assertEqual(signed_file.act_snapshot["number"], "ACT-UPLOAD")
+        self.assertEqual(self._financial_counts(), counts_before)
+
+        download = self.client.get(reverse("contract_act_signed_file_download", args=[signed_file.pk]))
+        self.assertEqual(download.status_code, 200)
+        self.assertEqual(b"".join(download.streaming_content), uploaded_payload)
+
     def test_contract_act_archive_signed_file_requires_generated_snapshot(self):
         contract = ServiceContract.objects.create(
             child=self.child,
@@ -4815,6 +4903,66 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertGreater(signed_file.file_size, 0)
         self.assertTrue(signed_file.file.name.startswith("contract_signed_files/service/"))
         self.assertEqual(self._financial_counts(), counts_before)
+
+    def test_service_contract_archive_uploaded_signed_file_uses_uploaded_payload(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-SIGNED-UPLOAD",
+            signed_on=timezone.localdate(),
+        )
+        self._generate_service_contract_word(contract)
+        uploaded_payload = b"%PDF-1.4 signed service contract"
+        upload = SimpleUploadedFile(
+            "signed-service.pdf",
+            uploaded_payload,
+            content_type="application/pdf",
+        )
+        counts_before = self._financial_counts()
+
+        response = self.client.post(
+            reverse("service_contract_archive_signed", args=[contract.pk]),
+            {"signed_file": upload},
+        )
+
+        self.assertRedirects(response, reverse("contract_list"))
+        signed_file = ContractSignedFile.objects.get(service_contract=contract)
+        self.assertEqual(signed_file.original_filename, "signed-service.pdf")
+        self.assertEqual(signed_file.content_type, "application/pdf")
+        self.assertEqual(signed_file.file_size, len(uploaded_payload))
+        self.assertEqual(signed_file.source_document, contract.document)
+        self.assertEqual(signed_file.contract_snapshot["number"], "S-SIGNED-UPLOAD")
+        self.assertEqual(self._financial_counts(), counts_before)
+
+        download = self.client.get(reverse("contract_signed_file_download", args=[signed_file.pk]))
+        self.assertEqual(download.status_code, 200)
+        self.assertEqual(b"".join(download.streaming_content), uploaded_payload)
+
+        list_response = self.client.get(reverse("contract_list"))
+        self.assertContains(list_response, "Загрузить")
+        self.assertContains(list_response, 'name="signed_file"')
+
+    def test_service_contract_archive_upload_rejects_unsupported_extension(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            number="S-SIGNED-UPLOAD-BAD",
+            signed_on=timezone.localdate(),
+        )
+        self._generate_service_contract_word(contract)
+        upload = SimpleUploadedFile(
+            "signed-service.exe",
+            b"not allowed",
+            content_type="application/octet-stream",
+        )
+
+        response = self.client.post(
+            reverse("service_contract_archive_signed", args=[contract.pk]),
+            {"signed_file": upload},
+        )
+
+        self.assertRedirects(response, reverse("contract_list"))
+        self.assertFalse(ContractSignedFile.objects.filter(service_contract=contract).exists())
 
     def test_service_contract_signed_file_survives_word_regeneration(self):
         contract = ServiceContract.objects.create(

@@ -9,7 +9,7 @@ from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from operations.forms import ConsentForm
+from operations.forms import ConsentForm, SignedArchiveUploadForm
 from operations.models import Child, Consent, ConsentSignedFile, RecipientRepresentative
 from operations.services import contract_documents as contract_doc_svc
 
@@ -30,6 +30,15 @@ def _active_consent_signed_files_prefetch() -> Prefetch:
         ).order_by("-signed_on", "-created_at"),
         to_attr="ui_active_signed_files",
     )
+
+
+def _uploaded_signed_file_or_error(request):
+    if not request.FILES:
+        return None, ""
+    form = SignedArchiveUploadForm(request.POST, request.FILES)
+    if form.is_valid():
+        return form.cleaned_data["signed_file"], ""
+    return None, " ".join(error for errors in form.errors.values() for error in errors)
 
 
 def _attach_consent_signed_file_ui(consent: Consent) -> None:
@@ -260,11 +269,22 @@ def consent_archive_signed(request, pk: int):
     if request.method != "POST":
         messages.warning(request, "Архив подписанного согласия создается кнопкой в реестре.")
         return redirect("consent_list")
+    uploaded_file, upload_error = _uploaded_signed_file_or_error(request)
+    if upload_error:
+        messages.error(request, upload_error)
+        return redirect("consent_list")
     try:
-        signed_file = contract_doc_svc.archive_consent_signed_file(
-            consent,
-            actor=request.user,
-        )
+        if uploaded_file is not None:
+            signed_file = contract_doc_svc.archive_consent_uploaded_signed_file(
+                consent,
+                uploaded_file,
+                actor=request.user,
+            )
+        else:
+            signed_file = contract_doc_svc.archive_consent_signed_file(
+                consent,
+                actor=request.user,
+            )
     except contract_doc_svc.ContractDocumentError as exc:
         messages.error(request, str(exc))
         return redirect("consent_list")

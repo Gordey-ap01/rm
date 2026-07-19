@@ -788,6 +788,22 @@ def _read_document_file(document: Document) -> bytes:
         raise ContractDocumentError("Не удалось прочитать файл договора для архива.") from exc
 
 
+def _read_uploaded_signed_file(uploaded_file) -> tuple[bytes, str, str]:
+    if hasattr(uploaded_file, "seek"):
+        uploaded_file.seek(0)
+    if hasattr(uploaded_file, "chunks"):
+        payload = b"".join(uploaded_file.chunks())
+    else:
+        payload = uploaded_file.read()
+    if hasattr(uploaded_file, "seek"):
+        uploaded_file.seek(0)
+    original_filename = _file_basename(uploaded_file.name)
+    content_type = getattr(uploaded_file, "content_type", "") or (
+        mimetypes.guess_type(original_filename)[0] or ""
+    )
+    return payload, original_filename, content_type
+
+
 def _signed_file_common_fields(snapshot: ContractLegalSnapshot) -> dict[str, object]:
     return {
         "contract_snapshot": deepcopy(snapshot.contract_snapshot),
@@ -809,11 +825,19 @@ def _archive_contract_signed_file(
     service_contract: ServiceContract | None = None,
     donation_contract: DonationContract | None = None,
     organization_contract: OrganizationServiceContract | None = None,
+    payload: bytes | None = None,
+    original_filename: str | None = None,
+    content_type: str | None = None,
+    note: str | None = None,
 ) -> ContractSignedFile:
-    payload = _read_document_file(document)
+    if payload is None:
+        payload = _read_document_file(document)
     if not payload:
         raise ContractDocumentError("Нельзя архивировать пустой файл договора.")
-    original_filename = _file_basename(document.file.name)
+    if original_filename is None:
+        original_filename = _file_basename(document.file.name)
+    if content_type is None:
+        content_type = mimetypes.guess_type(original_filename)[0] or ""
     signed_file = ContractSignedFile(
         contract_kind=contract_kind,
         service_contract=service_contract,
@@ -821,7 +845,7 @@ def _archive_contract_signed_file(
         organization_contract=organization_contract,
         source_document=document,
         original_filename=original_filename,
-        content_type=mimetypes.guess_type(original_filename)[0] or "",
+        content_type=content_type,
         file_size=len(payload),
         file_sha256=hashlib.sha256(payload).hexdigest(),
         signed_on=(
@@ -834,7 +858,7 @@ def _archive_contract_signed_file(
             else timezone.localdate()
         ),
         uploaded_by=_snapshot_actor(actor),
-        note="Архивная копия подписанного файла договора из текущего связанного документа.",
+        note=note or "Архивная копия подписанного файла договора из текущего связанного документа.",
         **_signed_file_common_fields(snapshot),
     )
     signed_file.file.save(original_filename, ContentFile(payload), save=False)
@@ -911,6 +935,108 @@ def archive_organization_service_contract_signed_file(
     )
 
 
+def _archive_uploaded_contract_signed_file(
+    *,
+    contract_kind: str,
+    document: Document,
+    snapshot: ContractLegalSnapshot,
+    uploaded_file,
+    actor=None,
+    service_contract: ServiceContract | None = None,
+    donation_contract: DonationContract | None = None,
+    organization_contract: OrganizationServiceContract | None = None,
+) -> ContractSignedFile:
+    payload, original_filename, content_type = _read_uploaded_signed_file(uploaded_file)
+    return _archive_contract_signed_file(
+        contract_kind=contract_kind,
+        document=document,
+        snapshot=snapshot,
+        actor=actor,
+        service_contract=service_contract,
+        donation_contract=donation_contract,
+        organization_contract=organization_contract,
+        payload=payload,
+        original_filename=original_filename,
+        content_type=content_type,
+        note="Архивная копия загруженного подписанного файла договора.",
+    )
+
+
+def archive_service_contract_uploaded_signed_file(
+    contract: ServiceContract,
+    uploaded_file,
+    *,
+    actor=None,
+) -> ContractSignedFile:
+    document = contract.document
+    if document is None:
+        raise ContractDocumentError("Сначала сформируйте Word-файл договора с получателем.")
+    _ensure_service_snapshot_owner(contract, document)
+    snapshot = _document_snapshot(document)
+    if snapshot is None:
+        raise ContractDocumentError(
+            "Сначала сформируйте Word-файл, чтобы зафиксировать юридический snapshot."
+        )
+    return _archive_uploaded_contract_signed_file(
+        contract_kind=ContractSignedFile.ContractKind.SERVICE,
+        document=document,
+        snapshot=snapshot,
+        uploaded_file=uploaded_file,
+        actor=actor,
+        service_contract=contract,
+    )
+
+
+def archive_donation_contract_uploaded_signed_file(
+    contract: DonationContract,
+    uploaded_file,
+    *,
+    actor=None,
+) -> ContractSignedFile:
+    document = contract.document
+    if document is None:
+        raise ContractDocumentError("Сначала сформируйте Word-файл договора пожертвования.")
+    _ensure_donation_snapshot_owner(contract, document)
+    snapshot = _document_snapshot(document)
+    if snapshot is None:
+        raise ContractDocumentError(
+            "Сначала сформируйте Word-файл, чтобы зафиксировать юридический snapshot."
+        )
+    return _archive_uploaded_contract_signed_file(
+        contract_kind=ContractSignedFile.ContractKind.DONATION,
+        document=document,
+        snapshot=snapshot,
+        uploaded_file=uploaded_file,
+        actor=actor,
+        donation_contract=contract,
+    )
+
+
+def archive_organization_service_contract_uploaded_signed_file(
+    contract: OrganizationServiceContract,
+    uploaded_file,
+    *,
+    actor=None,
+) -> ContractSignedFile:
+    document = contract.document
+    if document is None:
+        raise ContractDocumentError("Сначала сформируйте Word-файл B2B-договора услуг.")
+    _ensure_organization_snapshot_owner(contract, document)
+    snapshot = _document_snapshot(document)
+    if snapshot is None:
+        raise ContractDocumentError(
+            "Сначала сформируйте Word-файл, чтобы зафиксировать юридический snapshot."
+        )
+    return _archive_uploaded_contract_signed_file(
+        contract_kind=ContractSignedFile.ContractKind.ORGANIZATION_SERVICE,
+        document=document,
+        snapshot=snapshot,
+        uploaded_file=uploaded_file,
+        actor=actor,
+        organization_contract=contract,
+    )
+
+
 def _act_signed_file_common_fields(act: ContractAct) -> dict[str, object]:
     return {
         "act_snapshot": deepcopy(act.act_snapshot),
@@ -924,11 +1050,7 @@ def _act_signed_file_common_fields(act: ContractAct) -> dict[str, object]:
     }
 
 
-def archive_contract_act_signed_file(
-    act: ContractAct,
-    *,
-    actor=None,
-) -> ContractActSignedFile:
+def _ensure_contract_act_archive_document(act: ContractAct) -> Document:
     document = act.document
     if document is None:
         raise ContractDocumentError("Сначала сформируйте Word-файл акта.")
@@ -936,25 +1058,74 @@ def archive_contract_act_signed_file(
         raise ContractDocumentError(
             "Сначала сформируйте Word-файл акта, чтобы зафиксировать snapshot."
         )
-    payload = _read_document_file(document)
+    return document
+
+
+def _archive_contract_act_signed_payload(
+    act: ContractAct,
+    document: Document,
+    payload: bytes,
+    original_filename: str,
+    content_type: str,
+    *,
+    actor=None,
+    note: str,
+) -> ContractActSignedFile:
     if not payload:
         raise ContractDocumentError("Нельзя архивировать пустой файл акта.")
-    original_filename = _file_basename(document.file.name)
     signed_file = ContractActSignedFile(
         act=act,
         source_document=document,
         original_filename=original_filename,
-        content_type=mimetypes.guess_type(original_filename)[0] or "",
+        content_type=content_type,
         file_size=len(payload),
         file_sha256=hashlib.sha256(payload).hexdigest(),
         signed_on=act.act_on or timezone.localdate(),
         uploaded_by=_snapshot_actor(actor),
-        note="Архивная копия подписанного файла акта из текущего связанного документа.",
+        note=note,
         **_act_signed_file_common_fields(act),
     )
     signed_file.file.save(original_filename, ContentFile(payload), save=False)
     signed_file.save()
     return signed_file
+
+
+def archive_contract_act_signed_file(
+    act: ContractAct,
+    *,
+    actor=None,
+) -> ContractActSignedFile:
+    document = _ensure_contract_act_archive_document(act)
+    payload = _read_document_file(document)
+    original_filename = _file_basename(document.file.name)
+    return _archive_contract_act_signed_payload(
+        act,
+        document,
+        payload,
+        original_filename,
+        mimetypes.guess_type(original_filename)[0] or "",
+        actor=actor,
+        note="Архивная копия подписанного файла акта из текущего связанного документа.",
+    )
+
+
+def archive_contract_act_uploaded_signed_file(
+    act: ContractAct,
+    uploaded_file,
+    *,
+    actor=None,
+) -> ContractActSignedFile:
+    document = _ensure_contract_act_archive_document(act)
+    payload, original_filename, content_type = _read_uploaded_signed_file(uploaded_file)
+    return _archive_contract_act_signed_payload(
+        act,
+        document,
+        payload,
+        original_filename,
+        content_type,
+        actor=actor,
+        note="Архивная копия загруженного подписанного файла акта.",
+    )
 
 
 def _consent_snapshot(consent: Consent, document: Document) -> dict[str, object]:
@@ -989,11 +1160,7 @@ def _consent_signed_file_common_fields(
     }
 
 
-def archive_consent_signed_file(
-    consent: Consent,
-    *,
-    actor=None,
-) -> ConsentSignedFile:
+def _ensure_consent_archive_document(consent: Consent) -> Document:
     document = consent.document
     if document is None:
         raise ContractDocumentError("Сначала сформируйте Word-файл согласия.")
@@ -1003,26 +1170,74 @@ def archive_consent_signed_file(
         raise ContractDocumentError("Подписанное согласие должно быть документом получателя.")
     if document.child_id != consent.child_id:
         raise ContractDocumentError("Связанный документ согласия относится к другому получателю.")
+    return document
 
-    payload = _read_document_file(document)
+
+def _archive_consent_signed_payload(
+    consent: Consent,
+    document: Document,
+    payload: bytes,
+    original_filename: str,
+    content_type: str,
+    *,
+    actor=None,
+    note: str,
+) -> ConsentSignedFile:
     if not payload:
         raise ContractDocumentError("Нельзя архивировать пустой файл согласия.")
-    original_filename = _file_basename(document.file.name)
     signed_file = ConsentSignedFile(
         consent=consent,
         source_document=document,
         original_filename=original_filename,
-        content_type=mimetypes.guess_type(original_filename)[0] or "",
+        content_type=content_type,
         file_size=len(payload),
         file_sha256=hashlib.sha256(payload).hexdigest(),
         signed_on=consent.signed_on or timezone.localdate(),
         uploaded_by=_snapshot_actor(actor),
-        note="Архивная копия подписанного файла согласия из текущего связанного документа.",
+        note=note,
         **_consent_signed_file_common_fields(consent, document),
     )
     signed_file.file.save(original_filename, ContentFile(payload), save=False)
     signed_file.save()
     return signed_file
+
+
+def archive_consent_signed_file(
+    consent: Consent,
+    *,
+    actor=None,
+) -> ConsentSignedFile:
+    document = _ensure_consent_archive_document(consent)
+    payload = _read_document_file(document)
+    original_filename = _file_basename(document.file.name)
+    return _archive_consent_signed_payload(
+        consent,
+        document,
+        payload,
+        original_filename,
+        mimetypes.guess_type(original_filename)[0] or "",
+        actor=actor,
+        note="Архивная копия подписанного файла согласия из текущего связанного документа.",
+    )
+
+
+def archive_consent_uploaded_signed_file(
+    consent: Consent,
+    uploaded_file,
+    *,
+    actor=None,
+) -> ConsentSignedFile:
+    document = _ensure_consent_archive_document(consent)
+    payload, original_filename, content_type = _read_uploaded_signed_file(uploaded_file)
+    return _archive_consent_signed_payload(
+        consent,
+        document,
+        payload,
+        original_filename,
+        content_type,
+        actor=actor,
+        note="Архивная копия загруженного подписанного файла согласия.",
+    )
 
 
 def _center_placeholder_values() -> dict[str, str]:

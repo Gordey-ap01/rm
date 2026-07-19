@@ -143,6 +143,11 @@
                   {% csrf_token %}
                   <button class="secondary-button small-action" type="submit">Зафиксировать</button>
                 </form>
+                <form method="post" action="{{ contract.ui_archive_signed_url }}" enctype="multipart/form-data" class="inline-form compact-form signed-archive-upload">
+                  {% csrf_token %}
+                  <input type="file" name="signed_file" accept=".pdf,.docx,.jpg,.jpeg,.png" aria-label="Подписанный файл">
+                  <button class="secondary-button small-action" type="submit">Загрузить</button>
+                </form>
                 {% endif %}
               </td>
             </tr>
@@ -227,6 +232,11 @@
                   {% csrf_token %}
                   <button class="secondary-button small-action" type="submit">Зафиксировать</button>
                 </form>
+                <form method="post" action="{{ contract.ui_archive_signed_url }}" enctype="multipart/form-data" class="inline-form compact-form signed-archive-upload">
+                  {% csrf_token %}
+                  <input type="file" name="signed_file" accept=".pdf,.docx,.jpg,.jpeg,.png" aria-label="Подписанный файл">
+                  <button class="secondary-button small-action" type="submit">Загрузить</button>
+                </form>
                 {% endif %}
               </td>
             </tr>
@@ -300,6 +310,11 @@
                 <form method="post" action="{{ contract.ui_archive_signed_url }}" class="inline-form compact-form">
                   {% csrf_token %}
                   <button class="secondary-button small-action" type="submit">Зафиксировать</button>
+                </form>
+                <form method="post" action="{{ contract.ui_archive_signed_url }}" enctype="multipart/form-data" class="inline-form compact-form signed-archive-upload">
+                  {% csrf_token %}
+                  <input type="file" name="signed_file" accept=".pdf,.docx,.jpg,.jpeg,.png" aria-label="Подписанный файл">
+                  <button class="secondary-button small-action" type="submit">Загрузить</button>
                 </form>
                 {% endif %}
               </td>
@@ -382,6 +397,11 @@
                 <form method="post" action="{{ act.ui_archive_signed_url }}" class="inline-form compact-form">
                   {% csrf_token %}
                   <button class="secondary-button small-action" type="submit">Зафиксировать</button>
+                </form>
+                <form method="post" action="{{ act.ui_archive_signed_url }}" enctype="multipart/form-data" class="inline-form compact-form signed-archive-upload">
+                  {% csrf_token %}
+                  <input type="file" name="signed_file" accept=".pdf,.docx,.jpg,.jpeg,.png" aria-label="Подписанный файл акта">
+                  <button class="secondary-button small-action" type="submit">Загрузить</button>
                 </form>
                 {% endif %}
               </td>

@@ -74,6 +74,8 @@ CONTRACT_IMPORT_TYPE_CHOICES = (
     ("donation_contracts", "Договоры пожертвования"),
     ("service_contracts", "Договоры с получателями"),
 )
+SIGNED_ARCHIVE_ALLOWED_EXTENSIONS = (".pdf", ".docx", ".jpg", ".jpeg", ".png")
+SIGNED_ARCHIVE_MAX_BYTES = 15 * 1024 * 1024
 
 
 def default_charge_amount(account, appointment):
@@ -3719,6 +3721,22 @@ class RecipientImportPreviewForm(forms.Form):
             raise forms.ValidationError("Загрузите файл .xlsx, .csv или .tsv.")
         if uploaded.size > 5 * 1024 * 1024:
             raise forms.ValidationError("Файл слишком большой. Ограничение: 5 МБ.")
+        return uploaded
+
+
+class SignedArchiveUploadForm(forms.Form):
+    signed_file = forms.FileField(
+        label="Подписанный файл",
+        help_text="Поддерживаются PDF, DOCX, JPG и PNG до 15 МБ.",
+    )
+
+    def clean_signed_file(self):
+        uploaded: UploadedFile = self.cleaned_data["signed_file"]
+        name = uploaded.name.lower()
+        if not name.endswith(SIGNED_ARCHIVE_ALLOWED_EXTENSIONS):
+            raise forms.ValidationError("Загрузите файл PDF, DOCX, JPG или PNG.")
+        if uploaded.size > SIGNED_ARCHIVE_MAX_BYTES:
+            raise forms.ValidationError("Файл слишком большой. Ограничение: 15 МБ.")
         return uploaded
 
 

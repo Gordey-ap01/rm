@@ -472,3 +472,21 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Browser QA synthetic `BQA-CONSENTARCH*` data was cleaned and local runserver `8104` stopped.
 - Graphify code-index after this slice: `5157` nodes / `22691` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: certificate payer/source modeling, external signed-file upload flow, consent legal snapshot if needed, or another explicit contract. Do not connect consents to schedule blocking/public permissions/finance/grants/import write-path without a new contract.
+
+## Latest clarification 2026-07-19: external-signed-file-upload complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/37-external-signed-file-upload-contract.md` is added and implemented.
+- No new migrations were created.
+- `SignedArchiveUploadForm` validates uploaded signed files: `.pdf`, `.docx`, `.jpg`, `.jpeg`, `.png`, max 15 МБ.
+- Existing archive POST actions for service/donation/B2B contracts, acts and consents now support optional `signed_file`.
+- No attached file means old behavior: copy current generated Word.
+- Attached file means archive uploaded payload while preserving the same source generated `Document` and frozen snapshots.
+- `/contracts/` and `/consents/` show compact upload controls next to `Зафиксировать`.
+- Download routes return the uploaded file payload; uploaded scans do not create new `Document` rows.
+- No models/migrations, archive immutability, ledger/balance/payment/billing/payroll/grant/status/schedule/import semantics changed.
+- Verification passed: Ruff touched Python, Django check, migration dry-run `No changes detected`, focused upload/view tests `13 passed`, full pytest `624 passed`, Playwright desktop/mobile QA for service contract + consent upload/download.
+- Browser QA synthetic `BQA-SIGNED-UPLOAD*` data was cleaned and local runserver `8105` stopped.
+- Graphify code-index after this slice: `5186` nodes / `22856` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: certificate payer/source modeling, consent legal snapshot if needed, or another explicit contract. Do not connect document uploads to finance/schedule/grants/public permission flows/import write-path without a new contract.
