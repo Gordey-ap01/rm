@@ -17,6 +17,7 @@ from django.db.models import Q
 from operations.models import (
     CenterExpense,
     CenterExpenseCategory,
+    Certificate,
     Child,
     ContractTemplate,
     Counterparty,
@@ -216,6 +217,7 @@ COUNTERPARTY_IMPORT = "counterparties"
 EXPENSE_IMPORT = "expenses"
 DONATION_CONTRACT_IMPORT = "donation_contracts"
 SERVICE_CONTRACT_IMPORT = "service_contracts"
+CERTIFICATE_IMPORT = "certificates"
 
 COUNTERPARTY_COLUMNS = [
     ImportColumn("name", "Контрагент", required=True),
@@ -270,6 +272,25 @@ SERVICE_CONTRACT_COLUMNS = [
     ImportColumn("status", "Статус"),
     ImportColumn("template", "Шаблон"),
     ImportColumn("document_title", "Документ"),
+    ImportColumn("notes", "Примечание"),
+]
+
+CERTIFICATE_COLUMNS = [
+    ImportColumn("recipient_last_name", "Фамилия получателя", required=True),
+    ImportColumn("recipient_first_name", "Имя получателя", required=True),
+    ImportColumn("recipient_middle_name", "Отчество получателя"),
+    ImportColumn("birth_date", "Дата рождения"),
+    ImportColumn("certificate_type", "Тип сертификата", required=True),
+    ImportColumn("number", "Номер"),
+    ImportColumn("total_amount", "Полная сумма", required=True),
+    ImportColumn("remaining_amount", "Остаток", required=True),
+    ImportColumn("valid_from", "Действует с"),
+    ImportColumn("valid_until", "Действует до"),
+    ImportColumn("funding_source", "Источник финансирования"),
+    ImportColumn("payer_last_name", "Фамилия плательщика"),
+    ImportColumn("payer_first_name", "Имя плательщика"),
+    ImportColumn("payer_phone", "Телефон плательщика"),
+    ImportColumn("payer_name", "Плательщик вручную"),
     ImportColumn("notes", "Примечание"),
 ]
 
@@ -339,6 +360,45 @@ SERVICE_CONTRACT_ALIASES = {
     "notes": ["примечание", "комментарий", "notes", "note"],
 }
 
+CERTIFICATE_ALIASES = {
+    "recipient_last_name": [
+        "фамилия получателя",
+        "фамилия ребенка",
+        "фамилия ребёнка",
+        "recipient_last_name",
+    ],
+    "recipient_first_name": [
+        "имя получателя",
+        "имя ребенка",
+        "имя ребёнка",
+        "recipient_first_name",
+    ],
+    "recipient_middle_name": [
+        "отчество получателя",
+        "отчество ребенка",
+        "отчество ребёнка",
+        "recipient_middle_name",
+    ],
+    "birth_date": ["дата рождения", "др", "birth_date"],
+    "certificate_type": [
+        "тип сертификата",
+        "тип",
+        "сертификат",
+        "certificate_type",
+    ],
+    "number": ["номер", "номер сертификата", "number"],
+    "total_amount": ["полная сумма", "сумма", "total_amount", "amount"],
+    "remaining_amount": ["остаток", "остаток сертификата", "remaining_amount", "remaining"],
+    "valid_from": ["действует с", "valid_from"],
+    "valid_until": ["действует до", "valid_until"],
+    "funding_source": ["источник финансирования", "источник", "funding_source", "funding"],
+    "payer_last_name": ["фамилия плательщика", "плательщик фамилия", "payer_last_name"],
+    "payer_first_name": ["имя плательщика", "плательщик имя", "payer_first_name"],
+    "payer_phone": ["телефон плательщика", "телефон", "payer_phone"],
+    "payer_name": ["плательщик вручную", "плательщик", "payer_name"],
+    "notes": ["примечание", "комментарий", "notes", "note"],
+}
+
 FINANCE_CONTRACT_IMPORT_SPECS = {
     COUNTERPARTY_IMPORT: ImportSpec(
         key=COUNTERPARTY_IMPORT,
@@ -364,6 +424,12 @@ FINANCE_CONTRACT_IMPORT_SPECS = {
         columns=SERVICE_CONTRACT_COLUMNS,
         aliases=SERVICE_CONTRACT_ALIASES,
     ),
+    CERTIFICATE_IMPORT: ImportSpec(
+        key=CERTIFICATE_IMPORT,
+        label="Сертификаты",
+        columns=CERTIFICATE_COLUMNS,
+        aliases=CERTIFICATE_ALIASES,
+    ),
 }
 
 FINANCE_CONTRACT_IMPORT_CHOICES = [
@@ -377,6 +443,7 @@ FINANCE_CONTRACT_IMPORT_CHOICES = [
         SERVICE_CONTRACT_IMPORT,
         FINANCE_CONTRACT_IMPORT_SPECS[SERVICE_CONTRACT_IMPORT].label,
     ),
+    (CERTIFICATE_IMPORT, FINANCE_CONTRACT_IMPORT_SPECS[CERTIFICATE_IMPORT].label),
 ]
 
 
@@ -765,11 +832,125 @@ def _validate_service_contract_row(values: dict[str, str]) -> tuple[list[str], l
     return errors, warnings
 
 
+def _find_child_for_import(values: dict[str, str]) -> tuple[Child | None, int]:
+    child_queryset = Child.all_objects.filter(
+        last_name__iexact=values["recipient_last_name"],
+        first_name__iexact=values["recipient_first_name"],
+    )
+    if values.get("recipient_middle_name"):
+        child_queryset = child_queryset.filter(
+            middle_name__iexact=values["recipient_middle_name"]
+        )
+    birth_date, _ = _parse_date(values.get("birth_date", ""), "Дата рождения")
+    if birth_date:
+        child_queryset = child_queryset.filter(birth_date=birth_date)
+    return child_queryset.first(), child_queryset.count()
+
+
+def _validate_certificate_row(values: dict[str, str]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    birth_date = None
+    if values["birth_date"]:
+        birth_date, birth_error = _parse_date(values["birth_date"], "Дата рождения")
+        if birth_error:
+            errors.append(birth_error)
+
+    for key, label in (
+        ("valid_from", "Действует с"),
+        ("valid_until", "Действует до"),
+    ):
+        if values[key]:
+            _, date_error = _parse_date(values[key], label)
+            if date_error:
+                errors.append(date_error)
+    valid_from, _ = _parse_date(values["valid_from"], "Действует с")
+    valid_until, _ = _parse_date(values["valid_until"], "Действует до")
+    if valid_from and valid_until and valid_until < valid_from:
+        errors.append("Дата окончания не может быть раньше даты начала.")
+
+    type_error = _choice_error(
+        values["certificate_type"],
+        Certificate.CertificateType.choices,
+        "Тип сертификата",
+    )
+    if type_error:
+        errors.append(type_error)
+
+    total_amount, total_error = _parse_decimal(values["total_amount"], "Полная сумма")
+    remaining_amount, remaining_error = _parse_decimal(values["remaining_amount"], "Остаток")
+    if total_error:
+        errors.append(total_error)
+    elif total_amount is not None and total_amount < 0:
+        errors.append("Полная сумма не может быть отрицательной.")
+    if remaining_error:
+        errors.append(remaining_error)
+    elif remaining_amount is not None and remaining_amount < 0:
+        errors.append("Остаток не может быть отрицательным.")
+    if (
+        total_amount is not None
+        and remaining_amount is not None
+        and remaining_amount > total_amount
+    ):
+        errors.append("Остаток не может быть больше полной суммы.")
+
+    child = None
+    child_count = 0
+    if values["recipient_last_name"] and values["recipient_first_name"]:
+        child, child_count = _find_child_for_import(values)
+        if child is None:
+            errors.append("Получатель не найден.")
+        elif child_count > 1:
+            warnings.append("Найдено несколько получателей с такими ФИО; нужен ручной выбор.")
+
+    if values["funding_source"] and not FundingSource.all_objects.filter(
+        name__iexact=values["funding_source"]
+    ).exists():
+        errors.append("Источник финансирования не найден.")
+
+    if child and values["number"] and Certificate.objects.filter(
+        child=child,
+        number__iexact=values["number"],
+    ).exists():
+        warnings.append("Сертификат с таким номером уже есть у получателя.")
+
+    payer_name_parts = [
+        values["payer_last_name"],
+        values["payer_first_name"],
+        values["payer_phone"],
+    ]
+    if child and any(payer_name_parts):
+        if not values["payer_last_name"]:
+            errors.append("Для поиска представителя-плательщика нужна фамилия.")
+        else:
+            payer_filter = Q(
+                child=child,
+                representative__last_name__iexact=values["payer_last_name"],
+            )
+            if values["payer_first_name"]:
+                payer_filter &= Q(representative__first_name__iexact=values["payer_first_name"])
+            if values["payer_phone"]:
+                payer_filter &= Q(representative__phone__icontains=values["payer_phone"])
+            payer_links = RecipientRepresentative.objects.filter(payer_filter)
+            if not payer_links.exists():
+                errors.append("Представитель-плательщик не найден у выбранного получателя.")
+            elif payer_links.count() > 1:
+                warnings.append("Найдено несколько представителей-плательщиков; нужен ручной выбор.")
+            elif not payer_links.first().is_payer:
+                warnings.append("Представитель найден, но в карточке не отмечен как плательщик.")
+
+    if child and birth_date and child.birth_date and child.birth_date != birth_date:
+        warnings.append("Дата рождения в файле отличается от карточки получателя.")
+    return errors, warnings
+
+
 VALIDATORS = {
     COUNTERPARTY_IMPORT: _validate_counterparty_row,
     EXPENSE_IMPORT: _validate_expense_row,
     DONATION_CONTRACT_IMPORT: _validate_donation_contract_row,
     SERVICE_CONTRACT_IMPORT: _validate_service_contract_row,
+    CERTIFICATE_IMPORT: _validate_certificate_row,
 }
 
 

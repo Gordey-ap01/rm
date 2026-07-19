@@ -30,6 +30,7 @@ from operations.models import (
     BalanceAccount,
     CenterExpense,
     CenterExpenseCategory,
+    Certificate,
     Child,
     ContractTemplate,
     Counterparty,
@@ -2810,6 +2811,47 @@ class ImportPreviewServiceTests(TestCase):
         self.assertEqual(preview.invalid_count, 1)
         self.assertTrue(any("Подписант" in error for error in preview.rows[1].errors))
         self.assertEqual(ServiceContract.objects.count(), before_count)
+
+    def test_certificate_preview_validates_rows_without_creating_certificates(self):
+        parent = ParentGuardian.objects.create(
+            last_name="Смирнова",
+            first_name="Ольга",
+            phone="+7 900 000-00-01",
+        )
+        child = Child.objects.create(last_name="Смирнов", first_name="Илья", primary_parent=parent)
+        payer_link = RecipientRepresentative.objects.get(child=child, representative=parent)
+        payer_link.is_payer = True
+        payer_link.save(update_fields=["is_payer", "updated_at"])
+        funding = FundingSource.objects.create(
+            name="Сертификатный фонд",
+            source_type=FundingSource.SourceType.CERTIFICATE,
+        )
+        before_count = Certificate.objects.count()
+        uploaded = SimpleUploadedFile(
+            "certificates.csv",
+            (
+                "Фамилия получателя;Имя получателя;Тип сертификата;Номер;Полная сумма;"
+                "Остаток;Источник финансирования;Фамилия плательщика;Имя плательщика;"
+                "Действует с;Действует до\n"
+                "Смирнов;Илья;Материнский капитал;CERT-100;100000;50000;"
+                f"{funding.name};Смирнова;Ольга;2026-07-17;2027-07-17\n"
+                "Смирнов;Илья;Региональный сертификат;CERT-101;1000;2000;"
+                "Нет;Смирнова;Ольга;2027-07-17;2026-07-17\n"
+            ).encode(),
+            content_type="text/csv",
+        )
+
+        preview = import_preview_svc.preview_finance_contract_import(
+            uploaded,
+            import_preview_svc.CERTIFICATE_IMPORT,
+        )
+
+        self.assertEqual(preview.total_rows, 2)
+        self.assertEqual(preview.valid_count, 1)
+        self.assertEqual(preview.invalid_count, 1)
+        self.assertTrue(any("Остаток" in error for error in preview.rows[1].errors))
+        self.assertTrue(any("Источник" in error for error in preview.rows[1].errors))
+        self.assertEqual(Certificate.objects.count(), before_count)
 
 
 class ReportsServiceTests(_FixturesMixin, TestCase):

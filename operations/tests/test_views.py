@@ -4502,6 +4502,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertContains(response, "Preview")
         self.assertContains(response, "Контрагенты")
         self.assertContains(response, "Расходы")
+        self.assertContains(response, "Сертификаты")
 
     def test_contract_import_preview_post_expenses_does_not_create_records(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -4528,6 +4529,36 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(CenterExpense.objects.count(), before_count)
         self.assertEqual(response.context["preview"].valid_count, 1)
         self.assertContains(response, "Тестовый расход")
+
+    def test_contract_import_preview_post_certificates_does_not_create_records(self):
+        link = RecipientRepresentative.objects.get(child=self.child, representative=self.parent)
+        link.is_payer = True
+        link.save(update_fields=["is_payer", "updated_at"])
+        before_count = Certificate.objects.count()
+        upload = SimpleUploadedFile(
+            "certificates.csv",
+            (
+                "Фамилия получателя;Имя получателя;Тип сертификата;Номер;Полная сумма;"
+                "Остаток;Источник финансирования;Фамилия плательщика;Имя плательщика\n"
+                f"{self.child.last_name};{self.child.first_name};Материнский капитал;"
+                f"CERT-VIEW;100000;75000;{self.funding.name};"
+                f"{self.parent.last_name};{self.parent.first_name}\n"
+            ).encode(),
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("contract_import_preview"),
+            {
+                "import_type": "certificates",
+                "file": upload,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Certificate.objects.count(), before_count)
+        self.assertEqual(response.context["preview"].valid_count, 1)
+        self.assertContains(response, "CERT-VIEW")
 
     def test_service_contract_pdf_download_does_not_create_document_or_financial_facts(self):
         template = self._service_template()

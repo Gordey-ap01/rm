@@ -25,8 +25,8 @@
     "semantic_hash": ""
   },
   "operations/forms.py": {
-    "mtime": 1784430150.7338333,
-    "ast_hash": "0215d6fe9a4971ae5fb22379fec5c27e",
+    "mtime": 1784431193.0744178,
+    "ast_hash": "3ab2470032d35394d06a324924e8c735",
     "semantic_hash": ""
   },
   "operations/management/__init__.py": {
@@ -165,13 +165,13 @@
     "semantic_hash": ""
   },
   "operations/tests/test_services.py": {
-    "mtime": 1784243921.3674564,
-    "ast_hash": "860387deaf195c3038a80238b8fef4d6",
+    "mtime": 1784431257.450845,
+    "ast_hash": "72a4745f356d4934b7e302e435056036",
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
-    "mtime": 1784430337.1351106,
-    "ast_hash": "7faa6ccd9ec1a5bcdaaaea8af2d9c108",
+    "mtime": 1784431278.4945736,
+    "ast_hash": "d5a70d51041f8469f2e57c0559999938",
     "semantic_hash": ""
   },
   "operations/urls.py": {
@@ -725,8 +725,8 @@
     "semantic_hash": "454d811b800f04233e8597abb814069f"
   },
   "operations/services/import_preview.py": {
-    "mtime": 1784243511.0892212,
-    "ast_hash": "1eb7fd0588ca25500149e7256df5d253",
+    "mtime": 1784431225.3619456,
+    "ast_hash": "f0030046201daa5a362618686c7baae3",
     "semantic_hash": ""
   },
   "operations/services/payroll.py": {
@@ -745,8 +745,8 @@
     "semantic_hash": "2f2be7835a0882158a721c13c9b8a4d5"
   },
   "operations/views/imports.py": {
-    "mtime": 1784243762.5158086,
-    "ast_hash": "8bfc5a6f011628245b90690edba10973",
+    "mtime": 1784431200.235191,
+    "ast_hash": "da5d40e2922a84220097210a096427e4",
     "semantic_hash": ""
   },
   "operations/views/rooms.py": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784430814.681646,
-    "ast_hash": "2f3ee24da0392242f0db1b8a60f1ac57",
+    "mtime": 1784431982.6243079,
+    "ast_hash": "7d8e6a537a2d77a923ca6a12e5c9321d",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784430825.9287612,
-    "ast_hash": "81dbe16805242125c6a34765ee4f1fa6",
+    "mtime": 1784432015.6981175,
+    "ast_hash": "cbfcb16c2e4bd817cbc30f0bd7b43640",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784430836.765027,
-    "ast_hash": "323053bc36a1fe45ecac183dffb04fa8",
+    "mtime": 1784432001.391068,
+    "ast_hash": "c5a3b03913ac7d984eed6967e2c3e010",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1120,8 +1120,8 @@
     "semantic_hash": ""
   },
   "templates/operations/contract_import_preview.html": {
-    "mtime": 1784350970.6403193,
-    "ast_hash": "4fce60d8665df04c7e7b89beb010bad6",
+    "mtime": 1784431209.5514739,
+    "ast_hash": "f96424176c6b510c7a593d36845f4efd",
     "semantic_hash": ""
   },
   "operations/views/expense_directories.py": {
@@ -1300,8 +1300,13 @@
     "semantic_hash": ""
   },
   "docs/39-recipient-certificate-crud-contract.md": {
-    "mtime": 1784430794.5725007,
-    "ast_hash": "b8aacc49cbde5632c5a36a746de5d642",
+    "mtime": 1784430872.151325,
+    "ast_hash": "a6b74834a035e42a545b5388c68f7b79",
+    "semantic_hash": ""
+  },
+  "docs/40-certificate-import-preview-contract.md": {
+    "mtime": 1784431966.749192,
+    "ast_hash": "5abe25e35b38566ba778ebbaad4f14bd",
     "semantic_hash": ""
   }
 }

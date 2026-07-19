@@ -73,6 +73,7 @@ CONTRACT_IMPORT_TYPE_CHOICES = (
     ("expenses", "Расходы"),
     ("donation_contracts", "Договоры пожертвования"),
     ("service_contracts", "Договоры с получателями"),
+    ("certificates", "Сертификаты"),
 )
 SIGNED_ARCHIVE_ALLOWED_EXTENSIONS = (".pdf", ".docx", ".jpg", ".jpeg", ".png")
 SIGNED_ARCHIVE_MAX_BYTES = 15 * 1024 * 1024

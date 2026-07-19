@@ -116,8 +116,8 @@ def contract_import_summary_items(preview: ImportPreview | None) -> list[dict[st
             },
             {
                 "label": "Типы",
-                "value": "4",
-                "hint": "контрагенты, расходы, договоры",
+                "value": str(len(FINANCE_CONTRACT_IMPORT_SPECS)),
+                "hint": "контрагенты, расходы, договоры, сертификаты",
             },
             {
                 "label": "Лимит",
@@ -155,7 +155,7 @@ def contract_import_next_action(preview: ImportPreview | None) -> dict[str, str]
             "tone": "info",
             "label": "Следующее действие",
             "title": "Выбрать файл и тип проверки",
-            "detail": "Система проверит строки и не создаст записи.",
+            "detail": "Система проверит строки и не создаст записи или финансовые факты.",
             "href": "#import-upload",
         }
     if preview.missing_required_headers:

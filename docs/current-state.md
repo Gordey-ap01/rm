@@ -1818,3 +1818,16 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA synthetic `BQA-CERTCRUD*` data was cleaned; local runserver `8107` stopped.
 - Graphify code-index after this slice: `5229` nodes / `22978` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work after this slice: consent legal snapshot if needed, certificate import preview, or another explicit contract. Do not connect certificates to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.
+
+## Update 2026-07-19: certificate-import-preview
+
+- Implemented `docs/40-certificate-import-preview-contract.md` as a no-migration read-only import preview slice.
+- `/contracts/import-preview/` now supports type `Сертификаты` / `certificates`.
+- Preview accepts existing `.xlsx/.csv/.tsv` parsing and maps certificate columns by Russian labels or English aliases.
+- Row validation checks recipient lookup, certificate type, non-negative amounts, remaining amount <= total amount, date order, existing funding source and payer representative ownership.
+- Duplicate certificate number for a recipient is a warning; missing references or invalid amounts/dates are errors.
+- Preview does not create `Certificate`, does not mutate certificate balances and does not create `BalanceAccount`, `Payment`, `LedgerEntry`, payroll, grant facts or appointment statuses.
+- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused import-preview tests `9 passed`, full pytest `632 passed`, Playwright desktop/mobile QA for certificate CSV upload and no horizontal overflow.
+- Browser QA synthetic `BQA-CERTIMPORT*` data was cleaned; local runserver `8108` stopped.
+- Graphify code-index after this slice: `5245` nodes / `23031` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work after this slice: consent legal snapshot if needed, certificate import write-path only after a separate explicit contract, or another approved vertical slice. Do not connect certificate preview to balance mutation, payments, ledger, grants, schedules or write-path imports without a new contract.

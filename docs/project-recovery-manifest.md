@@ -46,6 +46,7 @@
 | `docs/37-external-signed-file-upload-contract.md` | Контракт загрузки внешне подписанных PDF/DOCX/изображений в архив. | Перед изменениями signed archive upload forms/actions/download для договоров, актов или согласий. |
 | `docs/38-certificate-payer-source-contract.md` | Контракт реквизитов плательщика и источника у сертификата. | Перед изменениями `Certificate.funding_source`, `Certificate.payer_*` или `certificate.payer_name` placeholders. |
 | `docs/39-recipient-certificate-crud-contract.md` | Контракт CRUD сертификатов в карточке получателя. | Перед изменениями `CertificateForm`, recipient certificate create/edit routes или таблицы сертификатов в карточке получателя. |
+| `docs/40-certificate-import-preview-contract.md` | Контракт read-only предпросмотра Excel/CSV сертификатов. | Перед изменениями certificate import preview, валидации строк сертификатов или будущим import write-path по сертификатам. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -502,3 +503,17 @@ Browser QA - это проверка живого интерфейса в бра
 - Browser QA synthetic `BQA-CERTCRUD*` data was cleaned and local runserver `8107` stopped.
 - Graphify code-index after this slice: `5229` nodes / `22978` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: consent legal snapshot if needed, certificate import preview, or another explicit contract. Do not connect certificates to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.
+
+## Latest Recovery Note 2026-07-19: certificate-import-preview
+
+- `docs/40-certificate-import-preview-contract.md` is added and implemented.
+- No migrations were created.
+- `/contracts/import-preview/` now supports type `certificates` / `Сертификаты`.
+- Preview maps certificate columns by Russian labels and English aliases.
+- Row validation checks recipient lookup, certificate type, amounts, date order, funding source existence and payer representative ownership.
+- Duplicate certificate number for a recipient is a warning.
+- Preview is read-only: it does not create `Certificate` and does not mutate balances, payments, ledger, payroll, grants, schedules or statuses.
+- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused import-preview tests `9 passed`, full pytest `632 passed`, Playwright desktop/mobile QA for certificate CSV upload.
+- Browser QA synthetic `BQA-CERTIMPORT*` data was cleaned and local runserver `8108` stopped.
+- Graphify code-index after this slice: `5245` nodes / `23031` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: consent legal snapshot if needed, certificate import write-path only after a separate explicit contract, or another approved vertical slice. Do not connect certificate preview to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.

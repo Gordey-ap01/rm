@@ -520,3 +520,19 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Browser QA synthetic `BQA-CERTCRUD*` data was cleaned and local runserver `8107` stopped.
 - Graphify code-index after this slice: `5229` nodes / `22978` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: consent legal snapshot if needed, certificate import preview, or another explicit contract. Do not connect certificates to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.
+
+## Latest clarification 2026-07-19: certificate-import-preview complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/40-certificate-import-preview-contract.md` is added and implemented.
+- No migrations were created.
+- `/contracts/import-preview/` now supports type `certificates` / `Сертификаты`.
+- Preview maps certificate columns by Russian labels and English aliases.
+- Row validation checks recipient lookup, certificate type, amounts, date order, funding source existence and payer representative ownership.
+- Duplicate certificate number for a recipient is a warning.
+- Preview is read-only: it does not create `Certificate` and does not mutate balances, payments, ledger, payroll, grants, schedules or statuses.
+- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused import-preview tests `9 passed`, full pytest `632 passed`, Playwright desktop/mobile QA for certificate CSV upload.
+- Browser QA synthetic `BQA-CERTIMPORT*` data was cleaned and local runserver `8108` stopped.
+- Graphify code-index after this slice: `5245` nodes / `23031` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: consent legal snapshot if needed, certificate import write-path only after a separate explicit contract, or another approved vertical slice. Do not connect certificate preview to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.
