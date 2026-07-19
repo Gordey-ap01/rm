@@ -18,6 +18,7 @@ from .models import (
     Certificate,
     Child,
     Consent,
+    ContractAct,
     ContractLegalSnapshot,
     ContractSignedFile,
     ContractTemplate,
@@ -461,6 +462,48 @@ class OrganizationServiceContractLineAdmin(admin.ModelAdmin):
     )
     list_filter = ("unit", "service")
     autocomplete_fields = ("organization_contract", "service")
+
+
+@admin.register(ContractAct)
+class ContractActAdmin(admin.ModelAdmin):
+    list_display = (
+        "act_kind",
+        "number",
+        "act_on",
+        "service_contract",
+        "organization_contract",
+        "amount",
+        "status",
+        "document",
+        "updated_at",
+    )
+    search_fields = (
+        "number",
+        "service_contract__number",
+        "service_contract__child__last_name",
+        "service_contract__child__first_name",
+        "organization_contract__number",
+        "organization_contract__counterparty__name",
+        "document__title",
+        "notes",
+    )
+    list_filter = ("act_kind", "status", "act_on")
+    autocomplete_fields = (
+        "service_contract",
+        "organization_contract",
+        "template",
+        "document",
+    )
+    readonly_fields = (
+        "act_snapshot",
+        "contract_snapshot",
+        "center_snapshot",
+        "recipient_snapshot",
+        "representative_snapshot",
+        "counterparty_snapshot",
+        "funding_source_snapshot",
+        "template_snapshot",
+    )
 
 
 @admin.register(ContractLegalSnapshot)

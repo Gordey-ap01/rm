@@ -26,6 +26,9 @@ from .compensation_rules import (
 from .confirmations import appointment_confirmation_public, appointment_send_confirmation
 from .consents import consent_create, consent_list, consent_word
 from .contracts import (
+    contract_act_create,
+    contract_act_edit,
+    contract_act_word,
     contract_list,
     contract_signed_file_download,
     contract_template_create,
@@ -171,6 +174,9 @@ __all__ = [
     "consent_create",
     "consent_list",
     "consent_word",
+    "contract_act_create",
+    "contract_act_edit",
+    "contract_act_word",
     "contract_import_preview",
     "contract_list",
     "contract_signed_file_download",

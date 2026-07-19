@@ -27,6 +27,7 @@ from .models import (
     Certificate,
     Child,
     Consent,
+    ContractAct,
     ContractTemplate,
     Counterparty,
     Document,
@@ -3123,6 +3124,152 @@ class OrganizationServiceContractForm(forms.ModelForm):
         if self.instance and self.instance.counterparty_id:
             return self.instance.counterparty_id
         return None
+
+
+class ContractActForm(forms.ModelForm):
+    class Meta:
+        model = ContractAct
+        fields = (
+            "act_kind",
+            "service_contract",
+            "organization_contract",
+            "number",
+            "act_on",
+            "period_from",
+            "period_until",
+            "amount",
+            "status",
+            "template",
+            "document",
+            "notes",
+        )
+        labels = {
+            "act_kind": "Тип акта",
+            "service_contract": "Договор с получателем",
+            "organization_contract": "B2B-договор",
+            "number": "Номер акта",
+            "act_on": "Дата акта",
+            "period_from": "Период с",
+            "period_until": "Период по",
+            "amount": "Сумма акта",
+            "status": "Статус",
+            "template": "Шаблон",
+            "document": "Файл акта",
+            "notes": "Примечания",
+        }
+        widgets = {
+            "act_on": DATE_INPUT,
+            "period_from": DATE_INPUT,
+            "period_until": DATE_INPUT,
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["act_kind"].initial = self.instance.act_kind or ContractAct.ActKind.SERVICE
+        self.fields["service_contract"].queryset = (
+            ServiceContract.objects.select_related("child", "representative_link__representative")
+            .prefetch_related("service_lines__service")
+            .order_by("-signed_on", "-created_at")
+        )
+        self.fields["service_contract"].required = False
+        self.fields["organization_contract"].queryset = (
+            OrganizationServiceContract.objects.select_related("counterparty", "funding_source")
+            .prefetch_related("service_lines__service")
+            .order_by("-signed_on", "-created_at")
+        )
+        self.fields["organization_contract"].required = False
+
+        template_filter = Q(
+            template_type__in=ContractTemplate.act_template_types(),
+            is_active=True,
+        )
+        if self.instance and self.instance.template_id:
+            template_filter |= Q(pk=self.instance.template_id)
+        self.fields["template"].queryset = ContractTemplate.objects.filter(
+            template_filter
+        ).order_by("template_type", "title", "version")
+        self.fields["template"].required = False
+
+        self.fields["document"].queryset = self._document_queryset()
+        self.fields["document"].required = False
+        self.fields["document"].help_text = (
+            "Если оставить пустым, Word создаст новый документ акта для выбранного договора."
+        )
+
+    def _selected_act_kind(self) -> str:
+        if self.is_bound:
+            return self.data.get(self.add_prefix("act_kind")) or ""
+        if self.instance and self.instance.act_kind:
+            return self.instance.act_kind
+        return ContractAct.ActKind.SERVICE
+
+    def _selected_service_contract_id(self) -> int | None:
+        if self.is_bound:
+            try:
+                return int(self.data.get(self.add_prefix("service_contract")) or "")
+            except (TypeError, ValueError):
+                return None
+        if self.instance and self.instance.service_contract_id:
+            return self.instance.service_contract_id
+        return None
+
+    def _selected_organization_contract_id(self) -> int | None:
+        if self.is_bound:
+            try:
+                return int(self.data.get(self.add_prefix("organization_contract")) or "")
+            except (TypeError, ValueError):
+                return None
+        if self.instance and self.instance.organization_contract_id:
+            return self.instance.organization_contract_id
+        return None
+
+    def _document_queryset(self):
+        document_filter = Q(category=Document.Category.ACT)
+        act_kind = self._selected_act_kind()
+        if act_kind == ContractAct.ActKind.SERVICE:
+            service_contract_id = self._selected_service_contract_id()
+            if service_contract_id:
+                try:
+                    contract = ServiceContract.objects.only("child_id").get(
+                        pk=service_contract_id
+                    )
+                except ServiceContract.DoesNotExist:
+                    document_filter &= Q(pk__isnull=True)
+                else:
+                    document_filter &= Q(
+                        target_type=Document.TargetType.RECIPIENT,
+                        child_id=contract.child_id,
+                    )
+            else:
+                document_filter &= Q(pk__isnull=True)
+        elif act_kind == ContractAct.ActKind.ORGANIZATION_SERVICE:
+            organization_contract_id = self._selected_organization_contract_id()
+            if organization_contract_id:
+                try:
+                    contract = OrganizationServiceContract.objects.only(
+                        "counterparty_id"
+                    ).get(pk=organization_contract_id)
+                except OrganizationServiceContract.DoesNotExist:
+                    document_filter &= Q(pk__isnull=True)
+                else:
+                    document_filter &= Q(
+                        target_type=Document.TargetType.COUNTERPARTY,
+                        counterparty_id=contract.counterparty_id,
+                    ) | Q(
+                        target_type__in=[
+                            Document.TargetType.CENTER,
+                            Document.TargetType.CONTRACT,
+                            Document.TargetType.OTHER,
+                        ],
+                    )
+            else:
+                document_filter &= Q(pk__isnull=True)
+        else:
+            document_filter &= Q(pk__isnull=True)
+        if self.instance and self.instance.document_id:
+            document_filter |= Q(pk=self.instance.document_id)
+        return Document.objects.filter(document_filter).order_by("-created_at")
 
 
 class ServiceContractLineForm(forms.ModelForm):

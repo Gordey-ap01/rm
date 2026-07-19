@@ -3077,6 +3077,7 @@ class Document(TimeStampedModel):
         CONSENT = "consent", "Согласие"
         IPR = "ipr", "ИПР / ИПРА"
         CONTRACT = "contract", "Договор"
+        ACT = "act", "Акт"
         OTHER = "other", "Прочее"
 
     class TargetType(models.TextChoices):
@@ -3762,6 +3763,13 @@ class ContractTemplate(TimeStampedModel):
             cls.TemplateType.OTHER,
         }
 
+    @classmethod
+    def act_template_types(cls) -> set[str]:
+        return {
+            cls.TemplateType.ACT,
+            cls.TemplateType.OTHER,
+        }
+
 
 class DonationContract(TimeStampedModel):
     class ContractType(models.TextChoices):
@@ -4332,6 +4340,198 @@ class OrganizationServiceContractLine(TimeStampedModel):
             self.service_name = self.service.name
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class ContractAct(TimeStampedModel):
+    class ActKind(models.TextChoices):
+        SERVICE = "service", "Акт к договору с получателем"
+        ORGANIZATION_SERVICE = "organization_service", "Акт к B2B-договору услуг"
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Черновик"
+        ISSUED = "issued", "Сформирован"
+        SIGNED = "signed", "Подписан"
+        CANCELLED = "cancelled", "Отменен"
+
+    act_kind = models.CharField(
+        "тип акта",
+        max_length=30,
+        choices=ActKind.choices,
+    )
+    service_contract = models.ForeignKey(
+        ServiceContract,
+        verbose_name="договор с получателем",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="acts",
+    )
+    organization_contract = models.ForeignKey(
+        OrganizationServiceContract,
+        verbose_name="B2B-договор услуг организации",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="acts",
+    )
+    number = models.CharField("номер акта", max_length=80, blank=True)
+    act_on = models.DateField("дата акта", null=True, blank=True)
+    period_from = models.DateField("период с", null=True, blank=True)
+    period_until = models.DateField("период по", null=True, blank=True)
+    amount = models.DecimalField(
+        "сумма акта",
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    status = models.CharField(
+        "статус",
+        max_length=30,
+        choices=Status.choices,
+        default=Status.DRAFT,
+    )
+    template = models.ForeignKey(
+        ContractTemplate,
+        verbose_name="шаблон",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="contract_acts",
+    )
+    document = models.ForeignKey(
+        Document,
+        verbose_name="файл акта",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="contract_acts",
+    )
+    act_snapshot = models.JSONField("данные акта", default=dict, blank=True)
+    contract_snapshot = models.JSONField("данные договора", default=dict, blank=True)
+    center_snapshot = models.JSONField("данные центра", default=dict, blank=True)
+    recipient_snapshot = models.JSONField("данные получателя", default=dict, blank=True)
+    representative_snapshot = models.JSONField("данные представителя", default=dict, blank=True)
+    counterparty_snapshot = models.JSONField("данные контрагента", default=dict, blank=True)
+    funding_source_snapshot = models.JSONField(
+        "данные источника финансирования",
+        default=dict,
+        blank=True,
+    )
+    template_snapshot = models.JSONField("данные шаблона", default=dict, blank=True)
+    notes = models.TextField("примечания", blank=True)
+
+    class Meta:
+        verbose_name = "акт оказанных услуг"
+        verbose_name_plural = "акты оказанных услуг"
+        ordering = ["-act_on", "-created_at"]
+        indexes = [
+            models.Index(fields=["act_kind", "status", "-act_on"]),
+            models.Index(fields=["service_contract", "status", "-act_on"]),
+            models.Index(fields=["organization_contract", "status", "-act_on"]),
+            models.Index(fields=["template", "status"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(amount__isnull=True) | Q(amount__gt=0)),
+                name="contract_act_amount_positive_or_null",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(period_from__isnull=True)
+                    | Q(period_until__isnull=True)
+                    | Q(period_until__gte=models.F("period_from"))
+                ),
+                name="contract_act_period_dates_order",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        act_kind="service",
+                        service_contract__isnull=False,
+                        organization_contract__isnull=True,
+                    )
+                    | Q(
+                        act_kind="organization_service",
+                        service_contract__isnull=True,
+                        organization_contract__isnull=False,
+                    )
+                ),
+                name="contract_act_matches_contract_kind",
+            ),
+            models.UniqueConstraint(
+                fields=["act_kind", "number", "act_on"],
+                condition=~Q(number="") & Q(act_on__isnull=False),
+                name="unique_contract_act_number_act_on_per_kind",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        number = f" №{self.number}" if self.number else ""
+        return f"{self.get_act_kind_display()}{number} — {self.contract_label}"
+
+    @property
+    def contract(self) -> ServiceContract | OrganizationServiceContract | None:
+        return self.service_contract or self.organization_contract
+
+    @property
+    def contract_label(self) -> str:
+        contract = self.contract
+        return str(contract) if contract is not None else "договор не выбран"
+
+    @property
+    def target_label(self) -> str:
+        if self.service_contract_id:
+            return self.service_contract.child.full_name
+        if self.organization_contract_id:
+            return self.organization_contract.counterparty.name
+        return "цель не выбрана"
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.period_from and self.period_until and self.period_until < self.period_from:
+            errors["period_until"] = "Дата окончания периода не может быть раньше даты начала."
+        if self.amount is not None and self.amount <= 0:
+            errors["amount"] = "Сумма акта должна быть положительной."
+        if self.act_kind == self.ActKind.SERVICE:
+            if not self.service_contract_id:
+                errors["service_contract"] = "Выберите договор с получателем."
+            if self.organization_contract_id:
+                errors["organization_contract"] = (
+                    "Для акта к договору с получателем B2B-договор должен быть пустым."
+                )
+        elif self.act_kind == self.ActKind.ORGANIZATION_SERVICE:
+            if not self.organization_contract_id:
+                errors["organization_contract"] = "Выберите B2B-договор услуг организации."
+            if self.service_contract_id:
+                errors["service_contract"] = (
+                    "Для B2B-акта договор с получателем должен быть пустым."
+                )
+        else:
+            errors["act_kind"] = "Выберите тип акта."
+        if (
+            self.template_id
+            and self.template.template_type not in ContractTemplate.act_template_types()
+        ):
+            errors["template"] = "Выберите шаблон акта."
+        if self.document_id:
+            if self.document.category != Document.Category.ACT:
+                errors["document"] = "Связанный документ должен иметь категорию акта."
+            elif self.act_kind == self.ActKind.SERVICE and self.service_contract_id:
+                if self.document.target_type != Document.TargetType.RECIPIENT:
+                    errors["document"] = "Акт к договору с получателем должен быть документом получателя."
+                elif self.document.child_id != self.service_contract.child_id:
+                    errors["document"] = "Документ акта должен относиться к получателю договора."
+            elif self.act_kind == self.ActKind.ORGANIZATION_SERVICE and self.organization_contract_id:
+                if self.document.target_type == Document.TargetType.RECIPIENT:
+                    errors["document"] = "B2B-акт нельзя связывать с документом получателя."
+                elif (
+                    self.document.target_type == Document.TargetType.COUNTERPARTY
+                    and self.document.counterparty_id != self.organization_contract.counterparty_id
+                ):
+                    errors["document"] = "Документ акта должен относиться к организации договора."
+        if errors:
+            raise ValidationError(errors)
 
 
 class ContractLegalSnapshot(TimeStampedModel):

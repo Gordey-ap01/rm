@@ -11,6 +11,7 @@ from operations.models import (
     Certificate,
     Child,
     Consent,
+    ContractAct,
     ContractSignedFile,
     ContractTemplate,
     Counterparty,
@@ -328,6 +329,73 @@ class ContractRegistryValidationTests(TestCase):
 
         self.assertIn("template", raised.exception.message_dict)
         self.assertIn("document", raised.exception.message_dict)
+
+    def test_contract_act_rejects_wrong_kind_template_document_and_values(self):
+        service_contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self.signer_link,
+            number="S-ACT-WRONG",
+        )
+        organization_contract = OrganizationServiceContract.objects.create(
+            counterparty=self.counterparty,
+            funding_source=self.funding_source,
+            number="B2B-ACT-WRONG",
+        )
+        counterparty_act_document = Document.objects.create(
+            target_type=Document.TargetType.COUNTERPARTY,
+            counterparty=self.counterparty,
+            category=Document.Category.ACT,
+            title="Counterparty act",
+            file="documents/counterparty-act.txt",
+        )
+        act = ContractAct(
+            act_kind=ContractAct.ActKind.SERVICE,
+            service_contract=service_contract,
+            organization_contract=organization_contract,
+            template=self.service_template,
+            document=counterparty_act_document,
+            period_from=self.today,
+            period_until=self.today - timezone.timedelta(days=1),
+            amount=Decimal("-1.00"),
+        )
+
+        with self.assertRaises(ValidationError) as raised:
+            act.full_clean()
+
+        self.assertIn("organization_contract", raised.exception.message_dict)
+        self.assertIn("period_until", raised.exception.message_dict)
+        self.assertIn("amount", raised.exception.message_dict)
+        self.assertIn("template", raised.exception.message_dict)
+        self.assertIn("document", raised.exception.message_dict)
+
+    def test_contract_act_accepts_service_act_template_and_recipient_document(self):
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.ACT,
+            title="Act template",
+        )
+        service_contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self.signer_link,
+            number="S-ACT-OK",
+        )
+        document = Document.objects.create(
+            target_type=Document.TargetType.RECIPIENT,
+            child=self.child,
+            category=Document.Category.ACT,
+            title="Recipient act",
+            file="documents/recipient-act.txt",
+        )
+        act = ContractAct(
+            act_kind=ContractAct.ActKind.SERVICE,
+            service_contract=service_contract,
+            template=template,
+            document=document,
+            period_from=self.today,
+            period_until=self.today + timezone.timedelta(days=1),
+            amount=Decimal("1000.00"),
+        )
+
+        act.full_clean()
 
     def test_consent_rejects_wrong_signatory_template_and_document(self):
         consent_template = ContractTemplate.objects.create(

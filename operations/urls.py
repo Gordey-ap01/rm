@@ -224,6 +224,9 @@ urlpatterns = [
         views.organization_service_contract_archive_signed,
         name="organization_service_contract_archive_signed",
     ),
+    path("contracts/acts/new/", views.contract_act_create, name="contract_act_create"),
+    path("contracts/acts/<int:pk>/edit/", views.contract_act_edit, name="contract_act_edit"),
+    path("contracts/acts/<int:pk>/word/", views.contract_act_word, name="contract_act_word"),
     path(
         "contracts/signed-files/<int:pk>/download/",
         views.contract_signed_file_download,

@@ -12,6 +12,7 @@
     <a class="button-link secondary" href="{% url 'contract_import_preview' %}">Проверить Excel</a>
     <a class="button-link secondary" href="{% url 'expense_directory_list' %}">Справочники</a>
     <a class="button-link secondary" href="{% url 'contract_template_create' %}">Шаблон</a>
+    <a class="button-link secondary" href="{% url 'contract_act_create' %}">Акт</a>
     <a class="button-link secondary" href="{% url 'donation_contract_create' %}">Пожертвование</a>
     <a class="button-link secondary" href="{% url 'organization_service_contract_create' %}">B2B-договор</a>
     <a class="button-link" href="{% url 'service_contract_create' %}">Договор с получателем</a>
@@ -315,6 +316,76 @@
       </div>
       {% endif %}
 
+      {% if filters.kind == "" or filters.kind == "act" %}
+      <h3 class="mt-4">Акты оказанных услуг</h3>
+      <div class="table-wrap directory-table-wrap">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>Основание</th>
+              <th>Номер</th>
+              <th>Период</th>
+              <th>Сумма</th>
+              <th>Шаблон/файл</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for act in contract_acts %}
+            <tr{% if act.status == "cancelled" %} class="muted-row"{% endif %}>
+              <td data-label="Основание">
+                <strong>{{ act.ui_target }}</strong>
+                <div class="muted">{{ act.get_act_kind_display }}</div>
+                <div class="muted">{{ act.contract_label }}</div>
+              </td>
+              <td data-label="Номер">
+                {% if act.number %}{{ act.number }}{% else %}<span class="muted">не указан</span>{% endif %}
+                <div class="muted">дата: {{ act.ui_act_on }}</div>
+              </td>
+              <td data-label="Период">{{ act.ui_period }}</td>
+              <td data-label="Сумма"><strong>{{ act.ui_amount }}</strong></td>
+              <td data-label="Шаблон/файл">
+                {% if act.template %}<div>{{ act.template }}</div>{% endif %}
+                {% if act.document %}
+                  <div class="muted">
+                    <a href="{{ act.document.file.url }}">{{ act.document.title }}</a>
+                  </div>
+                {% else %}
+                  <span class="muted">файл не привязан</span>
+                {% endif %}
+              </td>
+              <td data-label="Статус">
+                {% if act.status == "signed" %}
+                  <span class="status-pill">{{ act.get_status_display }}</span>
+                {% elif act.status == "issued" %}
+                  <span class="status-pill warning-pill">{{ act.get_status_display }}</span>
+                {% elif act.status == "cancelled" %}
+                  <span class="status-pill danger-pill">{{ act.get_status_display }}</span>
+                {% else %}
+                  <span class="status-pill muted-pill">{{ act.get_status_display }}</span>
+                {% endif %}
+              </td>
+              <td class="table-actions" data-label="Действия">
+                <a class="small-action" href="{% url 'contract_act_edit' act.pk %}">Открыть</a>
+                <form method="post" action="{{ act.ui_word_url }}" class="inline-form compact-form">
+                  {% csrf_token %}
+                  <button class="secondary-button small-action" type="submit">Word</button>
+                </form>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" data-label="Акты">
+                <div class="empty-state">Акты оказанных услуг еще не добавлены.</div>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
       {% if filters.kind == "" or filters.kind == "template" %}
       <h3 class="mt-4">Шаблоны</h3>
       <div class="table-wrap directory-table-wrap">
@@ -383,6 +454,10 @@
         <li>
           <strong>Word-файл</strong>
           <span>Word сохраняется как рабочий файл договора; подписанную версию можно зафиксировать отдельной архивной записью.</span>
+        </li>
+        <li>
+          <strong>Акты</strong>
+          <span>Акт фиксирует юридический документ за период, но сам не создает платежи, списания или занятия.</span>
         </li>
         <li>
           <strong>Excel только preview</strong>

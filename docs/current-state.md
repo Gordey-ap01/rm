@@ -1735,3 +1735,18 @@ SMTP для реальной промышленной рассылки еще н
 - In-app Browser cannot handle download events; Word download route is covered by Django tests. Synthetic `BQAConsent*` QA data was cleaned and local runserver `8101` was stopped.
 - Graphify code-index after this slice: `5028` nodes / `21578` edges. Semantic extraction was not rerun; keep raw `docshablon/` ignored/private.
 - Next safe work: legal acts, signed archive/snapshot for consents, certificate payer/source modeling, or another explicit contract. Do not connect consents to schedule blocking, public permissions, finance, grants or import write-path without a new contract.
+
+## Update 2026-07-19: contract-acts-generation
+
+- Implemented `docs/34-contract-acts-generation-contract.md` as a DB-owner legal-document slice for acts of rendered services.
+- Added migration `operations.0038_alter_document_category_contractact`: `Document.Category.ACT` and new `ContractAct`.
+- `ContractAct` links exactly one base contract: `ServiceContract` or `OrganizationServiceContract`; it stores number, act date, service period, amount, status, template, generated document and snapshot JSON fields.
+- Act templates are limited to `ContractTemplate.ACT` and `OTHER`; generated files are saved as `Document(category=act)`.
+- Service-contract acts save recipient documents for the contract child; B2B acts save counterparty documents for the contract organization.
+- Word generation fills `act.*` plus existing center/contract/recipient/representative/counterparty/funding/service-spec placeholders and updates the act snapshot fields.
+- `/contracts/` now has an acts block, an `Акт` create action and POST `Word` action for acts.
+- No immutable signed archive for acts, act payment workflow, appointment linkage, ledger/balance/payment/billing/payroll/grant/status/import semantics changed.
+- Verification passed: Ruff touched Python/migration, Django check, migration dry-run `No changes detected`, focused contract/view tests `62 passed`, full pytest `612 passed`, Playwright desktop/mobile QA for acts list, Word-triggered document link and no horizontal overflow.
+- Browser QA artifacts: `%TEMP%\rmcodex-browser-qa-contract-acts`; synthetic `BQAAct*` QA data and generated media file were cleaned; local runserver `8102` was stopped.
+- Graphify code-index after this slice: `5086` nodes / `22128` edges. Semantic extraction was not rerun; keep raw `docshablon/` ignored/private.
+- Next safe work after this slice: immutable signed archive for acts, signed archive/snapshot for consents, certificate payer/source modeling, or a separate explicit contract. Do not connect acts to appointment facts, finance, grants, payroll or import write-path without a new contract.

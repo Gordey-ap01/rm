@@ -426,3 +426,17 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Runserver `8101` stopped; synthetic `BQAConsent*` QA data cleaned.
 - Graphify code-index after this slice: `5028` nodes / `21578` edges. Semantic extraction was not rerun; keep `docshablon/` private/ignored.
 - Next safe step: legal acts, signed archive/snapshot for consents, certificate payer/source modeling, or another explicit contract. Do not connect consents to schedule blocking/public permissions/finance/grants/import write-path without a new contract.
+
+## Latest clarification 2026-07-19: contract-acts-generation complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/34-contract-acts-generation-contract.md` is added and implemented.
+- Migration `operations.0038_alter_document_category_contractact` adds `Document.Category.ACT` and `ContractAct`.
+- `ContractAct` links exactly one `ServiceContract` or `OrganizationServiceContract`, stores act number/date/period/amount/status/template/document and snapshot JSON fields.
+- Act Word generation saves/updates `Document(category=act)` and fills `act.*`, center/contract/recipient/representative/counterparty/funding/service-spec placeholders.
+- `/contracts/` has an acts block, create/edit routes and POST `Word` action.
+- No signed archive for acts, consent archive, appointment linkage, ledger/balance/payment/billing/payroll/grant/status/import semantics changed.
+- Verification passed: Ruff touched Python/migration, Django check, migration dry-run `No changes detected`, focused contract/view tests `62 passed`, full pytest `612 passed`, Playwright desktop/mobile QA for acts; QA data was cleaned and runserver `8102` stopped.
+- Graphify code-index after this slice: `5086` nodes / `22128` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
+- Still needed before save-point commit: final secret scan, `git diff --check`, commit.

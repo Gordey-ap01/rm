@@ -29,6 +29,7 @@ from operations.models import (
     Certificate,
     Child,
     Consent,
+    ContractAct,
     ContractLegalSnapshot,
     ContractSignedFile,
     ContractTemplate,
@@ -3718,6 +3719,13 @@ class ContractRegistryViewTests(NewViewsTestBase):
             version="1",
         )
 
+    def _act_template(self) -> ContractTemplate:
+        return ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.ACT,
+            title="Шаблон акта",
+            version="1",
+        )
+
     def _contract_document(self, *, child=None, title: str = "Файл договора") -> Document:
         return Document.objects.create(
             child=child or self.child,
@@ -3776,6 +3784,14 @@ class ContractRegistryViewTests(NewViewsTestBase):
         payload = b"".join(response.streaming_content)
         self.assertTrue(payload.startswith(b"PK"))
         contract.refresh_from_db()
+        return payload
+
+    def _generate_contract_act_word(self, act: ContractAct) -> bytes:
+        response = self.client.post(reverse("contract_act_word", args=[act.pk]))
+        self.assertEqual(response.status_code, 200)
+        payload = b"".join(response.streaming_content)
+        self.assertTrue(payload.startswith(b"PK"))
+        act.refresh_from_db()
         return payload
 
     def _empty_service_line_formset_data(self) -> dict[str, str]:
@@ -3866,6 +3882,27 @@ class ContractRegistryViewTests(NewViewsTestBase):
             "service_lines-1-notes": "",
         }
 
+    def _contract_act_post_data(
+        self,
+        service_contract: ServiceContract,
+        *,
+        number: str = "ACT-FORM",
+    ) -> dict[str, object]:
+        return {
+            "act_kind": ContractAct.ActKind.SERVICE,
+            "service_contract": service_contract.pk,
+            "organization_contract": "",
+            "number": number,
+            "act_on": timezone.localdate().isoformat(),
+            "period_from": timezone.localdate().isoformat(),
+            "period_until": timezone.localdate().isoformat(),
+            "amount": "15000.00",
+            "status": ContractAct.Status.ISSUED,
+            "template": "",
+            "document": "",
+            "notes": "",
+        }
+
     def test_contract_list_renders(self):
         template = self._service_template()
         contract = ServiceContract.objects.create(
@@ -3943,6 +3980,36 @@ class ContractRegistryViewTests(NewViewsTestBase):
             reverse("organization_service_contract_word", args=[contract.pk]),
         )
 
+    def test_contract_list_renders_contract_acts(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            funding_source=self.funding,
+            number="S-ACT-LIST",
+            signed_on=timezone.localdate(),
+        )
+        act = ContractAct.objects.create(
+            act_kind=ContractAct.ActKind.SERVICE,
+            service_contract=contract,
+            number="ACT-001",
+            act_on=timezone.localdate(),
+            period_from=timezone.localdate(),
+            period_until=timezone.localdate(),
+            amount=Decimal("15000.00"),
+            status=ContractAct.Status.ISSUED,
+        )
+
+        response = self.client.get(reverse("contract_list"), {"kind": "act"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Акты оказанных услуг")
+        self.assertContains(response, "ACT-001")
+        self.assertContains(response, self.child.full_name)
+        self.assertContains(response, "15 000,00 ₽")
+        self.assertContains(response, reverse("contract_act_create"))
+        self.assertContains(response, reverse("contract_act_edit", args=[act.pk]))
+        self.assertContains(response, reverse("contract_act_word", args=[act.pk]))
+
     def test_organization_contract_create_saves_funding_and_spec_lines(self):
         counts_before = self._financial_counts()
 
@@ -3964,6 +4031,53 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(line.quantity, Decimal("12.00"))
         self.assertEqual(line.amount, Decimal("6000.00"))
         self.assertEqual(self._financial_counts(), counts_before)
+
+    def test_contract_act_create_filters_template_and_document_without_financial_facts(self):
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            funding_source=self.funding,
+            number="S-ACT-FORM",
+            signed_on=timezone.localdate(),
+        )
+        template = self._act_template()
+        wrong_template = self._service_template()
+        act_document = Document.objects.create(
+            target_type=Document.TargetType.RECIPIENT,
+            child=self.child,
+            category=Document.Category.ACT,
+            title="Акт получателя",
+            file="documents/act.txt",
+        )
+        wrong_document = Document.objects.create(
+            target_type=Document.TargetType.COUNTERPARTY,
+            counterparty=self.counterparty,
+            category=Document.Category.ACT,
+            title="Акт организации",
+            file="documents/org-act.txt",
+        )
+        counts_before = self._financial_counts()
+        data = self._contract_act_post_data(contract)
+        data["template"] = template.pk
+        data["document"] = act_document.pk
+
+        response = self.client.post(reverse("contract_act_create"), data)
+
+        act = ContractAct.objects.get(number="ACT-FORM")
+        self.assertRedirects(response, reverse("contract_act_edit", args=[act.pk]))
+        self.assertEqual(act.service_contract, contract)
+        self.assertEqual(act.template, template)
+        self.assertEqual(act.document, act_document)
+        self.assertEqual(self._financial_counts(), counts_before)
+
+        invalid_data = self._contract_act_post_data(contract, number="ACT-BAD")
+        invalid_data["template"] = wrong_template.pk
+        invalid_data["document"] = wrong_document.pk
+        invalid_response = self.client.post(reverse("contract_act_create"), invalid_data)
+
+        self.assertEqual(invalid_response.status_code, 200)
+        self.assertFalse(ContractAct.objects.filter(number="ACT-BAD").exists())
+        self.assertContains(invalid_response, "Выберите корректный вариант")
 
     def test_service_contract_create_saves_funding_and_spec_lines(self):
         ledger_count = LedgerEntry.objects.count()
@@ -4351,6 +4465,81 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(Document.objects.count(), document_count)
         self.assertEqual(LedgerEntry.objects.count(), ledger_count)
         self.assertEqual(Payment.objects.count(), payment_count)
+
+    def test_contract_act_word_generates_act_document_and_snapshots(self):
+        template = ContractTemplate.objects.create(
+            template_type=ContractTemplate.TemplateType.ACT,
+            title="Act placeholders",
+            version="1",
+            file=self._docx_upload(
+                "act_template.docx",
+                "Акт {{ act.number }} за {{ act.period }} на {{ act.amount }} "
+                "по договору {{ contract.number }} для {{ child.full_name }} "
+                "подписант {{ representative.full_name }} услуги {{ service_spec.rows }}.",
+            ),
+        )
+        contract = ServiceContract.objects.create(
+            child=self.child,
+            representative_link=self._signer_link(),
+            funding_source=self.funding,
+            number="S-ACT-WORD",
+            signed_on=timezone.localdate(),
+        )
+        ServiceContractLine.objects.create(
+            service_contract=contract,
+            service=self.service,
+            service_name="Индивидуальные занятия логопеда",
+            quantity=Decimal("10.00"),
+            unit=ServiceContractLine.Unit.SESSION,
+            unit_price=Decimal("1500.00"),
+            sort_order=1,
+        )
+        act = ContractAct.objects.create(
+            act_kind=ContractAct.ActKind.SERVICE,
+            service_contract=contract,
+            number="ACT-WORD",
+            act_on=timezone.localdate(),
+            period_from=timezone.localdate(),
+            period_until=timezone.localdate(),
+            amount=Decimal("15000.00"),
+            status=ContractAct.Status.ISSUED,
+            template=template,
+        )
+        document_count = Document.objects.count()
+        counts_before = self._financial_counts()
+
+        payload = self._generate_contract_act_word(act)
+        generated_text = self._docx_text(payload)
+
+        self.assertIn("ACT-WORD", generated_text)
+        self.assertIn("S-ACT-WORD", generated_text)
+        self.assertIn(self.child.full_name, generated_text)
+        self.assertIn(self.parent.full_name, generated_text)
+        self.assertIn("15 000,00 ₽", generated_text)
+        self.assertIn("Индивидуальные занятия логопеда", generated_text)
+        self.assertNotIn("{{ act.number }}", generated_text)
+        self.assertEqual(Document.objects.count(), document_count + 1)
+        self.assertEqual(act.document.category, Document.Category.ACT)
+        self.assertEqual(act.document.target_type, Document.TargetType.RECIPIENT)
+        self.assertEqual(act.document.child, self.child)
+        self.assertEqual(act.document.uploaded_by, self.admin)
+        self.assertEqual(act.act_snapshot["number"], "ACT-WORD")
+        self.assertEqual(act.act_snapshot["generated_amount"], "15000.00")
+        self.assertEqual(act.contract_snapshot["number"], "S-ACT-WORD")
+        self.assertEqual(act.recipient_snapshot["full_name"], self.child.full_name)
+        self.assertEqual(act.representative_snapshot["full_name"], self.parent.full_name)
+        self.assertEqual(act.template_snapshot["title"], "Act placeholders")
+        self.assertEqual(self._financial_counts(), counts_before)
+
+        original_document = act.document
+        act.number = "ACT-WORD-2"
+        act.save(update_fields=["number", "updated_at"])
+        second_payload = self._generate_contract_act_word(act)
+
+        self.assertTrue(second_payload.startswith(b"PK"))
+        self.assertEqual(Document.objects.count(), document_count + 1)
+        self.assertEqual(act.document, original_document)
+        self.assertEqual(act.act_snapshot["number"], "ACT-WORD-2")
 
     def test_service_contract_word_generates_document_from_template_without_financial_facts(self):
         template = ContractTemplate.objects.create(

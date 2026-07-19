@@ -17,8 +17,8 @@
     <section class="panel form-panel">
       <div class="object-form-head">
         <div>
-          <h2>Параметры договора</h2>
-          <p>Структурные поля сохраняются отдельно от файла. Файл можно оставить пустым на этапе черновика.</p>
+          <h2>{{ form_panel_title|default:"Параметры договора" }}</h2>
+          <p>{{ form_panel_subtitle|default:"Структурные поля сохраняются отдельно от файла. Файл можно оставить пустым на этапе черновика." }}</p>
         </div>
       </div>
       <div class="form-grid">

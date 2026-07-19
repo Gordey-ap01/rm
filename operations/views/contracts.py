@@ -15,6 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from operations.forms import (
+    ContractActForm,
     ContractTemplateForm,
     DonationContractForm,
     OrganizationServiceContractForm,
@@ -23,6 +24,7 @@ from operations.forms import (
     ServiceContractLineFormSet,
 )
 from operations.models import (
+    ContractAct,
     ContractLegalSnapshot,
     ContractSignedFile,
     ContractTemplate,
@@ -249,12 +251,48 @@ def _organization_queryset(filters: dict[str, str]) -> list[OrganizationServiceC
     return contracts
 
 
+def _act_queryset(filters: dict[str, str]) -> list[ContractAct]:
+    queryset = ContractAct.objects.select_related(
+        "service_contract__child",
+        "service_contract__representative_link__representative",
+        "organization_contract__counterparty",
+        "template",
+        "document",
+    )
+    if filters["kind"] not in {"", "act"}:
+        return []
+    if filters["status"] in {choice[0] for choice in ContractAct.Status.choices}:
+        queryset = queryset.filter(status=filters["status"])
+    query = filters["q"]
+    if query:
+        queryset = queryset.filter(
+            Q(number__icontains=query)
+            | Q(notes__icontains=query)
+            | Q(service_contract__number__icontains=query)
+            | Q(service_contract__child__last_name__icontains=query)
+            | Q(service_contract__child__first_name__icontains=query)
+            | Q(organization_contract__number__icontains=query)
+            | Q(organization_contract__counterparty__name__icontains=query)
+            | Q(template__title__icontains=query)
+            | Q(document__title__icontains=query)
+        ).distinct()
+    acts = list(queryset.order_by("-act_on", "-created_at")[:300])
+    for act in acts:
+        act.ui_act_on = _format_date(act.act_on)
+        act.ui_period = _validity_label(act.period_from, act.period_until)
+        act.ui_amount = _format_money(act.amount)
+        act.ui_word_url = reverse("contract_act_word", args=[act.pk])
+        act.ui_target = act.target_label
+    return acts
+
+
 def contract_summary_items(
     *,
     templates: list[ContractTemplate],
     donation_contracts: list[DonationContract],
     service_contracts: list[ServiceContract],
     organization_contracts: list[OrganizationServiceContract],
+    contract_acts: list[ContractAct],
 ) -> list[dict[str, str]]:
     contracts = [*donation_contracts, *service_contracts, *organization_contracts]
     active_count = sum(1 for contract in contracts if contract.status == "active")
@@ -282,6 +320,11 @@ def contract_summary_items(
             "value": str(len(templates)),
             "hint": f"активных: {active_templates}",
         },
+        {
+            "label": "Актов",
+            "value": str(len(contract_acts)),
+            "hint": "без финансовых проводок",
+        },
     ]
 
 
@@ -291,6 +334,7 @@ def contract_next_action(
     donation_contracts: list[DonationContract],
     service_contracts: list[ServiceContract],
     organization_contracts: list[OrganizationServiceContract],
+    contract_acts: list[ContractAct],
 ) -> dict[str, str]:
     contracts = [*donation_contracts, *service_contracts, *organization_contracts]
     if not any(template.is_active for template in templates):
@@ -377,6 +421,21 @@ def contract_form_control_items(kind: str) -> list[dict[str, str]]:
                 "detail": "Word сохраняется как документ выбранной организации; документ получателя использовать нельзя.",
             },
         ]
+    if kind == "act":
+        return [
+            {
+                "title": "Один договор-основание",
+                "detail": "Выберите договор с получателем или B2B-договор в соответствии с типом акта.",
+            },
+            {
+                "title": "Период и сумма",
+                "detail": "Акт хранит период и сумму юридического документа, но не создает платежи и списания.",
+            },
+            {
+                "title": "Файл акта",
+                "detail": "Word сохраняется как отдельный документ категории акта у получателя или организации.",
+            },
+        ]
     return [
         *common,
         {
@@ -402,6 +461,7 @@ def contract_list(request):
     donation_contracts = _donation_queryset(filters)
     service_contracts = _service_queryset(filters)
     organization_contracts = _organization_queryset(filters)
+    contract_acts = _act_queryset(filters)
     return render(
         request,
         "operations/contract_list.html",
@@ -410,26 +470,34 @@ def contract_list(request):
             "donation_contracts": donation_contracts,
             "service_contracts": service_contracts,
             "organization_contracts": organization_contracts,
+            "contract_acts": contract_acts,
             "contract_summary_items": contract_summary_items(
                 templates=templates,
                 donation_contracts=donation_contracts,
                 service_contracts=service_contracts,
                 organization_contracts=organization_contracts,
+                contract_acts=contract_acts,
             ),
             "contract_next_action": contract_next_action(
                 templates=templates,
                 donation_contracts=donation_contracts,
                 service_contracts=service_contracts,
                 organization_contracts=organization_contracts,
+                contract_acts=contract_acts,
             ),
             "kind_choices": [
                 ("", "Все"),
                 ("service", "С получателями"),
                 ("organization", "Организации"),
                 ("donation", "Пожертвования"),
+                ("act", "Акты"),
                 ("template", "Шаблоны"),
             ],
-            "status_choices": ServiceContract.Status.choices,
+            "status_choices": (
+                *ServiceContract.Status.choices,
+                (ContractAct.Status.ISSUED, ContractAct.Status.ISSUED.label),
+                (ContractAct.Status.SIGNED, ContractAct.Status.SIGNED.label),
+            ),
             "filters": filters,
             "today": timezone.localdate(),
         },
@@ -706,6 +774,70 @@ def organization_service_contract_edit(request, pk: int):
 
 @login_required
 @user_passes_test(is_admin_user)
+def contract_act_create(request):
+    act = ContractAct()
+    if request.method == "POST":
+        form = ContractActForm(request.POST, instance=act)
+        if form.is_valid():
+            act = form.save()
+            messages.success(request, "Акт оказанных услуг добавлен.")
+            return redirect("contract_act_edit", pk=act.pk)
+    else:
+        form = ContractActForm(instance=act)
+    return render(
+        request,
+        "operations/contract_form.html",
+        {
+            "title": "Добавить акт",
+            "subtitle": "Юридический документ за период без автоматических финансовых проводок.",
+            "form": form,
+            "form_panel_title": "Параметры акта",
+            "form_panel_subtitle": (
+                "Акт хранится отдельно от договора. Word можно сформировать после сохранения."
+            ),
+            "cancel_url": reverse("contract_list"),
+            "control_items": contract_form_control_items("act"),
+        },
+    )
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def contract_act_edit(request, pk: int):
+    act = get_object_or_404(
+        ContractAct.objects.select_related(
+            "service_contract__child",
+            "organization_contract__counterparty",
+        ),
+        pk=pk,
+    )
+    if request.method == "POST":
+        form = ContractActForm(request.POST, instance=act)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Акт оказанных услуг обновлен.")
+            return redirect("contract_list")
+    else:
+        form = ContractActForm(instance=act)
+    return render(
+        request,
+        "operations/contract_form.html",
+        {
+            "title": "Редактировать акт",
+            "subtitle": str(act),
+            "form": form,
+            "form_panel_title": "Параметры акта",
+            "form_panel_subtitle": (
+                "Акт хранится отдельно от договора. Word можно сформировать после сохранения."
+            ),
+            "cancel_url": reverse("contract_list"),
+            "control_items": contract_form_control_items("act"),
+        },
+    )
+
+
+@login_required
+@user_passes_test(is_admin_user)
 def donation_contract_pdf(request, pk: int):
     contract = get_object_or_404(
         DonationContract.objects.select_related("counterparty", "funding_source", "template"),
@@ -857,6 +989,40 @@ def organization_service_contract_word(request, pk: int):
             contract,
             actor=request.user,
         )
+    except contract_doc_svc.ContractDocumentError as exc:
+        messages.error(request, str(exc))
+        return redirect("contract_list")
+    return _docx_response(generated)
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def contract_act_word(request, pk: int):
+    act = get_object_or_404(
+        ContractAct.objects.select_related(
+            "service_contract__child",
+            "service_contract__representative_link__representative",
+            "service_contract__funding_source",
+            "service_contract__template",
+            "service_contract__document",
+            "service_contract__certificate",
+            "organization_contract__counterparty",
+            "organization_contract__funding_source",
+            "organization_contract__template",
+            "organization_contract__document",
+            "template",
+            "document",
+        ).prefetch_related(
+            "service_contract__service_lines__service",
+            "organization_contract__service_lines__service",
+        ),
+        pk=pk,
+    )
+    if request.method != "POST":
+        messages.warning(request, "Сформируйте Word-файл кнопкой в реестре договоров.")
+        return redirect("contract_list")
+    try:
+        generated = contract_doc_svc.save_contract_act_docx(act, actor=request.user)
     except contract_doc_svc.ContractDocumentError as exc:
         messages.error(request, str(exc))
         return redirect("contract_list")

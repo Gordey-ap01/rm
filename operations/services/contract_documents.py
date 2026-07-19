@@ -18,6 +18,7 @@ from docx.document import Document as WordDocumentType
 from operations.models import (
     CenterLegalProfile,
     Consent,
+    ContractAct,
     ContractLegalSnapshot,
     ContractSignedFile,
     Document,
@@ -96,6 +97,22 @@ PLACEHOLDER_GROUPS = (
             "contract.amount_words",
             "contract.monthly_amount",
             "contract.payment_due_days",
+        ),
+    ),
+    PlaceholderGroup(
+        "Акт",
+        (
+            "act.number",
+            "act.act_on",
+            "act.period_from",
+            "act.period_until",
+            "act.period",
+            "act.status",
+            "act.type",
+            "act.template",
+            "act.amount",
+            "act.contract_number",
+            "act.contract_signed_on",
         ),
     ),
     PlaceholderGroup(
@@ -507,12 +524,12 @@ def _certificate_snapshot(contract: ServiceContract) -> dict[str, object]:
     }
 
 
-def _service_contract_snapshot(contract: ServiceContract, document: Document) -> dict[str, object]:
+def _service_contract_reference_snapshot(contract: ServiceContract) -> dict[str, object]:
     service_lines = _service_lines_snapshot(contract)
     total_amount = sum((Decimal(line["amount"] or "0") for line in service_lines), Decimal("0"))
     return {
         "id": contract.pk,
-        "document_id": document.pk,
+        "document_id": contract.document_id,
         "number": contract.number,
         "contract_type": contract.contract_type,
         "contract_type_display": contract.get_contract_type_display(),
@@ -528,6 +545,12 @@ def _service_contract_snapshot(contract: ServiceContract, document: Document) ->
         "status_display": contract.get_status_display(),
         "updated_at": _snapshot_datetime(contract.updated_at),
     }
+
+
+def _service_contract_snapshot(contract: ServiceContract, document: Document) -> dict[str, object]:
+    snapshot = _service_contract_reference_snapshot(contract)
+    snapshot["document_id"] = document.pk
+    return snapshot
 
 
 def _donation_contract_snapshot(contract: DonationContract, document: Document) -> dict[str, object]:
@@ -551,11 +574,19 @@ def _organization_service_contract_snapshot(
     contract: OrganizationServiceContract,
     document: Document,
 ) -> dict[str, object]:
+    snapshot = _organization_service_contract_reference_snapshot(contract)
+    snapshot["document_id"] = document.pk
+    return snapshot
+
+
+def _organization_service_contract_reference_snapshot(
+    contract: OrganizationServiceContract,
+) -> dict[str, object]:
     service_lines = _service_lines_snapshot(contract)
     total_amount = sum((Decimal(line["amount"] or "0") for line in service_lines), Decimal("0"))
     return {
         "id": contract.pk,
-        "document_id": document.pk,
+        "document_id": contract.document_id,
         "number": contract.number,
         "contract_type": contract.contract_type,
         "contract_type_display": contract.get_contract_type_display(),
@@ -1051,6 +1082,61 @@ def organization_service_contract_placeholders(
     return values
 
 
+def _contract_total_amount(contract: ServiceContract | OrganizationServiceContract) -> Decimal:
+    lines = _service_lines(contract)
+    return sum((line.amount for line in lines), Decimal("0"))
+
+
+def _act_amount(act: ContractAct) -> Decimal | None:
+    if act.amount is not None:
+        return act.amount
+    contract = act.contract
+    if isinstance(contract, ServiceContract | OrganizationServiceContract):
+        total = _contract_total_amount(contract)
+        if total > 0:
+            return total
+    return None
+
+
+def _act_contract_number(contract) -> str:
+    if contract is None:
+        return "б/н"
+    return _text(getattr(contract, "number", ""), "б/н")
+
+
+def _act_contract_signed_on(contract) -> str:
+    if contract is None:
+        return PLACEHOLDER_BLANK
+    return _date_label(getattr(contract, "signed_on", None))
+
+
+def contract_act_placeholders(act: ContractAct) -> dict[str, str]:
+    contract = act.contract
+    if isinstance(contract, ServiceContract):
+        values = service_contract_placeholders(contract)
+    elif isinstance(contract, OrganizationServiceContract):
+        values = organization_service_contract_placeholders(contract)
+    else:
+        values = _empty_placeholder_values()
+        values.update(_center_placeholder_values())
+    values.update(
+        {
+            "act.number": _text(act.number, "б/н"),
+            "act.act_on": _date_label(act.act_on),
+            "act.period_from": _date_label(act.period_from),
+            "act.period_until": _date_label(act.period_until),
+            "act.period": _validity_label(act.period_from, act.period_until),
+            "act.status": act.get_status_display(),
+            "act.type": act.get_act_kind_display(),
+            "act.template": _template_label(act.template),
+            "act.amount": _money_label(_act_amount(act)),
+            "act.contract_number": _act_contract_number(contract),
+            "act.contract_signed_on": _act_contract_signed_on(contract),
+        }
+    )
+    return values
+
+
 def _consent_purpose_label(consent: Consent) -> str:
     if consent.consent_type == Consent.ConsentType.PHOTO_VIDEO:
         return "фото- и видеосъемка, хранение и использование материалов в целях работы центра"
@@ -1264,6 +1350,42 @@ def _organization_service_fallback_document(contract: OrganizationServiceContrac
     return document
 
 
+def _contract_act_fallback_document(act: ContractAct) -> WordDocumentType:
+    values = contract_act_placeholders(act)
+    document = WordDocument()
+    document.add_heading("Акт оказанных услуг", level=1)
+    document.add_paragraph(f"№ {values['act.number']} от {values['act.act_on']}")
+    document.add_paragraph(
+        f"К договору № {values['act.contract_number']} от {values['act.contract_signed_on']}"
+    )
+    document.add_paragraph(f"Шаблон: {values['act.template']}")
+
+    table = document.add_table(rows=0, cols=2)
+    table.style = "Table Grid"
+    for label, value in [
+        ("Тип акта", values["act.type"]),
+        ("Период", values["act.period"]),
+        ("Сумма акта", values["act.amount"]),
+        ("Статус реестра", values["act.status"]),
+        ("Получатель", values["child.full_name"]),
+        ("Представитель", values["representative.full_name"]),
+        ("Организация", values["counterparty.name"]),
+        ("Спецификация услуг", values["service_spec.rows"]),
+    ]:
+        row = table.add_row()
+        row.cells[0].text = label
+        row.cells[1].text = value
+
+    document.add_paragraph(
+        "Акт фиксирует юридический документ по договору и не создает платежи, "
+        "списания, начисления зарплаты, грантовые факты или занятия."
+    )
+    document.add_paragraph("Подписи сторон:")
+    document.add_paragraph("Заказчик/представитель: ______________ /_______________/")
+    document.add_paragraph("Центр: _______________________________ /_______________/")
+    return document
+
+
 def _consent_fallback_document(consent: Consent) -> WordDocumentType:
     values = consent_placeholders(consent)
     document = WordDocument()
@@ -1335,6 +1457,18 @@ def render_organization_service_contract_docx(
     )
 
 
+def render_contract_act_docx(act: ContractAct) -> GeneratedContractFile:
+    document = _load_template_document(act)
+    if document is None:
+        document = _contract_act_fallback_document(act)
+    else:
+        _replace_in_document(document, contract_act_placeholders(act))
+    return GeneratedContractFile(
+        payload=_render_document(document),
+        filename=_safe_filename_from_source("contract_act", f"{act.number or ''}_{act.pk or ''}"),
+    )
+
+
 def render_consent_docx(consent: Consent) -> GeneratedContractFile:
     document = _load_template_document(consent)
     if document is None:
@@ -1344,6 +1478,74 @@ def render_consent_docx(consent: Consent) -> GeneratedContractFile:
     return GeneratedContractFile(
         payload=_render_document(document),
         filename=_safe_filename_from_source("consent", f"{consent.child_id}_{consent.pk or ''}"),
+    )
+
+
+def _contract_act_snapshot(act: ContractAct, document: Document) -> dict[str, object]:
+    return {
+        "id": act.pk,
+        "document_id": document.pk,
+        "act_kind": act.act_kind,
+        "act_kind_display": act.get_act_kind_display(),
+        "number": act.number,
+        "act_on": _snapshot_date(act.act_on),
+        "period_from": _snapshot_date(act.period_from),
+        "period_until": _snapshot_date(act.period_until),
+        "period": _validity_label(act.period_from, act.period_until),
+        "amount": _snapshot_decimal(act.amount),
+        "generated_amount": _snapshot_decimal(_act_amount(act)),
+        "status": act.status,
+        "status_display": act.get_status_display(),
+        "service_contract_id": act.service_contract_id,
+        "organization_contract_id": act.organization_contract_id,
+        "updated_at": _snapshot_datetime(act.updated_at),
+    }
+
+
+def _save_contract_act_snapshots(
+    act: ContractAct,
+    document: Document,
+    *,
+    actor=None,
+) -> None:
+    contract = act.contract
+    act.act_snapshot = _contract_act_snapshot(act, document)
+    act.center_snapshot = _center_snapshot()
+    act.template_snapshot = _template_snapshot(act.template)
+    if isinstance(contract, ServiceContract):
+        act.contract_snapshot = _service_contract_reference_snapshot(contract)
+        act.recipient_snapshot = _recipient_snapshot(contract)
+        act.representative_snapshot = _representative_snapshot(contract)
+        act.counterparty_snapshot = {}
+        act.funding_source_snapshot = _funding_source_snapshot(contract)
+    elif isinstance(contract, OrganizationServiceContract):
+        act.contract_snapshot = _organization_service_contract_reference_snapshot(contract)
+        act.recipient_snapshot = {}
+        act.representative_snapshot = {}
+        act.counterparty_snapshot = _counterparty_snapshot(contract)
+        act.funding_source_snapshot = _funding_source_snapshot(contract)
+    else:
+        act.contract_snapshot = {}
+        act.recipient_snapshot = {}
+        act.representative_snapshot = {}
+        act.counterparty_snapshot = {}
+        act.funding_source_snapshot = {}
+    if actor is not None and getattr(actor, "is_authenticated", False):
+        act.act_snapshot["generated_by_id"] = actor.pk
+    act.full_clean()
+    act.save(
+        update_fields=[
+            "document",
+            "act_snapshot",
+            "contract_snapshot",
+            "center_snapshot",
+            "recipient_snapshot",
+            "representative_snapshot",
+            "counterparty_snapshot",
+            "funding_source_snapshot",
+            "template_snapshot",
+            "updated_at",
+        ]
     )
 
 
@@ -1501,6 +1703,77 @@ def save_organization_service_contract_docx(
     )
 
 
+def save_contract_act_docx(act: ContractAct, *, actor=None) -> GeneratedContractFile:
+    act.full_clean()
+    generated = render_contract_act_docx(act)
+    document = act.document
+    if act.act_kind == ContractAct.ActKind.SERVICE:
+        contract = act.service_contract
+        if contract is None:
+            raise ContractDocumentError("Выберите договор с получателем для акта.")
+        if document is not None:
+            if document.target_type != Document.TargetType.RECIPIENT:
+                raise ContractDocumentError(
+                    "Акт к договору с получателем должен быть документом получателя."
+                )
+            if document.child_id != contract.child_id:
+                raise ContractDocumentError(
+                    "Связанный документ акта относится к другому получателю."
+                )
+            if document.category != Document.Category.ACT:
+                raise ContractDocumentError("Связанный документ должен иметь категорию акта.")
+        else:
+            document = Document(
+                target_type=Document.TargetType.RECIPIENT,
+                child=contract.child,
+                category=Document.Category.ACT,
+            )
+    elif act.act_kind == ContractAct.ActKind.ORGANIZATION_SERVICE:
+        contract = act.organization_contract
+        if contract is None:
+            raise ContractDocumentError("Выберите B2B-договор услуг для акта.")
+        if document is not None:
+            if document.target_type == Document.TargetType.RECIPIENT:
+                raise ContractDocumentError("B2B-акт нельзя сохранять в документ получателя.")
+            if (
+                document.target_type == Document.TargetType.COUNTERPARTY
+                and document.counterparty_id != contract.counterparty_id
+            ):
+                raise ContractDocumentError(
+                    "Связанный документ акта относится к другой организации."
+                )
+            if document.category != Document.Category.ACT:
+                raise ContractDocumentError("Связанный документ должен иметь категорию акта.")
+        else:
+            document = Document(
+                target_type=Document.TargetType.COUNTERPARTY,
+                counterparty=contract.counterparty,
+                category=Document.Category.ACT,
+            )
+    else:
+        raise ContractDocumentError("Выберите тип акта.")
+
+    document.title = _contract_act_document_title(act)
+    document.issued_on = act.act_on or timezone.localdate()
+    document.expires_on = None
+    if actor is not None and getattr(actor, "is_authenticated", False):
+        document.uploaded_by = actor
+    document.note = "Сформирован автоматически из карточки акта и Word-шаблона."
+    document.file.save(generated.filename, ContentFile(generated.payload.getvalue()), save=False)
+    document.full_clean()
+    document.save()
+
+    act.document = document
+    _save_contract_act_snapshots(act, document, actor=actor)
+
+    generated.payload.seek(0)
+    return GeneratedContractFile(
+        payload=generated.payload,
+        filename=generated.filename,
+        document=document,
+    )
+
+
 def save_consent_docx(consent: Consent, *, actor=None) -> GeneratedContractFile:
     generated = render_consent_docx(consent)
     document = consent.document
@@ -1561,6 +1834,12 @@ def _donation_document_title(contract: DonationContract) -> str:
 def _organization_service_document_title(contract: OrganizationServiceContract) -> str:
     number = contract.number or "б/н"
     title = f"B2B-договор услуг {number} — {contract.counterparty.name}"
+    return title[:200]
+
+
+def _contract_act_document_title(act: ContractAct) -> str:
+    number = act.number or "б/н"
+    title = f"Акт {number} — {act.target_label}"
     return title[:200]
 
 
