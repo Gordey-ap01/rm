@@ -1931,3 +1931,16 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA synthetic `BQA-CERT-BALANCE-*` data was cleaned; local runserver `8113` stopped.
 - Graphify code-index after this slice: `5374` nodes / `24033` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: optional certificate-linked account labeling in global balance screens or a preflight/backfill contract. Do not auto-backfill certificates, rename `remaining_amount`, add amount/number DB constraints or change billing semantics without a separate contract.
+
+## Update 2026-07-19: certificate-balance-backfill-preflight
+
+- Added and implemented `docs/43-certificate-balance-backfill-preflight-contract.md` as a read-only safety slice before any automatic certificate balance-account backfill.
+- Added `operations.services.certificates.certificate_balance_preflight_report()` with counters for total/linked/unlinked certificates, positive-balance backfill candidates, zero-balance unlinked certificates, data issues and duplicate non-empty certificate numbers per recipient.
+- Added management command `audit_certificate_balance_backfill` with optional `--details` and `--sample-limit`; output uses counts and certificate IDs/sample groups, not recipient names.
+- The preflight detects missing funding source, negative amounts, remaining amount greater than total amount, invalid dates, linked account child/unit/funding mismatches and duplicate certificate numbers.
+- The preflight is read-only: it does not create `BalanceAccount`, `LedgerEntry`, `Payment`, appointments, payroll facts, grant allocations, contracts, schedules or status changes.
+- Local command run on the current database completed and reported 2 existing certificates without funding source; no records were changed.
+- Verification passed: Ruff touched Python, Django check, migration dry-run `No changes detected`, focused `CertificateBalancePreflightTests` `2 passed`, full pytest `650 passed`.
+- Browser QA was not needed because this slice has no product UI changes.
+- Graphify code-index after this slice: `5402` nodes / `24122` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: run the command on production/staging, then decide a separate backfill contract. Do not auto-backfill, rename `remaining_amount`, add amount/number DB constraints or change billing semantics without that next contract.

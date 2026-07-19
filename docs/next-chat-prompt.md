@@ -642,3 +642,20 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused related tests `81 passed`, full pytest `648 passed`, Playwright Browser QA fallback desktop/mobile. Synthetic `BQA-CERT-BALANCE-*` data was cleaned; runserver `8113` stopped.
 - Graphify code-index after this slice: `5374` nodes / `24033` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: optional certificate-linked account labeling in global balance screens or a separate preflight/backfill contract. Do not auto-backfill certificates, rename `remaining_amount`, add amount/number DB constraints or change billing semantics without a new contract.
+
+## Latest clarification 2026-07-19: certificate-balance-backfill-preflight complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/43-certificate-balance-backfill-preflight-contract.md` is added and implemented.
+- Added read-only service `operations.services.certificates.certificate_balance_preflight_report()`.
+- Added command `audit_certificate_balance_backfill` with optional `--details` and `--sample-limit`.
+- The report counts total/linked/unlinked certificates, positive-balance backfill candidates, zero-balance unlinked certificates, data issues and duplicate non-empty certificate numbers per recipient.
+- Issue checks cover missing funding source, negative amounts, remaining greater than total, invalid dates, linked account child/unit/funding mismatches and duplicate certificate numbers.
+- The command output uses technical IDs/sample groups, not recipient names.
+- No `BalanceAccount`, `LedgerEntry`, `Payment`, appointments, payroll facts, grant allocations, contracts, schedules or status changes are created or changed.
+- Local command run on the current database found 2 existing certificates without funding source and changed no records.
+- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `CertificateBalancePreflightTests` `2 passed`, full pytest `650 passed`.
+- Browser QA was not needed because this slice has no UI changes.
+- Graphify code-index after this slice: `5402` nodes / `24122` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: run the command on production/staging and only then write a separate backfill contract. Do not auto-backfill, rename `remaining_amount`, add amount/number DB constraints or change billing semantics without that next contract.

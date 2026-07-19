@@ -1008,6 +1008,119 @@ class CertificateBalanceServiceTests(_FixturesMixin, TestCase):
         self.assertFalse(Payment.objects.filter(balance_account=account).exists())
 
 
+class CertificateBalancePreflightTests(_FixturesMixin, TestCase):
+    def _certificate(
+        self,
+        *,
+        number: str,
+        total_amount: Decimal = Decimal("5000.00"),
+        remaining_amount: Decimal = Decimal("5000.00"),
+        funding_source: FundingSource | None = None,
+        valid_from=None,
+        valid_until=None,
+        balance_account: BalanceAccount | None = None,
+    ) -> Certificate:
+        return Certificate.objects.create(
+            child=self.child,
+            funding_source=funding_source if funding_source is not None else self.funding,
+            certificate_type=Certificate.CertificateType.REGIONAL,
+            number=number,
+            total_amount=total_amount,
+            remaining_amount=remaining_amount,
+            valid_from=valid_from,
+            valid_until=valid_until,
+            balance_account=balance_account,
+        )
+
+    def test_certificate_balance_preflight_counts_candidates_and_issues(self):
+        today = timezone.localdate()
+        self._certificate(number="CERT-CANDIDATE")
+        self._certificate(
+            number="CERT-ZERO",
+            total_amount=Decimal("5000.00"),
+            remaining_amount=Decimal("0.00"),
+        )
+        Certificate.objects.create(
+            child=self.child,
+            certificate_type=Certificate.CertificateType.OTHER,
+            number="CERT-NO-FUNDING",
+            total_amount=Decimal("1000.00"),
+            remaining_amount=Decimal("1000.00"),
+        )
+        self._certificate(
+            number="CERT-NEG-TOTAL",
+            total_amount=Decimal("-10.00"),
+            remaining_amount=Decimal("-10.00"),
+        )
+        self._certificate(number="CERT-NEG-REMAINING", remaining_amount=Decimal("-1.00"))
+        self._certificate(
+            number="CERT-EXCEEDS",
+            total_amount=Decimal("1000.00"),
+            remaining_amount=Decimal("1500.00"),
+        )
+        self._certificate(
+            number="CERT-BAD-DATES",
+            valid_from=today,
+            valid_until=today - timedelta(days=1),
+        )
+        self._certificate(number="CERT-DUPLICATE")
+        self._certificate(number="CERT-DUPLICATE")
+        linked = self._certificate(number="CERT-LINKED")
+        certificate_svc.ensure_certificate_balance_account(linked, actor=self.user)
+        session_account = BalanceAccount.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            unit=BalanceAccount.Unit.SESSIONS,
+            service_scope=BalanceAccount.ServiceScope.ANY,
+            initial_amount=Decimal("3"),
+        )
+        self._certificate(number="CERT-LINKED-SESSION", balance_account=session_account)
+
+        before_accounts = BalanceAccount.objects.count()
+        before_ledger = LedgerEntry.objects.count()
+        report = certificate_svc.certificate_balance_preflight_report(sample_limit=2)
+
+        self.assertEqual(report.total_certificates, 11)
+        self.assertEqual(report.linked_certificates, 2)
+        self.assertEqual(report.unlinked_certificates, 9)
+        self.assertEqual(report.backfill_candidates, 3)
+        self.assertEqual(report.zero_balance_without_account, 1)
+        self.assertEqual(report.issue_counts["missing_funding_source"], 1)
+        self.assertEqual(report.issue_counts["negative_total_amount"], 1)
+        self.assertEqual(report.issue_counts["negative_remaining_amount"], 2)
+        self.assertEqual(report.issue_counts["remaining_exceeds_total"], 1)
+        self.assertEqual(report.issue_counts["invalid_dates"], 1)
+        self.assertEqual(report.issue_counts["linked_account_non_money"], 1)
+        self.assertEqual(report.duplicate_number_groups, 1)
+        self.assertEqual(report.duplicate_number_certificate_count, 2)
+        self.assertTrue(report.has_issues)
+        self.assertEqual(BalanceAccount.objects.count(), before_accounts)
+        self.assertEqual(LedgerEntry.objects.count(), before_ledger)
+
+    def test_certificate_balance_preflight_command_is_read_only(self):
+        self._certificate(number="CERT-COMMAND")
+        Certificate.objects.create(
+            child=self.child,
+            certificate_type=Certificate.CertificateType.OTHER,
+            number="CERT-COMMAND-NO-FUNDING",
+            total_amount=Decimal("1000.00"),
+            remaining_amount=Decimal("1000.00"),
+        )
+        before_accounts = BalanceAccount.objects.count()
+        before_ledger = LedgerEntry.objects.count()
+        stdout = StringIO()
+
+        call_command("audit_certificate_balance_backfill", "--details", stdout=stdout)
+
+        output = stdout.getvalue()
+        self.assertIn("Certificate balance backfill preflight", output)
+        self.assertIn("Backfill candidates with positive balance: 1", output)
+        self.assertIn("missing_funding_source: 1", output)
+        self.assertIn("Read-only preflight completed with issues", output)
+        self.assertEqual(BalanceAccount.objects.count(), before_accounts)
+        self.assertEqual(LedgerEntry.objects.count(), before_ledger)
+
+
 class SchedulingServiceTests(_FixturesMixin, TestCase):
     def test_find_overlaps_child(self):
         appt_svc.create_appointment(
