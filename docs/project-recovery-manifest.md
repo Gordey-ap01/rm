@@ -47,6 +47,7 @@
 | `docs/38-certificate-payer-source-contract.md` | Контракт реквизитов плательщика и источника у сертификата. | Перед изменениями `Certificate.funding_source`, `Certificate.payer_*` или `certificate.payer_name` placeholders. |
 | `docs/39-recipient-certificate-crud-contract.md` | Контракт CRUD сертификатов в карточке получателя. | Перед изменениями `CertificateForm`, recipient certificate create/edit routes или таблицы сертификатов в карточке получателя. |
 | `docs/40-certificate-import-preview-contract.md` | Контракт read-only предпросмотра Excel/CSV сертификатов. | Перед изменениями certificate import preview, валидации строк сертификатов или будущим import write-path по сертификатам. |
+| `docs/41-certificate-import-write-path-contract.md` | Proposed DB-owner контракт реального импорта сертификатов через persisted import batch. | Перед любым apply/write-path, моделями batch/row, созданием `Certificate` из файла или idempotency логикой импорта. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -517,3 +518,14 @@ Browser QA - это проверка живого интерфейса в бра
 - Browser QA synthetic `BQA-CERTIMPORT*` data was cleaned and local runserver `8108` stopped.
 - Graphify code-index after this slice: `5245` nodes / `23031` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: consent legal snapshot if needed, certificate import write-path only after a separate explicit contract, or another approved vertical slice. Do not connect certificate preview to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.
+
+## Latest Recovery Note 2026-07-19: certificate-import-write-path-contract
+
+- `docs/41-certificate-import-write-path-contract.md` is added as a proposed DB-owner contract.
+- Code, models, migrations, templates and tests were not changed in this docs-only slice.
+- Contract requires a two-step persisted import flow: preview creates `ImportBatch`/`ImportBatchRow`; explicit apply creates `Certificate` rows atomically.
+- The proposed first write-path must be idempotent: repeated apply on one batch must not create duplicates.
+- Existing certificate with same recipient and non-empty number should be skipped, not updated or duplicated.
+- Autocreating recipients, representatives, funding sources, contracts, balance accounts or payments from the certificate import is out of scope.
+- Any future `Certificate` DB unique constraint on number is marked potentially dangerous and separate from the first write-path.
+- Graphify code-index after this docs-only slice: `5262` nodes / `23047` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.

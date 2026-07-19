@@ -536,3 +536,16 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Browser QA synthetic `BQA-CERTIMPORT*` data was cleaned and local runserver `8108` stopped.
 - Graphify code-index after this slice: `5245` nodes / `23031` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: consent legal snapshot if needed, certificate import write-path only after a separate explicit contract, or another approved vertical slice. Do not connect certificate preview to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.
+
+## Latest clarification 2026-07-19: certificate-import-write-path contract proposed
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/41-certificate-import-write-path-contract.md` is added as a proposed DB-owner contract.
+- Code, models, migrations, templates and tests were not changed in this docs-only slice.
+- Contract requires a two-step persisted import flow: preview creates `ImportBatch`/`ImportBatchRow`; explicit apply creates `Certificate` rows atomically.
+- The proposed first write-path must be idempotent: repeated apply on one batch must not create duplicates.
+- Existing certificate with same recipient and non-empty number should be skipped, not updated or duplicated.
+- Autocreating recipients, representatives, funding sources, contracts, balance accounts or payments from certificate import is out of scope.
+- Any future `Certificate` DB unique constraint on number is marked potentially dangerous and separate from the first write-path.
+- Graphify code-index after this docs-only slice: `5262` nodes / `23047` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.

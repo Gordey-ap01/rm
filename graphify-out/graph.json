@@ -37847,6 +37847,118 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_41_certificate_import_write_path_contract",
+      "label": "41-certificate-import-write-path-contract.md",
+      "file_type": "document",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_41_certificate_import_write_path_contract_certificate_import_write_path_contract",
+      "label": "Certificate Import Write-Path Contract",
+      "file_type": "document",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_41_certificate_import_write_path_contract_цель",
+      "label": "Цель",
+      "file_type": "document",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L13",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_41_certificate_import_write_path_contract_ключевое_решение",
+      "label": "Ключевое решение",
+      "file_type": "document",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L17",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_41_certificate_import_write_path_contract_предлагаемая_доменная_модель",
+      "label": "Предлагаемая доменная модель",
+      "file_type": "document",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L26",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_41_certificate_import_write_path_contract_importbatch",
+      "label": "ImportBatch",
+      "file_type": "document",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L28",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_41_certificate_import_write_path_contract_importbatchrow",
+      "label": "ImportBatchRow",
+      "file_type": "document",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L54",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_41_certificate_import_write_path_contract_правила_применения_certificate_batch",
+      "label": "Правила применения certificate batch",
+      "file_type": "document",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L73",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_41_certificate_import_write_path_contract_дубликаты_и_уникальность",
+      "label": "Дубликаты и уникальность",
+      "file_type": "document",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L87",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_41_certificate_import_write_path_contract_финансовые_границы",
+      "label": "Финансовые границы",
+      "file_type": "document",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L95",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_41_certificate_import_write_path_contract_ux_ui",
+      "label": "UX/UI",
+      "file_type": "document",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L111",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_41_certificate_import_write_path_contract_acceptance_criteria_для_первого_db_owner_среза",
+      "label": "Acceptance criteria для первого DB-owner среза",
+      "file_type": "document",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L124",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_41_certificate_import_write_path_contract_риски_миграций",
+      "label": "Риски миграций",
+      "file_type": "document",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L137",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_41_certificate_import_write_path_contract_параллельная_работа",
+      "label": "Параллельная работа",
+      "file_type": "document",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L143",
+      "_origin": "ast"
+    },
+    {
       "id": "docs_critical_stack_ux_review_2026_06_10",
       "label": "CRITICAL_STACK_UX_REVIEW_2026-06-10.md",
       "file_type": "document",
@@ -39455,6 +39567,14 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_current_state_update_2026_07_19_certificate_import_write_path_contract",
+      "label": "Update 2026-07-19: certificate-import-write-path-contract",
+      "file_type": "document",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1835",
+      "_origin": "ast"
+    },
+    {
       "id": "decisions_adr_001_django_postgresql_local_first",
       "label": "ADR-001-django-postgresql-local-first.md",
       "file_type": "document",
@@ -40055,6 +40175,14 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_next_chat_prompt_latest_clarification_2026_07_19_certificate_import_write_path_contract_proposed",
+      "label": "Latest clarification 2026-07-19: certificate-import-write-path contract proposed",
+      "file_type": "document",
+      "source_file": "docs/next-chat-prompt.md",
+      "source_location": "L540",
+      "_origin": "ast"
+    },
+    {
       "id": "docs_project_recovery_manifest",
       "label": "project-recovery-manifest.md",
       "file_type": "document",
@@ -40091,7 +40219,7 @@
       "label": "Порядок восстановления контекста",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L65",
+      "source_location": "L66",
       "_origin": "ast"
     },
     {
@@ -40099,7 +40227,7 @@
       "label": "Skills и назначение",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L92",
+      "source_location": "L93",
       "_origin": "ast"
     },
     {
@@ -40107,7 +40235,7 @@
       "label": "Восстановление инструментов",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L105",
+      "source_location": "L106",
       "_origin": "ast"
     },
     {
@@ -40115,7 +40243,7 @@
       "label": "Graphify",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L107",
+      "source_location": "L108",
       "_origin": "ast"
     },
     {
@@ -40123,7 +40251,7 @@
       "label": "Browser QA",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L126",
+      "source_location": "L127",
       "_origin": "ast"
     },
     {
@@ -40131,7 +40259,7 @@
       "label": "Протокол контрольной точки",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L135",
+      "source_location": "L136",
       "_origin": "ast"
     },
     {
@@ -40139,7 +40267,7 @@
       "label": "Текущее состояние восстановления",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L147",
+      "source_location": "L148",
       "_origin": "ast"
     },
     {
@@ -40147,7 +40275,7 @@
       "label": "Ближайшие задачи",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L191",
+      "source_location": "L192",
       "_origin": "ast"
     },
     {
@@ -40155,7 +40283,7 @@
       "label": "Постоянные риски",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L198",
+      "source_location": "L199",
       "_origin": "ast"
     },
     {
@@ -40163,7 +40291,7 @@
       "label": "Latest Recovery Note 2026-07-18: template-placeholder-expansion-v2",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L286",
+      "source_location": "L287",
       "_origin": "ast"
     },
     {
@@ -40171,7 +40299,7 @@
       "label": "Latest Recovery Note 2026-07-18: document-target-foundation",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L297",
+      "source_location": "L298",
       "_origin": "ast"
     },
     {
@@ -40179,7 +40307,7 @@
       "label": "Latest Recovery Note 2026-07-18: center-legal-profile-foundation",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L310",
+      "source_location": "L311",
       "_origin": "ast"
     },
     {
@@ -40187,7 +40315,7 @@
       "label": "Latest Recovery Note 2026-07-18: contract-signed-snapshot",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L322",
+      "source_location": "L323",
       "_origin": "ast"
     },
     {
@@ -40195,7 +40323,7 @@
       "label": "Latest Recovery Note 2026-07-18: legal-template-families",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L336",
+      "source_location": "L337",
       "_origin": "ast"
     },
     {
@@ -40203,7 +40331,7 @@
       "label": "Latest Recovery Note 2026-07-18: representative-child-legal-fields",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L348",
+      "source_location": "L349",
       "_origin": "ast"
     },
     {
@@ -40211,7 +40339,7 @@
       "label": "Latest Recovery Note 2026-07-18: service-contract-spec-and-funding",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L360",
+      "source_location": "L361",
       "_origin": "ast"
     },
     {
@@ -40219,7 +40347,7 @@
       "label": "Latest Recovery Note 2026-07-18: certificate-contract-link",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L373",
+      "source_location": "L374",
       "_origin": "ast"
     },
     {
@@ -40227,7 +40355,7 @@
       "label": "Latest Recovery Note 2026-07-18: immutable-contract-signed-file-archive",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L388",
+      "source_location": "L389",
       "_origin": "ast"
     },
     {
@@ -40235,7 +40363,7 @@
       "label": "Latest Recovery Note 2026-07-18: organization-service-contract",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L401",
+      "source_location": "L402",
       "_origin": "ast"
     },
     {
@@ -40243,7 +40371,7 @@
       "label": "Latest Recovery Note 2026-07-19: consent-template-generation",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L414",
+      "source_location": "L415",
       "_origin": "ast"
     },
     {
@@ -40251,7 +40379,7 @@
       "label": "Latest Recovery Note 2026-07-19: contract-acts-generation",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L427",
+      "source_location": "L428",
       "_origin": "ast"
     },
     {
@@ -40259,7 +40387,7 @@
       "label": "Latest Recovery Note 2026-07-19: act-signed-file-archive",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L441",
+      "source_location": "L442",
       "_origin": "ast"
     },
     {
@@ -40267,7 +40395,7 @@
       "label": "Latest Recovery Note 2026-07-19: consent-signed-file-archive",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L454",
+      "source_location": "L455",
       "_origin": "ast"
     },
     {
@@ -40275,7 +40403,7 @@
       "label": "Latest Recovery Note 2026-07-19: external-signed-file-upload",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L467",
+      "source_location": "L468",
       "_origin": "ast"
     },
     {
@@ -40283,7 +40411,7 @@
       "label": "Latest Recovery Note 2026-07-19: certificate-payer-source",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L480",
+      "source_location": "L481",
       "_origin": "ast"
     },
     {
@@ -40291,7 +40419,7 @@
       "label": "Latest Recovery Note 2026-07-19: recipient-certificate-crud",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L494",
+      "source_location": "L495",
       "_origin": "ast"
     },
     {
@@ -40299,7 +40427,15 @@
       "label": "Latest Recovery Note 2026-07-19: certificate-import-preview",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L507",
+      "source_location": "L508",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_project_recovery_manifest_latest_recovery_note_2026_07_19_certificate_import_write_path_contract",
+      "label": "Latest Recovery Note 2026-07-19: certificate-import-write-path-contract",
+      "file_type": "document",
+      "source_file": "docs/project-recovery-manifest.md",
+      "source_location": "L522",
       "_origin": "ast"
     },
     {
@@ -131080,6 +131216,123 @@
       "weight": 1.0
     },
     {
+      "source": "docs_41_certificate_import_write_path_contract",
+      "target": "docs_41_certificate_import_write_path_contract_certificate_import_write_path_contract",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_41_certificate_import_write_path_contract_certificate_import_write_path_contract",
+      "target": "docs_41_certificate_import_write_path_contract_цель",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L13",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_41_certificate_import_write_path_contract_certificate_import_write_path_contract",
+      "target": "docs_41_certificate_import_write_path_contract_ключевое_решение",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L17",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_41_certificate_import_write_path_contract_certificate_import_write_path_contract",
+      "target": "docs_41_certificate_import_write_path_contract_предлагаемая_доменная_модель",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L26",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_41_certificate_import_write_path_contract_предлагаемая_доменная_модель",
+      "target": "docs_41_certificate_import_write_path_contract_importbatch",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L28",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_41_certificate_import_write_path_contract_предлагаемая_доменная_модель",
+      "target": "docs_41_certificate_import_write_path_contract_importbatchrow",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L54",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_41_certificate_import_write_path_contract_certificate_import_write_path_contract",
+      "target": "docs_41_certificate_import_write_path_contract_правила_применения_certificate_batch",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L73",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_41_certificate_import_write_path_contract_certificate_import_write_path_contract",
+      "target": "docs_41_certificate_import_write_path_contract_дубликаты_и_уникальность",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L87",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_41_certificate_import_write_path_contract_certificate_import_write_path_contract",
+      "target": "docs_41_certificate_import_write_path_contract_финансовые_границы",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L95",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_41_certificate_import_write_path_contract_certificate_import_write_path_contract",
+      "target": "docs_41_certificate_import_write_path_contract_ux_ui",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L111",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_41_certificate_import_write_path_contract_certificate_import_write_path_contract",
+      "target": "docs_41_certificate_import_write_path_contract_acceptance_criteria_для_первого_db_owner_среза",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L124",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_41_certificate_import_write_path_contract_certificate_import_write_path_contract",
+      "target": "docs_41_certificate_import_write_path_contract_риски_миграций",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L137",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_41_certificate_import_write_path_contract_certificate_import_write_path_contract",
+      "target": "docs_41_certificate_import_write_path_contract_параллельная_работа",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/41-certificate-import-write-path-contract.md",
+      "source_location": "L143",
+      "weight": 1.0
+    },
+    {
       "source": "docs_critical_stack_ux_review_2026_06_10",
       "target": "docs_critical_stack_ux_review_2026_06_10_критический_срез_проекта_rmcodex",
       "relation": "contains",
@@ -132853,6 +133106,15 @@
       "weight": 1.0
     },
     {
+      "source": "docs_current_state_текущее_состояние_проекта_радость_моя",
+      "target": "docs_current_state_update_2026_07_19_certificate_import_write_path_contract",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/current-state.md",
+      "source_location": "L1835",
+      "weight": 1.0
+    },
+    {
       "source": "decisions_adr_001_django_postgresql_local_first",
       "target": "decisions_adr_001_django_postgresql_local_first_adr_001_django_postgresql_локальный_first_deployment",
       "relation": "contains",
@@ -133474,6 +133736,15 @@
       "weight": 1.0
     },
     {
+      "source": "docs_next_chat_prompt_промпт_для_следующего_чата_по_проекту_радость_моя",
+      "target": "docs_next_chat_prompt_latest_clarification_2026_07_19_certificate_import_write_path_contract_proposed",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/next-chat-prompt.md",
+      "source_location": "L540",
+      "weight": 1.0
+    },
+    {
       "source": "docs_project_recovery_manifest",
       "target": "docs_project_recovery_manifest_манифест_восстановления_проекта",
       "relation": "contains",
@@ -133506,7 +133777,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L65",
+      "source_location": "L66",
       "weight": 1.0
     },
     {
@@ -133515,7 +133786,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L92",
+      "source_location": "L93",
       "weight": 1.0
     },
     {
@@ -133524,7 +133795,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L105",
+      "source_location": "L106",
       "weight": 1.0
     },
     {
@@ -133533,7 +133804,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L107",
+      "source_location": "L108",
       "weight": 1.0
     },
     {
@@ -133542,7 +133813,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L126",
+      "source_location": "L127",
       "weight": 1.0
     },
     {
@@ -133551,7 +133822,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L135",
+      "source_location": "L136",
       "weight": 1.0
     },
     {
@@ -133560,7 +133831,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L147",
+      "source_location": "L148",
       "weight": 1.0
     },
     {
@@ -133569,7 +133840,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L191",
+      "source_location": "L192",
       "weight": 1.0
     },
     {
@@ -133578,7 +133849,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L198",
+      "source_location": "L199",
       "weight": 1.0
     },
     {
@@ -133587,7 +133858,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L286",
+      "source_location": "L287",
       "weight": 1.0
     },
     {
@@ -133596,7 +133867,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L297",
+      "source_location": "L298",
       "weight": 1.0
     },
     {
@@ -133605,7 +133876,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L310",
+      "source_location": "L311",
       "weight": 1.0
     },
     {
@@ -133614,7 +133885,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L322",
+      "source_location": "L323",
       "weight": 1.0
     },
     {
@@ -133623,7 +133894,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L336",
+      "source_location": "L337",
       "weight": 1.0
     },
     {
@@ -133632,7 +133903,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L348",
+      "source_location": "L349",
       "weight": 1.0
     },
     {
@@ -133641,7 +133912,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L360",
+      "source_location": "L361",
       "weight": 1.0
     },
     {
@@ -133650,7 +133921,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L373",
+      "source_location": "L374",
       "weight": 1.0
     },
     {
@@ -133659,7 +133930,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L388",
+      "source_location": "L389",
       "weight": 1.0
     },
     {
@@ -133668,7 +133939,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L401",
+      "source_location": "L402",
       "weight": 1.0
     },
     {
@@ -133677,7 +133948,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L414",
+      "source_location": "L415",
       "weight": 1.0
     },
     {
@@ -133686,7 +133957,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L427",
+      "source_location": "L428",
       "weight": 1.0
     },
     {
@@ -133695,7 +133966,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L441",
+      "source_location": "L442",
       "weight": 1.0
     },
     {
@@ -133704,7 +133975,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L454",
+      "source_location": "L455",
       "weight": 1.0
     },
     {
@@ -133713,7 +133984,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L467",
+      "source_location": "L468",
       "weight": 1.0
     },
     {
@@ -133722,7 +133993,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L480",
+      "source_location": "L481",
       "weight": 1.0
     },
     {
@@ -133731,7 +134002,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L494",
+      "source_location": "L495",
       "weight": 1.0
     },
     {
@@ -133740,7 +134011,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L507",
+      "source_location": "L508",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_project_recovery_manifest_манифест_восстановления_проекта",
+      "target": "docs_project_recovery_manifest_latest_recovery_note_2026_07_19_certificate_import_write_path_contract",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/project-recovery-manifest.md",
+      "source_location": "L522",
       "weight": 1.0
     },
     {

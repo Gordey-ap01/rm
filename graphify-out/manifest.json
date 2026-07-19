@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784431982.6243079,
-    "ast_hash": "7d8e6a537a2d77a923ca6a12e5c9321d",
+    "mtime": 1784432237.410722,
+    "ast_hash": "27a6dbc0629e04b3b977052768e6dc16",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784432015.6981175,
-    "ast_hash": "cbfcb16c2e4bd817cbc30f0bd7b43640",
+    "mtime": 1784432252.3152723,
+    "ast_hash": "f44e913103ab545d45dfb4a4e1513ea6",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784432001.391068,
-    "ast_hash": "c5a3b03913ac7d984eed6967e2c3e010",
+    "mtime": 1784432224.2529638,
+    "ast_hash": "921238edaef2e006c9efbcc6899fc106",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1307,6 +1307,11 @@
   "docs/40-certificate-import-preview-contract.md": {
     "mtime": 1784431966.749192,
     "ast_hash": "5abe25e35b38566ba778ebbaad4f14bd",
+    "semantic_hash": ""
+  },
+  "docs/41-certificate-import-write-path-contract.md": {
+    "mtime": 1784432206.1622145,
+    "ast_hash": "02f93cca6f438a5df95907e2d0afb67a",
     "semantic_hash": ""
   }
 }
