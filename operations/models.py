@@ -5396,3 +5396,108 @@ class Certificate(TimeStampedModel):
             )
         if errors:
             raise ValidationError(errors)
+
+
+class ImportBatch(TimeStampedModel):
+    class ImportKind(models.TextChoices):
+        CERTIFICATES = "certificates", "Сертификаты"
+
+    class Status(models.TextChoices):
+        PREVIEWED = "previewed", "Проверен"
+        APPLYING = "applying", "Применяется"
+        APPLIED = "applied", "Применен"
+        PARTIALLY_APPLIED = "partially_applied", "Применен частично"
+        FAILED = "failed", "Ошибка"
+        CANCELLED = "cancelled", "Отменен"
+
+    import_kind = models.CharField("тип импорта", max_length=40, choices=ImportKind.choices)
+    status = models.CharField(
+        "статус",
+        max_length=40,
+        choices=Status.choices,
+        default=Status.PREVIEWED,
+    )
+    original_filename = models.CharField("исходное имя файла", max_length=255)
+    source_sha256 = models.CharField("SHA-256 файла", max_length=64)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="загрузил",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="import_batches",
+    )
+    applied_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="применил",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="applied_import_batches",
+    )
+    applied_at = models.DateTimeField("применено", null=True, blank=True)
+    total_rows = models.PositiveIntegerField("строк всего", default=0)
+    valid_rows = models.PositiveIntegerField("валидных строк", default=0)
+    invalid_rows = models.PositiveIntegerField("ошибочных строк", default=0)
+    warning_rows = models.PositiveIntegerField("строк с предупреждениями", default=0)
+    applied_rows = models.PositiveIntegerField("примененных строк", default=0)
+    skipped_rows = models.PositiveIntegerField("пропущенных строк", default=0)
+    header_snapshot = models.JSONField("snapshot заголовков", default=dict, blank=True)
+    error_summary = models.JSONField("сводка ошибок", default=dict, blank=True)
+    note = models.TextField("примечание", blank=True)
+
+    class Meta:
+        verbose_name = "пакет импорта"
+        verbose_name_plural = "пакеты импорта"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["import_kind", "status", "created_at"]),
+            models.Index(fields=["uploaded_by", "created_at"]),
+            models.Index(fields=["source_sha256"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_import_kind_display()} #{self.pk or 'new'} — {self.original_filename}"
+
+
+class ImportBatchRow(TimeStampedModel):
+    class Status(models.TextChoices):
+        VALID = "valid", "Готова"
+        INVALID = "invalid", "Ошибка"
+        APPLIED = "applied", "Применена"
+        SKIPPED = "skipped", "Пропущена"
+        FAILED = "failed", "Сбой"
+
+    batch = models.ForeignKey(
+        ImportBatch,
+        verbose_name="пакет импорта",
+        on_delete=models.CASCADE,
+        related_name="rows",
+    )
+    row_number = models.PositiveIntegerField("номер строки")
+    status = models.CharField("статус", max_length=30, choices=Status.choices)
+    raw_values = models.JSONField("значения строки", default=dict, blank=True)
+    normalized_values = models.JSONField("нормализованные значения", default=dict, blank=True)
+    errors = models.JSONField("ошибки", default=list, blank=True)
+    warnings = models.JSONField("предупреждения", default=list, blank=True)
+    target_model = models.CharField("целевая модель", max_length=120, blank=True)
+    target_pk = models.PositiveBigIntegerField("ID целевой записи", null=True, blank=True)
+    applied_at = models.DateTimeField("применено", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "строка пакета импорта"
+        verbose_name_plural = "строки пакетов импорта"
+        ordering = ["batch", "row_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["batch", "row_number"],
+                name="unique_import_batch_row_number",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["batch", "status"]),
+            models.Index(fields=["target_model", "target_pk"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.batch} / строка {self.row_number}"

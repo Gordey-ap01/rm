@@ -529,3 +529,18 @@ Browser QA - это проверка живого интерфейса в бра
 - Autocreating recipients, representatives, funding sources, contracts, balance accounts or payments from the certificate import is out of scope.
 - Any future `Certificate` DB unique constraint on number is marked potentially dangerous and separate from the first write-path.
 - Graphify code-index after this docs-only slice: `5262` nodes / `23047` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+
+## Latest Recovery Note 2026-07-19: import-batch-foundation
+
+- First DB-owner slice from `docs/41-certificate-import-write-path-contract.md` is implemented.
+- Migration `operations.0042_importbatch_importbatchrow_and_more` adds `ImportBatch` and `ImportBatchRow`.
+- `ImportBatch` stores kind/status, original filename, source SHA-256, uploader/apply metadata, row counters, header snapshot and error summary.
+- `ImportBatchRow` stores row number/status, raw/normalized values, errors, warnings and future target reference fields.
+- New import models are registered in Django admin and auditlog.
+- Certificate preview now persists batch + rows only for `certificates`; other preview types remain unchanged.
+- `/contracts/import-preview/` shows saved batch summary after certificate preview.
+- Apply/write-path is not implemented yet: no `Certificate`, `BalanceAccount`, `Payment`, `LedgerEntry`, payroll, grants, schedules or statuses are created/changed from the file.
+- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused import/audit tests `9 passed`, full pytest `632 passed`, Playwright desktop/mobile QA for persisted certificate preview batch.
+- Browser QA synthetic `BQA-IMPORTBATCH*` data was cleaned and local runserver `8109` stopped.
+- Graphify code-index after this slice: `5282` nodes / `23504` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: certificate import apply endpoint using persisted batch rows, or another explicit vertical slice. Apply must remain idempotent and must not create finance/schedule facts.

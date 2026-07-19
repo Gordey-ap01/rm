@@ -88,6 +88,39 @@
     </section>
 
     {% if preview %}
+      {% if import_batch %}
+        <section class="panel import-panel">
+          <div class="import-panel-head">
+            <div>
+              <h2>Сохраненный preview</h2>
+              <p>Пакет #{{ import_batch.pk }} сохранен для будущего отдельного применения. Сертификаты пока не создаются.</p>
+            </div>
+          </div>
+          <div class="import-summary-grid" aria-label="Сохраненный пакет импорта">
+            <div>
+              <span>Пакет</span>
+              <strong>#{{ import_batch.pk }}</strong>
+              <small>{{ import_batch.get_import_kind_display }}</small>
+            </div>
+            <div>
+              <span>Файл</span>
+              <strong>{{ import_batch.original_filename }}</strong>
+              <small>SHA-256 сохранен</small>
+            </div>
+            <div>
+              <span>Готово</span>
+              <strong>{{ import_batch.valid_rows }}</strong>
+              <small>строк без ошибок</small>
+            </div>
+            <div>
+              <span>Ошибки</span>
+              <strong>{{ import_batch.invalid_rows }}</strong>
+              <small>строк не применять</small>
+            </div>
+          </div>
+        </section>
+      {% endif %}
+
       <section class="panel import-panel" id="import-columns">
         <div class="import-panel-head">
           <div>

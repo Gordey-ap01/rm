@@ -31,6 +31,8 @@ from operations.models import (
     FinancialIntegrityFindingEvent,
     FundingSource,
     GrantRecipientAllocation,
+    ImportBatch,
+    ImportBatchRow,
     LedgerEntry,
     ParentGuardian,
     PayrollAccrual,
@@ -104,6 +106,8 @@ class AuditLogTests(TestCase):
             FinancialIntegrityFinding,
             FinancialIntegrityFindingEvent,
             GrantRecipientAllocation,
+            ImportBatch,
+            ImportBatchRow,
             LedgerEntry,
             PayrollAccrual,
             ServiceContract,
@@ -128,6 +132,8 @@ class AuditLogTests(TestCase):
         self.assertIn(DonationContract, admin.site._registry)
         self.assertIn(ServiceContract, admin.site._registry)
         self.assertIn(Certificate, admin.site._registry)
+        self.assertIn(ImportBatch, admin.site._registry)
+        self.assertIn(ImportBatchRow, admin.site._registry)
         self.assertIn(ContractLegalSnapshot, admin.site._registry)
 
     def test_financial_integrity_finding_update_is_logged(self):

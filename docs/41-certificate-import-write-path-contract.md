@@ -2,7 +2,7 @@
 
 Дата: 2026-07-19
 
-Статус: proposed DB-owner contract, код не начат
+Статус: частично выполнен: import-batch-foundation; apply/write-path не начат
 
 Основание:
 - `docs/38-certificate-payer-source-contract.md`
@@ -145,3 +145,24 @@ Write-path создает только `Certificate`.
 - Один DB-owner владеет `operations/models.py` и migration chain.
 - UI/tests агент может работать только после merged DB contract and named interfaces.
 - Нельзя одновременно менять parser, apply service и модели разными агентами без утвержденного контракта функций.
+
+## Реализация 2026-07-19: import-batch-foundation
+
+Выполнен первый foundation-срез без создания сертификатов:
+
+- Добавлены additive модели `ImportBatch` и `ImportBatchRow`.
+- Добавлена migration `operations.0042_importbatch_importbatchrow_and_more`.
+- Модели зарегистрированы в Django admin и auditlog.
+- `ImportPreview` сохраняет `source_sha256`.
+- Для `certificates` preview сохраняется persisted `ImportBatch` и `ImportBatchRow` с row-level `errors`, `warnings`, `raw_values`, `normalized_values`.
+- UI `/contracts/import-preview/` показывает блок "Сохраненный preview" с номером batch, файлом и счетчиками строк.
+- Preview остается read-only: `Certificate` не создается, `BalanceAccount`, `Payment`, `LedgerEntry`, payroll, grants, schedules and statuses не меняются.
+- Проверки: Ruff touched Python и полный `operations`, Django check, migration dry-run `No changes detected`, focused import/audit tests `9 passed`, full pytest `632 passed`, Playwright desktop/mobile QA persisted preview batch.
+- Browser QA synthetic `BQA-IMPORTBATCH*` data cleaned; local runserver `8109` stopped.
+
+Не выполнено и остается следующим срезом:
+
+- Apply endpoint.
+- Создание `Certificate` из batch rows.
+- Row-level idempotent apply statuses `applied/skipped/failed`.
+- UI hold-to-confirm для применения batch.

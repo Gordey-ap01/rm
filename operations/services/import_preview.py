@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import re
 import zipfile
 from dataclasses import dataclass
@@ -23,6 +24,8 @@ from operations.models import (
     Counterparty,
     DonationContract,
     FundingSource,
+    ImportBatch,
+    ImportBatchRow,
     RecipientRepresentative,
     ServiceContract,
 )
@@ -61,6 +64,7 @@ class ImportPreview:
     rows: list[ImportRowPreview]
     total_rows: int
     truncated: bool = False
+    source_sha256: str = ""
 
     @property
     def valid_count(self) -> int:
@@ -957,6 +961,7 @@ VALIDATORS = {
 def preview_recipient_import(uploaded_file) -> ImportPreview:
     filename = getattr(uploaded_file, "name", "import")
     data = uploaded_file.read()
+    source_sha256 = hashlib.sha256(data).hexdigest()
     raw_rows = _read_rows(data, filename)
     raw_rows = [row for row in raw_rows if not _is_empty_row(row)]
     columns = RECIPIENT_COLUMNS
@@ -968,6 +973,7 @@ def preview_recipient_import(uploaded_file) -> ImportPreview:
             missing_required_headers=[column.label for column in columns if column.required],
             rows=[],
             total_rows=0,
+            source_sha256=source_sha256,
         )
 
     headers = raw_rows[0]
@@ -1045,6 +1051,7 @@ def preview_recipient_import(uploaded_file) -> ImportPreview:
         rows=rows,
         total_rows=len(data_rows),
         truncated=truncated,
+        source_sha256=source_sha256,
     )
 
 
@@ -1056,6 +1063,7 @@ def preview_finance_contract_import(uploaded_file, import_type: str) -> ImportPr
 
     filename = getattr(uploaded_file, "name", "import")
     data = uploaded_file.read()
+    source_sha256 = hashlib.sha256(data).hexdigest()
     raw_rows = _read_rows(data, filename)
     raw_rows = [row for row in raw_rows if not _is_empty_row(row)]
     columns = spec.columns
@@ -1067,6 +1075,7 @@ def preview_finance_contract_import(uploaded_file, import_type: str) -> ImportPr
             missing_required_headers=[column.label for column in columns if column.required],
             rows=[],
             total_rows=0,
+            source_sha256=source_sha256,
         )
 
     index_to_key, mapped_headers = _build_header_mapping(raw_rows[0], spec.aliases)
@@ -1112,4 +1121,72 @@ def preview_finance_contract_import(uploaded_file, import_type: str) -> ImportPr
         rows=rows,
         total_rows=len(data_rows),
         truncated=truncated,
+        source_sha256=source_sha256,
     )
+
+
+PERSISTED_IMPORT_KINDS = {CERTIFICATE_IMPORT}
+
+
+def _import_kind_for_batch(import_type: str) -> str:
+    if import_type == CERTIFICATE_IMPORT:
+        return ImportBatch.ImportKind.CERTIFICATES
+    raise ValueError("Persisted preview is not enabled for this import type.")
+
+
+def persist_import_preview_batch(
+    preview: ImportPreview,
+    import_type: str,
+    *,
+    uploaded_by=None,
+) -> ImportBatch:
+    if import_type not in PERSISTED_IMPORT_KINDS:
+        raise ValueError("Persisted preview is not enabled for this import type.")
+    user = uploaded_by if getattr(uploaded_by, "is_authenticated", False) else None
+    batch = ImportBatch.objects.create(
+        import_kind=_import_kind_for_batch(import_type),
+        status=ImportBatch.Status.PREVIEWED,
+        original_filename=preview.filename,
+        source_sha256=preview.source_sha256,
+        uploaded_by=user,
+        total_rows=preview.total_rows,
+        valid_rows=preview.valid_count,
+        invalid_rows=preview.invalid_count,
+        warning_rows=preview.warning_count,
+        header_snapshot={
+            "columns": [
+                {
+                    "key": column.key,
+                    "label": column.label,
+                    "required": column.required,
+                }
+                for column in preview.columns
+            ],
+            "mapped_headers": preview.mapped_headers,
+            "missing_required_headers": preview.missing_required_headers,
+            "truncated": preview.truncated,
+        },
+        error_summary={
+            "missing_required_headers": preview.missing_required_headers,
+            "invalid_rows": preview.invalid_count,
+        },
+    )
+    ImportBatchRow.objects.bulk_create(
+        [
+            ImportBatchRow(
+                batch=batch,
+                row_number=row.row_number,
+                status=(
+                    ImportBatchRow.Status.INVALID
+                    if row.errors
+                    else ImportBatchRow.Status.VALID
+                ),
+                raw_values=row.values,
+                normalized_values=row.values,
+                errors=row.errors,
+                warnings=row.warnings,
+            )
+            for row in preview.rows
+        ]
+    )
+    return batch

@@ -7,8 +7,10 @@ from django.urls import reverse
 
 from operations.forms import ContractImportPreviewForm, RecipientImportPreviewForm
 from operations.services.import_preview import (
+    CERTIFICATE_IMPORT,
     FINANCE_CONTRACT_IMPORT_SPECS,
     ImportPreview,
+    persist_import_preview_batch,
     preview_finance_contract_import,
     preview_recipient_import,
 )
@@ -254,6 +256,7 @@ def recipient_import_preview(request):
 @user_passes_test(is_admin_user)
 def contract_import_preview(request):
     preview = None
+    import_batch = None
     selected_type = request.POST.get("import_type", "expenses")
     if request.method == "POST":
         form = ContractImportPreviewForm(request.POST, request.FILES)
@@ -267,15 +270,27 @@ def contract_import_preview(request):
             except (ValueError, OSError) as exc:
                 form.add_error("file", str(exc))
             else:
+                if selected_type == CERTIFICATE_IMPORT:
+                    import_batch = persist_import_preview_batch(
+                        preview,
+                        selected_type,
+                        uploaded_by=request.user,
+                    )
                 if preview.invalid_count:
                     messages.warning(
                         request,
                         f"Файл разобран, но есть строки с ошибками: {preview.invalid_count}.",
                     )
                 else:
+                    ready_message = (
+                        f"Файл разобран. Готово к будущему импорту строк: "
+                        f"{preview.valid_count}."
+                    )
+                    if import_batch is not None:
+                        ready_message += f" Preview сохранен как пакет #{import_batch.pk}."
                     messages.success(
                         request,
-                        f"Файл разобран. Готово к будущему импорту строк: {preview.valid_count}.",
+                        ready_message,
                     )
     else:
         form = ContractImportPreviewForm()
@@ -286,6 +301,7 @@ def contract_import_preview(request):
         {
             "form": form,
             "preview": preview,
+            "import_batch": import_batch,
             "selected_type": selected_type,
             "selected_spec": FINANCE_CONTRACT_IMPORT_SPECS.get(selected_type),
             "contract_import_types": FINANCE_CONTRACT_IMPORT_SPECS.values(),

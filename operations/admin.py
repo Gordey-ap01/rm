@@ -36,6 +36,8 @@ from .models import (
     FundingSource,
     FundingStaffAllocation,
     GrantRecipientAllocation,
+    ImportBatch,
+    ImportBatchRow,
     LedgerEntry,
     Note,
     OrganizationServiceContract,
@@ -726,6 +728,92 @@ class CertificateAdmin(admin.ModelAdmin):
     )
     list_filter = ("certificate_type", "funding_source", "valid_until")
     autocomplete_fields = ("child", "funding_source", "payer_representative")
+
+
+class ImportBatchRowInline(admin.TabularInline):
+    model = ImportBatchRow
+    extra = 0
+    fields = (
+        "row_number",
+        "status",
+        "target_model",
+        "target_pk",
+        "errors",
+        "warnings",
+    )
+    readonly_fields = fields
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None) -> bool:
+        return False
+
+
+@admin.register(ImportBatch)
+class ImportBatchAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "import_kind",
+        "status",
+        "original_filename",
+        "total_rows",
+        "valid_rows",
+        "invalid_rows",
+        "uploaded_by",
+        "created_at",
+    )
+    search_fields = ("original_filename", "source_sha256", "uploaded_by__username")
+    list_filter = ("import_kind", "status", "created_at")
+    readonly_fields = (
+        "import_kind",
+        "status",
+        "original_filename",
+        "source_sha256",
+        "uploaded_by",
+        "applied_by",
+        "applied_at",
+        "total_rows",
+        "valid_rows",
+        "invalid_rows",
+        "warning_rows",
+        "applied_rows",
+        "skipped_rows",
+        "header_snapshot",
+        "error_summary",
+        "created_at",
+        "updated_at",
+    )
+    inlines = (ImportBatchRowInline,)
+
+    def has_add_permission(self, request) -> bool:
+        return False
+
+
+@admin.register(ImportBatchRow)
+class ImportBatchRowAdmin(admin.ModelAdmin):
+    list_display = ("batch", "row_number", "status", "target_model", "target_pk", "created_at")
+    search_fields = (
+        "batch__original_filename",
+        "batch__source_sha256",
+        "target_model",
+    )
+    list_filter = ("status", "batch__import_kind", "created_at")
+    readonly_fields = (
+        "batch",
+        "row_number",
+        "status",
+        "raw_values",
+        "normalized_values",
+        "errors",
+        "warnings",
+        "target_model",
+        "target_pk",
+        "applied_at",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request) -> bool:
+        return False
 
 
 class FundingStaffAllocationInline(admin.TabularInline):

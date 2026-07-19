@@ -42,6 +42,8 @@ from operations.models import (
     FundingSource,
     FundingStaffAllocation,
     GrantRecipientAllocation,
+    ImportBatch,
+    ImportBatchRow,
     LedgerEntry,
     ParentGuardian,
     Payment,
@@ -2851,6 +2853,24 @@ class ImportPreviewServiceTests(TestCase):
         self.assertEqual(preview.invalid_count, 1)
         self.assertTrue(any("Остаток" in error for error in preview.rows[1].errors))
         self.assertTrue(any("Источник" in error for error in preview.rows[1].errors))
+        self.assertEqual(Certificate.objects.count(), before_count)
+
+        batch = import_preview_svc.persist_import_preview_batch(
+            preview,
+            import_preview_svc.CERTIFICATE_IMPORT,
+        )
+
+        self.assertEqual(batch.import_kind, ImportBatch.ImportKind.CERTIFICATES)
+        self.assertEqual(batch.status, ImportBatch.Status.PREVIEWED)
+        self.assertEqual(batch.valid_rows, 1)
+        self.assertEqual(batch.invalid_rows, 1)
+        self.assertEqual(batch.source_sha256, preview.source_sha256)
+        self.assertEqual(batch.rows.count(), 2)
+        rows = list(batch.rows.order_by("row_number"))
+        self.assertEqual(rows[0].status, ImportBatchRow.Status.VALID)
+        self.assertEqual(rows[0].raw_values["number"], "CERT-100")
+        self.assertEqual(rows[1].status, ImportBatchRow.Status.INVALID)
+        self.assertTrue(rows[1].errors)
         self.assertEqual(Certificate.objects.count(), before_count)
 
 

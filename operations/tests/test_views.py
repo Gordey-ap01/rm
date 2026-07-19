@@ -48,6 +48,7 @@ from operations.models import (
     FundingSource,
     FundingStaffAllocation,
     GrantRecipientAllocation,
+    ImportBatch,
     LedgerEntry,
     OrganizationServiceContract,
     OrganizationServiceContractLine,
@@ -4535,6 +4536,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
         link.is_payer = True
         link.save(update_fields=["is_payer", "updated_at"])
         before_count = Certificate.objects.count()
+        before_batch_count = ImportBatch.objects.count()
         upload = SimpleUploadedFile(
             "certificates.csv",
             (
@@ -4557,7 +4559,12 @@ class ContractRegistryViewTests(NewViewsTestBase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Certificate.objects.count(), before_count)
+        self.assertEqual(ImportBatch.objects.count(), before_batch_count + 1)
+        self.assertEqual(response.context["import_batch"].valid_rows, 1)
+        self.assertEqual(response.context["import_batch"].rows.count(), 1)
         self.assertEqual(response.context["preview"].valid_count, 1)
+        self.assertContains(response, "Сохраненный preview")
+        self.assertContains(response, "Сертификаты")
         self.assertContains(response, "CERT-VIEW")
 
     def test_service_contract_pdf_download_does_not_create_document_or_financial_facts(self):

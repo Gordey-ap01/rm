@@ -1842,3 +1842,18 @@ SMTP для реальной промышленной рассылки еще н
 - The first write-path must not autocreate recipients, representatives, funding sources, contracts, balance accounts, payments, ledger entries, payroll, grant facts, schedules or statuses.
 - Adding a DB unique constraint to existing `Certificate.number` is marked as a separate potentially dangerous migration after production duplicate preflight.
 - Graphify code-index after this docs-only slice: `5262` nodes / `23047` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+
+## Update 2026-07-19: import-batch-foundation
+
+- First DB-owner slice from `docs/41-certificate-import-write-path-contract.md` is implemented.
+- Added additive models `ImportBatch` and `ImportBatchRow` plus migration `operations.0042_importbatch_importbatchrow_and_more`.
+- `ImportBatch` stores kind/status, filename, source SHA-256, uploader/apply metadata, row counters, header snapshot and error summary.
+- `ImportBatchRow` stores row number/status, raw/normalized values, errors, warnings and future target reference fields.
+- Models are registered in Django admin and auditlog.
+- Certificate preview now persists batch + rows only for `certificates`; other import preview types keep their old read-only behavior.
+- `/contracts/import-preview/` shows saved batch summary after certificate preview.
+- Apply/write-path is not implemented yet: no `Certificate` is created from file and no balance/payment/ledger/payroll/grant/schedule/status semantics changed.
+- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused import/audit tests `9 passed`, full pytest `632 passed`, Playwright desktop/mobile QA for persisted certificate preview batch and no horizontal overflow.
+- Browser QA synthetic `BQA-IMPORTBATCH*` data was cleaned; local runserver `8109` stopped.
+- Graphify code-index after this slice: `5282` nodes / `23504` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: certificate import apply endpoint using persisted batch rows, or another explicit vertical slice. Apply must remain idempotent and must not create finance/schedule facts.
