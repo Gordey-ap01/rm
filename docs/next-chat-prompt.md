@@ -659,3 +659,21 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Browser QA was not needed because this slice has no UI changes.
 - Graphify code-index after this slice: `5402` nodes / `24122` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: run the command on production/staging and only then write a separate backfill contract. Do not auto-backfill, rename `remaining_amount`, add amount/number DB constraints or change billing semantics without that next contract.
+
+## Latest clarification 2026-07-19: certificate-balance-backfill-command complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/44-certificate-balance-backfill-command-contract.md` is added and implemented.
+- Added service `operations.services.certificates.backfill_certificate_balance_accounts()`.
+- Added command `backfill_certificate_balance_accounts`.
+- The command is dry-run by default; writes require `--apply --confirm`.
+- Preflight issues block apply unless `--allow-existing-issues` is explicitly passed.
+- Apply creates linked money `BalanceAccount` and opening `LedgerEntry(CREDIT)` only for valid unlinked positive-balance certificates.
+- Zero-balance certificates are skipped in this slice.
+- The command does not mutate `Certificate.remaining_amount` and does not create `Payment`, appointments, payroll accruals, grant allocations, contracts, schedules or status changes.
+- Local dry-run on the current database reported `0` candidates and existing preflight issues; real apply was not run.
+- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `CertificateBalancePreflightTests` `6 passed`, full pytest `654 passed`.
+- Browser QA was not needed because this slice has no UI changes.
+- Graphify code-index after this slice: `5433` nodes / `24183` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: run dry-run/preflight on staging/production and review counts before any real apply. Still deferred: zero-balance policy, data cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.

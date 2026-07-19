@@ -50,6 +50,7 @@
 | `docs/41-certificate-import-write-path-contract.md` | DB-owner контракт реального импорта сертификатов через persisted import batch; foundation, apply, batch detail и batch list выполнены, certificate balance mutation вне среза. | Перед любыми изменениями import batch/row, apply idempotency, созданием `Certificate` из файла, batch history или будущей связкой сертификатов с балансом. |
 | `docs/42-certificate-balance-ledger-contract.md` | DB-owner контракт связки сертификата с `BalanceAccount`/`LedgerEntry`; первый срез реализован через nullable `Certificate.balance_account`, idempotent account service and recipient hold action. | Перед любыми изменениями `Certificate.balance_account`, созданием счетов по сертификатам, списанием сертификатов занятиями, backfill, rename `remaining_amount` или отображением effective certificate balance. |
 | `docs/43-certificate-balance-backfill-preflight-contract.md` | Read-only контракт preflight перед массовым backfill счетов сертификатов; команда `audit_certificate_balance_backfill` считает кандидатов, проблемы данных и дубликаты без записи в БД. | Перед запуском backfill сертификатов, ручной чисткой данных, добавлением constraints по суммам/датам или уникальности номера сертификата. |
+| `docs/44-certificate-balance-backfill-command-contract.md` | Контракт controlled backfill-команды: dry-run by default, `--apply --confirm`, блокировка при preflight issues unless explicit override, idempotent creation через certificate balance service. | Перед изменениями `backfill_certificate_balance_accounts`, запуском apply, политикой zero-balance сертификатов или расширением backfill на production/staging. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -82,7 +83,7 @@
 13. Если задача затрагивает справочники категорий/контрагентов вне Django admin, прочитать `docs/22-category-counterparty-directory-contract.md`.
 14. Если задача затрагивает Word-генерацию договоров или placeholder catalog, прочитать `docs/23-contract-word-generation-contract.md`, `docs/24-document-template-source-inventory.md` и `docs/25-template-placeholder-expansion-v2-contract.md`.
 15. Если задача затрагивает `Document` без `Child`, donation-document storage, юрпрофиль центра, signed snapshots, B2B/consents/acts, прочитать `docs/26-legal-document-targets-and-center-profile-contract.md`.
-16. Если задача затрагивает юридические семейства шаблонов, юрполя сторон, спецификацию договора, сертификаты, архив подписанных файлов, B2B-договоры организации, согласия или акты, прочитать `docs/27-legal-template-families-contract.md` и соответствующий контракт `docs/28`-`docs/43`.
+16. Если задача затрагивает юридические семейства шаблонов, юрполя сторон, спецификацию договора, сертификаты, архив подписанных файлов, B2B-договоры организации, согласия или акты, прочитать `docs/27-legal-template-families-contract.md` и соответствующий контракт `docs/28`-`docs/44`.
 17. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
 18. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
 19. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
@@ -620,3 +621,18 @@ Browser QA - это проверка живого интерфейса в бра
 - Browser QA was not needed because there are no UI changes.
 - Graphify code-index after this slice: `5402` nodes / `24122` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: run the command on production/staging, then write a separate backfill contract if the counts are acceptable. Do not auto-backfill, rename `remaining_amount`, add amount/number constraints or change billing semantics without that next contract.
+
+## Latest Recovery Note 2026-07-19: certificate-balance-backfill-command
+
+- `docs/44-certificate-balance-backfill-command-contract.md` is added and implemented.
+- `operations.services.certificates.backfill_certificate_balance_accounts()` supports dry-run/apply, optional scoped certificate IDs and idempotent account creation through `ensure_certificate_balance_account()`.
+- Management command `backfill_certificate_balance_accounts` is dry-run by default.
+- Real writes require `--apply --confirm`; preflight issues block apply unless `--allow-existing-issues` is passed.
+- Apply creates linked money `BalanceAccount` plus opening `LedgerEntry(CREDIT)` only for valid unlinked positive-balance certificates.
+- Zero-balance certificates are skipped in this slice.
+- The command does not mutate `Certificate.remaining_amount` and does not create `Payment`, appointments, payroll, grants, contracts, schedules or status changes.
+- Local dry-run on the current database reported `0` candidates and existing preflight issues; real apply was not run.
+- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `CertificateBalancePreflightTests` `6 passed`, full pytest `654 passed`.
+- Browser QA was not needed because there are no UI changes.
+- Graphify code-index after this slice: `5433` nodes / `24183` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: run dry-run/preflight on staging/production and review counts before any apply. Still deferred: zero-balance policy, data cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.

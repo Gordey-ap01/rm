@@ -165,8 +165,8 @@
     "semantic_hash": ""
   },
   "operations/tests/test_services.py": {
-    "mtime": 1784452361.3712416,
-    "ast_hash": "02d10704407bf2897c31e1170731e5a2",
+    "mtime": 1784456239.83739,
+    "ast_hash": "8866d59143a9f4f8f3e85ee96c78231c",
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784452702.428998,
-    "ast_hash": "24ac62535ee204bc4d16ab8a7c4d7da6",
+    "mtime": 1784456526.6847663,
+    "ast_hash": "40cc90c2c5f20a98ab6feba49149b826",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784452702.4319994,
-    "ast_hash": "42d9f55c90f5118916e86f82ef4c20e1",
+    "mtime": 1784456526.6879752,
+    "ast_hash": "2520edd4b4440b01a882dd0f7eb59760",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784452702.4309998,
-    "ast_hash": "10705695932185c0f0c1332351b29b09",
+    "mtime": 1784456526.6863859,
+    "ast_hash": "927af668623a4aa4fab73ebfc2b4a9a8",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1340,8 +1340,8 @@
     "semantic_hash": ""
   },
   "operations/services/certificates.py": {
-    "mtime": 1784452410.2180653,
-    "ast_hash": "1fef515c598503eaf4fa867a456582d1",
+    "mtime": 1784456179.0521777,
+    "ast_hash": "f4689912356a38cb54656b900862de76",
     "semantic_hash": ""
   },
   "operations/management/commands/audit_certificate_balance_backfill.py": {
@@ -1352,6 +1352,16 @@
   "docs/43-certificate-balance-backfill-preflight-contract.md": {
     "mtime": 1784452702.4269986,
     "ast_hash": "5b880f73fbc919a09327360fa64c9a4a",
+    "semantic_hash": ""
+  },
+  "operations/management/commands/backfill_certificate_balance_accounts.py": {
+    "mtime": 1784456206.1300502,
+    "ast_hash": "5ca8c62a7498f49875bd8958fbe4fbd0",
+    "semantic_hash": ""
+  },
+  "docs/44-certificate-balance-backfill-command-contract.md": {
+    "mtime": 1784456526.6808472,
+    "ast_hash": "85cbf1085cbb4482ed73f2d55060e3c2",
     "semantic_hash": ""
   }
 }

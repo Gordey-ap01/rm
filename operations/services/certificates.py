@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
@@ -51,13 +52,74 @@ class CertificateBalancePreflightReport:
         return rows
 
 
+@dataclass(frozen=True)
+class CertificateBalanceBackfillResult:
+    """Dry-run or apply result for certificate balance-account backfill."""
+
+    applied: bool
+    report: CertificateBalancePreflightReport
+    candidate_certificate_ids: tuple[int, ...]
+    linked_account_ids: tuple[int, ...]
+
+    @property
+    def candidate_count(self) -> int:
+        return len(self.candidate_certificate_ids)
+
+    @property
+    def linked_count(self) -> int:
+        return len(self.linked_account_ids)
+
+
 def _actor_or_none(actor: Any):
     return actor if getattr(actor, "is_authenticated", False) else None
+
+
+def _normalized_certificate_ids(certificate_ids: Iterable[int] | None) -> tuple[int, ...] | None:
+    if certificate_ids is None:
+        return None
+    return tuple(dict.fromkeys(certificate_ids))
+
+
+def _certificate_queryset(certificate_ids: Iterable[int] | None = None):
+    queryset = Certificate.objects.all()
+    normalized_ids = _normalized_certificate_ids(certificate_ids)
+    if normalized_ids is not None:
+        queryset = queryset.filter(pk__in=normalized_ids)
+    return queryset
+
+
+def _valid_backfill_date_filter() -> Q:
+    return (
+        Q(valid_from__isnull=True)
+        | Q(valid_until__isnull=True)
+        | Q(valid_until__gte=F("valid_from"))
+    )
+
+
+def certificate_balance_backfill_candidate_queryset(
+    *,
+    certificate_ids: Iterable[int] | None = None,
+):
+    """Certificates that can safely receive linked money accounts."""
+    return (
+        _certificate_queryset(certificate_ids)
+        .filter(
+            balance_account__isnull=True,
+            funding_source__isnull=False,
+            total_amount__gte=0,
+            remaining_amount__gt=0,
+            remaining_amount__lte=F("total_amount"),
+        )
+        .filter(_valid_backfill_date_filter())
+        .select_related("child", "funding_source")
+        .order_by("pk")
+    )
 
 
 def certificate_balance_preflight_report(
     *,
     sample_limit: int = 20,
+    certificate_ids: Iterable[int] | None = None,
 ) -> CertificateBalancePreflightReport:
     """Audit certificate data before any automatic balance-account backfill.
 
@@ -65,13 +127,8 @@ def certificate_balance_preflight_report(
     payments, appointments, payroll facts, grant allocations or status changes.
     """
     sample_limit = max(sample_limit, 0)
-    certificates = Certificate.objects.all()
+    certificates = _certificate_queryset(certificate_ids)
     unlinked = certificates.filter(balance_account__isnull=True)
-    valid_date_filter = (
-        Q(valid_from__isnull=True)
-        | Q(valid_until__isnull=True)
-        | Q(valid_until__gte=F("valid_from"))
-    )
     issue_querysets = {
         "missing_funding_source": unlinked.filter(funding_source__isnull=True),
         "negative_total_amount": certificates.filter(total_amount__lt=0),
@@ -125,7 +182,7 @@ def certificate_balance_preflight_report(
         funding_source__isnull=False,
         total_amount__gte=0,
         remaining_amount__lte=F("total_amount"),
-    ).filter(valid_date_filter)
+    ).filter(_valid_backfill_date_filter())
     return CertificateBalancePreflightReport(
         total_certificates=certificates.count(),
         linked_certificates=certificates.filter(balance_account__isnull=False).count(),
@@ -137,6 +194,51 @@ def certificate_balance_preflight_report(
         duplicate_number_groups=len(duplicate_groups),
         duplicate_number_certificate_count=duplicate_certificate_count,
         duplicate_number_samples=duplicate_samples,
+    )
+
+
+@transaction.atomic
+def backfill_certificate_balance_accounts(
+    *,
+    apply: bool = False,
+    confirm: bool = False,
+    allow_existing_issues: bool = False,
+    certificate_ids: Iterable[int] | None = None,
+    actor: Any = None,
+) -> CertificateBalanceBackfillResult:
+    """Dry-run or create linked balance accounts for safe certificate candidates."""
+    normalized_ids = _normalized_certificate_ids(certificate_ids)
+    report = certificate_balance_preflight_report(certificate_ids=normalized_ids)
+    candidate_ids = tuple(
+        certificate_balance_backfill_candidate_queryset(certificate_ids=normalized_ids).values_list(
+            "pk", flat=True
+        )
+    )
+    if not apply:
+        return CertificateBalanceBackfillResult(
+            applied=False,
+            report=report,
+            candidate_certificate_ids=candidate_ids,
+            linked_account_ids=(),
+        )
+    if not confirm:
+        raise ValueError("Для backfill нужно явно передать confirm=True.")
+    if report.has_issues and not allow_existing_issues:
+        raise ValueError(
+            "Preflight нашел проблемы данных. Исправьте их или передайте allow_existing_issues=True."
+        )
+
+    linked_account_ids: list[int] = []
+    for certificate in certificate_balance_backfill_candidate_queryset(
+        certificate_ids=normalized_ids
+    ).select_for_update():
+        account = ensure_certificate_balance_account(certificate, actor=actor)
+        linked_account_ids.append(account.pk)
+    return CertificateBalanceBackfillResult(
+        applied=True,
+        report=report,
+        candidate_certificate_ids=candidate_ids,
+        linked_account_ids=tuple(linked_account_ids),
     )
 
 

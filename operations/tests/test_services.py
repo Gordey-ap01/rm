@@ -13,6 +13,7 @@ from django.core import mail
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
@@ -1119,6 +1120,127 @@ class CertificateBalancePreflightTests(_FixturesMixin, TestCase):
         self.assertIn("Read-only preflight completed with issues", output)
         self.assertEqual(BalanceAccount.objects.count(), before_accounts)
         self.assertEqual(LedgerEntry.objects.count(), before_ledger)
+
+    def test_certificate_balance_backfill_dry_run_is_read_only(self):
+        certificate = self._certificate(number="CERT-DRY-RUN")
+        before_accounts = BalanceAccount.objects.count()
+        before_ledger = LedgerEntry.objects.count()
+        stdout = StringIO()
+
+        call_command(
+            "backfill_certificate_balance_accounts",
+            "--certificate-id",
+            str(certificate.pk),
+            stdout=stdout,
+        )
+
+        output = stdout.getvalue()
+        certificate.refresh_from_db()
+        self.assertIn("Mode: DRY-RUN", output)
+        self.assertIn(f"Candidate certificate IDs: {certificate.pk}", output)
+        self.assertIn("Dry-run only; no records were changed.", output)
+        self.assertIsNone(certificate.balance_account)
+        self.assertEqual(BalanceAccount.objects.count(), before_accounts)
+        self.assertEqual(LedgerEntry.objects.count(), before_ledger)
+
+    def test_certificate_balance_backfill_requires_confirm_for_apply(self):
+        certificate = self._certificate(number="CERT-NO-CONFIRM")
+        before_accounts = BalanceAccount.objects.count()
+        before_ledger = LedgerEntry.objects.count()
+
+        with self.assertRaisesMessage(CommandError, "confirm=True"):
+            call_command(
+                "backfill_certificate_balance_accounts",
+                "--apply",
+                "--certificate-id",
+                str(certificate.pk),
+            )
+
+        certificate.refresh_from_db()
+        self.assertIsNone(certificate.balance_account)
+        self.assertEqual(BalanceAccount.objects.count(), before_accounts)
+        self.assertEqual(LedgerEntry.objects.count(), before_ledger)
+
+    def test_certificate_balance_backfill_blocks_apply_when_preflight_has_issues(self):
+        self._certificate(number="CERT-SAFE-BLOCKED")
+        Certificate.objects.create(
+            child=self.child,
+            certificate_type=Certificate.CertificateType.OTHER,
+            number="CERT-BLOCKER",
+            total_amount=Decimal("1000.00"),
+            remaining_amount=Decimal("1000.00"),
+        )
+        before_accounts = BalanceAccount.objects.count()
+        before_ledger = LedgerEntry.objects.count()
+
+        with self.assertRaisesMessage(CommandError, "Preflight нашел проблемы данных"):
+            call_command("backfill_certificate_balance_accounts", "--apply", "--confirm")
+
+        self.assertEqual(BalanceAccount.objects.count(), before_accounts)
+        self.assertEqual(LedgerEntry.objects.count(), before_ledger)
+
+    def test_certificate_balance_backfill_apply_links_only_safe_positive_candidates(self):
+        safe = self._certificate(number="CERT-APPLY-SAFE")
+        zero = self._certificate(
+            number="CERT-APPLY-ZERO",
+            total_amount=Decimal("5000.00"),
+            remaining_amount=Decimal("0.00"),
+        )
+        Certificate.objects.create(
+            child=self.child,
+            certificate_type=Certificate.CertificateType.OTHER,
+            number="CERT-APPLY-NO-FUNDING",
+            total_amount=Decimal("1000.00"),
+            remaining_amount=Decimal("1000.00"),
+        )
+        before_counts = {
+            "appointments": Appointment.objects.count(),
+            "grant_allocations": GrantRecipientAllocation.objects.count(),
+            "payments": Payment.objects.count(),
+            "payroll": PayrollAccrual.objects.count(),
+            "service_contracts": ServiceContract.objects.count(),
+        }
+        before_accounts = BalanceAccount.objects.count()
+        before_ledger = LedgerEntry.objects.count()
+        stdout = StringIO()
+
+        call_command(
+            "backfill_certificate_balance_accounts",
+            "--apply",
+            "--confirm",
+            "--allow-existing-issues",
+            stdout=stdout,
+        )
+
+        safe.refresh_from_db()
+        zero.refresh_from_db()
+        self.assertIsNotNone(safe.balance_account)
+        self.assertIsNone(zero.balance_account)
+        self.assertEqual(safe.balance_account.current_balance, Decimal("5000.00"))
+        self.assertEqual(safe.remaining_amount, Decimal("5000.00"))
+        self.assertEqual(BalanceAccount.objects.count(), before_accounts + 1)
+        self.assertEqual(LedgerEntry.objects.count(), before_ledger + 1)
+        self.assertEqual(Payment.objects.count(), before_counts["payments"])
+        self.assertEqual(Appointment.objects.count(), before_counts["appointments"])
+        self.assertEqual(PayrollAccrual.objects.count(), before_counts["payroll"])
+        self.assertEqual(
+            GrantRecipientAllocation.objects.count(),
+            before_counts["grant_allocations"],
+        )
+        self.assertEqual(ServiceContract.objects.count(), before_counts["service_contracts"])
+        self.assertIn("Mode: APPLY", stdout.getvalue())
+        self.assertIn("Linked accounts: 1", stdout.getvalue())
+
+        call_command(
+            "backfill_certificate_balance_accounts",
+            "--apply",
+            "--confirm",
+            "--allow-existing-issues",
+            verbosity=0,
+        )
+
+        self.assertEqual(BalanceAccount.objects.count(), before_accounts + 1)
+        self.assertEqual(LedgerEntry.objects.count(), before_ledger + 1)
 
 
 class SchedulingServiceTests(_FixturesMixin, TestCase):
