@@ -1914,3 +1914,20 @@ SMTP для реальной промышленной рассылки еще н
 - Risky work deferred: renaming `Certificate.remaining_amount`, auto-backfilling all certificates, amount DB constraints without preflight, and certificate-number unique constraints.
 - Code, models, migrations, templates and tests were not changed in this docs-only slice.
 - Graphify code-index after this slice: `5344` nodes / `23733` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+
+## Update 2026-07-19: certificate-balance-ledger first slice
+
+- First DB-owner vertical slice from `docs/42-certificate-balance-ledger-contract.md` is implemented.
+- Migration `operations.0043_certificate_balance_account_and_more` adds nullable one-to-one `Certificate.balance_account`.
+- `Certificate.clean()` now validates same-child account ownership, money-unit account, funding-source consistency, amount order and date order.
+- `Certificate.effective_remaining_amount` reads `BalanceAccount.current_balance` when linked, otherwise falls back to `Certificate.remaining_amount`; `is_available` uses the effective value.
+- Added `operations.services.certificates.ensure_certificate_balance_account()` with atomic row locking and idempotent return of an existing linked account.
+- Account creation uses `BalanceAccount.initial_amount=0` plus opening `LedgerEntry(CREDIT)` for certificate remaining amount.
+- Account creation does not create `Payment`, appointment debits, payroll accruals, grant allocations, contracts, schedules or status changes.
+- Recipient detail can create a linked certificate balance account with hold-to-confirm and then shows the effective current balance plus a link to the account.
+- The certificate panel now spans the full recipient detail grid on desktop so the financial action is visible without horizontal scrolling.
+- Existing appointment billing can debit the linked money account; tests prove this changes effective certificate balance without mutating `Certificate.remaining_amount`.
+- Verification passed: Ruff touched Python, Django check, migration dry-run `No changes detected`, focused service/view/import/contract tests `81 passed`, full pytest `648 passed`, Playwright desktop/mobile Browser QA fallback for recipient certificate -> hold create balance -> linked account display.
+- Browser QA synthetic `BQA-CERT-BALANCE-*` data was cleaned; local runserver `8113` stopped.
+- Graphify code-index after this slice: `5374` nodes / `24033` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: optional certificate-linked account labeling in global balance screens or a preflight/backfill contract. Do not auto-backfill certificates, rename `remaining_amount`, add amount/number DB constraints or change billing semantics without a separate contract.

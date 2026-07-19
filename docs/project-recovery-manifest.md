@@ -48,7 +48,7 @@
 | `docs/39-recipient-certificate-crud-contract.md` | Контракт CRUD сертификатов в карточке получателя. | Перед изменениями `CertificateForm`, recipient certificate create/edit routes или таблицы сертификатов в карточке получателя. |
 | `docs/40-certificate-import-preview-contract.md` | Контракт read-only предпросмотра Excel/CSV сертификатов. | Перед изменениями certificate import preview, валидации строк сертификатов или будущим import write-path по сертификатам. |
 | `docs/41-certificate-import-write-path-contract.md` | DB-owner контракт реального импорта сертификатов через persisted import batch; foundation, apply, batch detail и batch list выполнены, certificate balance mutation вне среза. | Перед любыми изменениями import batch/row, apply idempotency, созданием `Certificate` из файла, batch history или будущей связкой сертификатов с балансом. |
-| `docs/42-certificate-balance-ledger-contract.md` | Proposed DB-owner контракт связки сертификата с `BalanceAccount`/`LedgerEntry`; сертификат не становится вторым финансовым ledger. | Перед любыми изменениями `Certificate.balance_account`, созданием счетов по сертификатам, списанием сертификатов занятиями или отображением effective certificate balance. |
+| `docs/42-certificate-balance-ledger-contract.md` | DB-owner контракт связки сертификата с `BalanceAccount`/`LedgerEntry`; первый срез реализован через nullable `Certificate.balance_account`, idempotent account service and recipient hold action. | Перед любыми изменениями `Certificate.balance_account`, созданием счетов по сертификатам, списанием сертификатов занятиями, backfill, rename `remaining_amount` или отображением effective certificate balance. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -592,3 +592,16 @@ Browser QA - это проверка живого интерфейса в бра
 - Deferred risks: renaming `remaining_amount`, auto-backfill, DB amount constraints without preflight and certificate-number uniqueness.
 - Code/models/migrations/templates/tests were not changed in this docs-only slice.
 - Graphify code-index after this slice: `5344` nodes / `23733` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+
+## Latest Recovery Note 2026-07-19: certificate-balance-ledger first slice
+
+- First DB-owner slice from `docs/42-certificate-balance-ledger-contract.md` is implemented.
+- Migration `operations.0043_certificate_balance_account_and_more` adds nullable one-to-one `Certificate.balance_account`.
+- `Certificate.effective_remaining_amount` uses linked `BalanceAccount.current_balance`; `Certificate.remaining_amount` remains the imported/start snapshot and is not mutated by appointment debits.
+- `operations.services.certificates.ensure_certificate_balance_account()` atomically and idempotently creates a linked money account with `initial_amount=0` and opening `LedgerEntry(CREDIT)`.
+- Creating the account does not create `Payment`, appointment debit, payroll, grant allocation, contract, schedule or status changes.
+- Recipient detail has a POST-only hold-to-confirm action to create the linked account; linked certificates show account link and effective current balance.
+- Certificate panel spans the recipient detail grid on desktop so the financial action is visible.
+- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused related tests `81 passed`, full pytest `648 passed`, Playwright desktop/mobile Browser QA fallback. Synthetic `BQA-CERT-BALANCE-*` data was cleaned and runserver `8113` stopped.
+- Graphify code-index after this slice: `5374` nodes / `24033` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: optional certificate account labeling in global balance screens or a separate preflight/backfill contract. Do not auto-backfill, rename `remaining_amount`, add amount/number constraints or change billing semantics without a new contract.

@@ -9388,6 +9388,97 @@ class RecipientEditTests(NewViewsTestBase):
         self.assertContains(response, self.funding.name)
         self.assertContains(response, self.parent.full_name)
         self.assertContains(response, reverse("recipient_certificate_edit", args=[certificate.pk]))
+        self.assertContains(
+            response,
+            reverse("recipient_certificate_balance_account_create", args=[certificate.pk]),
+        )
+        self.assertContains(response, "Удерживать, чтобы создать счет")
+        self.assertContains(response, "справочно из 100000,00 ₽")
+
+    def test_recipient_certificate_balance_account_create_requires_hold_confirmation(self):
+        certificate = Certificate.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            certificate_type=Certificate.CertificateType.REGIONAL,
+            number="CERT-HOLD",
+            total_amount=Decimal("100000.00"),
+            remaining_amount=Decimal("75000.00"),
+        )
+        before_accounts = BalanceAccount.objects.count()
+        before_ledger = LedgerEntry.objects.count()
+
+        response = self.client.post(
+            reverse("recipient_certificate_balance_account_create", args=[certificate.pk]),
+            {"confirm_create_balance": "0"},
+        )
+
+        self.assertEqual(
+            response["Location"],
+            f"{reverse('recipient_detail', args=[self.child.pk])}#recipient-certificates",
+        )
+        certificate.refresh_from_db()
+        self.assertIsNone(certificate.balance_account)
+        self.assertEqual(BalanceAccount.objects.count(), before_accounts)
+        self.assertEqual(LedgerEntry.objects.count(), before_ledger)
+
+    def test_recipient_certificate_balance_account_create_links_account_without_payment(self):
+        certificate = Certificate.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            certificate_type=Certificate.CertificateType.REGIONAL,
+            number="CERT-LINK",
+            total_amount=Decimal("100000.00"),
+            remaining_amount=Decimal("75000.00"),
+        )
+        before_payments = Payment.objects.count()
+
+        response = self.client.post(
+            reverse("recipient_certificate_balance_account_create", args=[certificate.pk]),
+            {"confirm_create_balance": "1"},
+        )
+
+        self.assertEqual(
+            response["Location"],
+            f"{reverse('recipient_detail', args=[self.child.pk])}#recipient-certificates",
+        )
+        certificate.refresh_from_db()
+        self.assertIsNotNone(certificate.balance_account)
+        self.assertEqual(certificate.balance_account.unit, BalanceAccount.Unit.MONEY)
+        self.assertEqual(certificate.balance_account.current_balance, Decimal("75000.00"))
+        self.assertEqual(
+            LedgerEntry.objects.filter(
+                account=certificate.balance_account,
+                entry_type=LedgerEntry.EntryType.CREDIT,
+                amount=Decimal("75000.00"),
+            ).count(),
+            1,
+        )
+        self.assertEqual(Payment.objects.count(), before_payments)
+
+        detail = self.client.get(reverse("recipient_detail", args=[self.child.pk]))
+        self.assertContains(detail, f"Счет #{certificate.balance_account_id}")
+        self.assertContains(
+            detail,
+            reverse("balance_account_edit", args=[certificate.balance_account_id]),
+        )
+        self.assertContains(detail, "по счету из 75000,00 ₽")
+
+    def test_recipient_detail_hides_certificate_balance_action_without_funding_source(self):
+        certificate = Certificate.objects.create(
+            child=self.child,
+            certificate_type=Certificate.CertificateType.OTHER,
+            number="CERT-NO-SOURCE",
+            total_amount=Decimal("1000.00"),
+            remaining_amount=Decimal("1000.00"),
+        )
+
+        response = self.client.get(reverse("recipient_detail", args=[self.child.pk]))
+
+        self.assertContains(response, "Нужен источник")
+        self.assertNotContains(
+            response,
+            reverse("recipient_certificate_balance_account_create", args=[certificate.pk]),
+        )
 
     def test_recipient_certificate_create_filters_and_saves(self):
         other_parent = ParentGuardian.objects.create(last_name="Чужой", first_name="Плательщик")

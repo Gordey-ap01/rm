@@ -10,8 +10,8 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/admin.py": {
-    "mtime": 1784433017.0422072,
-    "ast_hash": "7243c42b46168570641d7f4984ef404f",
+    "mtime": 1784444436.6104922,
+    "ast_hash": "22ac7ca91b31e86771bf058ce5296f28",
     "semantic_hash": ""
   },
   "operations/api.py": {
@@ -105,13 +105,13 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/models.py": {
-    "mtime": 1784432398.457654,
-    "ast_hash": "96da7ba7d1f39f265a6a99aa49ca301a",
+    "mtime": 1784444756.3183157,
+    "ast_hash": "c246953bf55d54c039ebb4a168e56db9",
     "semantic_hash": ""
   },
   "operations/services/__init__.py": {
-    "mtime": 1784352279.705188,
-    "ast_hash": "e1a20a4a70ab09df26079d2f98cb61c2",
+    "mtime": 1784444436.6056876,
+    "ast_hash": "8a0186d7eb1b012244f429dbe1544a77",
     "semantic_hash": ""
   },
   "operations/services/appointments.py": {
@@ -165,23 +165,23 @@
     "semantic_hash": ""
   },
   "operations/tests/test_services.py": {
-    "mtime": 1784433466.8618605,
-    "ast_hash": "4c87b5318c5d3b73a04b04a99134b8fd",
+    "mtime": 1784444573.648658,
+    "ast_hash": "c4db8d20304c48aad55f4344245caf6d",
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
-    "mtime": 1784435417.8692386,
-    "ast_hash": "fde68821927c13920344a09a239c47a1",
+    "mtime": 1784444687.5801313,
+    "ast_hash": "3a80d09d2e2b91867006f880b2cfc33f",
     "semantic_hash": ""
   },
   "operations/urls.py": {
-    "mtime": 1784435357.823699,
-    "ast_hash": "aa403dd652d34539132d9cc307fa71ca",
+    "mtime": 1784444436.6088817,
+    "ast_hash": "b4ac23d392bd5284d3b92b7a22d72f0f",
     "semantic_hash": ""
   },
   "operations/views/__init__.py": {
-    "mtime": 1784435363.1911497,
-    "ast_hash": "2793a113dc198df0493cbc4860a5365b",
+    "mtime": 1784444467.8867877,
+    "ast_hash": "40840434ca55dc65048c58b7b78b5808",
     "semantic_hash": ""
   },
   "operations/views/_common.py": {
@@ -230,8 +230,8 @@
     "semantic_hash": "e57c4bfd1fa0d760a2f0a6499662085c"
   },
   "operations/views/recipients.py": {
-    "mtime": 1784430234.8383482,
-    "ast_hash": "5c3ff7e67c207db200676d3de331de00",
+    "mtime": 1784444436.606758,
+    "ast_hash": "4f80a56f0f10826d27853d54485c34da",
     "semantic_hash": ""
   },
   "operations/views/recommendations.py": {
@@ -600,8 +600,8 @@
     "semantic_hash": ""
   },
   "templates/operations/recipient_detail.html": {
-    "mtime": 1784430277.776826,
-    "ast_hash": "fb24fd9446de7237d46b50a2e7052151",
+    "mtime": 1784445293.7048113,
+    "ast_hash": "5e0624667e3d1c4abea35b5c1318a1fc",
     "semantic_hash": ""
   },
   "templates/operations/recipient_list.html": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784443963.0255585,
-    "ast_hash": "2a4f205c0f33bd70fd2d5ae466fdd6fe",
+    "mtime": 1784445584.061901,
+    "ast_hash": "25d92b1308a7fe1a352f3e64f7b6bb3b",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -815,13 +815,13 @@
     "semantic_hash": ""
   },
   "docs/next-chat-prompt.md": {
-    "mtime": 1784443992.4918592,
-    "ast_hash": "65e0a209f2b702588772841b4072e3ce",
+    "mtime": 1784445584.065742,
+    "ast_hash": "8734ab027c73859cd5f7ec2f12980749",
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784443980.1235645,
-    "ast_hash": "6903a864380952f02656c2830166ccf0",
+    "mtime": 1784445584.0635114,
+    "ast_hash": "4560c83a383cf1ef717929da1f80cb11",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1330,8 +1330,18 @@
     "semantic_hash": ""
   },
   "docs/42-certificate-balance-ledger-contract.md": {
-    "mtime": 1784443947.6256897,
-    "ast_hash": "f154a3bcc1ea93d571cb00b8941adad4",
+    "mtime": 1784445584.059221,
+    "ast_hash": "526a06d88799e1a50e5b86a0b2083bb8",
+    "semantic_hash": ""
+  },
+  "operations/migrations/0043_certificate_balance_account_and_more.py": {
+    "mtime": 1784444756.3193161,
+    "ast_hash": "ba51a72c0069eedd64c24d9849c3c88d",
+    "semantic_hash": ""
+  },
+  "operations/services/certificates.py": {
+    "mtime": 1784444436.6046376,
+    "ast_hash": "de08683b4cc4de6b989c86769fbcf639",
     "semantic_hash": ""
   }
 }

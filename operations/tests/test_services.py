@@ -63,6 +63,7 @@ from operations.models import (
 from operations.services import (
     appointments as appt_svc,
     billing as billing_svc,
+    certificates as certificate_svc,
     financial_facts as financial_facts_svc,
     financial_integrity as financial_integrity_svc,
     financial_integrity_checks as financial_integrity_checks_svc,
@@ -868,6 +869,143 @@ class BillingServiceTests(_FixturesMixin, TestCase):
                 amount=Decimal("3"),
                 reason="X",
             )
+
+
+class CertificateBalanceServiceTests(_FixturesMixin, TestCase):
+    def _certificate(
+        self,
+        *,
+        funding_source: FundingSource | None = None,
+        number: str = "CERT-SVC",
+        total_amount: Decimal = Decimal("5000.00"),
+        remaining_amount: Decimal = Decimal("5000.00"),
+    ) -> Certificate:
+        return Certificate.objects.create(
+            child=self.child,
+            funding_source=funding_source if funding_source is not None else self.funding,
+            certificate_type=Certificate.CertificateType.REGIONAL,
+            number=number,
+            total_amount=total_amount,
+            remaining_amount=remaining_amount,
+            valid_from=timezone.localdate(),
+            valid_until=timezone.localdate() + timedelta(days=365),
+        )
+
+    def test_ensure_certificate_balance_account_creates_money_account_and_opening_ledger(self):
+        certificate = self._certificate(number="CERT-OPEN")
+        before_counts = {
+            "appointments": Appointment.objects.count(),
+            "grant_allocations": GrantRecipientAllocation.objects.count(),
+            "payments": Payment.objects.count(),
+            "payroll": PayrollAccrual.objects.count(),
+            "service_contracts": ServiceContract.objects.count(),
+        }
+
+        account = certificate_svc.ensure_certificate_balance_account(
+            certificate,
+            actor=self.user,
+        )
+
+        certificate.refresh_from_db()
+        self.assertEqual(certificate.balance_account, account)
+        self.assertEqual(account.child, self.child)
+        self.assertEqual(account.funding_source, self.funding)
+        self.assertEqual(account.unit, BalanceAccount.Unit.MONEY)
+        self.assertEqual(account.service_scope, BalanceAccount.ServiceScope.ANY)
+        self.assertEqual(account.initial_amount, Decimal("0"))
+        self.assertEqual(account.current_balance, Decimal("5000.00"))
+        entry = LedgerEntry.objects.get(account=account)
+        self.assertEqual(entry.entry_type, LedgerEntry.EntryType.CREDIT)
+        self.assertEqual(entry.amount, Decimal("5000.00"))
+        self.assertEqual(entry.created_by, self.user)
+        self.assertEqual(Payment.objects.count(), before_counts["payments"])
+        self.assertEqual(Appointment.objects.count(), before_counts["appointments"])
+        self.assertEqual(PayrollAccrual.objects.count(), before_counts["payroll"])
+        self.assertEqual(
+            GrantRecipientAllocation.objects.count(),
+            before_counts["grant_allocations"],
+        )
+        self.assertEqual(ServiceContract.objects.count(), before_counts["service_contracts"])
+
+    def test_ensure_certificate_balance_account_is_idempotent(self):
+        certificate = self._certificate(number="CERT-IDEMPOTENT")
+
+        first = certificate_svc.ensure_certificate_balance_account(certificate, actor=self.user)
+        second = certificate_svc.ensure_certificate_balance_account(certificate, actor=self.user)
+
+        self.assertEqual(second, first)
+        self.assertEqual(
+            LedgerEntry.objects.filter(account=first, entry_type=LedgerEntry.EntryType.CREDIT)
+            .count(),
+            1,
+        )
+
+    def test_ensure_certificate_balance_account_rejects_missing_funding_source(self):
+        certificate = Certificate.objects.create(
+            child=self.child,
+            certificate_type=Certificate.CertificateType.OTHER,
+            number="CERT-NO-FUNDING",
+            total_amount=Decimal("1000.00"),
+            remaining_amount=Decimal("1000.00"),
+        )
+        before_accounts = BalanceAccount.objects.count()
+        before_ledger = LedgerEntry.objects.count()
+
+        with self.assertRaisesMessage(
+            ValueError,
+            "Для счета сертификата нужен источник финансирования.",
+        ):
+            certificate_svc.ensure_certificate_balance_account(certificate, actor=self.user)
+
+        self.assertEqual(BalanceAccount.objects.count(), before_accounts)
+        self.assertEqual(LedgerEntry.objects.count(), before_ledger)
+
+    def test_certificate_validation_rejects_incompatible_balance_account(self):
+        session_account = BalanceAccount.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            unit=BalanceAccount.Unit.SESSIONS,
+            service_scope=BalanceAccount.ServiceScope.ANY,
+            initial_amount=Decimal("3"),
+        )
+        certificate = self._certificate(number="CERT-SESSION")
+        certificate.balance_account = session_account
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Сертификат можно связать только со счетом в рублях.",
+        ):
+            certificate.full_clean()
+
+    def test_effective_balance_tracks_billing_without_mutating_certificate_snapshot(self):
+        certificate = self._certificate(number="CERT-DEBIT")
+        account = certificate_svc.ensure_certificate_balance_account(certificate, actor=self.user)
+        appointment = appt_svc.create_appointment(
+            child=self.child,
+            staff_member=self.staff_a,
+            service=self.service_log,
+            starts_at=_local(self.day, time(12, 0)),
+            ends_at=_local(self.day, time(12, 30)),
+            room=self.room1,
+            billing_account=account,
+        )
+
+        billing_svc.apply_decision(
+            appointment,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=account,
+            actor=self.user,
+        )
+
+        certificate.refresh_from_db()
+        self.assertEqual(certificate.remaining_amount, Decimal("5000.00"))
+        self.assertEqual(certificate.effective_remaining_amount, Decimal("3500.00"))
+        self.assertEqual(
+            LedgerEntry.objects.filter(account=account, entry_type=LedgerEntry.EntryType.DEBIT)
+            .count(),
+            1,
+        )
+        self.assertFalse(Payment.objects.filter(balance_account=account).exists())
 
 
 class SchedulingServiceTests(_FixturesMixin, TestCase):

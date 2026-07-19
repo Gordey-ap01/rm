@@ -626,3 +626,19 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Deferred risks: rename `remaining_amount`, auto-backfill existing certificates, DB amount constraints without preflight and certificate-number uniqueness.
 - Code/models/migrations/templates/tests were not changed in this docs-only slice.
 - Graphify code-index after this slice: `5344` nodes / `23733` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+
+## Latest clarification 2026-07-19: certificate-balance-ledger first slice complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- First DB-owner slice from `docs/42-certificate-balance-ledger-contract.md` is implemented.
+- Migration `operations.0043_certificate_balance_account_and_more` adds nullable one-to-one `Certificate.balance_account`.
+- `Certificate.effective_remaining_amount` reads linked `BalanceAccount.current_balance`; `Certificate.remaining_amount` remains a start/import snapshot and is not mutated by appointment debits.
+- New service `operations.services.certificates.ensure_certificate_balance_account()` creates the linked money account atomically/idempotently with `initial_amount=0` and opening `LedgerEntry(CREDIT)`.
+- Creating a certificate balance account does not create `Payment`, appointment debit, payroll, grants, contracts, schedules or status changes.
+- Recipient detail has a hold-to-confirm POST action to create the linked account and then shows the effective balance plus account link.
+- Certificate panel spans the recipient detail grid on desktop so the financial action is visible.
+- Existing billing flow can debit the linked money account; tests prove effective balance changes while certificate snapshot amount remains unchanged.
+- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused related tests `81 passed`, full pytest `648 passed`, Playwright Browser QA fallback desktop/mobile. Synthetic `BQA-CERT-BALANCE-*` data was cleaned; runserver `8113` stopped.
+- Graphify code-index after this slice: `5374` nodes / `24033` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: optional certificate-linked account labeling in global balance screens or a separate preflight/backfill contract. Do not auto-backfill certificates, rename `remaining_amount`, add amount/number DB constraints or change billing semantics without a new contract.

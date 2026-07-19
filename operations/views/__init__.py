@@ -109,6 +109,7 @@ from .programs import (
     program_create,
 )
 from .recipients import (
+    recipient_certificate_balance_account_create,
     recipient_certificate_create,
     recipient_certificate_edit,
     recipient_contract_pdf,
@@ -262,6 +263,7 @@ __all__ = [
     "program_block_schedule_wizard",
     "program_block_transfer_funds",
     "program_create",
+    "recipient_certificate_balance_account_create",
     "recipient_certificate_create",
     "recipient_certificate_edit",
     "recipient_contract_pdf",

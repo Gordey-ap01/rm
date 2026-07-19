@@ -714,6 +714,8 @@ class CertificateAdmin(admin.ModelAdmin):
         "payer_display_name",
         "total_amount",
         "remaining_amount",
+        "effective_remaining_amount",
+        "balance_account",
         "valid_until",
     )
     search_fields = (
@@ -727,7 +729,7 @@ class CertificateAdmin(admin.ModelAdmin):
         "note",
     )
     list_filter = ("certificate_type", "funding_source", "valid_until")
-    autocomplete_fields = ("child", "funding_source", "payer_representative")
+    autocomplete_fields = ("child", "funding_source", "payer_representative", "balance_account")
 
 
 class ImportBatchRowInline(admin.TabularInline):

@@ -5347,6 +5347,14 @@ class Certificate(TimeStampedModel):
     number = models.CharField("номер", max_length=100, blank=True)
     total_amount = models.DecimalField("полная сумма", max_digits=12, decimal_places=2)
     remaining_amount = models.DecimalField("остаток", max_digits=12, decimal_places=2)
+    balance_account = models.OneToOneField(
+        BalanceAccount,
+        verbose_name="счет баланса",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="certificate",
+    )
     valid_from = models.DateField("действует с", null=True, blank=True)
     valid_until = models.DateField("действует до", null=True, blank=True)
     note = models.TextField("комментарий", blank=True)
@@ -5365,8 +5373,14 @@ class Certificate(TimeStampedModel):
         return f"{self.get_certificate_type_display()} №{self.number} — {self.child}"
 
     @property
+    def effective_remaining_amount(self) -> Decimal:
+        if self.balance_account_id:
+            return self.balance_account.current_balance
+        return self.remaining_amount
+
+    @property
     def is_available(self) -> bool:
-        return self.remaining_amount > 0
+        return self.effective_remaining_amount > 0
 
     @property
     def payer_display_name(self) -> str:
@@ -5394,6 +5408,30 @@ class Certificate(TimeStampedModel):
             errors["payer_representative"] = (
                 "Представитель-плательщик должен относиться к выбранному получателю."
             )
+        if self.total_amount is not None and self.total_amount < 0:
+            errors["total_amount"] = "Полная сумма не может быть отрицательной."
+        if self.remaining_amount is not None and self.remaining_amount < 0:
+            errors["remaining_amount"] = "Остаток не может быть отрицательным."
+        if (
+            self.total_amount is not None
+            and self.remaining_amount is not None
+            and self.remaining_amount > self.total_amount
+        ):
+            errors["remaining_amount"] = "Остаток не может быть больше полной суммы."
+        if self.valid_from and self.valid_until and self.valid_until < self.valid_from:
+            errors["valid_until"] = "Дата окончания не может быть раньше даты начала."
+        if self.balance_account_id:
+            if self.child_id and self.balance_account.child_id != self.child_id:
+                errors["balance_account"] = "Счет должен принадлежать получателю сертификата."
+            elif self.balance_account.unit != BalanceAccount.Unit.MONEY:
+                errors["balance_account"] = "Сертификат можно связать только со счетом в рублях."
+            elif (
+                self.funding_source_id
+                and self.balance_account.funding_source_id != self.funding_source_id
+            ):
+                errors["balance_account"] = (
+                    "Счет должен относиться к тому же источнику финансирования."
+                )
         if errors:
             raise ValidationError(errors)
 

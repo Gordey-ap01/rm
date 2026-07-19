@@ -3775,6 +3775,10 @@ th {
   white-space: nowrap;
 }
 
+.recipient-certificates-panel {
+  grid-column: 1 / -1;
+}
+
 .transfer-overview {
   display: grid;
   grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);

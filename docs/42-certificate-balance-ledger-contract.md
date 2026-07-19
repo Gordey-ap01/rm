@@ -2,7 +2,7 @@
 
 Дата: 2026-07-19
 
-Статус: proposed; код/модели/миграции пока не изменены
+Статус: first vertical slice implemented on 2026-07-19
 
 Основание:
 - `docs/38-certificate-payer-source-contract.md`
@@ -205,6 +205,38 @@ Before any backfill:
 - `Certificate.remaining_amount` is not mutated by account creation or appointment debit.
 - Tests prove no `Payment`, payroll, grants, schedules, contracts or statuses are created by account creation.
 - Checks: migration dry-run after migration, Ruff, Django check, focused service/view tests, full pytest, Browser QA recipient certificate -> create balance -> appointment debit display where practical.
+
+## Implementation 2026-07-19
+
+Implemented first DB-owner vertical slice:
+
+- Migration `operations.0043_certificate_balance_account_and_more` adds nullable `Certificate.balance_account` one-to-one link to `BalanceAccount`.
+- `Certificate.clean()` validates same child, money account unit, funding-source consistency, amount order and date order.
+- `Certificate.effective_remaining_amount` returns linked `BalanceAccount.current_balance` when a balance account exists; `Certificate.is_available` now uses the effective amount.
+- New service `operations.services.certificates.ensure_certificate_balance_account()` creates the linked money account atomically and idempotently.
+- Opening certificate balance is stored as `LedgerEntry(CREDIT)` with `BalanceAccount.initial_amount=0`.
+- The service does not create `Payment`, appointments, payroll accruals, grant allocations, contracts, schedules or status changes.
+- Recipient detail has a POST-only hold-to-confirm action to create the linked balance account from a certificate with a funding source.
+- Linked certificates show effective current balance and a link to the created balance account.
+- The certificate panel spans the full recipient detail grid on desktop so the hold action is visible without horizontal scrolling.
+- Appointment billing integration uses the existing billing service against the linked money account; tests prove debits reduce effective balance without mutating `Certificate.remaining_amount`.
+
+Verification:
+
+- Ruff touched Python.
+- Django check.
+- Migration dry-run `No changes detected`.
+- Focused service/view/import/contract tests: `81 passed`.
+- Full pytest: `648 passed`.
+- Playwright Browser QA fallback desktop/mobile on recipient certificate -> hold create balance -> linked account display; synthetic `BQA-CERT-BALANCE-*` data was cleaned and local runserver `8113` stopped.
+
+Still deferred:
+
+- Auto-backfill existing certificates into balance accounts.
+- Rename `Certificate.remaining_amount` to an explicit snapshot name.
+- Add DB check constraints for amounts after production preflight.
+- Add unique constraints for certificate numbers after duplicate analysis.
+- Improve global balance list/detail labels for certificate-linked accounts if administrators need that outside recipient detail.
 
 ## Parallel-agent rule
 

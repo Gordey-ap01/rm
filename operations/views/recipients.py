@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.core.exceptions import ValidationError
 from django.db.models import Count, F, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from operations.forms import (
     CertificateForm,
@@ -24,6 +26,7 @@ from operations.models import (
     RecipientRepresentative,
     TreatmentProgram,
 )
+from operations.services import certificates as certificate_svc
 from operations.services.pdf import contract_pdf
 
 from ._common import is_admin_user
@@ -72,6 +75,16 @@ def _recipient_detail_summary_items(
             "hint": "показаны первые 20",
         },
     ]
+
+
+def _validation_message(exc: ValidationError) -> str:
+    if hasattr(exc, "message_dict"):
+        return " ".join(
+            message for field_messages in exc.message_dict.values() for message in field_messages
+        )
+    if hasattr(exc, "messages"):
+        return " ".join(exc.messages)
+    return str(exc)
 
 
 def _recipient_detail_next_action(
@@ -411,6 +424,9 @@ def recipient_detail(request, pk: int):
     )
     certificates = list(
         recipient.certificates.select_related(
+            "balance_account",
+            "balance_account__funding_source",
+            "balance_account__service",
             "funding_source",
             "payer_representative__representative",
         ).order_by("-created_at")
@@ -534,6 +550,33 @@ def recipient_certificate_edit(request, pk: int):
             "cancel_url": reverse("recipient_detail", args=[certificate.child_id]),
         },
     )
+
+
+@login_required
+@user_passes_test(is_admin_user)
+@require_POST
+def recipient_certificate_balance_account_create(request, pk: int):
+    certificate = get_object_or_404(
+        Certificate.objects.select_related("child", "funding_source", "balance_account"),
+        pk=pk,
+    )
+    redirect_url = f"{reverse('recipient_detail', args=[certificate.child_id])}#recipient-certificates"
+    if request.POST.get("confirm_create_balance") != "1":
+        messages.error(request, "Удерживайте кнопку, чтобы подтвердить создание счета баланса.")
+        return redirect(redirect_url)
+
+    try:
+        account = certificate_svc.ensure_certificate_balance_account(
+            certificate,
+            actor=request.user,
+        )
+    except (ValueError, ValidationError) as exc:
+        message = _validation_message(exc) if isinstance(exc, ValidationError) else str(exc)
+        messages.error(request, message)
+        return redirect(redirect_url)
+
+    messages.success(request, f"Счет баланса по сертификату создан: #{account.pk}.")
+    return redirect(redirect_url)
 
 
 @login_required

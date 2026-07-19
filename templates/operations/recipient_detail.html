@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}{{ recipient.full_name }}{% endblock %}
 
@@ -111,7 +112,7 @@
     {% else %}<p class="text-muted small mb-0">Счетов нет.</p>{% endif %}
   </article>
 
-  <article class="panel bg-white border rounded p-3 shadow-sm" id="recipient-certificates">
+  <article class="panel bg-white border rounded p-3 shadow-sm recipient-certificates-panel" id="recipient-certificates">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
       <h2 class="h6 mb-0">Сертификаты</h2>
       <a class="btn btn-outline-primary btn-sm" href="{% url 'recipient_certificate_create' recipient.pk %}">+ Сертификат</a>
@@ -141,8 +142,14 @@
               {% endif %}
             </td>
             <td data-label="Остаток">
-              <div class="fw-semibold">{{ certificate.remaining_amount }} ₽</div>
-              <div class="text-muted small">из {{ certificate.total_amount }} ₽</div>
+              <div class="fw-semibold">{{ certificate.effective_remaining_amount }} ₽</div>
+              <div class="text-muted small">
+                {% if certificate.balance_account_id %}
+                  по счету из {{ certificate.remaining_amount }} ₽
+                {% else %}
+                  справочно из {{ certificate.total_amount }} ₽
+                {% endif %}
+              </div>
             </td>
             <td data-label="Срок">
               {% if certificate.valid_from %}<div>с {{ certificate.valid_from|date:"d.m.Y" }}</div>{% endif %}
@@ -150,7 +157,35 @@
               {% if not certificate.valid_from and not certificate.valid_until %}<span class="text-muted">не указан</span>{% endif %}
             </td>
             <td class="text-end text-nowrap recipient-detail-actions" data-label="Действия">
-              <a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'recipient_certificate_edit' certificate.pk %}">Править</a>
+              <div class="d-flex flex-column align-items-end gap-1">
+                <a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'recipient_certificate_edit' certificate.pk %}">Править</a>
+                {% if certificate.balance_account_id %}
+                  <a class="btn btn-outline-primary btn-sm py-0" href="{% url 'balance_account_edit' certificate.balance_account_id %}">Счет #{{ certificate.balance_account_id }}</a>
+                {% elif certificate.funding_source_id %}
+                  <form method="post" action="{% url 'recipient_certificate_balance_account_create' certificate.pk %}" class="m-0" style="min-width:180px">
+                    {% csrf_token %}
+                    <input
+                      type="hidden"
+                      id="confirm-certificate-balance-{{ certificate.pk }}"
+                      name="confirm_create_balance"
+                      value="0"
+                    >
+                    <button
+                      type="submit"
+                      class="hold-confirm-button"
+                      data-hold-submit="true"
+                      data-target-id="confirm-certificate-balance-{{ certificate.pk }}"
+                      data-hold-ms="1200"
+                      style="min-height:36px;font-size:.78rem"
+                    >
+                      <span class="hold-confirm-progress" aria-hidden="true"></span>
+                      <span class="hold-confirm-label">Удерживать, чтобы создать счет</span>
+                    </button>
+                  </form>
+                {% else %}
+                  <span class="text-muted small">Нужен источник</span>
+                {% endif %}
+              </div>
             </td>
           </tr>
         {% endfor %}
@@ -279,4 +314,8 @@
     </table>
   </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'operations/hold_confirm.js' %}"></script>
 {% endblock %}
