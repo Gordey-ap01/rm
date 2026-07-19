@@ -566,3 +566,20 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Browser QA synthetic `BQA-IMPORTBATCH*` data was cleaned and local runserver `8109` stopped.
 - Graphify code-index after this slice: `5282` nodes / `23504` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: certificate import apply endpoint using persisted batch rows, or another explicit vertical slice. Apply must remain idempotent and must not create finance/schedule facts.
+
+## Latest clarification 2026-07-19: certificate-import-apply complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- Second write-path slice from `docs/41-certificate-import-write-path-contract.md` is implemented without new migrations.
+- `apply_certificate_import_batch()` applies only persisted certificate import batches using `transaction.atomic()` and row/batch locks.
+- Batches with invalid rows are blocked; terminal batches are idempotent and do not create duplicate certificates.
+- Valid rows create `Certificate` records and mark `ImportBatchRow` as `applied` with `target_model=operations.Certificate` and `target_pk`.
+- Existing certificate with the same recipient and non-empty number is skipped, not updated or duplicated.
+- Added POST route `/imports/batches/<id>/apply/`; admin/staff context and hold-confirm hidden `confirm_apply=1` are required.
+- `/contracts/import-preview/` shows the hold-to-confirm apply button only for saved valid certificate preview batches.
+- Apply does not create or mutate `BalanceAccount`, `Payment`, `LedgerEntry`, payroll, grants, schedules, appointment billing/statuses or contracts.
+- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused import/view tests `59 passed`, full pytest `638 passed`, Playwright desktop/mobile QA for preview + hold-to-confirm apply.
+- Browser QA synthetic `BQA-CERT-APPLY-*` data was cleaned and local runserver `8110` stopped.
+- Graphify code-index after this slice: `5308` nodes / `23671` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: batch result/history links or a separate certificate-balance contract. Do not connect certificates to balances, payments, ledger, grants, schedules or appointment statuses without a new contract.

@@ -2,7 +2,7 @@
 
 Дата: 2026-07-19
 
-Статус: частично выполнен: import-batch-foundation; apply/write-path не начат
+Статус: выполнен: import-batch-foundation + certificate-import-apply; certificate balance mutation остается вне среза
 
 Основание:
 - `docs/38-certificate-payer-source-contract.md`
@@ -160,9 +160,43 @@ Write-path создает только `Certificate`.
 - Проверки: Ruff touched Python и полный `operations`, Django check, migration dry-run `No changes detected`, focused import/audit tests `9 passed`, full pytest `632 passed`, Playwright desktop/mobile QA persisted preview batch.
 - Browser QA synthetic `BQA-IMPORTBATCH*` data cleaned; local runserver `8109` stopped.
 
-Не выполнено и остается следующим срезом:
+Закрыто следующим срезом `certificate-import-apply`:
 
 - Apply endpoint.
 - Создание `Certificate` из batch rows.
 - Row-level idempotent apply statuses `applied/skipped/failed`.
 - UI hold-to-confirm для применения batch.
+
+## Реализация 2026-07-19: certificate-import-apply
+
+Выполнен второй срез write-path без изменений модели и миграций:
+
+- Добавлен сервис `apply_certificate_import_batch(batch_id, applied_by=None)`.
+- Apply работает только для `ImportBatch.ImportKind.CERTIFICATES`.
+- Batch берется под `select_for_update()` внутри `transaction.atomic()`.
+- Terminal batch (`applied`, `partially_applied`, `failed`, `cancelled`) повторно не создает записи и возвращает idempotent result.
+- Batch с `ImportBatchRow.Status.INVALID` не применяется.
+- Валидные строки создают `Certificate` и получают `status=applied`, `target_model=operations.Certificate`, `target_pk`.
+- Existing certificate with same child + non-empty number получает `status=skipped`, а новая запись не создается.
+- Ошибка row-level validation во время apply переводит строку в `failed`, batch - в `failed` или `partially_applied`.
+- Добавлен POST route `/imports/batches/<id>/apply/` через CSRF и admin/staff guard.
+- `/contracts/import-preview/` показывает hold-to-confirm кнопку применения только для batch без ошибок.
+- Без удержания hidden `confirm_apply=1` endpoint не применяет batch.
+- Apply не создает и не меняет `BalanceAccount`, `Payment`, `LedgerEntry`, payroll, grants, schedules, appointment billing/statuses или contracts.
+
+Проверки:
+
+- Ruff touched Python and full `operations`: passed.
+- Django check: passed.
+- Migration dry-run: `No changes detected`.
+- Focused import/view tests: `59 passed`.
+- Full pytest: `638 passed`, only existing `django-tasks` deprecation warning.
+- Playwright browser QA on local runserver `8110`: certificate CSV preview, desktop/mobile no horizontal overflow, hold-to-confirm apply, DB result verified, BQA data cleaned, runserver stopped.
+
+Остается отдельными контрактами:
+
+- Связь сертификата с `BalanceAccount`.
+- Списание/пересчет остатка сертификата при занятиях.
+- Upsert/update существующих сертификатов из файла.
+- Batch history page and links to created recipient certificates.
+- Optional DB unique constraint for certificate number after production duplicate preflight.

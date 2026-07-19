@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Preview импорта{% endblock %}
 
@@ -118,6 +119,30 @@
               <small>строк не применять</small>
             </div>
           </div>
+          {% if import_batch.invalid_rows %}
+            <p class="note-block">Применение недоступно, пока в пакете есть строки с ошибками. Исправьте файл и загрузите его заново.</p>
+          {% elif import_batch.valid_rows %}
+            <form method="post" action="{% url 'import_batch_apply' import_batch.pk %}" class="hold-confirm-card">
+              {% csrf_token %}
+              <input
+                type="hidden"
+                id="confirm-import-apply-{{ import_batch.pk }}"
+                name="confirm_apply"
+                value="0"
+              >
+              <p>Создать сертификаты из сохраненного preview. Балансы, платежи, ledger, зарплата и расписание не создаются.</p>
+              <button
+                type="submit"
+                class="hold-confirm-button"
+                data-hold-submit="true"
+                data-target-id="confirm-import-apply-{{ import_batch.pk }}"
+                data-hold-ms="1400"
+              >
+                <span class="hold-confirm-progress" aria-hidden="true"></span>
+                <span class="hold-confirm-label">Удерживать, чтобы создать сертификаты</span>
+              </button>
+            </form>
+          {% endif %}
         </section>
       {% endif %}
 
@@ -248,4 +273,8 @@
     {% endif %}
   </aside>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'operations/hold_confirm.js' %}"></script>
 {% endblock %}

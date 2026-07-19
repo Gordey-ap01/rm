@@ -247,6 +247,11 @@ urlpatterns = [
         views.contract_import_preview,
         name="contract_import_preview",
     ),
+    path(
+        "imports/batches/<int:pk>/apply/",
+        views.import_batch_apply,
+        name="import_batch_apply",
+    ),
     path("recipients/", views.recipient_list, name="recipient_list"),
     path("imports/recipients/", views.recipient_import_preview, name="recipient_import_preview"),
     path("recipients/new/", views.recipient_create, name="recipient_create"),

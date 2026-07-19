@@ -49,6 +49,7 @@ from operations.models import (
     FundingStaffAllocation,
     GrantRecipientAllocation,
     ImportBatch,
+    ImportBatchRow,
     LedgerEntry,
     OrganizationServiceContract,
     OrganizationServiceContractLine,
@@ -4565,7 +4566,82 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertEqual(response.context["preview"].valid_count, 1)
         self.assertContains(response, "Сохраненный preview")
         self.assertContains(response, "Сертификаты")
+        self.assertContains(response, "Удерживать, чтобы создать сертификаты")
         self.assertContains(response, "CERT-VIEW")
+
+    def test_certificate_import_apply_requires_hold_confirmation(self):
+        batch = ImportBatch.objects.create(
+            import_kind=ImportBatch.ImportKind.CERTIFICATES,
+            status=ImportBatch.Status.PREVIEWED,
+            original_filename="certificates.csv",
+            source_sha256="1" * 64,
+            total_rows=1,
+            valid_rows=1,
+        )
+        ImportBatchRow.objects.create(
+            batch=batch,
+            row_number=2,
+            status=ImportBatchRow.Status.VALID,
+            raw_values={},
+            normalized_values={},
+        )
+        before_count = Certificate.objects.count()
+
+        response = self.client.post(reverse("import_batch_apply", args=[batch.pk]))
+
+        self.assertRedirects(response, reverse("contract_import_preview"))
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, ImportBatch.Status.PREVIEWED)
+        self.assertEqual(Certificate.objects.count(), before_count)
+
+    def test_certificate_import_apply_creates_certificates_from_saved_preview_only(self):
+        link = RecipientRepresentative.objects.get(child=self.child, representative=self.parent)
+        link.is_payer = True
+        link.save(update_fields=["is_payer", "updated_at"])
+        upload = SimpleUploadedFile(
+            "certificates.csv",
+            (
+                "Фамилия получателя;Имя получателя;Тип сертификата;Номер;Полная сумма;"
+                "Остаток;Источник финансирования;Фамилия плательщика;Имя плательщика\n"
+                f"{self.child.last_name};{self.child.first_name};Материнский капитал;"
+                f"CERT-VIEW-APPLY;100000;75000;{self.funding.name};"
+                f"{self.parent.last_name};{self.parent.first_name}\n"
+            ).encode(),
+            content_type="text/csv",
+        )
+        preview_response = self.client.post(
+            reverse("contract_import_preview"),
+            {
+                "import_type": "certificates",
+                "file": upload,
+            },
+        )
+        batch = preview_response.context["import_batch"]
+        before_counts = {
+            "ledger": LedgerEntry.objects.count(),
+            "payments": Payment.objects.count(),
+            "accounts": BalanceAccount.objects.count(),
+        }
+
+        response = self.client.post(
+            reverse("import_batch_apply", args=[batch.pk]),
+            {"confirm_apply": "1"},
+        )
+
+        self.assertRedirects(response, reverse("contract_import_preview"))
+        batch.refresh_from_db()
+        row = batch.rows.get()
+        certificate = Certificate.objects.get(number="CERT-VIEW-APPLY")
+        self.assertEqual(batch.status, ImportBatch.Status.APPLIED)
+        self.assertEqual(batch.applied_rows, 1)
+        self.assertEqual(batch.applied_by, self.admin)
+        self.assertEqual(row.status, ImportBatchRow.Status.APPLIED)
+        self.assertEqual(row.target_pk, certificate.pk)
+        self.assertEqual(certificate.child, self.child)
+        self.assertEqual(certificate.funding_source, self.funding)
+        self.assertEqual(LedgerEntry.objects.count(), before_counts["ledger"])
+        self.assertEqual(Payment.objects.count(), before_counts["payments"])
+        self.assertEqual(BalanceAccount.objects.count(), before_counts["accounts"])
 
     def test_service_contract_pdf_download_does_not_create_document_or_financial_facts(self):
         template = self._service_template()

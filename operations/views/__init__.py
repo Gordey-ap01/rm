@@ -94,7 +94,7 @@ from .funding_sources import (
     funding_source_list,
     funding_source_restore,
 )
-from .imports import contract_import_preview, recipient_import_preview
+from .imports import contract_import_preview, import_batch_apply, recipient_import_preview
 from .payments import payment_create
 from .programs import (
     program_block_create,
@@ -236,6 +236,7 @@ __all__ = [
     "grant_recipient_allocation_delete",
     "grant_recipient_allocation_edit",
     "grant_report",
+    "import_batch_apply",
     "is_admin_user",
     "low_balance_accounts",
     "mark_appointment",

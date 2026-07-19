@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.shortcuts import render
+from django.core.exceptions import ValidationError
+from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from operations.forms import ContractImportPreviewForm, RecipientImportPreviewForm
@@ -10,6 +11,7 @@ from operations.services.import_preview import (
     CERTIFICATE_IMPORT,
     FINANCE_CONTRACT_IMPORT_SPECS,
     ImportPreview,
+    apply_certificate_import_batch,
     persist_import_preview_batch,
     preview_finance_contract_import,
     preview_recipient_import,
@@ -311,3 +313,43 @@ def contract_import_preview(request):
             "contract_list_url": reverse("contract_list"),
         },
     )
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def import_batch_apply(request, pk: int):
+    if request.method != "POST":
+        return redirect("contract_import_preview")
+    confirmed = request.POST.get("confirm_apply") == "1"
+    if not confirmed:
+        messages.error(request, "Удерживайте кнопку, чтобы применить пакет импорта.")
+        return redirect("contract_import_preview")
+    try:
+        result = apply_certificate_import_batch(pk, applied_by=request.user)
+    except ValidationError as exc:
+        detail = "; ".join(getattr(exc, "messages", [str(exc)]))
+        messages.error(request, detail)
+    else:
+        if result.already_terminal:
+            messages.info(
+                request,
+                f"Пакет #{result.batch.pk} уже был применен ранее.",
+            )
+        elif result.failed_count:
+            messages.warning(
+                request,
+                (
+                    f"Пакет #{result.batch.pk} применен частично: создано "
+                    f"{result.applied_count}, пропущено {result.skipped_count}, "
+                    f"ошибок {result.failed_count}."
+                ),
+            )
+        else:
+            messages.success(
+                request,
+                (
+                    f"Пакет #{result.batch.pk} применен: создано "
+                    f"{result.applied_count}, пропущено {result.skipped_count}."
+                ),
+            )
+    return redirect("contract_import_preview")

@@ -2685,6 +2685,71 @@ def _minimal_xlsx(rows: list[list[str]]) -> bytes:
 
 
 class ImportPreviewServiceTests(TestCase):
+    def _certificate_import_subjects(self):
+        parent = ParentGuardian.objects.create(
+            last_name="Payer",
+            first_name="One",
+            phone="+7 900 000-00-11",
+        )
+        child = Child.objects.create(
+            last_name="Child",
+            first_name="One",
+            primary_parent=parent,
+        )
+        payer_link = RecipientRepresentative.objects.get(child=child, representative=parent)
+        payer_link.is_payer = True
+        payer_link.save(update_fields=["is_payer", "updated_at"])
+        funding = FundingSource.objects.create(
+            name="Certificate Fund",
+            source_type=FundingSource.SourceType.CERTIFICATE,
+        )
+        return parent, child, payer_link, funding
+
+    def _certificate_import_values(
+        self,
+        *,
+        child,
+        parent,
+        funding,
+        number="CERT-APPLY-1",
+        remaining_amount="75000",
+    ):
+        return {
+            "recipient_last_name": child.last_name,
+            "recipient_first_name": child.first_name,
+            "certificate_type": "Материнский капитал",
+            "number": number,
+            "total_amount": "100000",
+            "remaining_amount": remaining_amount,
+            "funding_source": funding.name,
+            "payer_last_name": parent.last_name,
+            "payer_first_name": parent.first_name,
+            "payer_phone": parent.phone,
+            "valid_from": "2026-07-17",
+            "valid_until": "2027-07-17",
+            "notes": "Imported preview row",
+        }
+
+    def _certificate_import_batch(self, values, *, status=ImportBatchRow.Status.VALID):
+        batch = ImportBatch.objects.create(
+            import_kind=ImportBatch.ImportKind.CERTIFICATES,
+            status=ImportBatch.Status.PREVIEWED,
+            original_filename="certificates.csv",
+            source_sha256="0" * 64,
+            total_rows=1,
+            valid_rows=1 if status == ImportBatchRow.Status.VALID else 0,
+            invalid_rows=1 if status == ImportBatchRow.Status.INVALID else 0,
+        )
+        ImportBatchRow.objects.create(
+            batch=batch,
+            row_number=2,
+            status=status,
+            raw_values=values,
+            normalized_values=values,
+            errors=["bad row"] if status == ImportBatchRow.Status.INVALID else [],
+        )
+        return batch
+
     def test_csv_preview_validates_rows_and_existing_recipient(self):
         Child.objects.create(last_name="Иванов", first_name="Петр")
         uploaded = SimpleUploadedFile(
@@ -2872,6 +2937,101 @@ class ImportPreviewServiceTests(TestCase):
         self.assertEqual(rows[1].status, ImportBatchRow.Status.INVALID)
         self.assertTrue(rows[1].errors)
         self.assertEqual(Certificate.objects.count(), before_count)
+
+    def test_certificate_import_apply_creates_certificates_without_financial_facts(self):
+        parent, child, payer_link, funding = self._certificate_import_subjects()
+        batch = self._certificate_import_batch(
+            self._certificate_import_values(child=child, parent=parent, funding=funding)
+        )
+        user = User.objects.create_user("import-admin", password="x")
+        before_counts = {
+            "accounts": BalanceAccount.objects.count(),
+            "payments": Payment.objects.count(),
+            "ledger": LedgerEntry.objects.count(),
+        }
+
+        result = import_preview_svc.apply_certificate_import_batch(batch.pk, applied_by=user)
+
+        batch.refresh_from_db()
+        row = batch.rows.get()
+        certificate = Certificate.objects.get(number="CERT-APPLY-1")
+        self.assertEqual(result.applied_count, 1)
+        self.assertEqual(result.skipped_count, 0)
+        self.assertEqual(result.failed_count, 0)
+        self.assertEqual(batch.status, ImportBatch.Status.APPLIED)
+        self.assertEqual(batch.applied_rows, 1)
+        self.assertEqual(batch.applied_by, user)
+        self.assertEqual(row.status, ImportBatchRow.Status.APPLIED)
+        self.assertEqual(row.target_model, "operations.Certificate")
+        self.assertEqual(row.target_pk, certificate.pk)
+        self.assertEqual(certificate.child, child)
+        self.assertEqual(certificate.funding_source, funding)
+        self.assertEqual(certificate.payer_representative, payer_link)
+        self.assertEqual(BalanceAccount.objects.count(), before_counts["accounts"])
+        self.assertEqual(Payment.objects.count(), before_counts["payments"])
+        self.assertEqual(LedgerEntry.objects.count(), before_counts["ledger"])
+
+    def test_certificate_import_apply_is_idempotent_for_terminal_batch(self):
+        parent, child, _payer_link, funding = self._certificate_import_subjects()
+        batch = self._certificate_import_batch(
+            self._certificate_import_values(
+                child=child,
+                parent=parent,
+                funding=funding,
+                number="CERT-IDEMPOTENT",
+            )
+        )
+
+        first_result = import_preview_svc.apply_certificate_import_batch(batch.pk)
+        second_result = import_preview_svc.apply_certificate_import_batch(batch.pk)
+
+        self.assertEqual(first_result.applied_count, 1)
+        self.assertTrue(second_result.already_terminal)
+        self.assertEqual(Certificate.objects.filter(number="CERT-IDEMPOTENT").count(), 1)
+
+    def test_certificate_import_apply_skips_duplicate_certificate_number(self):
+        parent, child, _payer_link, funding = self._certificate_import_subjects()
+        Certificate.objects.create(
+            child=child,
+            funding_source=funding,
+            certificate_type=Certificate.CertificateType.MATERNITY_CAPITAL,
+            number="CERT-DUPLICATE",
+            total_amount=Decimal("100000"),
+            remaining_amount=Decimal("50000"),
+        )
+        batch = self._certificate_import_batch(
+            self._certificate_import_values(
+                child=child,
+                parent=parent,
+                funding=funding,
+                number="CERT-DUPLICATE",
+            )
+        )
+
+        result = import_preview_svc.apply_certificate_import_batch(batch.pk)
+
+        batch.refresh_from_db()
+        row = batch.rows.get()
+        self.assertEqual(result.applied_count, 0)
+        self.assertEqual(result.skipped_count, 1)
+        self.assertEqual(batch.status, ImportBatch.Status.PARTIALLY_APPLIED)
+        self.assertEqual(row.status, ImportBatchRow.Status.SKIPPED)
+        self.assertTrue(row.warnings)
+        self.assertEqual(Certificate.objects.filter(number="CERT-DUPLICATE").count(), 1)
+
+    def test_certificate_import_apply_blocks_batches_with_invalid_rows(self):
+        parent, child, _payer_link, funding = self._certificate_import_subjects()
+        batch = self._certificate_import_batch(
+            self._certificate_import_values(child=child, parent=parent, funding=funding),
+            status=ImportBatchRow.Status.INVALID,
+        )
+
+        with self.assertRaisesMessage(ValidationError, "Нельзя применить пакет"):
+            import_preview_svc.apply_certificate_import_batch(batch.pk)
+
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, ImportBatch.Status.PREVIEWED)
+        self.assertEqual(Certificate.objects.count(), 0)
 
 
 class ReportsServiceTests(_FixturesMixin, TestCase):

@@ -13,7 +13,10 @@ from io import BytesIO, StringIO
 from pathlib import PurePosixPath
 from xml.etree import ElementTree
 
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q
+from django.utils import timezone
 
 from operations.models import (
     CenterExpense,
@@ -96,6 +99,15 @@ class ImportSpec:
     label: str
     columns: list[ImportColumn]
     aliases: dict[str, list[str]]
+
+
+@dataclass(frozen=True)
+class ImportApplyResult:
+    batch: ImportBatch
+    applied_count: int
+    skipped_count: int
+    failed_count: int
+    already_terminal: bool = False
 
 
 RECIPIENT_COLUMNS = [
@@ -1190,3 +1202,221 @@ def persist_import_preview_batch(
         ]
     )
     return batch
+
+
+TERMINAL_IMPORT_BATCH_STATUSES = {
+    ImportBatch.Status.APPLIED,
+    ImportBatch.Status.PARTIALLY_APPLIED,
+    ImportBatch.Status.FAILED,
+    ImportBatch.Status.CANCELLED,
+}
+
+
+def _certificate_type_for_apply(value: str) -> str:
+    normalized = _normalize_header(value)
+    choices = _choice_values_by_normalized_label(Certificate.CertificateType.choices)
+    if normalized not in choices:
+        raise ValidationError("Тип сертификата не найден.")
+    return choices[normalized]
+
+
+def _required_decimal_for_apply(values: dict[str, str], key: str, label: str) -> Decimal:
+    amount, error = _parse_decimal(values.get(key, ""), label)
+    if error:
+        raise ValidationError(error)
+    if amount is None:
+        raise ValidationError(f"Не заполнено: {label}.")
+    if amount < 0:
+        raise ValidationError(f"{label} не может быть отрицательным.")
+    return amount
+
+
+def _optional_date_for_apply(values: dict[str, str], key: str, label: str) -> date | None:
+    parsed, error = _parse_date(values.get(key, ""), label)
+    if error:
+        raise ValidationError(error)
+    return parsed
+
+
+def _child_for_certificate_apply(values: dict[str, str]) -> Child:
+    if not values.get("recipient_last_name") or not values.get("recipient_first_name"):
+        raise ValidationError("Не заполнены ФИО получателя.")
+    child, child_count = _find_child_for_import(values)
+    if child is None:
+        raise ValidationError("Получатель не найден.")
+    if child_count > 1:
+        raise ValidationError("Найдено несколько получателей; нужен ручной выбор.")
+    return child
+
+
+def _funding_source_for_certificate_apply(values: dict[str, str]) -> FundingSource | None:
+    funding_name = values.get("funding_source", "").strip()
+    if not funding_name:
+        return None
+    try:
+        return FundingSource.all_objects.get(name__iexact=funding_name)
+    except FundingSource.DoesNotExist as exc:
+        raise ValidationError("Источник финансирования не найден.") from exc
+    except FundingSource.MultipleObjectsReturned as exc:
+        raise ValidationError("Найдено несколько источников финансирования с таким названием.") from exc
+
+
+def _payer_link_for_certificate_apply(
+    child: Child,
+    values: dict[str, str],
+) -> RecipientRepresentative | None:
+    payer_last_name = values.get("payer_last_name", "").strip()
+    payer_first_name = values.get("payer_first_name", "").strip()
+    payer_phone = values.get("payer_phone", "").strip()
+    if not any([payer_last_name, payer_first_name, payer_phone]):
+        return None
+    if not payer_last_name:
+        raise ValidationError("Для представителя-плательщика нужна фамилия.")
+    payer_filter = Q(child=child, representative__last_name__iexact=payer_last_name)
+    if payer_first_name:
+        payer_filter &= Q(representative__first_name__iexact=payer_first_name)
+    if payer_phone:
+        payer_filter &= Q(representative__phone__icontains=payer_phone)
+    payer_links = RecipientRepresentative.objects.filter(payer_filter)
+    if not payer_links.exists():
+        raise ValidationError("Представитель-плательщик не найден у выбранного получателя.")
+    if payer_links.count() > 1:
+        raise ValidationError("Найдено несколько представителей-плательщиков; нужен ручной выбор.")
+    return payer_links.first()
+
+
+def _certificate_from_import_values(values: dict[str, str]) -> Certificate:
+    child = _child_for_certificate_apply(values)
+    certificate_type = _certificate_type_for_apply(values.get("certificate_type", ""))
+    total_amount = _required_decimal_for_apply(values, "total_amount", "Полная сумма")
+    remaining_amount = _required_decimal_for_apply(values, "remaining_amount", "Остаток")
+    if remaining_amount > total_amount:
+        raise ValidationError("Остаток не может быть больше полной суммы.")
+    valid_from = _optional_date_for_apply(values, "valid_from", "Действует с")
+    valid_until = _optional_date_for_apply(values, "valid_until", "Действует до")
+    if valid_from and valid_until and valid_until < valid_from:
+        raise ValidationError("Дата окончания не может быть раньше даты начала.")
+    number = values.get("number", "").strip()
+    if number and Certificate.objects.filter(child=child, number__iexact=number).exists():
+        raise ValidationError("duplicate_certificate_number")
+    certificate = Certificate(
+        child=child,
+        funding_source=_funding_source_for_certificate_apply(values),
+        payer_representative=_payer_link_for_certificate_apply(child, values),
+        payer_name=values.get("payer_name", "").strip(),
+        certificate_type=certificate_type,
+        number=number,
+        total_amount=total_amount,
+        remaining_amount=remaining_amount,
+        valid_from=valid_from,
+        valid_until=valid_until,
+        note=values.get("notes", "").strip(),
+    )
+    certificate.full_clean()
+    return certificate
+
+
+def apply_certificate_import_batch(batch_id: int, *, applied_by=None) -> ImportApplyResult:
+    with transaction.atomic():
+        batch = ImportBatch.objects.select_for_update().get(pk=batch_id)
+        if batch.import_kind != ImportBatch.ImportKind.CERTIFICATES:
+            raise ValidationError("Этот пакет импорта не относится к сертификатам.")
+        if batch.status in TERMINAL_IMPORT_BATCH_STATUSES:
+            return ImportApplyResult(
+                batch=batch,
+                applied_count=batch.applied_rows,
+                skipped_count=batch.skipped_rows,
+                failed_count=batch.rows.filter(status=ImportBatchRow.Status.FAILED).count(),
+                already_terminal=True,
+            )
+        if batch.rows.filter(status=ImportBatchRow.Status.INVALID).exists():
+            raise ValidationError("Нельзя применить пакет, пока в нем есть строки с ошибками.")
+
+        batch.status = ImportBatch.Status.APPLYING
+        batch.save(update_fields=["status", "updated_at"])
+
+        applied_count = 0
+        skipped_count = 0
+        failed_count = 0
+        now = timezone.now()
+        rows = batch.rows.select_for_update().order_by("row_number")
+        for row in rows:
+            if row.status in {
+                ImportBatchRow.Status.APPLIED,
+                ImportBatchRow.Status.SKIPPED,
+            }:
+                continue
+            if row.status != ImportBatchRow.Status.VALID:
+                continue
+            values = dict(row.normalized_values or row.raw_values)
+            try:
+                certificate = _certificate_from_import_values(values)
+            except ValidationError as exc:
+                messages = list(getattr(exc, "messages", [str(exc)]))
+                if "duplicate_certificate_number" in messages:
+                    row.status = ImportBatchRow.Status.SKIPPED
+                    row.warnings = [
+                        *row.warnings,
+                        "Сертификат с таким номером уже есть у получателя; строка пропущена.",
+                    ]
+                    row.applied_at = now
+                    row.save(update_fields=["status", "warnings", "applied_at", "updated_at"])
+                    skipped_count += 1
+                    continue
+                row.status = ImportBatchRow.Status.FAILED
+                row.errors = [*row.errors, *messages]
+                row.applied_at = now
+                row.save(update_fields=["status", "errors", "applied_at", "updated_at"])
+                failed_count += 1
+                continue
+
+            certificate.save()
+            row.status = ImportBatchRow.Status.APPLIED
+            row.target_model = "operations.Certificate"
+            row.target_pk = certificate.pk
+            row.applied_at = now
+            row.save(
+                update_fields=[
+                    "status",
+                    "target_model",
+                    "target_pk",
+                    "applied_at",
+                    "updated_at",
+                ]
+            )
+            applied_count += 1
+
+        batch.applied_rows = applied_count
+        batch.skipped_rows = skipped_count
+        batch.applied_by = applied_by if getattr(applied_by, "is_authenticated", False) else None
+        batch.applied_at = now
+        if failed_count or skipped_count:
+            batch.status = (
+                ImportBatch.Status.PARTIALLY_APPLIED
+                if applied_count or skipped_count
+                else ImportBatch.Status.FAILED
+            )
+        else:
+            batch.status = ImportBatch.Status.APPLIED
+        batch.error_summary = {
+            **batch.error_summary,
+            "apply_failed_rows": failed_count,
+            "apply_skipped_rows": skipped_count,
+        }
+        batch.save(
+            update_fields=[
+                "status",
+                "applied_rows",
+                "skipped_rows",
+                "applied_by",
+                "applied_at",
+                "error_summary",
+                "updated_at",
+            ]
+        )
+        return ImportApplyResult(
+            batch=batch,
+            applied_count=applied_count,
+            skipped_count=skipped_count,
+            failed_count=failed_count,
+        )

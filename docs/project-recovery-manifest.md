@@ -47,7 +47,7 @@
 | `docs/38-certificate-payer-source-contract.md` | Контракт реквизитов плательщика и источника у сертификата. | Перед изменениями `Certificate.funding_source`, `Certificate.payer_*` или `certificate.payer_name` placeholders. |
 | `docs/39-recipient-certificate-crud-contract.md` | Контракт CRUD сертификатов в карточке получателя. | Перед изменениями `CertificateForm`, recipient certificate create/edit routes или таблицы сертификатов в карточке получателя. |
 | `docs/40-certificate-import-preview-contract.md` | Контракт read-only предпросмотра Excel/CSV сертификатов. | Перед изменениями certificate import preview, валидации строк сертификатов или будущим import write-path по сертификатам. |
-| `docs/41-certificate-import-write-path-contract.md` | Proposed DB-owner контракт реального импорта сертификатов через persisted import batch. | Перед любым apply/write-path, моделями batch/row, созданием `Certificate` из файла или idempotency логикой импорта. |
+| `docs/41-certificate-import-write-path-contract.md` | DB-owner контракт реального импорта сертификатов через persisted import batch; foundation и apply выполнены, certificate balance mutation вне среза. | Перед любыми изменениями import batch/row, apply idempotency, созданием `Certificate` из файла или будущей связкой сертификатов с балансом. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -544,3 +544,16 @@ Browser QA - это проверка живого интерфейса в бра
 - Browser QA synthetic `BQA-IMPORTBATCH*` data was cleaned and local runserver `8109` stopped.
 - Graphify code-index after this slice: `5282` nodes / `23504` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: certificate import apply endpoint using persisted batch rows, or another explicit vertical slice. Apply must remain idempotent and must not create finance/schedule facts.
+
+## Latest Recovery Note 2026-07-19: certificate-import-apply
+
+- Second write-path slice from `docs/41-certificate-import-write-path-contract.md` is implemented without new migrations.
+- `apply_certificate_import_batch()` applies only persisted certificate batches and uses atomic row/batch locking.
+- Invalid-row batches are blocked; terminal batches are idempotent and do not duplicate certificates.
+- Valid rows create `Certificate` and mark row targets; duplicate existing child+number rows are skipped.
+- `/imports/batches/<id>/apply/` is POST-only from admin/staff context and requires hold-confirm hidden `confirm_apply=1`.
+- `/contracts/import-preview/` shows the apply hold button only for valid saved certificate preview batches.
+- No `BalanceAccount`, `Payment`, `LedgerEntry`, payroll, grants, schedules, appointment billing/statuses or contracts are created/changed by apply.
+- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused import/view tests `59 passed`, full pytest `638 passed`, Playwright desktop/mobile QA for preview + hold-to-confirm apply. Synthetic `BQA-CERT-APPLY-*` data was cleaned and runserver `8110` stopped.
+- Graphify code-index after this slice: `5308` nodes / `23671` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: batch result/history links or a separate certificate-balance contract. Do not connect certificates to balances, payments, ledger, grants, schedules or appointment statuses without a new contract.
