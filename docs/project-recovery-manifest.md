@@ -45,6 +45,7 @@
 | `docs/36-consent-signed-file-archive-contract.md` | Контракт неизменяемого архива подписанных согласий. | Перед изменениями `ConsentSignedFile`, consent signed archive actions/download или подписанных версий согласий. |
 | `docs/37-external-signed-file-upload-contract.md` | Контракт загрузки внешне подписанных PDF/DOCX/изображений в архив. | Перед изменениями signed archive upload forms/actions/download для договоров, актов или согласий. |
 | `docs/38-certificate-payer-source-contract.md` | Контракт реквизитов плательщика и источника у сертификата. | Перед изменениями `Certificate.funding_source`, `Certificate.payer_*` или `certificate.payer_name` placeholders. |
+| `docs/39-recipient-certificate-crud-contract.md` | Контракт CRUD сертификатов в карточке получателя. | Перед изменениями `CertificateForm`, recipient certificate create/edit routes или таблицы сертификатов в карточке получателя. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -488,3 +489,16 @@ Browser QA - это проверка живого интерфейса в бра
 - Browser QA synthetic `BQA-CERTPAYER*` data was cleaned and local runserver `8106` stopped.
 - Graphify code-index after this slice: `5206` nodes / `22885` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: consent legal snapshot if needed, certificate CRUD/import preview, or another explicit contract. Do not connect certificates to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.
+
+## Latest Recovery Note 2026-07-19: recipient-certificate-crud
+
+- `docs/39-recipient-certificate-crud-contract.md` is added and implemented.
+- No migrations were created.
+- `CertificateForm` fixes the recipient from the route, filters payer representatives by that recipient and validates amount/date consistency.
+- Added `recipient_certificate_create` and `recipient_certificate_edit` routes/views.
+- Recipient detail now has a certificate create action and `recipient-certificates-table` with type, number, source, payer, balance, validity and edit action.
+- No certificate balance mutation, ledger/balance/payment/billing/payroll/grant/schedule/status/import semantics changed.
+- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused recipient tests `6 passed`, full pytest `630 passed`, Playwright desktop/mobile QA for recipient detail/create/edit.
+- Browser QA synthetic `BQA-CERTCRUD*` data was cleaned and local runserver `8107` stopped.
+- Graphify code-index after this slice: `5229` nodes / `22978` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: consent legal snapshot if needed, certificate import preview, or another explicit contract. Do not connect certificates to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.

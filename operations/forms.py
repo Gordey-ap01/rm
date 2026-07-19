@@ -1420,6 +1420,98 @@ class RecipientRepresentativeForm(forms.ModelForm):
         return link
 
 
+class CertificateForm(forms.ModelForm):
+    class Meta:
+        model = Certificate
+        fields = (
+            "funding_source",
+            "payer_representative",
+            "payer_name",
+            "certificate_type",
+            "number",
+            "total_amount",
+            "remaining_amount",
+            "valid_from",
+            "valid_until",
+            "note",
+        )
+        labels = {
+            "funding_source": "Источник финансирования",
+            "payer_representative": "Представитель-плательщик",
+            "payer_name": "Плательщик вручную",
+            "certificate_type": "Тип сертификата",
+            "number": "Номер",
+            "total_amount": "Полная сумма",
+            "remaining_amount": "Остаток",
+            "valid_from": "Действует с",
+            "valid_until": "Действует до",
+            "note": "Комментарий",
+        }
+        widgets = {
+            "valid_from": DATE_INPUT,
+            "valid_until": DATE_INPUT,
+            "note": forms.Textarea(attrs={"rows": 3}),
+        }
+        help_texts = {
+            "payer_name": "Заполняйте только если плательщик не заведен как представитель.",
+            "remaining_amount": "Справочный остаток сертификата; занятиями он пока не меняется.",
+        }
+
+    def __init__(self, *args, child: Child | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.child = child or getattr(self.instance, "child", None)
+
+        funding_filter = Q(archived_at__isnull=True)
+        if self.instance and self.instance.funding_source_id:
+            funding_filter |= Q(pk=self.instance.funding_source_id)
+        self.fields["funding_source"].queryset = FundingSource.all_objects.filter(
+            funding_filter
+        ).order_by("name")
+        self.fields["funding_source"].required = False
+
+        self.fields["payer_representative"].queryset = RecipientRepresentative.objects.none()
+        if self.child and self.child.pk:
+            self.fields["payer_representative"].queryset = (
+                RecipientRepresentative.objects.select_related("representative")
+                .filter(child=self.child)
+                .order_by(
+                    "-is_payer",
+                    "-is_primary",
+                    "representative__last_name",
+                    "representative__first_name",
+                )
+            )
+        self.fields["payer_representative"].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        total_amount = cleaned.get("total_amount")
+        remaining_amount = cleaned.get("remaining_amount")
+        valid_from = cleaned.get("valid_from")
+        valid_until = cleaned.get("valid_until")
+        if total_amount is not None and total_amount < 0:
+            self.add_error("total_amount", "Полная сумма не может быть отрицательной.")
+        if remaining_amount is not None and remaining_amount < 0:
+            self.add_error("remaining_amount", "Остаток не может быть отрицательным.")
+        if (
+            total_amount is not None
+            and remaining_amount is not None
+            and remaining_amount > total_amount
+        ):
+            self.add_error("remaining_amount", "Остаток не может быть больше полной суммы.")
+        if valid_from and valid_until and valid_until < valid_from:
+            self.add_error("valid_until", "Дата окончания не может быть раньше даты начала.")
+        return cleaned
+
+    def save(self, commit=True):
+        certificate = super().save(commit=False)
+        certificate.child = self.child
+        if commit:
+            certificate.save()
+            self.save_m2m()
+        return certificate
+
+
 class RoomForm(forms.ModelForm):
     class Meta:
         model = Room

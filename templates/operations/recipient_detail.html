@@ -13,6 +13,7 @@
     <a class="btn btn-outline-primary btn-sm" href="{% url 'program_create_for_child' recipient.pk %}"><i class="bi bi-diagram-3"></i> Программа</a>
     <a class="btn btn-outline-success btn-sm" href="{% url 'recipient_contract_pdf' recipient.pk %}"><i class="bi bi-file-pdf"></i> Договор</a>
     <a class="btn btn-outline-secondary btn-sm" href="{% url 'balance_account_create' %}?recipient_id={{ recipient.pk }}"><i class="bi bi-wallet2"></i> Счёт</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'recipient_certificate_create' recipient.pk %}"><i class="bi bi-award"></i> Сертификат</a>
     <a class="btn btn-outline-info btn-sm" href="{% url 'recommendation_list' %}?child_id={{ recipient.pk }}">Рекомендации</a>
     <a class="btn btn-outline-info btn-sm" href="{% url 'document_list' %}?child_id={{ recipient.pk }}">Документы</a>
     <a class="btn btn-outline-info btn-sm" href="{% url 'consent_list' %}?child_id={{ recipient.pk }}">Согласия</a>
@@ -108,6 +109,55 @@
       </table>
     </div>
     {% else %}<p class="text-muted small mb-0">Счетов нет.</p>{% endif %}
+  </article>
+
+  <article class="panel bg-white border rounded p-3 shadow-sm" id="recipient-certificates">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <h2 class="h6 mb-0">Сертификаты</h2>
+      <a class="btn btn-outline-primary btn-sm" href="{% url 'recipient_certificate_create' recipient.pk %}">+ Сертификат</a>
+    </div>
+    {% if certificates %}
+    <div class="table-responsive recipient-detail-table-wrap">
+      <table class="table table-sm table-hover mb-0 recipient-detail-table recipient-certificates-table">
+        <thead class="table-light">
+          <tr><th>Сертификат</th><th>Источник</th><th>Плательщик</th><th>Остаток</th><th>Срок</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for certificate in certificates %}
+          <tr>
+            <td data-label="Сертификат">
+              <div class="fw-semibold">{{ certificate.get_certificate_type_display }}</div>
+              <div class="text-muted small">№{{ certificate.number|default:"б/н" }}</div>
+            </td>
+            <td data-label="Источник">
+              {% if certificate.funding_source %}{{ certificate.funding_source.name }}{% else %}<span class="text-muted">не указан</span>{% endif %}
+            </td>
+            <td data-label="Плательщик">
+              {% if certificate.payer_display_name %}
+                <div>{{ certificate.payer_display_name }}</div>
+                {% if certificate.payer_relationship_display %}<div class="text-muted small">{{ certificate.payer_relationship_display }}</div>{% endif %}
+              {% else %}
+                <span class="text-muted">не указан</span>
+              {% endif %}
+            </td>
+            <td data-label="Остаток">
+              <div class="fw-semibold">{{ certificate.remaining_amount }} ₽</div>
+              <div class="text-muted small">из {{ certificate.total_amount }} ₽</div>
+            </td>
+            <td data-label="Срок">
+              {% if certificate.valid_from %}<div>с {{ certificate.valid_from|date:"d.m.Y" }}</div>{% endif %}
+              {% if certificate.valid_until %}<div>до {{ certificate.valid_until|date:"d.m.Y" }}</div>{% endif %}
+              {% if not certificate.valid_from and not certificate.valid_until %}<span class="text-muted">не указан</span>{% endif %}
+            </td>
+            <td class="text-end text-nowrap recipient-detail-actions" data-label="Действия">
+              <a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'recipient_certificate_edit' certificate.pk %}">Править</a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="text-muted small mb-0">Сертификаты не заведены.</p>{% endif %}
   </article>
 </section>
 

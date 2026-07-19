@@ -10,9 +10,15 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
-from operations.forms import RecipientForm, RecipientRepresentativeForm, RepresentativeForm
+from operations.forms import (
+    CertificateForm,
+    RecipientForm,
+    RecipientRepresentativeForm,
+    RepresentativeForm,
+)
 from operations.models import (
     Appointment,
+    Certificate,
     Child,
     ParentGuardian,
     RecipientRepresentative,
@@ -28,6 +34,7 @@ def _recipient_detail_summary_items(
     *,
     representative_links: list[RecipientRepresentative],
     accounts: list,
+    certificates: list[Certificate],
     programs: list[TreatmentProgram],
     upcoming_appointments: list[Appointment],
 ) -> list[dict[str, str]]:
@@ -48,6 +55,11 @@ def _recipient_detail_summary_items(
             "label": "Счета",
             "value": str(len(accounts)),
             "hint": f"с риском остатка: {len(low_accounts)}",
+        },
+        {
+            "label": "Сертификаты",
+            "value": str(len(certificates)),
+            "hint": "источник и плательщик для договоров" if certificates else "не заведены",
         },
         {
             "label": "Программы",
@@ -288,6 +300,36 @@ def _recipient_representative_control_items(
     return items
 
 
+def _certificate_form_control_items(certificate: Certificate | None = None) -> list[dict[str, str]]:
+    items = [
+        {
+            "title": "Получатель фиксирован",
+            "detail": "Сертификат создается внутри карточки получателя и не переносится между получателями.",
+        },
+        {
+            "title": "Плательщик",
+            "detail": "Выберите представителя-плательщика или укажите имя вручную, если плательщика нет в карточке.",
+        },
+        {
+            "title": "Остаток справочный",
+            "detail": "Этот срез не списывает сертификат занятиями и не создает финансовых проводок.",
+        },
+        {
+            "title": "Договоры",
+            "detail": "Договор по сертификату возьмет эти реквизиты в Word-шаблон и юридический snapshot.",
+        },
+    ]
+    if certificate:
+        items.insert(
+            0,
+            {
+                "title": "Текущий сертификат",
+                "detail": f"{certificate.get_certificate_type_display()} №{certificate.number or 'б/н'}.",
+            },
+        )
+    return items
+
+
 @login_required
 @user_passes_test(is_admin_user)
 def recipient_list(request):
@@ -367,6 +409,12 @@ def recipient_detail(request, pk: int):
             "service__name",
         )
     )
+    certificates = list(
+        recipient.certificates.select_related(
+            "funding_source",
+            "payer_representative__representative",
+        ).order_by("-created_at")
+    )
     recipient_appointments = Appointment.objects.filter(
         Q(child=recipient) | Q(participants__child=recipient)
     ).distinct()
@@ -397,6 +445,7 @@ def recipient_detail(request, pk: int):
             "representative": getattr(recipient, "primary_parent", None),
             "representative_links": representative_links,
             "accounts": accounts,
+            "certificates": certificates,
             "programs": programs,
             "upcoming_appointments": upcoming_appointments,
             "recent_appointments": recent_appointments,
@@ -404,6 +453,7 @@ def recipient_detail(request, pk: int):
                 recipient,
                 representative_links=representative_links,
                 accounts=accounts,
+                certificates=certificates,
                 programs=programs,
                 upcoming_appointments=upcoming_appointments,
             ),
@@ -413,6 +463,75 @@ def recipient_detail(request, pk: int):
                 accounts=accounts,
                 programs=programs,
             ),
+        },
+    )
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def recipient_certificate_create(request, child_id: int):
+    recipient = get_object_or_404(Child.objects.select_related("primary_parent"), pk=child_id)
+    if request.method == "POST":
+        form = CertificateForm(request.POST, child=recipient)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Сертификат добавлен.")
+            return redirect("recipient_detail", pk=recipient.pk)
+    else:
+        form = CertificateForm(child=recipient)
+    return render(
+        request,
+        "operations/object_form.html",
+        {
+            "form": form,
+            "title": "Добавить сертификат",
+            "subtitle": recipient.full_name,
+            "form_panel_title": "Реквизиты сертификата",
+            "form_intro": (
+                "Заполните источник, плательщика, сумму и срок действия сертификата. "
+                "Эти данные используются в договорах и шаблонах."
+            ),
+            "control_title": "Контроль сертификата",
+            "object_form_control_items": _certificate_form_control_items(),
+            "cancel_url": reverse("recipient_detail", args=[recipient.pk]),
+        },
+    )
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def recipient_certificate_edit(request, pk: int):
+    certificate = get_object_or_404(
+        Certificate.objects.select_related(
+            "child",
+            "funding_source",
+            "payer_representative__representative",
+        ),
+        pk=pk,
+    )
+    if request.method == "POST":
+        form = CertificateForm(request.POST, instance=certificate, child=certificate.child)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Сертификат обновлен.")
+            return redirect("recipient_detail", pk=certificate.child_id)
+    else:
+        form = CertificateForm(instance=certificate, child=certificate.child)
+    return render(
+        request,
+        "operations/object_form.html",
+        {
+            "form": form,
+            "title": "Редактировать сертификат",
+            "subtitle": certificate.child.full_name,
+            "form_panel_title": "Реквизиты сертификата",
+            "form_intro": (
+                "Проверьте источник, плательщика и остаток, которые будут попадать в "
+                "договоры по сертификату."
+            ),
+            "control_title": "Контроль сертификата",
+            "object_form_control_items": _certificate_form_control_items(certificate),
+            "cancel_url": reverse("recipient_detail", args=[certificate.child_id]),
         },
     )
 

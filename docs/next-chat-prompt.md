@@ -505,3 +505,18 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Browser QA synthetic `BQA-CERTPAYER*` data was cleaned and local runserver `8106` stopped.
 - Graphify code-index after this slice: `5206` nodes / `22885` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: consent legal snapshot if needed, certificate CRUD/import preview, or another explicit contract. Do not connect certificates to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.
+
+## Latest clarification 2026-07-19: recipient-certificate-crud complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/39-recipient-certificate-crud-contract.md` is added and implemented.
+- No migrations were created.
+- `CertificateForm` fixes the recipient from the route, filters payer representatives by that recipient and validates non-negative amounts, remaining amount <= total amount and date order.
+- Added recipient certificate create/edit routes and re-exported views.
+- Recipient detail now has a certificate create action and `recipient-certificates-table` with type, number, source, payer, balance, validity and edit action.
+- No certificate balance mutation, ledger/balance/payment/billing/payroll/grant/schedule/status/import semantics changed.
+- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused recipient tests `6 passed`, full pytest `630 passed`, Playwright desktop/mobile QA for recipient detail/create/edit.
+- Browser QA synthetic `BQA-CERTCRUD*` data was cleaned and local runserver `8107` stopped.
+- Graphify code-index after this slice: `5229` nodes / `22978` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: consent legal snapshot if needed, certificate import preview, or another explicit contract. Do not connect certificates to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.

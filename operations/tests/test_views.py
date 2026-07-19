@@ -9160,18 +9160,159 @@ class RecipientEditTests(NewViewsTestBase):
         response = self.client.get(reverse("recipient_detail", args=[self.child.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertIn("representative_links", response.context)
+        self.assertIn("certificates", response.context)
         self.assertIn("recipient_detail_summary_items", response.context)
         self.assertIn("recipient_detail_next_action", response.context)
         self.assertContains(
             response,
             reverse("recipient_representative_create", args=[self.child.pk]),
         )
+        self.assertContains(response, reverse("recipient_certificate_create", args=[self.child.pk]))
         self.assertContains(response, "Следующий шаг")
         self.assertContains(response, 'id="recipient-balances"')
+        self.assertContains(response, 'id="recipient-certificates"')
         self.assertContains(response, "recipient-representatives-table")
         self.assertContains(response, "recipient-balance-table")
         self.assertContains(response, 'data-label="Расписание"')
         self.assertContains(response, 'data-label="Действия"')
+
+    def test_recipient_detail_shows_certificates(self):
+        link = RecipientRepresentative.objects.get(child=self.child, representative=self.parent)
+        certificate = Certificate.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            payer_representative=link,
+            certificate_type=Certificate.CertificateType.REGIONAL,
+            number="CERT-CARD",
+            total_amount=Decimal("100000.00"),
+            remaining_amount=Decimal("75000.00"),
+            valid_until=timezone.localdate() + timedelta(days=365),
+        )
+
+        response = self.client.get(reverse("recipient_detail", args=[self.child.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item.pk for item in response.context["certificates"]], [certificate.pk])
+        self.assertContains(response, "recipient-certificates-table")
+        self.assertContains(response, "CERT-CARD")
+        self.assertContains(response, self.funding.name)
+        self.assertContains(response, self.parent.full_name)
+        self.assertContains(response, reverse("recipient_certificate_edit", args=[certificate.pk]))
+
+    def test_recipient_certificate_create_filters_and_saves(self):
+        other_parent = ParentGuardian.objects.create(last_name="Чужой", first_name="Плательщик")
+        other_child = Child.objects.create(last_name="Чужой", first_name="Получатель")
+        other_link = RecipientRepresentative.objects.create(
+            child=other_child,
+            representative=other_parent,
+            is_payer=True,
+        )
+        own_link = RecipientRepresentative.objects.get(child=self.child, representative=self.parent)
+        ledger_count = LedgerEntry.objects.count()
+        payment_count = Payment.objects.count()
+
+        response = self.client.get(reverse("recipient_certificate_create", args=[self.child.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        payer_ids = set(
+            response.context["form"].fields["payer_representative"].queryset.values_list(
+                "pk",
+                flat=True,
+            )
+        )
+        self.assertIn(own_link.pk, payer_ids)
+        self.assertNotIn(other_link.pk, payer_ids)
+        self.assertContains(response, "Контроль сертификата")
+
+        response = self.client.post(
+            reverse("recipient_certificate_create", args=[self.child.pk]),
+            {
+                "funding_source": self.funding.pk,
+                "payer_representative": own_link.pk,
+                "payer_name": "",
+                "certificate_type": Certificate.CertificateType.MATERNITY_CAPITAL,
+                "number": "CERT-CREATE",
+                "total_amount": "100000.00",
+                "remaining_amount": "75000.00",
+                "valid_from": timezone.localdate().isoformat(),
+                "valid_until": "",
+                "note": "Создано из карточки",
+            },
+        )
+
+        self.assertRedirects(response, reverse("recipient_detail", args=[self.child.pk]))
+        certificate = Certificate.objects.get(number="CERT-CREATE")
+        self.assertEqual(certificate.child, self.child)
+        self.assertEqual(certificate.funding_source, self.funding)
+        self.assertEqual(certificate.payer_representative, own_link)
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
+        self.assertEqual(Payment.objects.count(), payment_count)
+
+    def test_recipient_certificate_create_rejects_foreign_payer(self):
+        other_parent = ParentGuardian.objects.create(last_name="Другой", first_name="Плательщик")
+        other_child = Child.objects.create(last_name="Другой", first_name="Получатель")
+        other_link = RecipientRepresentative.objects.create(
+            child=other_child,
+            representative=other_parent,
+            is_payer=True,
+        )
+
+        response = self.client.post(
+            reverse("recipient_certificate_create", args=[self.child.pk]),
+            {
+                "funding_source": self.funding.pk,
+                "payer_representative": other_link.pk,
+                "payer_name": "",
+                "certificate_type": Certificate.CertificateType.SPONSOR,
+                "number": "CERT-BAD-PAYER",
+                "total_amount": "10000.00",
+                "remaining_amount": "5000.00",
+                "valid_from": "",
+                "valid_until": "",
+                "note": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Certificate.objects.filter(number="CERT-BAD-PAYER").exists())
+        self.assertContains(response, "Выберите корректный вариант")
+
+    def test_recipient_certificate_edit_updates_without_financial_facts(self):
+        certificate = Certificate.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            certificate_type=Certificate.CertificateType.REGIONAL,
+            number="CERT-EDIT",
+            total_amount=Decimal("100000.00"),
+            remaining_amount=Decimal("75000.00"),
+        )
+        ledger_count = LedgerEntry.objects.count()
+        payment_count = Payment.objects.count()
+
+        response = self.client.post(
+            reverse("recipient_certificate_edit", args=[certificate.pk]),
+            {
+                "funding_source": self.funding_grant.pk,
+                "payer_representative": "",
+                "payer_name": "Администрация края",
+                "certificate_type": Certificate.CertificateType.REGIONAL,
+                "number": "CERT-EDIT-2",
+                "total_amount": "120000.00",
+                "remaining_amount": "60000.00",
+                "valid_from": "",
+                "valid_until": "",
+                "note": "Обновлено",
+            },
+        )
+
+        self.assertRedirects(response, reverse("recipient_detail", args=[self.child.pk]))
+        certificate.refresh_from_db()
+        self.assertEqual(certificate.funding_source, self.funding_grant)
+        self.assertEqual(certificate.payer_name, "Администрация края")
+        self.assertEqual(certificate.number, "CERT-EDIT-2")
+        self.assertEqual(certificate.remaining_amount, Decimal("60000.00"))
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
+        self.assertEqual(Payment.objects.count(), payment_count)
 
     def test_recipient_form_saves_legal_addresses(self):
         response = self.client.post(

@@ -266,6 +266,16 @@ urlpatterns = [
         name="recipient_representative_edit",
     ),
     path(
+        "recipients/<int:child_id>/certificates/new/",
+        views.recipient_certificate_create,
+        name="recipient_certificate_create",
+    ),
+    path(
+        "certificates/<int:pk>/edit/",
+        views.recipient_certificate_edit,
+        name="recipient_certificate_edit",
+    ),
+    path(
         "recipients/<int:child_id>/programs/new/",
         views.program_create,
         name="program_create_for_child",
