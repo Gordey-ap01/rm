@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Пакеты импорта{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Пакеты импорта</h1>
+    <p>История сохраненных preview и результатов применения.</p>
+  </div>
+  <div class="page-actions">
+    <a class="button-link secondary" href="{{ contract_import_preview_url }}">Новый preview</a>
+  </div>
+</section>
+
+<section class="panel import-panel">
+  <div class="import-panel-head">
+    <div>
+      <h2>Последние пакеты</h2>
+      <p>Список read-only. Применение доступно только со страницы конкретного пакета и требует удержания кнопки.</p>
+    </div>
+  </div>
+  <div class="table-wrap import-table-wrap">
+    <table class="import-columns-table">
+      <thead>
+        <tr>
+          <th>Пакет</th>
+          <th>Файл</th>
+          <th>Статус</th>
+          <th>Строки</th>
+          <th>Применение</th>
+          <th>Дата</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for batch in batches %}
+        <tr>
+          <td data-label="Пакет">
+            <strong>#{{ batch.pk }}</strong>
+            <div class="muted">{{ batch.get_import_kind_display }}</div>
+          </td>
+          <td data-label="Файл">
+            <div>{{ batch.original_filename }}</div>
+            <small class="muted">{{ batch.source_sha256|slice:":12" }}...</small>
+          </td>
+          <td data-label="Статус"><span class="status-pill">{{ batch.get_status_display }}</span></td>
+          <td data-label="Строки">
+            <div>всего {{ batch.total_rows }}</div>
+            <small class="muted">готово {{ batch.valid_rows }}, ошибок {{ batch.invalid_rows }}</small>
+          </td>
+          <td data-label="Применение">
+            <div>создано {{ batch.applied_rows }}</div>
+            <small class="muted">пропущено {{ batch.skipped_rows }}</small>
+          </td>
+          <td data-label="Дата">
+            <div>{{ batch.created_at|date:"d.m.Y H:i" }}</div>
+            {% if batch.applied_at %}<small class="muted">применено {{ batch.applied_at|date:"d.m.Y H:i" }}</small>{% endif %}
+          </td>
+          <td class="text-end text-nowrap" data-label="Действие">
+            <a class="button-link secondary" href="{% url 'import_batch_detail' batch.pk %}">Открыть</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" data-label="Пакеты">Пакеты импорта еще не сохранялись.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

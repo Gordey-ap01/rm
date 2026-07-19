@@ -2,7 +2,7 @@
 
 Дата: 2026-07-19
 
-Статус: выполнен: import-batch-foundation + certificate-import-apply + import-batch-detail; certificate balance mutation остается вне среза
+Статус: выполнен: import-batch-foundation + certificate-import-apply + import-batch-detail + import-batch-list; certificate balance mutation остается вне среза
 
 Основание:
 - `docs/38-certificate-payer-source-contract.md`
@@ -216,10 +216,30 @@ Write-path создает только `Certificate`.
 - Full pytest: `639 passed`, only existing `django-tasks` deprecation warning.
 - Playwright browser QA on local runserver `8111`: preview -> open batch detail -> desktop/mobile no horizontal overflow -> hold apply -> detail target link verified, BQA data hard-cleaned, runserver stopped.
 
+## Реализация 2026-07-19: import-batch-list
+
+Выполнен follow-up UI срез без миграций:
+
+- Добавлена read-only страница `/imports/batches/`.
+- Список показывает последние 100 batches с типом, файлом, status, row counters, applied/skipped counts and dates.
+- `/contracts/import-preview/` получил ссылку "История пакетов".
+- Detail page получил ссылку "Все пакеты".
+- Список не запускает apply и не меняет данные.
+- No `BalanceAccount`, `Payment`, `LedgerEntry`, payroll, grants, schedules, appointment billing/statuses or contracts changed.
+
+Проверки:
+
+- Ruff touched Python and full `operations`: passed.
+- Django check: passed.
+- Migration dry-run: `No changes detected`.
+- Focused `ContractRegistryViewTests`: `51 passed`.
+- Full pytest: `640 passed`, only existing `django-tasks` deprecation warning.
+- Playwright browser QA on local runserver `8112`: preview header -> batch list -> batch detail, desktop/mobile no horizontal overflow, BQA data cleaned, runserver stopped.
+
 Остается отдельными контрактами:
 
 - Связь сертификата с `BalanceAccount`.
 - Списание/пересчет остатка сертификата при занятиях.
 - Upsert/update существующих сертификатов из файла.
-- Batch list/history page across many imports.
+- Filtering/search/pagination for long import history.
 - Optional DB unique constraint for certificate number after production duplicate preflight.

@@ -598,3 +598,18 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Browser QA synthetic `BQA-CERT-DETAIL-*` data was hard-cleaned and local runserver `8111` stopped.
 - Graphify code-index after this slice: `5320` nodes / `23709` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: batch list/history page across many imports or a separate certificate-balance contract. Do not connect certificates to balances, payments, ledger, grants, schedules or appointment statuses without a new contract.
+
+## Latest clarification 2026-07-19: import-batch-list complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- Follow-up UI slice from `docs/41-certificate-import-write-path-contract.md` is implemented without new migrations.
+- Added read-only `/imports/batches/` list page for recent import batches.
+- List shows latest 100 batches with type, file, status, row counters, applied/skipped counts, dates and links to detail.
+- `/contracts/import-preview/` links to "История пакетов"; batch detail links back to "Все пакеты".
+- List does not apply batches and does not mutate data.
+- No `BalanceAccount`, `Payment`, `LedgerEntry`, payroll, grants, schedules, appointment billing/statuses or contracts changed.
+- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused `ContractRegistryViewTests` `51 passed`, full pytest `640 passed`, Playwright desktop/mobile QA for preview -> batch list -> detail.
+- Browser QA synthetic batch-list data was cleaned and local runserver `8112` stopped.
+- Graphify code-index after this slice: `5326` nodes / `23716` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: filtering/search/pagination for long import history or a separate certificate-balance contract. Do not connect certificates to balances, payments, ledger, grants, schedules or appointment statuses without a new contract.

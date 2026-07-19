@@ -1889,3 +1889,16 @@ SMTP для реальной промышленной рассылки еще н
 - Browser QA synthetic `BQA-CERT-DETAIL-*` data was hard-cleaned; local runserver `8111` stopped.
 - Graphify code-index after this slice: `5320` nodes / `23709` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: batch list/history page across many imports or a separate certificate-balance contract. Do not connect certificates to balances, payments, ledger, grants, schedules or appointment statuses without a new contract.
+
+## Update 2026-07-19: import-batch-list
+
+- Follow-up UI slice from `docs/41-certificate-import-write-path-contract.md` is implemented without new migrations.
+- Added read-only route `/imports/batches/` for recent import batches.
+- List shows the latest 100 batches with type, file, status, row counters, applied/skipped counts and dates.
+- `/contracts/import-preview/` now links to "История пакетов"; batch detail links back to "Все пакеты".
+- List does not apply batches and does not mutate data.
+- No `BalanceAccount`, `Payment`, `LedgerEntry`, payroll, grants, schedules, appointment billing/statuses or contracts changed.
+- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused `ContractRegistryViewTests` `51 passed`, full pytest `640 passed`, Playwright desktop/mobile QA for preview header -> batch list -> detail.
+- Browser QA synthetic `BQA batch-list` data was cleaned; local runserver `8112` stopped.
+- Graphify code-index after this slice: `5326` nodes / `23716` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: filtering/search/pagination for long import history or a separate certificate-balance contract. Do not connect certificates to balances, payments, ledger, grants, schedules or appointment statuses without a new contract.

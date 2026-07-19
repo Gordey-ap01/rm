@@ -98,6 +98,7 @@ from .imports import (
     contract_import_preview,
     import_batch_apply,
     import_batch_detail,
+    import_batch_list,
     recipient_import_preview,
 )
 from .payments import payment_create
@@ -243,6 +244,7 @@ __all__ = [
     "grant_report",
     "import_batch_apply",
     "import_batch_detail",
+    "import_batch_list",
     "is_admin_user",
     "low_balance_accounts",
     "mark_appointment",

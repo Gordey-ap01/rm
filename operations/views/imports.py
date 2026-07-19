@@ -295,6 +295,22 @@ def import_batch_display_rows(batch: ImportBatch) -> list[dict[str, object]]:
 
 @login_required
 @user_passes_test(is_admin_user)
+def import_batch_list(request):
+    batches = ImportBatch.objects.select_related("uploaded_by", "applied_by").order_by(
+        "-created_at"
+    )[:100]
+    return render(
+        request,
+        "operations/import_batch_list.html",
+        {
+            "batches": batches,
+            "contract_import_preview_url": reverse("contract_import_preview"),
+        },
+    )
+
+
+@login_required
+@user_passes_test(is_admin_user)
 def recipient_import_preview(request):
     preview = None
     if request.method == "POST":

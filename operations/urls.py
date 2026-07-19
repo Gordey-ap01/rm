@@ -248,6 +248,11 @@ urlpatterns = [
         name="contract_import_preview",
     ),
     path(
+        "imports/batches/",
+        views.import_batch_list,
+        name="import_batch_list",
+    ),
+    path(
         "imports/batches/<int:pk>/",
         views.import_batch_detail,
         name="import_batch_detail",

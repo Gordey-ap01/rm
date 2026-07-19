@@ -4505,6 +4505,7 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertContains(response, "Контрагенты")
         self.assertContains(response, "Расходы")
         self.assertContains(response, "Сертификаты")
+        self.assertContains(response, "История пакетов")
 
     def test_contract_import_preview_post_expenses_does_not_create_records(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -4698,6 +4699,25 @@ class ContractRegistryViewTests(NewViewsTestBase):
         self.assertContains(response, self.child.full_name)
         self.assertContains(response, "#recipient-certificates")
         self.assertContains(response, "Финансы не создаются")
+
+    def test_import_batch_list_shows_recent_batches(self):
+        batch = ImportBatch.objects.create(
+            import_kind=ImportBatch.ImportKind.CERTIFICATES,
+            status=ImportBatch.Status.PREVIEWED,
+            original_filename="certificates-list.csv",
+            source_sha256="3" * 64,
+            total_rows=2,
+            valid_rows=1,
+            invalid_rows=1,
+        )
+
+        response = self.client.get(reverse("import_batch_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Пакеты импорта")
+        self.assertContains(response, "certificates-list.csv")
+        self.assertContains(response, reverse("import_batch_detail", args=[batch.pk]))
+        self.assertContains(response, "Новый preview")
 
     def test_service_contract_pdf_download_does_not_create_document_or_financial_facts(self):
         template = self._service_template()

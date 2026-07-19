@@ -9,7 +9,10 @@
     <h1>Preview импорта</h1>
     <p>Проверка Excel/CSV для контрагентов, расходов, договоров и сертификатов без записи в базу.</p>
   </div>
-  <a class="button-link secondary" href="{{ contract_list_url }}">К договорам</a>
+  <div class="page-actions">
+    <a class="button-link secondary" href="{% url 'import_batch_list' %}">История пакетов</a>
+    <a class="button-link secondary" href="{{ contract_list_url }}">К договорам</a>
+  </div>
 </section>
 
 <section class="import-command">

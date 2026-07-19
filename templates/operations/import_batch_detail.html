@@ -10,6 +10,7 @@
     <p>{{ batch.get_import_kind_display }} · {{ batch.original_filename }}</p>
   </div>
   <div class="page-actions">
+    <a class="button-link secondary" href="{% url 'import_batch_list' %}">Все пакеты</a>
     <a class="button-link secondary" href="{{ contract_import_preview_url }}">К preview импорта</a>
   </div>
 </section>
