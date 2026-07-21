@@ -203,6 +203,9 @@
   </article>
 
   <article class="panel" id="queue-certificates">
+    <div class="queue-section-actions">
+      <a class="panel-link" href="{% url 'certificate_backfill_readiness_report' %}">Подробный отчет</a>
+    </div>
     <h2>Сертификаты</h2>
     <div class="queue-run-summary is-{{ certificate_tone }}">
       <strong>Готовность к счетам баланса</strong>
@@ -283,6 +286,7 @@
       {% endif %}
     </div>
     <div class="task-actions mt-2">
+      <a class="button-link secondary small-action" href="{% url 'certificate_backfill_readiness_report' %}">Подробный отчет</a>
       <a class="button-link secondary small-action" href="{% url 'balances' %}">Открыть балансы</a>
       <a class="button-link secondary small-action" href="{% url 'import_batch_list' %}">История импорта</a>
     </div>

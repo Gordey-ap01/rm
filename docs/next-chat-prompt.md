@@ -705,3 +705,18 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Verification passed: Ruff, focused `WorkQueueViewTests` `36 passed`, Playwright Browser QA fallback desktop/mobile for `/work-queue/#queue-certificates`. Synthetic `BQA-QUEUE-*` data was cleaned and runserver `8115` stopped.
 - Graphify code-index after this slice: `5471` nodes / `24390` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: run certificate backfill dry-run/preflight on staging/production and use this queue panel to guide cleanup, or choose a new explicit contract. Still deferred: UI-triggered backfill, zero-balance policy, data cleanup automation, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.
+
+## Latest clarification 2026-07-21: certificate-backfill-readiness-report complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/47-certificate-backfill-readiness-report-contract.md` is added and implemented as a no-migration UI/read-only slice.
+- `/certificates/backfill-readiness/` is an administrator-only detailed report over the certificate preflight.
+- Added read-only helpers `certificate_balance_preflight_issue_querysets()` and `certificate_balance_zero_balance_without_account_queryset()`.
+- The report shows summary counters, issue rows, duplicate groups, positive-balance candidates and zero-balance certificates.
+- Raw duplicate certificate numbers and recipient full names are not displayed; use technical certificate IDs/child IDs for manual cleanup.
+- `/work-queue/#queue-certificates` links to the detailed report.
+- GET report creates no accounts/ledger/payments and does not mutate certificate balance fields or finance/schedule/payroll/grant/status facts.
+- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `WorkQueueViewTests` `39 passed`, full pytest `663 passed`, Playwright Browser QA fallback desktop/mobile for report + work queue link. Synthetic `BQA-CERT-REPORT-*` data was cleaned and runserver `8116` stopped. Secret scan found no fragments of the previously supplied Graphify key or Google AI key patterns.
+- Graphify code-index after this slice: `5493` nodes / `24427` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: run certificate preflight/backfill dry-run on staging/production, use the detailed report for data cleanup, then decide whether a guarded scoped dry-run UI is needed. Still deferred: UI-triggered apply, zero-balance policy, automated cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.

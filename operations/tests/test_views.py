@@ -521,6 +521,7 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertContains(response, "нет источника финансирования")
         self.assertContains(response, "missing_funding_source")
         self.assertContains(response, reverse("recipient_certificate_edit", args=[certificate.pk]))
+        self.assertContains(response, reverse("certificate_backfill_readiness_report"))
 
     def test_work_queue_certificate_preflight_is_read_only_for_backfill_candidates(self):
         Certificate.objects.create(
@@ -565,6 +566,93 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertContains(response, "Дубли номеров сертификатов")
         self.assertContains(response, "записей с одним номером: 2")
         self.assertNotContains(response, "QUEUE-DUPLICATE-SECRET")
+
+    def test_certificate_backfill_readiness_report_shows_details_and_masks_sensitive_data(self):
+        candidate = Certificate.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            certificate_type=Certificate.CertificateType.REGIONAL,
+            number="DETAIL-CANDIDATE-SECRET",
+            total_amount=Decimal("5000.00"),
+            remaining_amount=Decimal("3000.00"),
+        )
+        zero_balance = Certificate.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            certificate_type=Certificate.CertificateType.REGIONAL,
+            number="DETAIL-ZERO-SECRET",
+            total_amount=Decimal("5000.00"),
+            remaining_amount=Decimal("0.00"),
+        )
+        missing_funding = Certificate.objects.create(
+            child=self.child,
+            certificate_type=Certificate.CertificateType.REGIONAL,
+            number="DETAIL-MISSING-FUNDING-SECRET",
+            total_amount=Decimal("5000.00"),
+            remaining_amount=Decimal("3000.00"),
+        )
+        for _ in range(2):
+            Certificate.objects.create(
+                child=self.child,
+                funding_source=self.funding,
+                certificate_type=Certificate.CertificateType.REGIONAL,
+                number="DETAIL-DUPLICATE-SECRET",
+                total_amount=Decimal("5000.00"),
+                remaining_amount=Decimal("0.00"),
+            )
+
+        response = self.client.get(reverse("certificate_backfill_readiness_report"))
+
+        self.assertEqual(response.status_code, 200)
+        report = response.context["report"]
+        self.assertEqual(report["preflight"].backfill_candidates, 1)
+        self.assertEqual(report["preflight"].zero_balance_without_account, 3)
+        self.assertEqual(report["preflight"].duplicate_number_certificate_count, 2)
+        self.assertEqual(report["issue_count"], 3)
+        self.assertContains(response, 'id="certificate-readiness-report"')
+        self.assertContains(response, "missing_funding_source")
+        self.assertContains(response, reverse("recipient_certificate_edit", args=[candidate.pk]))
+        self.assertContains(response, reverse("recipient_certificate_edit", args=[zero_balance.pk]))
+        self.assertContains(response, reverse("recipient_certificate_edit", args=[missing_funding.pk]))
+        self.assertContains(response, "Дубли номеров")
+        self.assertContains(response, f"#{self.child.pk}")
+        self.assertNotContains(response, "DETAIL-DUPLICATE-SECRET")
+        self.assertNotContains(response, "DETAIL-CANDIDATE-SECRET")
+        self.assertNotContains(response, self.child.full_name)
+
+    def test_certificate_backfill_readiness_report_is_read_only(self):
+        certificate = Certificate.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            certificate_type=Certificate.CertificateType.REGIONAL,
+            number="DETAIL-READONLY-CANDIDATE",
+            total_amount=Decimal("5000.00"),
+            remaining_amount=Decimal("3000.00"),
+        )
+        account_count = BalanceAccount.objects.count()
+        ledger_count = LedgerEntry.objects.count()
+
+        response = self.client.get(reverse("certificate_backfill_readiness_report"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(BalanceAccount.objects.count(), account_count)
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
+        certificate.refresh_from_db()
+        self.assertIsNone(certificate.balance_account_id)
+        self.assertNotContains(response, 'name="confirm"')
+        self.assertNotContains(response, 'name="apply"')
+        self.assertNotContains(response, "Создать счет")
+        self.assertNotContains(
+            response, reverse("recipient_certificate_balance_account_create", args=[certificate.pk])
+        )
+
+    def test_certificate_backfill_readiness_report_requires_admin(self):
+        user = User.objects.create_user("certificate-report-non-admin", password="x")
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("certificate_backfill_readiness_report"))
+
+        self.assertEqual(response.status_code, 302)
 
     def test_financial_integrity_report_is_read_only_and_counts_period(self):
         self._financial_integrity_fixture()

@@ -116,20 +116,34 @@ def certificate_balance_backfill_candidate_queryset(
     )
 
 
-def certificate_balance_preflight_report(
+def certificate_balance_zero_balance_without_account_queryset(
     *,
-    sample_limit: int = 20,
     certificate_ids: Iterable[int] | None = None,
-) -> CertificateBalancePreflightReport:
-    """Audit certificate data before any automatic balance-account backfill.
+):
+    """Valid unlinked certificates that should not receive a money account yet."""
+    return (
+        _certificate_queryset(certificate_ids)
+        .filter(
+            balance_account__isnull=True,
+            funding_source__isnull=False,
+            total_amount__gte=0,
+            remaining_amount=0,
+        )
+        .filter(remaining_amount__lte=F("total_amount"))
+        .filter(_valid_backfill_date_filter())
+        .select_related("child", "funding_source")
+        .order_by("pk")
+    )
 
-    This function is intentionally read-only. It does not create accounts, ledger entries,
-    payments, appointments, payroll facts, grant allocations or status changes.
-    """
-    sample_limit = max(sample_limit, 0)
+
+def certificate_balance_preflight_issue_querysets(
+    *,
+    certificate_ids: Iterable[int] | None = None,
+):
+    """Issue querysets used by the read-only preflight and readiness UI."""
     certificates = _certificate_queryset(certificate_ids)
     unlinked = certificates.filter(balance_account__isnull=True)
-    issue_querysets = {
+    return {
         "missing_funding_source": unlinked.filter(funding_source__isnull=True),
         "negative_total_amount": certificates.filter(total_amount__lt=0),
         "negative_remaining_amount": certificates.filter(remaining_amount__lt=0),
@@ -150,6 +164,25 @@ def certificate_balance_preflight_report(
             funding_source__isnull=False,
         ).exclude(balance_account__funding_source_id=F("funding_source_id")),
     }
+
+
+def certificate_balance_preflight_report(
+    *,
+    sample_limit: int = 20,
+    certificate_ids: Iterable[int] | None = None,
+) -> CertificateBalancePreflightReport:
+    """Audit certificate data before any automatic balance-account backfill.
+
+    This function is intentionally read-only. It does not create accounts, ledger entries,
+    payments, appointments, payroll facts, grant allocations or status changes.
+    """
+    sample_limit = max(sample_limit, 0)
+    normalized_ids = _normalized_certificate_ids(certificate_ids)
+    certificates = _certificate_queryset(normalized_ids)
+    unlinked = certificates.filter(balance_account__isnull=True)
+    issue_querysets = certificate_balance_preflight_issue_querysets(
+        certificate_ids=normalized_ids
+    )
     issue_counts: dict[str, int] = {}
     sample_certificate_ids: dict[str, tuple[int, ...]] = {}
     for code, queryset in issue_querysets.items():

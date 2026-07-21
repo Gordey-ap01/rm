@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Готовность сертификатов{% endblock %}
+
+{% block content %}
+<section class="page-header" id="certificate-readiness-report">
+  <div>
+    <p class="eyebrow">Операционный отчет</p>
+    <h1>Готовность сертификатов к счетам баланса</h1>
+    <p>
+      Read-only разбор перед backfill: какие сертификаты уже связаны со счетами,
+      какие можно перенести командой, а какие требуют ручной чистки данных.
+      Отчет ничего не исправляет и не создает финансовые записи.
+    </p>
+  </div>
+  <div class="header-actions">
+    <a class="button-link secondary" href="{{ report.work_queue_certificate_url }}">
+      <i class="bi bi-list-check" aria-hidden="true"></i>
+      В очередь
+    </a>
+    <a class="button-link secondary" href="{% url 'balances' %}">
+      <i class="bi bi-wallet2" aria-hidden="true"></i>
+      Балансы
+    </a>
+  </div>
+</section>
+
+<section class="financial-report-overview">
+  <article class="panel financial-report-summary-panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Сводка готовности</h2>
+        <p>{{ report.status_note }}</p>
+      </div>
+      <span class="status-pill balance-{% if report.tone == 'danger' %}critical{% elif report.tone == 'warning' %}warning{% else %}ok{% endif %}">
+        {{ report.attention_count }}
+      </span>
+    </div>
+    <div class="financial-report-summary-grid">
+      {% for item in report.summary_items %}
+        <div class="is-{{ item.tone }}">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+          <small>{{ item.hint }}</small>
+        </div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel financial-report-age-panel">
+    <h2>Границы отчета</h2>
+    <div class="compact-timeline">
+      <div class="timeline-item financial-report-run is-completed">
+        <span>read-only</span>
+        <strong>GET не запускает backfill</strong>
+        <small>Нет POST-кнопок, создания BalanceAccount, LedgerEntry или изменения Certificate.</small>
+      </div>
+      <div class="timeline-item financial-report-run is-completed">
+        <span>без ПДн</span>
+        <strong>Дубли номеров замаскированы</strong>
+        <small>Видны только технические ID получателей и количество записей в группе.</small>
+      </div>
+    </div>
+  </article>
+</section>
+
+<section class="financial-report-grid">
+  <article class="panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Проблемы данных</h2>
+        <p>Эти строки блокируют безопасный массовый backfill без ручного решения администратора.</p>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 financial-report-table">
+        <thead>
+          <tr>
+            <th>Проблема</th>
+            <th>Код</th>
+            <th class="text-end">Найдено</th>
+            <th>Примеры ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report.issue_rows %}
+            <tr>
+              <td data-label="Проблема">{{ row.label }}</td>
+              <td data-label="Код"><code>{{ row.code }}</code></td>
+              <td class="text-end fw-semibold" data-label="Найдено">{{ row.count }}</td>
+              <td data-label="Примеры ID">
+                {% for certificate in row.samples %}
+                  <a href="{% url 'recipient_certificate_edit' certificate.pk %}">#{{ certificate.pk }}</a>{% if not forloop.last %}, {% endif %}
+                {% empty %}
+                  <span class="muted">нет примеров</span>
+                {% endfor %}
+                {% if row.truncated %}
+                  <span class="muted"> · показаны первые {{ report.sample_limit }}</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="empty-state">Проблем данных, известных preflight-проверке, сейчас нет.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Дубли номеров</h2>
+        <p>Номера не выводятся в отчете; для разбора используются получатель и количество записей.</p>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 financial-report-table">
+        <thead>
+          <tr>
+            <th>Получатель ID</th>
+            <th class="text-end">Записей с одним номером</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sample in report.duplicate_samples %}
+            <tr>
+              <td data-label="Получатель ID">#{{ sample.child_id }}</td>
+              <td class="text-end fw-semibold" data-label="Записей">{{ sample.count }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="2" class="empty-state">Дублей номеров сертификатов сейчас нет.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<section class="financial-report-grid">
+  <article class="panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Кандидаты на backfill</h2>
+        <p>Положительный остаток, валидные суммы/даты и заданный источник финансирования.</p>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 financial-report-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Тип</th>
+            <th>Источник</th>
+            <th class="text-end">Остаток</th>
+            <th>Срок</th>
+            <th>Действие</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for certificate in report.candidate_certificates %}
+            <tr>
+              <td data-label="ID">#{{ certificate.pk }}</td>
+              <td data-label="Тип">{{ certificate.get_certificate_type_display }}</td>
+              <td data-label="Источник">{{ certificate.funding_source.name }}</td>
+              <td class="text-end fw-semibold" data-label="Остаток">{{ certificate.remaining_amount|floatformat:2 }}</td>
+              <td data-label="Срок">
+                {% if certificate.valid_from %}{{ certificate.valid_from|date:"d.m.Y" }}{% else %}без начала{% endif %}
+                -
+                {% if certificate.valid_until %}{{ certificate.valid_until|date:"d.m.Y" }}{% else %}без окончания{% endif %}
+              </td>
+              <td data-label="Действие">
+                <a class="button-link secondary small-action" href="{% url 'recipient_certificate_edit' certificate.pk %}">Открыть</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="empty-state">Кандидатов на backfill сейчас нет.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Нулевой остаток без счета</h2>
+        <p>Валидные сертификаты, которые не переносятся в рублевый счет, пока остаток равен нулю.</p>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 financial-report-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Тип</th>
+            <th>Источник</th>
+            <th class="text-end">Полная сумма</th>
+            <th>Действие</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for certificate in report.zero_balance_certificates %}
+            <tr>
+              <td data-label="ID">#{{ certificate.pk }}</td>
+              <td data-label="Тип">{{ certificate.get_certificate_type_display }}</td>
+              <td data-label="Источник">{{ certificate.funding_source.name }}</td>
+              <td class="text-end fw-semibold" data-label="Полная сумма">{{ certificate.total_amount|floatformat:2 }}</td>
+              <td data-label="Действие">
+                <a class="button-link secondary small-action" href="{% url 'recipient_certificate_edit' certificate.pk %}">Открыть</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="empty-state">Валидных сертификатов с нулевым остатком без счета сейчас нет.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+{% endblock %}

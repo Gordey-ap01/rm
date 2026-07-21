@@ -58,6 +58,7 @@ from .contracts import (
     service_contract_word,
 )
 from .dashboard import (
+    certificate_backfill_readiness_report,
     dashboard,
     financial_integrity_finding_detail,
     financial_integrity_finding_recheck,
@@ -188,6 +189,7 @@ __all__ = [
     "center_expense_list",
     "center_expense_report",
     "center_legal_profile_edit",
+    "certificate_backfill_readiness_report",
     "consent_archive_signed",
     "consent_create",
     "consent_list",

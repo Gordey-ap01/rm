@@ -119,6 +119,7 @@ FINANCIAL_INTEGRITY_REPORT_ACTIVE_LIMIT = 20
 FINANCIAL_INTEGRITY_REPORT_RUN_LIMIT = 8
 FINANCIAL_INTEGRITY_REPORT_PERIODS = (7, 30, 90)
 CERTIFICATE_PREFLIGHT_SAMPLE_LIMIT = 8
+CERTIFICATE_PREFLIGHT_REPORT_SAMPLE_LIMIT = 50
 FINANCIAL_INTEGRITY_ACTIVE_STATUSES = (
     FinancialIntegrityFinding.Status.OPEN,
     FinancialIntegrityFinding.Status.ACKNOWLEDGED,
@@ -720,6 +721,120 @@ def financial_integrity_report_context(request) -> dict[str, object]:
 
 def financial_integrity_finding_triage_fallback_url() -> str:
     return f"{reverse('work_queue')}#queue-financial-integrity"
+
+
+def certificate_backfill_readiness_fallback_url() -> str:
+    return f"{reverse('work_queue')}#queue-certificates"
+
+
+def certificate_backfill_readiness_summary_items(
+    report: certificate_svc.CertificateBalancePreflightReport,
+) -> list[dict[str, object]]:
+    issue_count = certificate_backfill_issue_count(report)
+    return [
+        {
+            "label": "Всего",
+            "value": report.total_certificates,
+            "hint": "Сертификаты в базе.",
+            "tone": "info",
+        },
+        {
+            "label": "Связано",
+            "value": report.linked_certificates,
+            "hint": "Уже имеют счет баланса.",
+            "tone": "success",
+        },
+        {
+            "label": "Кандидаты",
+            "value": report.backfill_candidates,
+            "hint": "Положительный остаток, есть источник, суммы и даты валидны.",
+            "tone": "warning" if report.backfill_candidates else "success",
+        },
+        {
+            "label": "Нулевой остаток",
+            "value": report.zero_balance_without_account,
+            "hint": "Валидные сертификаты без счета, но сейчас нечего переносить.",
+            "tone": "warning" if report.zero_balance_without_account else "success",
+        },
+        {
+            "label": "Проблемы",
+            "value": issue_count,
+            "hint": "Ошибки данных и дубли номеров, требующие ручного разбора.",
+            "tone": "danger" if issue_count else "success",
+        },
+    ]
+
+
+def certificate_backfill_readiness_issue_rows(
+    report: certificate_svc.CertificateBalancePreflightReport,
+    *,
+    sample_limit: int,
+) -> list[dict[str, object]]:
+    issue_querysets = certificate_svc.certificate_balance_preflight_issue_querysets()
+    rows: list[dict[str, object]] = []
+    for code, label, count, _sample_ids in report.issue_rows():
+        samples = list(
+            issue_querysets[code]
+            .select_related("child", "funding_source", "balance_account")
+            .order_by("pk")[:sample_limit]
+        )
+        rows.append(
+            {
+                "code": code,
+                "label": label,
+                "count": count,
+                "samples": samples,
+                "truncated": count > len(samples),
+            }
+        )
+    return rows
+
+
+def certificate_backfill_readiness_context() -> dict[str, object]:
+    sample_limit = CERTIFICATE_PREFLIGHT_REPORT_SAMPLE_LIMIT
+    report = certificate_svc.certificate_balance_preflight_report(sample_limit=sample_limit)
+    issue_count = certificate_backfill_issue_count(report)
+    candidate_certificates = list(
+        certificate_svc.certificate_balance_backfill_candidate_queryset()[:sample_limit]
+    )
+    zero_balance_certificates = list(
+        certificate_svc.certificate_balance_zero_balance_without_account_queryset()[:sample_limit]
+    )
+    if issue_count:
+        status_note = "Сначала исправьте проблемы данных и дубли, затем повторите dry-run."
+    elif report.backfill_candidates:
+        status_note = "Данные выглядят готовыми для dry-run backfill-команды."
+    elif report.zero_balance_without_account:
+        status_note = "Есть валидные сертификаты с нулевым остатком; счет им пока не создается."
+    else:
+        status_note = "Проблем и кандидатов на backfill сейчас нет."
+    return {
+        "preflight": report,
+        "tone": certificate_backfill_tone(report),
+        "issue_count": issue_count,
+        "attention_count": certificate_backfill_attention_count(report),
+        "summary_items": certificate_backfill_readiness_summary_items(report),
+        "issue_rows": certificate_backfill_readiness_issue_rows(
+            report,
+            sample_limit=sample_limit,
+        ),
+        "candidate_certificates": candidate_certificates,
+        "zero_balance_certificates": zero_balance_certificates,
+        "duplicate_samples": report.duplicate_number_samples,
+        "sample_limit": sample_limit,
+        "status_note": status_note,
+        "work_queue_certificate_url": certificate_backfill_readiness_fallback_url(),
+    }
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def certificate_backfill_readiness_report(request):
+    return render(
+        request,
+        "operations/certificate_backfill_readiness_report.html",
+        {"report": certificate_backfill_readiness_context()},
+    )
 
 
 def financial_integrity_finding_detail_queryset():

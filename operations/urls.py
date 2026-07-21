@@ -57,6 +57,11 @@ urlpatterns = [
     ),
     path("work-queue/", views.work_queue, name="work_queue"),
     path(
+        "certificates/backfill-readiness/",
+        views.certificate_backfill_readiness_report,
+        name="certificate_backfill_readiness_report",
+    ),
+    path(
         "financial-integrity/report/",
         views.financial_integrity_report,
         name="financial_integrity_report",
