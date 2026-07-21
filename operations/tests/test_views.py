@@ -493,6 +493,79 @@ class WorkQueueViewTests(NewViewsTestBase):
         self.assertEqual(response.context["financial_integrity_latest_run_tone"], "danger")
         self.assertContains(response, "QA runner failure")
 
+    def test_work_queue_surfaces_certificate_backfill_preflight_issues(self):
+        certificate = Certificate.objects.create(
+            child=self.child,
+            certificate_type=Certificate.CertificateType.REGIONAL,
+            number="QUEUE-MISSING-FUNDING",
+            total_amount=Decimal("5000.00"),
+            remaining_amount=Decimal("3000.00"),
+        )
+
+        response = self.client.get(reverse("work_queue"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["certificate_issue_count"], 1)
+        self.assertEqual(response.context["certificate_attention_count"], 1)
+        self.assertEqual(response.context["certificate_tone"], "danger")
+        certificate_summary = next(
+            item
+            for item in response.context["queue_summary_items"]
+            if item["href"] == "#queue-certificates"
+        )
+        self.assertEqual(certificate_summary["value"], 1)
+        self.assertEqual(certificate_summary["tone"], "danger")
+        self.assertContains(response, "#queue-certificates")
+        self.assertContains(response, 'id="queue-certificates"')
+        self.assertContains(response, "Сертификаты")
+        self.assertContains(response, "нет источника финансирования")
+        self.assertContains(response, "missing_funding_source")
+        self.assertContains(response, reverse("recipient_certificate_edit", args=[certificate.pk]))
+
+    def test_work_queue_certificate_preflight_is_read_only_for_backfill_candidates(self):
+        Certificate.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            certificate_type=Certificate.CertificateType.REGIONAL,
+            number="QUEUE-CANDIDATE",
+            total_amount=Decimal("5000.00"),
+            remaining_amount=Decimal("3000.00"),
+        )
+        account_count = BalanceAccount.objects.count()
+        ledger_count = LedgerEntry.objects.count()
+
+        response = self.client.get(reverse("work_queue"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(BalanceAccount.objects.count(), account_count)
+        self.assertEqual(LedgerEntry.objects.count(), ledger_count)
+        self.assertEqual(response.context["certificate_preflight"].backfill_candidates, 1)
+        self.assertEqual(response.context["certificate_issue_count"], 0)
+        self.assertEqual(response.context["certificate_attention_count"], 1)
+        self.assertEqual(response.context["certificate_tone"], "warning")
+        self.assertContains(response, "Кандидаты на backfill")
+        self.assertContains(response, "кандидатов: 1")
+        self.assertNotContains(response, 'name="confirm"')
+
+    def test_work_queue_masks_duplicate_certificate_numbers(self):
+        for _ in range(2):
+            Certificate.objects.create(
+                child=self.child,
+                funding_source=self.funding,
+                certificate_type=Certificate.CertificateType.REGIONAL,
+                number="QUEUE-DUPLICATE-SECRET",
+                total_amount=Decimal("5000.00"),
+                remaining_amount=Decimal("3000.00"),
+            )
+
+        response = self.client.get(reverse("work_queue"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["certificate_preflight"].duplicate_number_groups, 1)
+        self.assertContains(response, "Дубли номеров сертификатов")
+        self.assertContains(response, "записей с одним номером: 2")
+        self.assertNotContains(response, "QUEUE-DUPLICATE-SECRET")
+
     def test_financial_integrity_report_is_read_only_and_counts_period(self):
         self._financial_integrity_fixture()
         finding = FinancialIntegrityFinding.objects.get()

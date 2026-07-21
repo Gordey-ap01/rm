@@ -1973,3 +1973,16 @@ SMTP для реальной промышленной рассылки еще н
 - Verification passed: Ruff touched Python, Django check, migration dry-run `No changes detected`, focused `BalancesViewTests` `10 passed`, full pytest `657 passed`, Playwright Browser QA fallback for `/balances/` and recipient detail on desktop/mobile with synthetic QA data cleaned and runserver `8114` stopped.
 - Graphify code-index after this slice: `5454` nodes / `24356` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: run certificate backfill dry-run/preflight on staging/production, or choose a new explicit contract. Still deferred: zero-balance policy, data cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.
+
+## Update 2026-07-21: certificate-backfill-readiness-work-queue
+
+- Added and implemented `docs/46-certificate-backfill-readiness-work-queue-contract.md` as a no-migration UI/read-only slice.
+- `/work-queue/` now calls the existing read-only certificate preflight service and shows summary item `Сертификаты` linking to `#queue-certificates`.
+- The certificate readiness panel shows total/linked/unlinked counters, backfill candidates, zero-balance certificates, issue counts, duplicate groups and sample certificate IDs.
+- Duplicate certificate numbers are masked in the work queue; only technical recipient id and duplicate count are shown.
+- Candidate and issue sample IDs link to certificate edit pages for manual admin cleanup.
+- The panel has no forms and no POST apply action.
+- GET `/work-queue/` does not create `BalanceAccount`, `LedgerEntry`, `Payment`, appointments, payroll accruals, grant allocations, contracts, schedules or statuses and does not mutate `Certificate.balance_account` or `Certificate.remaining_amount`.
+- Verification passed: Ruff touched Python, focused `WorkQueueViewTests` `36 passed`, Playwright Browser QA fallback for `/work-queue/#queue-certificates` on desktop/mobile with synthetic QA data cleaned and runserver `8115` stopped.
+- Graphify code-index after this slice: `5471` nodes / `24390` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: run certificate backfill dry-run/preflight on staging/production and use this queue panel to guide cleanup, or choose a new explicit contract. Still deferred: UI-triggered backfill, zero-balance policy, data cleanup automation, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.

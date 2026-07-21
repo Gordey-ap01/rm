@@ -202,6 +202,92 @@
     </div>
   </article>
 
+  <article class="panel" id="queue-certificates">
+    <h2>Сертификаты</h2>
+    <div class="queue-run-summary is-{{ certificate_tone }}">
+      <strong>Готовность к счетам баланса</strong>
+      <p>
+        всего: {{ certificate_preflight.total_certificates }} ·
+        связано: {{ certificate_preflight.linked_certificates }} ·
+        без счета: {{ certificate_preflight.unlinked_certificates }}
+      </p>
+      <p class="muted">
+        кандидатов: {{ certificate_preflight.backfill_candidates }} ·
+        нулевой остаток: {{ certificate_preflight.zero_balance_without_account }} ·
+        проблем: {{ certificate_issue_count }}
+      </p>
+    </div>
+    <div class="certificate-readiness-grid">
+      <div>
+        <strong>{{ certificate_preflight.backfill_candidates }}</strong>
+        <span>можно связать командой</span>
+      </div>
+      <div>
+        <strong>{{ certificate_preflight.zero_balance_without_account }}</strong>
+        <span>нулевой остаток без счета</span>
+      </div>
+      <div>
+        <strong>{{ certificate_preflight.duplicate_number_groups }}</strong>
+        <span>групп дублей номера</span>
+      </div>
+    </div>
+    <div class="task-list">
+      {% if certificate_issue_rows %}
+        {% for code, label, count, sample_ids in certificate_issue_rows %}
+          <div class="task-card status-danger">
+            <div>
+              <strong>{{ label }}</strong>
+              <p>{{ code }} · найдено: {{ count }}</p>
+              {% if sample_ids %}
+                <p class="muted">
+                  ID сертификатов:
+                  {% for certificate_id in sample_ids %}
+                    <a href="{% url 'recipient_certificate_edit' certificate_id %}">#{{ certificate_id }}</a>{% if not forloop.last %}, {% endif %}
+                  {% endfor %}
+                </p>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      {% endif %}
+      {% if certificate_preflight.duplicate_number_samples %}
+        <div class="task-card status-danger">
+          <div>
+            <strong>Дубли номеров сертификатов</strong>
+            <p>сертификатов в дублях: {{ certificate_preflight.duplicate_number_certificate_count }}</p>
+            {% for sample in certificate_preflight.duplicate_number_samples %}
+              <p class="muted">получатель #{{ sample.child_id }} · записей с одним номером: {{ sample.count }}</p>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+      {% if certificate_candidate_ids %}
+        <div class="task-card status-warning">
+          <div>
+            <strong>Кандидаты на backfill</strong>
+            <p>Эти сертификаты валидны для будущего dry-run/apply через management command.</p>
+            <p class="muted">
+              первые ID:
+              {% for certificate_id in certificate_candidate_ids %}
+                <a href="{% url 'recipient_certificate_edit' certificate_id %}">#{{ certificate_id }}</a>{% if not forloop.last %}, {% endif %}
+              {% endfor %}
+              {% if certificate_preflight.backfill_candidates > certificate_preflight_sample_limit %}
+                · показаны первые {{ certificate_preflight_sample_limit }}
+              {% endif %}
+            </p>
+          </div>
+        </div>
+      {% endif %}
+      {% if not certificate_issue_rows and not certificate_preflight.duplicate_number_samples and not certificate_candidate_ids %}
+        <p class="empty-state">Проблемных сертификатов и кандидатов на backfill сейчас нет.</p>
+      {% endif %}
+    </div>
+    <div class="task-actions mt-2">
+      <a class="button-link secondary small-action" href="{% url 'balances' %}">Открыть балансы</a>
+      <a class="button-link secondary small-action" href="{% url 'import_batch_list' %}">История импорта</a>
+    </div>
+  </article>
+
   <article class="panel" id="queue-attendance">
     <h2>Прошли без отметки</h2>
     <div class="task-list">

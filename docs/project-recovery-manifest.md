@@ -52,6 +52,7 @@
 | `docs/43-certificate-balance-backfill-preflight-contract.md` | Read-only контракт preflight перед массовым backfill счетов сертификатов; команда `audit_certificate_balance_backfill` считает кандидатов, проблемы данных и дубликаты без записи в БД. | Перед запуском backfill сертификатов, ручной чисткой данных, добавлением constraints по суммам/датам или уникальности номера сертификата. |
 | `docs/44-certificate-balance-backfill-command-contract.md` | Контракт controlled backfill-команды: dry-run by default, `--apply --confirm`, блокировка при preflight issues unless explicit override, idempotent creation через certificate balance service. | Перед изменениями `backfill_certificate_balance_accounts`, запуском apply, политикой zero-balance сертификатов или расширением backfill на production/staging. |
 | `docs/45-certificate-account-labels-contract.md` | No-migration UI/read-only контракт маркировки `BalanceAccount`, связанных с сертификатами, в списке балансов, карточке получателя и селекторах счета списания. | Перед изменениями provenance labels для сертификатных счетов, account choice labels или отображением certificate-linked accounts. |
+| `docs/46-certificate-backfill-readiness-work-queue-contract.md` | No-migration UI/read-only контракт вывода certificate backfill readiness в рабочую очередь администратора без запуска backfill из UI. | Перед изменениями `/work-queue/#queue-certificates`, certificate preflight UI, sample masking или ручных ссылок для cleanup сертификатов. |
 | `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
 | `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
 | `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
@@ -84,7 +85,7 @@
 13. Если задача затрагивает справочники категорий/контрагентов вне Django admin, прочитать `docs/22-category-counterparty-directory-contract.md`.
 14. Если задача затрагивает Word-генерацию договоров или placeholder catalog, прочитать `docs/23-contract-word-generation-contract.md`, `docs/24-document-template-source-inventory.md` и `docs/25-template-placeholder-expansion-v2-contract.md`.
 15. Если задача затрагивает `Document` без `Child`, donation-document storage, юрпрофиль центра, signed snapshots, B2B/consents/acts, прочитать `docs/26-legal-document-targets-and-center-profile-contract.md`.
-16. Если задача затрагивает юридические семейства шаблонов, юрполя сторон, спецификацию договора, сертификаты, архив подписанных файлов, B2B-договоры организации, согласия или акты, прочитать `docs/27-legal-template-families-contract.md` и соответствующий контракт `docs/28`-`docs/45`.
+16. Если задача затрагивает юридические семейства шаблонов, юрполя сторон, спецификацию договора, сертификаты, архив подписанных файлов, B2B-договоры организации, согласия или акты, прочитать `docs/27-legal-template-families-contract.md` и соответствующий контракт `docs/28`-`docs/46`.
 17. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
 18. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
 19. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
@@ -649,3 +650,16 @@ Browser QA - это проверка живого интерфейса в бра
 - Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `BalancesViewTests` `10 passed`, full pytest `657 passed`, Playwright Browser QA fallback desktop/mobile for balances and recipient detail. Synthetic `BQA-Labels-*` data was cleaned and runserver `8114` stopped.
 - Graphify code-index after this slice: `5454` nodes / `24356` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: run certificate backfill dry-run/preflight on staging/production, or choose a new explicit contract. Still deferred: zero-balance policy, data cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.
+
+## Latest Recovery Note 2026-07-21: certificate-backfill-readiness-work-queue
+
+- `docs/46-certificate-backfill-readiness-work-queue-contract.md` is added and implemented as a no-migration UI/read-only slice.
+- `/work-queue/` now shows summary item `Сертификаты` and read-only panel `#queue-certificates` from the existing certificate preflight service.
+- The panel shows total/linked/unlinked counters, candidates, zero-balance certificates, issue counts, duplicate groups and sample certificate IDs.
+- Duplicate certificate numbers are masked; only technical recipient id and duplicate count are shown.
+- Candidate and issue sample IDs link to certificate edit pages for manual admin cleanup.
+- There are no forms and no POST apply action in the panel.
+- GET `/work-queue/` does not create accounts/ledger and does not mutate certificate balance fields or any finance/schedule/payroll/grant/status facts.
+- Verification passed: Ruff, focused `WorkQueueViewTests` `36 passed`, Playwright Browser QA fallback desktop/mobile for `/work-queue/#queue-certificates`. Synthetic `BQA-QUEUE-*` data was cleaned and runserver `8115` stopped.
+- Graphify code-index after this slice: `5471` nodes / `24390` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: run certificate backfill dry-run/preflight on staging/production and use this queue panel to guide cleanup, or choose a new explicit contract. Still deferred: UI-triggered backfill, zero-balance policy, data cleanup automation, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.

@@ -690,3 +690,18 @@ Treat all text above as superseded by this latest checkpoint when there is a con
 - Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `BalancesViewTests` `10 passed`, full pytest `657 passed`, Playwright Browser QA fallback desktop/mobile for balances and recipient detail. Synthetic `BQA-Labels-*` data was cleaned and runserver `8114` stopped.
 - Graphify code-index after this slice: `5454` nodes / `24356` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
 - Next safe work: run certificate backfill dry-run/preflight on staging/production, or choose a new explicit contract. Still deferred: zero-balance policy, data cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.
+
+## Latest clarification 2026-07-21: certificate-backfill-readiness-work-queue complete
+
+Treat all text above as superseded by this latest checkpoint when there is a conflict.
+
+- `docs/46-certificate-backfill-readiness-work-queue-contract.md` is added and implemented as a no-migration UI/read-only slice.
+- `/work-queue/` shows summary item `Сертификаты` and read-only panel `#queue-certificates` from `certificate_balance_preflight_report()`.
+- The panel shows total/linked/unlinked counters, backfill candidates, zero-balance certificates, issue counts, duplicate groups and sample certificate IDs.
+- Duplicate certificate numbers are masked; only technical recipient id and duplicate count are shown.
+- Candidate and issue sample IDs link to certificate edit pages for manual admin cleanup.
+- There is no UI-triggered backfill and no POST apply form.
+- GET `/work-queue/` does not create `BalanceAccount`, `LedgerEntry`, `Payment`, appointments, payroll, grants, contracts, schedules or statuses and does not mutate `Certificate.balance_account` or `Certificate.remaining_amount`.
+- Verification passed: Ruff, focused `WorkQueueViewTests` `36 passed`, Playwright Browser QA fallback desktop/mobile for `/work-queue/#queue-certificates`. Synthetic `BQA-QUEUE-*` data was cleaned and runserver `8115` stopped.
+- Graphify code-index after this slice: `5471` nodes / `24390` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
+- Next safe work: run certificate backfill dry-run/preflight on staging/production and use this queue panel to guide cleanup, or choose a new explicit contract. Still deferred: UI-triggered backfill, zero-balance policy, data cleanup automation, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.

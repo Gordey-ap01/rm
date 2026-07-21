@@ -28,6 +28,7 @@ from operations.models import (
     TimeOffRequest,
 )
 from operations.services import (
+    certificates as certificate_svc,
     financial_integrity_checks as financial_integrity_checks_svc,
     financial_integrity_events as financial_integrity_events_svc,
     financial_integrity_triage as financial_integrity_triage_svc,
@@ -117,6 +118,7 @@ FINANCIAL_INTEGRITY_REPORT_CODE_LIMIT = 12
 FINANCIAL_INTEGRITY_REPORT_ACTIVE_LIMIT = 20
 FINANCIAL_INTEGRITY_REPORT_RUN_LIMIT = 8
 FINANCIAL_INTEGRITY_REPORT_PERIODS = (7, 30, 90)
+CERTIFICATE_PREFLIGHT_SAMPLE_LIMIT = 8
 FINANCIAL_INTEGRITY_ACTIVE_STATUSES = (
     FinancialIntegrityFinding.Status.OPEN,
     FinancialIntegrityFinding.Status.ACKNOWLEDGED,
@@ -180,9 +182,7 @@ def reschedule_chain_attention_queryset():
                 AppointmentRescheduleChain.Status.FAILED,
             ]
         )
-        .exclude(
-            plan__status__in=TERMINAL_RESCHEDULE_PLAN_STATUSES
-        )
+        .exclude(plan__status__in=TERMINAL_RESCHEDULE_PLAN_STATUSES)
         .order_by("attention_priority", "-updated_at", "-pk")
     )
 
@@ -277,9 +277,7 @@ def reschedule_step_attention_queryset():
             "proposed_room",
         )
         .filter(reschedule_step_attention_filter(), chain__isnull=True)
-        .exclude(
-            plan__status__in=TERMINAL_RESCHEDULE_PLAN_STATUSES
-        )
+        .exclude(plan__status__in=TERMINAL_RESCHEDULE_PLAN_STATUSES)
         .annotate(attention_priority=reschedule_step_attention_priority())
         .order_by("attention_priority", "-plan__created_at", "position", "pk")
     )
@@ -1130,6 +1128,8 @@ def work_queue_summary_items(
     nonready_step_count: int,
     financial_integrity_count: int,
     financial_integrity_tone: str,
+    certificate_attention_count: int,
+    certificate_tone: str,
 ):
     chain_attention_count = ready_chain_count + stale_chain_count + failed_chain_count
     chain_tone = "success"
@@ -1161,6 +1161,13 @@ def work_queue_summary_items(
             "href": "#queue-financial-integrity",
             "tone": financial_integrity_tone if financial_integrity_count else "success",
             "detail": "Расхождения между списаниями, участниками и ledger.",
+        },
+        {
+            "label": "Сертификаты",
+            "value": certificate_attention_count,
+            "href": "#queue-certificates",
+            "tone": certificate_tone if certificate_attention_count else "success",
+            "detail": "Готовность сертификатов к созданию счетов баланса.",
         },
         {
             "label": "Факт посещения",
@@ -1233,6 +1240,32 @@ def work_queue_next_action(summary_items: list[dict[str, object]]) -> dict[str, 
         "href": reverse("schedule"),
         "tone": "success",
     }
+
+
+def certificate_backfill_issue_count(
+    report: certificate_svc.CertificateBalancePreflightReport,
+) -> int:
+    return sum(report.issue_counts.values()) + report.duplicate_number_certificate_count
+
+
+def certificate_backfill_attention_count(
+    report: certificate_svc.CertificateBalancePreflightReport,
+) -> int:
+    return (
+        certificate_backfill_issue_count(report)
+        + report.backfill_candidates
+        + report.zero_balance_without_account
+    )
+
+
+def certificate_backfill_tone(
+    report: certificate_svc.CertificateBalancePreflightReport,
+) -> str:
+    if certificate_backfill_issue_count(report):
+        return "danger"
+    if report.backfill_candidates or report.zero_balance_without_account:
+        return "warning"
+    return "success"
 
 
 @login_required
@@ -1385,6 +1418,17 @@ def work_queue(request):
     financial_summary = financial_integrity_summary(financial_findings)
     financial_issue_rows = financial_integrity_finding_rows(financial_findings)
     financial_latest_run = financial_integrity_latest_run()
+    certificate_preflight = certificate_svc.certificate_balance_preflight_report(
+        sample_limit=CERTIFICATE_PREFLIGHT_SAMPLE_LIMIT
+    )
+    certificate_issue_count = certificate_backfill_issue_count(certificate_preflight)
+    certificate_attention_count = certificate_backfill_attention_count(certificate_preflight)
+    certificate_tone = certificate_backfill_tone(certificate_preflight)
+    certificate_candidate_ids = tuple(
+        certificate_svc.certificate_balance_backfill_candidate_queryset().values_list(
+            "pk", flat=True
+        )[:CERTIFICATE_PREFLIGHT_SAMPLE_LIMIT]
+    )
     queue_summary = work_queue_summary_items(
         needs_billing_count=len(needs_billing),
         needs_attendance_count=len(needs_attendance),
@@ -1401,6 +1445,8 @@ def work_queue(request):
         nonready_step_count=step_counts["total"] - step_counts["ready"],
         financial_integrity_count=int(financial_summary["total"]),
         financial_integrity_tone=str(financial_summary["tone"]),
+        certificate_attention_count=certificate_attention_count,
+        certificate_tone=certificate_tone,
     )
     return render(
         request,
@@ -1420,6 +1466,13 @@ def work_queue(request):
             "financial_integrity_latest_run_tone": financial_integrity_run_tone(
                 financial_latest_run
             ),
+            "certificate_preflight": certificate_preflight,
+            "certificate_issue_rows": certificate_preflight.issue_rows(),
+            "certificate_issue_count": certificate_issue_count,
+            "certificate_attention_count": certificate_attention_count,
+            "certificate_tone": certificate_tone,
+            "certificate_candidate_ids": certificate_candidate_ids,
+            "certificate_preflight_sample_limit": CERTIFICATE_PREFLIGHT_SAMPLE_LIMIT,
             "confirmation_tasks": confirmation_tasks,
             "time_off_requests": time_off_requests,
             "reschedule_chains": reschedule_chains,

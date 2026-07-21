@@ -954,6 +954,35 @@ h2 {
   background: var(--ok-soft);
 }
 
+.certificate-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.certificate-readiness-grid div {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--surface-strong);
+}
+
+.certificate-readiness-grid strong {
+  display: block;
+  color: var(--heading);
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.certificate-readiness-grid span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
 .panel,
 .auth-panel {
   background: var(--surface);
