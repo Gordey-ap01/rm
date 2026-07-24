@@ -2957,7 +2957,7 @@ class AppointmentConfirmationDecision(TimeStampedModel):
     supersedes = models.ForeignKey(
         "self",
         verbose_name="переопределяет решение",
-        on_delete=models.PROTECT,
+        on_delete=models.RESTRICT,
         null=True,
         blank=True,
         related_name="superseded_by",
@@ -3151,6 +3151,151 @@ class TimeOffRequest(TimeStampedModel):
     def clean(self) -> None:
         if self.starts_on and self.ends_on and self.ends_on < self.starts_on:
             raise ValidationError({"ends_on": "Дата окончания не может быть раньше даты начала."})
+
+    @property
+    def director_priority_required(self) -> bool:
+        if not self.starts_on or not self.ends_on:
+            return False
+        return (
+            self.request_type
+            in {
+                self.RequestType.VACATION,
+                self.RequestType.SCHEDULE_CHANGE,
+            }
+            or self.ends_on > self.starts_on
+        )
+
+
+class TimeOffRequestDecision(TimeStampedModel):
+    class Decision(models.TextChoices):
+        APPROVED = TimeOffRequest.Status.APPROVED, "Согласовать"
+        REJECTED = TimeOffRequest.Status.REJECTED, "Отклонить"
+
+    class Source(models.TextChoices):
+        ADMINISTRATOR_MANUAL = "administrator_manual", "Решение администратора"
+        DIRECTOR_MANUAL = "director_manual", "Решение руководителя"
+
+    class ActorRole(models.TextChoices):
+        ADMINISTRATOR = "administrator", "Администратор"
+        DIRECTOR = "director", "Руководитель"
+
+    time_off_request = models.ForeignKey(
+        TimeOffRequest,
+        verbose_name="заявка специалиста",
+        on_delete=models.CASCADE,
+        related_name="decision_history",
+    )
+    decision = models.CharField("решение", max_length=30, choices=Decision.choices)
+    source = models.CharField("источник решения", max_length=40, choices=Source.choices)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="решение зафиксировал",
+        on_delete=models.PROTECT,
+        related_name="time_off_request_decisions",
+    )
+    actor_role_snapshot = models.CharField(
+        "роль на момент решения",
+        max_length=30,
+        choices=ActorRole.choices,
+    )
+    note = models.TextField("основание решения")
+    director_priority = models.BooleanField(
+        "область приоритета руководителя",
+        default=False,
+    )
+    supersedes = models.ForeignKey(
+        "self",
+        verbose_name="переопределяет решение",
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name="superseded_by",
+    )
+    is_current = models.BooleanField("текущее решение", default=True)
+
+    class Meta:
+        verbose_name = "решение по заявке специалиста"
+        verbose_name_plural = "решения по заявкам специалистов"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["time_off_request"],
+                condition=Q(is_current=True),
+                name="unique_current_time_off_decision",
+            ),
+            models.CheckConstraint(
+                condition=~Q(note=""),
+                name="time_off_decision_note_required",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        source="administrator_manual",
+                        actor_role_snapshot="administrator",
+                    )
+                    | Q(
+                        source="director_manual",
+                        actor_role_snapshot="director",
+                    )
+                ),
+                name="time_off_decision_source_role_match",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["time_off_request", "is_current", "created_at"]),
+            models.Index(fields=["source", "created_at"]),
+            models.Index(fields=["director_priority", "is_current", "created_at"]),
+        ]
+
+    @property
+    def awaits_director_review(self) -> bool:
+        return (
+            self.director_priority
+            and self.source == self.Source.ADMINISTRATOR_MANUAL
+            and self.is_current
+        )
+
+    def clean(self) -> None:
+        errors = {}
+        if len(self.note.strip()) < 5:
+            errors["note"] = "Укажите основание решения не короче 5 символов."
+        expected_roles = {
+            self.Source.ADMINISTRATOR_MANUAL: self.ActorRole.ADMINISTRATOR,
+            self.Source.DIRECTOR_MANUAL: self.ActorRole.DIRECTOR,
+        }
+        if expected_roles.get(self.source) != self.actor_role_snapshot:
+            errors["actor_role_snapshot"] = (
+                "Роль на момент решения не соответствует источнику решения."
+            )
+        if (
+            self._state.adding
+            and self.time_off_request_id
+            and self.director_priority
+            != self.time_off_request.director_priority_required
+        ):
+            errors["director_priority"] = (
+                "Приоритет руководителя не соответствует типу и периоду заявки."
+            )
+        if self.supersedes_id and self.supersedes_id == self.pk:
+            errors["supersedes"] = "Решение не может переопределять само себя."
+        elif (
+            self.supersedes_id
+            and self.time_off_request_id
+            and self.supersedes.time_off_request_id != self.time_off_request_id
+        ):
+            errors["supersedes"] = "Можно переопределить решение только этой заявки."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return (
+            f"{self.time_off_request_id}: "
+            f"{self.get_decision_display()} ({self.get_source_display()})"
+        )
 
 
 class Recommendation(TimeStampedModel):

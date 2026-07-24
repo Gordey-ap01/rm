@@ -543,21 +543,37 @@
             <strong>{{ item.staff_member }}</strong>
             <p>{{ item.get_request_type_display }} · {{ item.starts_on|date:"d.m.Y" }}-{{ item.ends_on|date:"d.m.Y" }}</p>
             {% if item.reason %}<p class="muted">{{ item.reason }}</p>{% endif %}
+            <p class="muted">Текущий статус: {{ item.get_status_display }}.</p>
+            {% if item.current_decision_record %}
+              <p class="muted">
+                {{ item.current_decision_record.get_source_display }}
+                {% if item.current_decision_record.actor %}· {{ item.current_decision_record.actor }}{% endif %}
+              </p>
+              <p>{{ item.current_decision_record.note }}</p>
+            {% endif %}
+            {% if item.awaits_director_review %}
+              <p class="status-note warning">Решение действует, требуется контроль руководителя.</p>
+            {% elif item.director_priority_required and item.status == "pending" %}
+              <p class="status-note warning">Область приоритета руководителя.</p>
+            {% endif %}
           </div>
-          <form method="post" action="{% url 'time_off_request_decide' item.pk %}" class="form">
-            {% csrf_token %}
-            <label class="field">
-              <span>Комментарий администратора</span>
-              <textarea name="admin_note"></textarea>
-            </label>
-            <div class="task-actions">
-              <button type="submit" name="action" value="approve">Согласовать</button>
-              <button class="secondary-button" type="submit" name="action" value="reject">Отклонить</button>
-            </div>
-          </form>
+          {% if item.can_resolve_manually %}
+            <form method="post" action="{% url 'time_off_request_decide' item.pk %}" class="form time-off-decision-form">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}#queue-time-off">
+              <label class="field">
+                <span>Основание решения</span>
+                <textarea name="reason" minlength="5" maxlength="1000" required></textarea>
+              </label>
+              <div class="task-actions">
+                <button type="submit" name="action" value="approve">Согласовать</button>
+                <button class="secondary-button" type="submit" name="action" value="reject">Отклонить</button>
+              </div>
+            </form>
+          {% endif %}
         </div>
       {% empty %}
-        <p class="empty-state">Новых заявок нет.</p>
+        <p class="empty-state">Нет новых заявок и решений, ожидающих руководителя.</p>
       {% endfor %}
     </div>
   </article>

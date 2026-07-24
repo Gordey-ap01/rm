@@ -8,7 +8,7 @@
     <h1>{{ staff.full_name }}</h1>
     <p>Неделя с {{ today|date:"d.m" }} по {{ week_end|date:"d.m" }}</p>
   </div>
-  {% if user.is_staff %}
+  {% if can_manage_specialists %}
     <form method="get" class="inline-form compact-form" aria-label="Выбор специалиста">
       <select name="staff_id">
         {% for option in staff_members %}
@@ -76,7 +76,7 @@
               </div>
               <form method="post" action="{% url 'mark_appointment' item.pk %}" class="mark-form">
                 {% csrf_token %}
-                {% if user.is_staff %}<input type="hidden" name="staff_id" value="{{ staff.pk }}">{% endif %}
+                {% if can_manage_specialists %}<input type="hidden" name="staff_id" value="{{ staff.pk }}">{% endif %}
                 {% if item.session_type == "group" %}
                   <div class="participant-attendance-list" aria-label="Посещаемость участников">
                     {% for participant in participants %}
@@ -141,7 +141,7 @@
 
     <form method="post" action="{% url 'staff_availability_create' %}" class="form compact-stack">
       {% csrf_token %}
-      {% if user.is_staff %}<input type="hidden" name="staff_id" value="{{ staff.pk }}">{% endif %}
+      {% if can_manage_specialists %}<input type="hidden" name="staff_id" value="{{ staff.pk }}">{% endif %}
       <div class="form-grid">
         {% for field in availability_form %}
           <label class="field">
@@ -164,7 +164,18 @@
         <tr>
           <td data-label="Период">{{ request_item.starts_on|date:"d.m" }}-{{ request_item.ends_on|date:"d.m" }}</td>
           <td data-label="Тип">{{ request_item.get_request_type_display }}</td>
-          <td data-label="Статус">{{ request_item.get_status_display }}</td>
+          <td data-label="Статус">
+            {{ request_item.get_status_display }}
+            {% if request_item.current_decision_record %}
+              <br><small>{{ request_item.current_decision_record.get_source_display }}</small>
+              {% if request_item.current_decision_record.note %}
+                <br><small>{{ request_item.current_decision_record.note }}</small>
+              {% endif %}
+            {% endif %}
+            {% if request_item.awaits_director_review %}
+              <br><small>Ожидает контроля руководителя</small>
+            {% endif %}
+          </td>
         </tr>
       {% empty %}
         <tr><td colspan="3" data-label="Заявки">Заявок пока нет.</td></tr>
@@ -175,7 +186,7 @@
 
     <form method="post" action="{% url 'time_off_request_create' %}" class="form compact-stack">
       {% csrf_token %}
-      {% if user.is_staff %}<input type="hidden" name="staff_id" value="{{ staff.pk }}">{% endif %}
+      {% if can_manage_specialists %}<input type="hidden" name="staff_id" value="{{ staff.pk }}">{% endif %}
       <div class="form-grid">
         {% for field in time_off_form %}
           <label class="field {% if field.name == 'reason' %}form-wide{% endif %}">

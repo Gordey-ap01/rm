@@ -40,6 +40,7 @@ from operations.models import (
     ServiceContract,
     StaffCompensationRule,
     StaffMember,
+    TimeOffRequestDecision,
 )
 
 
@@ -115,6 +116,7 @@ class AuditLogTests(TestCase):
             ServiceContract,
             StaffCompensationRule,
             StaffMember,
+            TimeOffRequestDecision,
         ):
             self.assertIn(model, auditlog._registry)
 

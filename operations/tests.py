@@ -882,7 +882,7 @@ class AppointmentWorkflowTests(TestCase):
         self.client.force_login(self.admin)
         response = self.client.post(
             reverse("time_off_request_decide", args=[time_off.pk]),
-            {"action": "approve", "admin_note": "Ок"},
+            {"action": "approve", "admin_note": "Согласовано"},
         )
 
         time_off.refresh_from_db()

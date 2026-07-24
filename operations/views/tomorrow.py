@@ -9,7 +9,10 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
 
-from operations.services import reports as reports_svc
+from operations.services import (
+    reports as reports_svc,
+    time_off_decisions as time_off_svc,
+)
 
 from ._common import is_admin_user
 
@@ -157,6 +160,10 @@ def tomorrow(request):
         with contextlib.suppress(ValueError):
             target = datetime.fromisoformat(request.GET["date"]).date()
     overview = reports_svc.tomorrow_overview(target)
+    overview.pending_time_off = time_off_svc.decorate_rows(
+        overview.pending_time_off,
+        actor=request.user,
+    )
     return render(
         request,
         "operations/tomorrow.html",

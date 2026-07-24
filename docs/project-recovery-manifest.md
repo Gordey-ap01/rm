@@ -50,9 +50,11 @@
 | `docs/21-*.md`, `docs/22-*.md` | Расходы, активы, категории и контрагенты. |
 | `docs/23-*.md` ... `docs/39-*.md` | Договоры, шаблоны, документы, акты, согласия и сертификаты. |
 | `docs/40-*.md` ... `docs/47-*.md` | Импорт и баланс сертификатов, preflight и readiness UI. |
+| `docs/48-time-off-decision-authority-contract.md` | Решения по отсутствиям и обязательный контроль руководителя. |
 | `docs/decisions/ADR-001-*.md` | Django/PostgreSQL/local-first. |
 | `docs/decisions/ADR-002-*.md` | Балансовые счета и ledger. |
 | `docs/decisions/ADR-003-*.md` | Полномочия и ручные решения. |
+| `docs/decisions/ADR-004-*.md` | Типизированные журналы вместо generic workflow. |
 | `docs/interviews/*.md` | Первичные интервью; читать при спорном требовании. |
 | `docs/PRODUCTION_DEPLOYMENT.md` | Развертывание и эксплуатация production. |
 | `docs/current-state.md` | Компактная текущая контрольная точка. |

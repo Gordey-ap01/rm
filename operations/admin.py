@@ -59,6 +59,7 @@ from .models import (
     StaffCompensationRule,
     StaffMember,
     TimeOffRequest,
+    TimeOffRequestDecision,
     TreatmentProgram,
 )
 
@@ -1375,6 +1376,51 @@ class TimeOffRequestAdmin(admin.ModelAdmin):
     search_fields = ("staff_member__full_name", "reason", "admin_note")
     list_filter = ("request_type", "status")
     autocomplete_fields = ("staff_member", "decided_by")
+
+
+@admin.register(TimeOffRequestDecision)
+class TimeOffRequestDecisionAdmin(admin.ModelAdmin):
+    list_display = (
+        "created_at",
+        "time_off_request",
+        "decision",
+        "source",
+        "actor",
+        "director_priority",
+        "is_current",
+    )
+    list_filter = (
+        "decision",
+        "source",
+        "actor_role_snapshot",
+        "director_priority",
+        "is_current",
+    )
+    search_fields = (
+        "time_off_request__staff_member__full_name",
+        "note",
+        "actor__username",
+    )
+    autocomplete_fields = ("time_off_request", "actor", "supersedes")
+    readonly_fields = (
+        "time_off_request",
+        "decision",
+        "source",
+        "actor",
+        "actor_role_snapshot",
+        "note",
+        "director_priority",
+        "supersedes",
+        "is_current",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(LedgerEntry)

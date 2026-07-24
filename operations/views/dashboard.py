@@ -25,7 +25,6 @@ from operations.models import (
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
     FinancialIntegrityFindingEvent,
-    TimeOffRequest,
 )
 from operations.services import (
     certificates as certificate_svc,
@@ -33,6 +32,7 @@ from operations.services import (
     financial_integrity_events as financial_integrity_events_svc,
     financial_integrity_triage as financial_integrity_triage_svc,
     rescheduling_plans as plan_svc,
+    time_off_decisions as time_off_svc,
 )
 
 from ._common import is_admin_user, safe_next_url
@@ -1385,7 +1385,7 @@ def certificate_backfill_tone(
 
 @login_required
 def dashboard(request):
-    if not request.user.is_staff:
+    if not is_admin_user(request.user):
         return redirect("specialist_home")
 
     today = timezone.localdate()
@@ -1394,7 +1394,7 @@ def dashboard(request):
     awaiting_transfer = needs_transfer_queryset().count()
     overdue_attendance = needs_attendance_queryset().count()
     confirmation_tasks = confirmation_attention_queryset().count()
-    time_off_requests = TimeOffRequest.objects.filter(status=TimeOffRequest.Status.PENDING).count()
+    time_off_requests = time_off_svc.attention_queryset().count()
     chain_counts = reschedule_chain_attention_counts()
     chain_attention_count = chain_counts["ready"] + chain_counts["stale"] + chain_counts["failed"]
     step_counts = reschedule_step_attention_counts()
@@ -1517,11 +1517,7 @@ def work_queue(request):
         .prefetch_related("appointment__participants__child")
         .order_by("status", "-created_at")[:40]
     )
-    time_off_requests = (
-        TimeOffRequest.objects.filter(status=TimeOffRequest.Status.PENDING)
-        .select_related("staff_member")
-        .order_by("starts_on", "staff_member__full_name")[:40]
-    )
+    time_off_requests = time_off_svc.attention_rows(limit=40, actor=request.user)
     reschedule_chains_queryset = reschedule_chain_attention_queryset()
     chain_counts = reschedule_chain_attention_counts(reschedule_chains_queryset)
     reschedule_chains = list(reschedule_chains_queryset[:40])

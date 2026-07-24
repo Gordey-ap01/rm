@@ -9,12 +9,17 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.http import HttpResponseForbidden
+from django.core.exceptions import PermissionDenied
+from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
-from operations.forms import StaffAvailabilityForm, TimeOffRequestForm
+from operations.forms import (
+    StaffAvailabilityForm,
+    TimeOffDecisionForm,
+    TimeOffRequestForm,
+)
 from operations.models import (
     Appointment,
     AppointmentParticipant,
@@ -23,8 +28,9 @@ from operations.models import (
     StaffMember,
     TimeOffRequest,
 )
+from operations.services import time_off_decisions as time_off_svc
 
-from ._common import is_admin_user
+from ._common import is_admin_user, safe_next_url
 
 
 @dataclass(frozen=True)
@@ -40,20 +46,20 @@ class LegacyStaffAssignmentDisplay:
 
 
 def specialist_action_staff(request):
-    if request.user.is_staff and request.POST.get("staff_id"):
+    if is_admin_user(request.user) and request.POST.get("staff_id"):
         return get_object_or_404(StaffMember, pk=request.POST["staff_id"])
     return getattr(request.user, "staff_profile", None)
 
 
 def specialist_home_redirect(request, staff):
     url = reverse("specialist_home")
-    if request.user.is_staff and staff:
+    if is_admin_user(request.user) and staff:
         return f"{url}?{urlencode({'staff_id': staff.pk})}"
     return url
 
 
 def has_mobile_access(request, staff) -> bool:
-    return request.user.is_staff or bool(staff and staff.can_use_mobile)
+    return is_admin_user(request.user) or bool(staff and staff.can_use_mobile)
 
 
 def deny_mobile_access():
@@ -153,7 +159,7 @@ def specialist_week_summary_items(
         {
             "label": "Заявки",
             "value": str(pending_time_off_count),
-            "hint": "ожидают решения администратора",
+            "hint": "ожидают итогового решения",
         },
     ]
 
@@ -237,7 +243,7 @@ def specialist_home(request):
     staff_members = StaffMember.objects.filter(status=StaffMember.Status.ACTIVE).order_by(
         "full_name"
     )
-    if request.user.is_staff:
+    if is_admin_user(request.user):
         if request.GET.get("staff_id"):
             staff = get_object_or_404(StaffMember, pk=request.GET["staff_id"])
         elif not staff:
@@ -320,11 +326,17 @@ def specialist_home(request):
         )
     )
     availability_windows = staff.availability_windows.order_by("weekday", "starts_at")
-    time_off_requests = staff.time_off_requests.order_by("-created_at")[:10]
+    time_off_requests = time_off_svc.decorate_rows(
+        time_off_svc.with_current_decision(
+            staff.time_off_requests.select_related("decided_by").order_by("-created_at")[:10]
+        ),
+        actor=request.user,
+    )
     pending_time_off_count = sum(
         1
         for item in time_off_requests
         if item.status == TimeOffRequest.Status.PENDING
+        or item.awaits_director_review
     )
     return render(
         request,
@@ -333,6 +345,7 @@ def specialist_home(request):
             "staff": staff,
             "appointments": appointments,
             "staff_members": staff_members,
+            "can_manage_specialists": is_admin_user(request.user),
             "week_days": week_days,
             "summary": summary,
             "specialist_summary_items": specialist_week_summary_items(
@@ -360,7 +373,7 @@ def specialist_home(request):
 def mark_appointment(request, pk: int):
     appointment = get_object_or_404(Appointment, pk=pk)
     staff = getattr(request.user, "staff_profile", None)
-    if request.user.is_staff and request.POST.get("staff_id"):
+    if is_admin_user(request.user) and request.POST.get("staff_id"):
         staff = get_object_or_404(StaffMember, pk=request.POST["staff_id"])
     if not has_mobile_access(request, staff):
         return deny_mobile_access()
@@ -370,7 +383,7 @@ def mark_appointment(request, pk: int):
             appointment=appointment, staff_member=staff
         ).exists()
     )
-    if not request.user.is_staff and not is_assigned:
+    if not is_admin_user(request.user) and not is_assigned:
         messages.error(request, "Нет доступа к этому занятию.")
         return redirect("specialist_home")
 
@@ -471,7 +484,7 @@ def staff_availability_toggle(request, pk: int):
         StaffAvailability.objects.select_related("staff_member"), pk=pk
     )
     staff = getattr(request.user, "staff_profile", None)
-    if not request.user.is_staff and availability.staff_member != staff:
+    if not is_admin_user(request.user) and availability.staff_member != staff:
         messages.error(request, "Нет доступа к этому графику.")
         return redirect("specialist_home")
     if not has_mobile_access(request, availability.staff_member):
@@ -507,19 +520,43 @@ def time_off_request_create(request):
 @login_required
 @user_passes_test(is_admin_user)
 def time_off_request_decide(request, pk: int):
-    time_off = get_object_or_404(TimeOffRequest.objects.select_related("staff_member"), pk=pk)
-    if request.method == "POST":
-        action = request.POST.get("action")
-        if action == "approve":
-            time_off.status = TimeOffRequest.Status.APPROVED
-            messages.success(request, "Заявка согласована.")
-        elif action == "reject":
-            time_off.status = TimeOffRequest.Status.REJECTED
-            messages.success(request, "Заявка отклонена.")
-        time_off.admin_note = request.POST.get("admin_note", "").strip()
-        time_off.decided_by = request.user
-        time_off.decided_at = timezone.now()
-        time_off.save(
-            update_fields=["status", "admin_note", "decided_by", "decided_at", "updated_at"]
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    time_off = get_object_or_404(
+        TimeOffRequest.objects.select_related("staff_member", "decided_by"),
+        pk=pk,
+    )
+    fallback = reverse("work_queue")
+    form = TimeOffDecisionForm(
+        {
+            "action": request.POST.get("action", ""),
+            "reason": request.POST.get("reason")
+            or request.POST.get("admin_note", ""),
+        }
+    )
+    if not form.is_valid():
+        messages.error(request, "Укажите решение и основание не короче 5 символов.")
+        return redirect(safe_next_url(request, fallback))
+
+    try:
+        record = time_off_svc.resolve_manually(
+            time_off,
+            action=form.cleaned_data["action"],
+            reason=form.cleaned_data["reason"],
+            actor=request.user,
         )
-    return redirect("work_queue")
+    except (PermissionDenied, ValueError) as exc:
+        messages.error(request, str(exc))
+    else:
+        if record.awaits_director_review:
+            messages.warning(
+                request,
+                "Решение действует. Заявка оставлена на контроль руководителя.",
+            )
+        else:
+            messages.success(
+                request,
+                f"{record.get_decision_display()}: {record.get_source_display()}.",
+            )
+    return redirect(safe_next_url(request, fallback))

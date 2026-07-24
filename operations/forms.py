@@ -2386,6 +2386,20 @@ class TimeOffRequestForm(forms.ModelForm):
         }
 
 
+class TimeOffDecisionForm(forms.Form):
+    ACTION_CHOICES = (
+        ("approve", "Согласовать"),
+        ("reject", "Отклонить"),
+    )
+    action = forms.ChoiceField(label="Решение", choices=ACTION_CHOICES)
+    reason = forms.CharField(
+        label="Основание решения",
+        min_length=5,
+        max_length=1000,
+        widget=forms.Textarea(attrs={"rows": 2}),
+    )
+
+
 class RecommendationForm(forms.ModelForm):
     class Meta:
         model = Recommendation

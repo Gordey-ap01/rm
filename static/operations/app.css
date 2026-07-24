@@ -423,6 +423,30 @@ button:disabled {
   gap: 6px;
 }
 
+.time-off-decision-form {
+  display: grid;
+  gap: 8px;
+  min-width: min(100%, 260px);
+}
+
+.time-off-decision-form input,
+.time-off-decision-form textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.time-off-decision-form .inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.status-note.warning {
+  margin: 6px 0 0;
+  color: var(--warn);
+  font-weight: 600;
+}
+
 .logout-form {
   display: flex;
   align-items: center;

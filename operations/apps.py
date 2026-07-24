@@ -65,6 +65,7 @@ class OperationsConfig(AppConfig):
             StaffCompensationRule,
             StaffMember,
             TimeOffRequest,
+            TimeOffRequestDecision,
             TreatmentProgram,
         )
 
@@ -104,6 +105,7 @@ class OperationsConfig(AppConfig):
             AppointmentRescheduleStepDependency,
             AppointmentConfirmation,
             AppointmentConfirmationDecision,
+            TimeOffRequestDecision,
             LedgerEntry,
             TreatmentProgram,
             ProgramBlock,

@@ -31,6 +31,7 @@ from operations.models import (
 )
 from operations.services.compensation import calculate_staff_compensation
 from operations.services.financial_facts import appointment_charge_fact
+from operations.services.time_off_decisions import attention_rows as time_off_attention_rows
 
 
 @dataclass
@@ -129,11 +130,7 @@ def tomorrow_overview(target_date: date | None = None) -> TomorrowOverview:
         .prefetch_related("appointment__participants__child")
         .order_by("status", "-created_at")[:20]
     )
-    pending_time_off = list(
-        TimeOffRequest.objects.filter(status=TimeOffRequest.Status.PENDING)
-        .select_related("staff_member")
-        .order_by("starts_on", "staff_member__full_name")[:20]
-    )
+    pending_time_off = time_off_attention_rows(limit=20)
     low_balances = [
         account
         for account in BalanceAccount.objects.select_related("child", "funding_source", "service")

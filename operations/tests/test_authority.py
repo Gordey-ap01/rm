@@ -1,5 +1,6 @@
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
+from django.urls import reverse
 
 from operations.models import StaffMember
 from operations.services.authority import (
@@ -25,6 +26,10 @@ class AuthorityPolicyTests(TestCase):
 
         self.assertEqual(authority_role(user), AuthorityRole.DIRECTOR)
         self.assertTrue(is_center_operator(user))
+
+        self.client.force_login(user)
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
 
     def test_staff_user_is_administrator(self):
         user = User.objects.create_user("administrator", password="x", is_staff=True)

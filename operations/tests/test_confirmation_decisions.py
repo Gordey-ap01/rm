@@ -6,7 +6,7 @@ from unittest import skipUnless
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import close_old_connections, connection
-from django.db.models.deletion import ProtectedError
+from django.db.models.deletion import ProtectedError, RestrictedError
 from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -183,6 +183,32 @@ class ConfirmationDecisionServiceTests(ConfirmationDecisionFixture):
                 source=AppointmentConfirmationDecision.Source.SPECIALIST_RESPONSE,
                 actor_role_snapshot=AppointmentConfirmationDecision.ActorRole.DIRECTOR,
             )
+
+    def test_previous_decision_is_restricted_but_confirmation_cascades_history(self):
+        confirmation = self.create_confirmation()
+        first = decision_svc.resolve_manually(
+            confirmation,
+            action="confirm",
+            reason="Первое решение для проверки удаления.",
+            actor=self.admin,
+        )
+        decision_svc.resolve_manually(
+            confirmation,
+            action="decline",
+            reason="Второе решение для проверки удаления.",
+            actor=self.director,
+        )
+
+        with self.assertRaises(RestrictedError):
+            first.delete()
+
+        confirmation_id = confirmation.pk
+        confirmation.delete()
+        self.assertFalse(
+            AppointmentConfirmationDecision.objects.filter(
+                confirmation_id=confirmation_id
+            ).exists()
+        )
 
 
 class ConfirmationDecisionViewTests(ConfirmationDecisionFixture):
