@@ -12,6 +12,7 @@ class OperationsConfig(AppConfig):
         from .models import (
             Appointment,
             AppointmentConfirmation,
+            AppointmentConfirmationDecision,
             AppointmentParticipant,
             AppointmentRescheduleChain,
             AppointmentReschedulePlan,
@@ -102,6 +103,7 @@ class OperationsConfig(AppConfig):
             AppointmentRescheduleStep,
             AppointmentRescheduleStepDependency,
             AppointmentConfirmation,
+            AppointmentConfirmationDecision,
             LedgerEntry,
             TreatmentProgram,
             ProgramBlock,

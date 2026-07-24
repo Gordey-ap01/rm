@@ -405,6 +405,24 @@ button:disabled {
   font-weight: 500;
 }
 
+.confirmation-manual-form {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+  margin-top: 8px;
+}
+
+.confirmation-manual-form input {
+  width: 100%;
+  min-width: 0;
+}
+
+.confirmation-manual-form .inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .logout-form {
   display: flex;
   align-items: center;

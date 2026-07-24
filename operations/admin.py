@@ -3,6 +3,7 @@ from django.contrib import admin
 from .models import (
     Appointment,
     AppointmentConfirmation,
+    AppointmentConfirmationDecision,
     AppointmentParticipant,
     AppointmentRescheduleChain,
     AppointmentReschedulePlan,
@@ -1101,6 +1102,44 @@ class AppointmentConfirmationAdmin(admin.ModelAdmin):
         "sent_by",
         "staff_assignment",
     )
+
+
+@admin.register(AppointmentConfirmationDecision)
+class AppointmentConfirmationDecisionAdmin(admin.ModelAdmin):
+    list_display = (
+        "created_at",
+        "confirmation",
+        "decision",
+        "source",
+        "actor",
+        "is_current",
+    )
+    list_filter = ("decision", "source", "actor_role_snapshot", "is_current")
+    search_fields = (
+        "confirmation__email",
+        "confirmation__appointment__child__last_name",
+        "note",
+        "actor__username",
+    )
+    autocomplete_fields = ("confirmation", "actor", "supersedes")
+    readonly_fields = (
+        "confirmation",
+        "decision",
+        "source",
+        "actor",
+        "actor_role_snapshot",
+        "note",
+        "supersedes",
+        "is_current",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(AppointmentParticipant)

@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from operations.models import (
     Appointment,
+    AppointmentConfirmationDecision,
     AppointmentParticipant,
     AppointmentRescheduleChain,
     AppointmentRescheduleStepDependency,
@@ -86,6 +87,7 @@ class AuditLogTests(TestCase):
 
         for model in (
             Appointment,
+            AppointmentConfirmationDecision,
             AppointmentParticipant,
             AppointmentRescheduleChain,
             AppointmentRescheduleStepDependency,

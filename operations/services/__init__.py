@@ -6,8 +6,10 @@
 
 from . import (
     appointments,
+    authority,
     billing,
     certificates,
+    confirmation_decisions,
     contract_documents,
     expense_reports,
     expenses,
@@ -27,8 +29,10 @@ from . import (
 
 __all__ = [
     "appointments",
+    "authority",
     "billing",
     "certificates",
+    "confirmation_decisions",
     "contract_documents",
     "expense_reports",
     "expenses",

@@ -2339,6 +2339,20 @@ class ConfirmationResponseForm(forms.Form):
     )
 
 
+class ManualConfirmationDecisionForm(forms.Form):
+    ACTION_CHOICES = (
+        ("confirm", "Подтвердить вручную"),
+        ("decline", "Отклонить вручную"),
+    )
+    action = forms.ChoiceField(label="Решение", choices=ACTION_CHOICES)
+    reason = forms.CharField(
+        label="Основание ручного решения",
+        min_length=5,
+        max_length=1000,
+        widget=forms.Textarea(attrs={"rows": 2}),
+    )
+
+
 class StaffAvailabilityForm(forms.ModelForm):
     class Meta:
         model = StaffAvailability

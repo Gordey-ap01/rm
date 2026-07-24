@@ -4,14 +4,21 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.core.exceptions import PermissionDenied
+from django.http import HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from operations.forms import AppointmentConfirmationSendForm, ConfirmationResponseForm
+from operations.forms import (
+    AppointmentConfirmationSendForm,
+    ConfirmationResponseForm,
+    ManualConfirmationDecisionForm,
+)
 from operations.models import Appointment, AppointmentConfirmation
+from operations.services import confirmation_decisions as decision_svc
 from operations.tasks import send_appointment_confirmation_email
 
-from ._common import is_admin_user
+from ._common import is_admin_user, safe_next_url
 from .appointments import (
     appointment_detail_context,
     appointment_participants_label,
@@ -161,7 +168,8 @@ def appointment_send_confirmation(request, pk: int):
         return render(
             request,
             "operations/appointment_detail.html",
-            appointment_detail_context(appointment) | {"confirmation_form": form},
+            appointment_detail_context(appointment, actor=request.user)
+            | {"confirmation_form": form},
             status=400,
         )
     return redirect("appointment_detail", pk=appointment.pk)
@@ -201,29 +209,12 @@ def appointment_confirmation_public(request, token):
     if request.method == "POST":
         form = ConfirmationResponseForm(request.POST)
         if form.is_valid() and confirmation.status == AppointmentConfirmation.Status.PENDING:
-            action = form.cleaned_data["action"]
-            confirmation.status = (
-                AppointmentConfirmation.Status.CONFIRMED
-                if action == "confirm"
-                else AppointmentConfirmation.Status.DECLINED
+            decision_svc.record_external_response(
+                confirmation,
+                action=form.cleaned_data["action"],
+                note=form.cleaned_data.get("response_note", ""),
             )
-            confirmation.response_note = form.cleaned_data.get("response_note", "").strip()
-            confirmation.responded_at = timezone.now()
-            confirmation.save(update_fields=["status", "response_note", "responded_at", "updated_at"])
-            if confirmation.reschedule_step_id:
-                from operations.services import rescheduling_plans as plan_svc
-
-                plan_svc.refresh_step_confirmation_status(confirmation.reschedule_step)
-
-            if (
-                confirmation.status == AppointmentConfirmation.Status.CONFIRMED
-                and confirmation.reschedule_step_id is None
-                and confirmation.target_type
-                in [AppointmentConfirmation.TargetType.REPRESENTATIVE, AppointmentConfirmation.TargetType.RECIPIENT]
-                and confirmation.appointment.status in [Appointment.Status.DRAFT, Appointment.Status.PROPOSED]
-            ):
-                confirmation.appointment.status = Appointment.Status.CONFIRMED
-                confirmation.appointment.save(update_fields=["status", "updated_at"])
+            confirmation.refresh_from_db()
             submitted = True
     else:
         form = ConfirmationResponseForm()
@@ -251,3 +242,38 @@ def appointment_confirmation_public(request, token):
             ),
         },
     )
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def appointment_confirmation_resolve(request, pk: int):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    confirmation = get_object_or_404(
+        AppointmentConfirmation.objects.select_related("appointment"),
+        pk=pk,
+    )
+    fallback = redirect("appointment_detail", pk=confirmation.appointment_id).url
+    form = ManualConfirmationDecisionForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Укажите решение и основание не короче 5 символов.")
+        return redirect(safe_next_url(request, fallback))
+
+    try:
+        record = decision_svc.resolve_manually(
+            confirmation,
+            action=form.cleaned_data["action"],
+            reason=form.cleaned_data["reason"],
+            actor=request.user,
+        )
+    except PermissionDenied as exc:
+        messages.error(request, str(exc))
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(
+            request,
+            f"{record.get_decision_display()}: {record.get_source_display()}.",
+        )
+    return redirect(safe_next_url(request, fallback))

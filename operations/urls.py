@@ -365,6 +365,11 @@ urlpatterns = [
         views.appointment_confirmation_public,
         name="appointment_confirmation_public",
     ),
+    path(
+        "confirmations/<int:pk>/resolve/",
+        views.appointment_confirmation_resolve,
+        name="appointment_confirmation_resolve",
+    ),
     path("specialist/", views.specialist_home, name="specialist_home"),
     path("specialist/appointments/<int:pk>/mark/", views.mark_appointment, name="mark_appointment"),
     path(

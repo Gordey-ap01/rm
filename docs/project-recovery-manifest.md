@@ -1,679 +1,103 @@
 # Манифест восстановления проекта
 
-Дата: 2026-07-15
+Дата актуализации: 2026-07-24
 
-Назначение: компактная точка входа для продолжения проекта "Радость моя" после потери чата, платформы, интернета или контекста. Этот файл не заменяет PRD, ADR, доменную модель и журнал состояния. Он указывает, где лежит актуальная информация и в каком порядке ее читать.
+Назначение: минимальная точка входа после потери сессии. Манифест не
+пересказывает проект, а указывает источники истины и порядок чтения.
 
-## Правило экономии контекста
+## 1. Порядок восстановления
 
-- Не пересказывать весь проект, если сведения уже сохранены в документации.
-- Обновлять только изменившиеся разделы и файлы.
-- При восстановлении сначала читать этот манифест, затем только документы, нужные для текущей задачи.
-- Graphify использовать как индекс связей и навигации, а не как вторую копию всей документации.
-- Если изменилась конфигурация skills, состав источников правды или порядок восстановления, обновлять этот манифест.
+1. Прочитать этот файл.
+2. Прочитать только верхний актуальный раздел `docs/current-state.md`.
+3. Прочитать `docs/01-prd.md` и ADR, относящиеся к текущему срезу.
+4. Прочитать профильный контракт из индекса ниже.
+5. Проверить `git status`, текущую ветку, последние коммиты и тесты.
+6. Использовать Graphify для навигации по связям, затем подтверждать выводы
+   чтением исходных файлов.
 
-## Источники правды
+Архивные журналы и PRD не читать по умолчанию. Они нужны только для выяснения
+истории решения.
 
-| Файл | Роль | Когда читать |
-| --- | --- | --- |
-| `docs/project-recovery-manifest.md` | Входная точка восстановления, индекс документов, skills и протокол контрольных точек. | Всегда первым. |
-| `docs/current-state.md` | Текущее состояние, выполненные срезы, свежий журнал изменений, ближайшие риски. | Всегда вторым; в первую очередь последние датированные разделы. |
-| `docs/12-project-stage-audit-and-pivot-plan.md` | Аудит этапа после потерь сессий: фиксирует, что reschedule-блок достаточно закрыт и следующий фокус должен перейти к новому доменному контракту. | Читать третьим, если есть риск снова уйти в микросрезы вокруг переносов или нужно понять текущий этап. |
-| `docs/13-schedule-capacity-v2-contract.md` | Контракт следующего доменного среза: расписание, групповые занятия, несколько специалистов, кабинеты, вместимость и доступность специалистов. | Перед первым кодовым срезом `schedule-capacity-validation-source` и любыми изменениями schedule/capacity validation. |
-| `docs/14-financial-fact-source-contract.md` | Контракт следующего доменного среза: единый read-only источник финансового факта списанного занятия для payroll, табеля, грантового отчета и ledger-сводок. | Перед изменениями payroll/report/billing fact logic и первым срезом `financial-fact-source-foundation`. |
-| `docs/15-financial-integrity-audit-contract.md` | Контракт следующего read-only финансового среза: аудит расхождений между charge facts, participants и ledger без автоисправлений. | Перед `financial-integrity-audit-source` и любыми financial integrity diagnostics. |
-| `docs/16-financial-integrity-surfacing-contract.md` | Контракт UI/operations среза: показать financial integrity issue-ы в dashboard/work queue без исправления данных. | Перед любым выводом financial integrity issue-ов в интерфейс. |
-| `docs/17-financial-integrity-cache-and-triage-contract.md` | Контракт persisted cache для financial integrity: check runs, finding-и, active reader, triage fields и runner. | Перед изменениями `FinancialIntegrityCheckRun`, `FinancialIntegrityFinding`, runner-а или cached reader UI. |
-| `docs/18-financial-integrity-triage-and-runner-contract.md` | Контракт следующего triage/operations этапа: finding actions, detail page, auditlog/event choice, scheduled/manual runner policy. | Перед любыми POST triage actions, finding detail, ignore/reopen policy or scheduled/background runner changes. |
-| `docs/19-financial-integrity-history-and-manager-report-contract.md` | Контракт будущего DB-owner среза: typed `FinancialIntegrityFindingEvent`, timeline finding-а и read-only trend report руководителя. | Перед любыми изменениями event table, timeline, manager financial-integrity report или миграциями этой зоны. |
-| `docs/20-group-payroll-policy-contract.md` | Контракт следующего payroll/DB среза: принцип начисления зарплаты на групповых занятиях, snapshots in payroll accruals and parity between timesheet and persisted payroll. | Перед любыми изменениями group payroll policy, `StaffCompensationRule`, `PayrollAccrual`, payroll/timesheet formulas or payroll UI. |
-| `docs/21-expenses-assets-contracts-contract.md` | Контракт следующей финансовой зоны: расходы центра, распределение расходов по источникам, оборудование, контрагенты и договоры. | Перед любыми изменениями расходов центра, `Counterparty`, `CenterExpense`, `ExpenseFundingSplit`, equipment/assets, договоров, донорской отчетности или Excel import write-path. |
-| `docs/22-category-counterparty-directory-contract.md` | Контракт product UI для справочников категорий расходов и контрагентов. | Перед изменениями `/directories/expenses/`, `CenterExpenseCategoryForm`, `CounterpartyForm` и related links из расходов/договоров/import preview. |
-| `docs/23-contract-word-generation-contract.md` | Контракт Word-генерации договоров из структурных данных и `.docx` шаблонов. | Перед изменениями `operations.services.contract_documents`, Word routes/buttons или сохранения generated contract files. |
-| `docs/24-document-template-source-inventory.md` | Обезличенная инвентаризация приватных source samples из `docshablon/`. | Перед расширением юридических шаблонов; raw `docshablon/` не коммитить и не отправлять в semantic extraction. |
-| `docs/25-template-placeholder-expansion-v2-contract.md` | Контракт расширения placeholder catalog/sidebar без миграций. | Перед изменениями grouped placeholders, `.docx` validation и sidebar reference шаблонов договоров. |
-| `docs/26-legal-document-targets-and-center-profile-contract.md` | Контракт DB-owner среза для generalized `Document` targets и будущего юрпрофиля центра/signed snapshots. | Перед изменениями `Document`, donation-document storage, center legal profile, legal snapshots, B2B/consents/acts. |
-| `docs/27-legal-template-families-contract.md` | Контракт семейства юридических шаблонов: service/donation allowlists, B2B/consent/act types only as future catalog entries. | Перед изменениями `ContractTemplate.TemplateType`, allowlists service/donation шаблонов или UI шаблонов. |
-| `docs/28-representative-child-legal-fields-contract.md` | Контракт юрполей представителя и получателя для договоров. | Перед изменениями паспортных/адресных полей `ParentGuardian`/`Child` и соответствующих Word placeholders. |
-| `docs/29-service-contract-spec-and-funding-contract.md` | Контракт спецификации услуг и источника финансирования service договора. | Перед изменениями `ServiceContractLine`, `ServiceContract.funding_source`, сумм договора и `service_spec.*` placeholders. |
-| `docs/30-certificate-contract-link-contract.md` | Контракт связи service договора с сертификатом/маткапиталом. | Перед изменениями `ServiceContract.certificate`, `certificate.*` placeholders или сертификатных договоров. |
-| `docs/31-immutable-contract-signed-file-archive-contract.md` | Контракт неизменяемого архива подписанных service/donation файлов. | Перед изменениями `ContractSignedFile`, signed archive actions/download или юридических подписанных версий. |
-| `docs/32-organization-service-contract-contract.md` | Контракт B2B-договора оказания услуг организации. | Перед изменениями `OrganizationServiceContract`, B2B Word/PDF/archive, organization-service snapshots или B2B спецификации услуг. |
-| `docs/33-consent-template-generation-contract.md` | Контракт генерации Word-согласий получателя. | Перед изменениями `Consent`, consent templates, consent Word generation или consent document ownership. |
-| `docs/34-contract-acts-generation-contract.md` | Контракт генерации актов оказанных услуг по service/B2B договорам. | Перед изменениями `ContractAct`, act Word generation, act document ownership или act snapshots. |
-| `docs/35-act-signed-file-archive-contract.md` | Контракт неизменяемого архива подписанных актов оказанных услуг. | Перед изменениями `ContractActSignedFile`, act signed archive actions/download или подписанных версий актов. |
-| `docs/36-consent-signed-file-archive-contract.md` | Контракт неизменяемого архива подписанных согласий. | Перед изменениями `ConsentSignedFile`, consent signed archive actions/download или подписанных версий согласий. |
-| `docs/37-external-signed-file-upload-contract.md` | Контракт загрузки внешне подписанных PDF/DOCX/изображений в архив. | Перед изменениями signed archive upload forms/actions/download для договоров, актов или согласий. |
-| `docs/38-certificate-payer-source-contract.md` | Контракт реквизитов плательщика и источника у сертификата. | Перед изменениями `Certificate.funding_source`, `Certificate.payer_*` или `certificate.payer_name` placeholders. |
-| `docs/39-recipient-certificate-crud-contract.md` | Контракт CRUD сертификатов в карточке получателя. | Перед изменениями `CertificateForm`, recipient certificate create/edit routes или таблицы сертификатов в карточке получателя. |
-| `docs/40-certificate-import-preview-contract.md` | Контракт read-only предпросмотра Excel/CSV сертификатов. | Перед изменениями certificate import preview, валидации строк сертификатов или будущим import write-path по сертификатам. |
-| `docs/41-certificate-import-write-path-contract.md` | DB-owner контракт реального импорта сертификатов через persisted import batch; foundation, apply, batch detail и batch list выполнены, certificate balance mutation вне среза. | Перед любыми изменениями import batch/row, apply idempotency, созданием `Certificate` из файла, batch history или будущей связкой сертификатов с балансом. |
-| `docs/42-certificate-balance-ledger-contract.md` | DB-owner контракт связки сертификата с `BalanceAccount`/`LedgerEntry`; первый срез реализован через nullable `Certificate.balance_account`, idempotent account service and recipient hold action. | Перед любыми изменениями `Certificate.balance_account`, созданием счетов по сертификатам, списанием сертификатов занятиями, backfill, rename `remaining_amount` или отображением effective certificate balance. |
-| `docs/43-certificate-balance-backfill-preflight-contract.md` | Read-only контракт preflight перед массовым backfill счетов сертификатов; команда `audit_certificate_balance_backfill` считает кандидатов, проблемы данных и дубликаты без записи в БД. | Перед запуском backfill сертификатов, ручной чисткой данных, добавлением constraints по суммам/датам или уникальности номера сертификата. |
-| `docs/44-certificate-balance-backfill-command-contract.md` | Контракт controlled backfill-команды: dry-run by default, `--apply --confirm`, блокировка при preflight issues unless explicit override, idempotent creation через certificate balance service. | Перед изменениями `backfill_certificate_balance_accounts`, запуском apply, политикой zero-balance сертификатов или расширением backfill на production/staging. |
-| `docs/45-certificate-account-labels-contract.md` | No-migration UI/read-only контракт маркировки `BalanceAccount`, связанных с сертификатами, в списке балансов, карточке получателя и селекторах счета списания. | Перед изменениями provenance labels для сертификатных счетов, account choice labels или отображением certificate-linked accounts. |
-| `docs/46-certificate-backfill-readiness-work-queue-contract.md` | No-migration UI/read-only контракт вывода certificate backfill readiness в рабочую очередь администратора без запуска backfill из UI. | Перед изменениями `/work-queue/#queue-certificates`, certificate preflight UI, sample masking или ручных ссылок для cleanup сертификатов. |
-| `docs/47-certificate-backfill-readiness-report-contract.md` | No-migration UI/read-only контракт подробного отчета готовности сертификатов к backfill счетов баланса. | Перед изменениями `/certificates/backfill-readiness/`, detailed certificate preflight UI, issue/candidate/zero-balance rows or duplicate masking. |
-| `docs/07-updated-domain-model-after-interview.md` | Живой доменный контракт после интервью 2026-06-23: занятия, участники, специалисты, кабинеты, гранты, табели. | Перед задачами по БД, расписанию, финансам, грантам, табелям. |
-| `docs/08-parallel-agent-execution-plan.md` | Контракты параллельной работы агентов, зоны владения файлами и режим read-only reviewer; свежий статус брать из `current-state`. | Перед распараллеливанием и перед изменениями `operations/models.py`/миграций. |
-| `docs/09-cascade-reschedule-domain-slice.md` | Контракт и статус первого среза persisted-планов переноса расписания. | Перед любыми изменениями переноса, цепочек согласования, `AppointmentMoveForm`, `scheduling.py`, моделей плана или миграций. |
-| `docs/10-reschedule-chain-dependencies-contract.md` | Контракт будущей модели атомарных цепочек переноса: chain/dependency schema, порядок применения, риски миграций и вертикальные срезы. | Перед кодом по длинным цепочкам переноса нескольких занятий. |
-| `docs/11-plan-terminal-status-contract.md` | Контракт терминальных статусов плана переноса: `applied/cancelled` планы нельзя перепроверять или возвращать в активный статус через revalidation. | Перед изменениями `revalidate_plan()`, plan detail actions или статусных правил планов переноса. |
-| `docs/01-prd.md` | Базовые продуктовые цели и крупные сценарии. | Для сверки продукта; при конфликте новее `current-state` и `07`. |
-| `docs/03-ux-ui-and-implementation-plan.md` | UX/UI карта и план рабочих экранов; содержит предупреждение 2026-06-29, что старый MVP-контекст уступает свежей доменной модели и `current-state`. | Перед изменениями интерфейса администратора/руководителя. |
-| `docs/05-domain-rules-mvp.md` | Старые доменные правила MVP. | Только как историческая база; проверять против `07`. |
-| `docs/06-mvp-technical-model.md` | Старый технический baseline. | Для понимания исходной модели; проверять против кода и `07`. |
-| `docs/decisions/ADR-001-django-postgresql-local-first.md` | Архитектурное решение по стеку: Django/PostgreSQL/local-first подход. | При изменениях стека, deployment или хранилища. |
-| `docs/decisions/ADR-002-balance-accounts-ledger.md` | Архитектурное решение по счетам баланса и ledger. | Перед изменениями финансов, списаний, платежей, грантов. |
-| `docs/interviews/interview-director-2026-06-23.md` | Первичный источник требований после интервью. | Когда нужно проверить смысл требования или спорный бизнес-процесс. |
-| `docs/next-chat-prompt.md` | Короткий переносимый промпт для новой сессии. | При ручном старте нового чата. |
-| `graphify-out/GRAPH_REPORT.md`, `graphify-out/graph.json` | Графовый индекс проекта. | Для навигации по связям файлов/моделей; требует обновления после крупных изменений. |
+## 2. Приоритет источников
 
-## Порядок восстановления контекста
+1. `docs/01-prd.md` - канонические продуктовые требования и матрица готовности.
+2. `docs/decisions/ADR-*.md` - принятые архитектурные решения.
+3. `docs/07-updated-domain-model-after-interview.md` - доменный контракт после
+   интервью.
+4. Профильный контракт активного вертикального среза.
+5. Модели, миграции, сервисы и тесты - фактически реализованное поведение.
+6. `docs/current-state.md` - статус выполнения и ближайшая работа.
+7. Архивы и MVP-документы - только исторический контекст.
 
-1. Открыть `docs/project-recovery-manifest.md`.
-2. Прочитать последние датированные разделы `docs/current-state.md`.
-3. Если есть сомнение "на каком мы этапе" или риск повторить reschedule-loop, прочитать `docs/12-project-stage-audit-and-pivot-plan.md`.
-4. Если задача затрагивает расписание, групповые занятия, нескольких специалистов, кабинеты, вместимость или доступность специалистов, прочитать `docs/13-schedule-capacity-v2-contract.md`.
-5. Если задача затрагивает payroll, табель, грантовый отчет, ledger-сводки или смысл "списанного занятия", прочитать `docs/14-financial-fact-source-contract.md`.
-6. Если задача затрагивает финансовые расхождения, preflight перед миграцией/import или audit issue codes, прочитать `docs/15-financial-integrity-audit-contract.md`.
-7. Если задача выводит financial integrity issue-ы в dashboard/work queue/balances/grant report, прочитать `docs/16-financial-integrity-surfacing-contract.md`.
-8. Если задача затрагивает financial integrity persisted cache, runner or active cached reader, прочитать `docs/17-financial-integrity-cache-and-triage-contract.md`.
-9. Если задача затрагивает triage actions, ignore/reopen policy, finding detail, auditlog/event history or scheduled/background runner, прочитать `docs/18-financial-integrity-triage-and-runner-contract.md`.
-10. Если задача затрагивает `FinancialIntegrityFindingEvent`, timeline finding-а, manager financial-integrity report или миграции этой зоны, прочитать `docs/19-financial-integrity-history-and-manager-report-contract.md`.
-11. Если задача затрагивает принцип начисления зарплаты в группах, `StaffCompensationRule`, `PayrollAccrual`, табель или persisted payroll formulas, прочитать `docs/20-group-payroll-policy-contract.md`.
-12. Если задача затрагивает расходы центра, оборудование, контрагентов, договоры, донорскую отчетность или Excel import write-path, прочитать `docs/21-expenses-assets-contracts-contract.md`.
-13. Если задача затрагивает справочники категорий/контрагентов вне Django admin, прочитать `docs/22-category-counterparty-directory-contract.md`.
-14. Если задача затрагивает Word-генерацию договоров или placeholder catalog, прочитать `docs/23-contract-word-generation-contract.md`, `docs/24-document-template-source-inventory.md` и `docs/25-template-placeholder-expansion-v2-contract.md`.
-15. Если задача затрагивает `Document` без `Child`, donation-document storage, юрпрофиль центра, signed snapshots, B2B/consents/acts, прочитать `docs/26-legal-document-targets-and-center-profile-contract.md`.
-16. Если задача затрагивает юридические семейства шаблонов, юрполя сторон, спецификацию договора, сертификаты, архив подписанных файлов, B2B-договоры организации, согласия или акты, прочитать `docs/27-legal-template-families-contract.md` и соответствующий контракт `docs/28`-`docs/47`.
-17. Если задача затрагивает БД, расписание, финансы, гранты, табели или статусы, прочитать `docs/07-updated-domain-model-after-interview.md` и ADR-002.
-18. Если задача затрагивает переносы, отсутствие специалиста, занятые окна или каскадные сдвиги расписания, прочитать `docs/09-cascade-reschedule-domain-slice.md`.
-19. Если задача затрагивает атомарные цепочки применения нескольких переносов, прочитать `docs/10-reschedule-chain-dependencies-contract.md`.
-20. Если задача затрагивает терминальные статусы или перепроверку планов переноса, прочитать `docs/11-plan-terminal-status-contract.md`.
-21. Если задача затрагивает параллельную работу, прочитать `docs/08-parallel-agent-execution-plan.md`.
-22. Если задача UX/UI, прочитать `docs/03-ux-ui-and-implementation-plan.md` и соответствующие шаблоны/JS.
-23. Если задача по коду, читать только релевантные файлы: модели, сервисы, формы, views, шаблоны и тесты вокруг изменяемого сценария.
-24. Перед широким поиском по проекту сначала выполнить `graphify query "<вопрос>" --budget 500-1500`, если граф доступен и актуален.
+При противоречии между PRD и кодом нельзя молча считать код правильным:
+расхождение фиксируется как gap, после чего меняется либо контракт, либо код.
 
-## Skills и назначение
+## 3. Индекс документации
 
-| Skill | Назначение в проекте |
+| Документы | Назначение |
 | --- | --- |
-| `database-schema-designer` | Проектирование БД, ограничений, индексов, опасных миграций. Использовать для доменной модели и миграционных планов. |
-| `graphify` | Графовый индекс проекта, поиск связей между документами, моделями, сервисами и UI. Не хранить в нем полные копии документации вручную. |
-| `documentation-and-adrs` | Контрольные точки, ADR, changelog, обновление документации без дублирования. |
-| `planning-and-task-breakdown` | Разбиение больших требований на вертикальные срезы с acceptance criteria. |
-| `frontend-ui-engineering` / `frontend-design` | Рабочие интерфейсы администратора и руководителя, когда задача касается UX/UI. |
-| `browser-testing-with-devtools` / Browser plugin | Визуальная QA в браузере, если инструмент доступен в текущей сессии. |
-| `code-review-and-quality` | Проверка изменений перед завершением крупного среза. |
-| `git-workflow-and-versioning` | Ветки, staging, commits и координация незакоммиченных изменений. |
-
-## Восстановление инструментов
-
-### Graphify
-
-Graphify - это навигационный граф проекта. Он помогает искать связи между документами, моделями, сервисами, views и шаблонами, но не заменяет свежие документы и код.
-
-Причина ошибки `no LLM API key for semantic extraction`: кодовая часть графа извлекается структурно, а измененные `.md`/документы требуют LLM для семантического разбора. В текущем окружении ключ не виден процессу Codex.
-
-Как исправить без записи секрета в репозиторий:
-
-```powershell
-# Временно, только для текущего терминала
-$env:GEMINI_API_KEY = "<ключ>"
-graphify . --update --no-viz
-
-# Постоянно для пользователя Windows; после этого перезапустить терминал/Codex
-[Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "<ключ>", "User")
-```
-
-Можно использовать другой backend, если текущая версия Graphify его поддерживает, но предпочтительный безопасный путь для этого проекта - переменная окружения `GEMINI_API_KEY` или `GOOGLE_API_KEY`. Значение ключа нельзя записывать в `.env`, документацию, git, чат или production-конфиги.
-
-### Browser QA
-
-Browser QA - это проверка живого интерфейса в браузере: скриншоты desktop/mobile, overflow, кликабельность, console errors и поведение JS. Это не заменяется Django tests, потому что тесты не видят реальную верстку.
-
-Если in-app Browser/DevTools tool не доступен через discovery в текущей сессии, есть два безопасных пути:
-
-1. Включить Browser plugin или Chrome DevTools MCP в Codex и повторить QA через браузерный инструмент.
-2. Использовать временный Playwright-фолбэк вне репозитория, не добавляя `package.json` и зависимости в проект. Такой запуск должен писать все npm-файлы во временный каталог, а не в `D:\РадостьМояАвтоматизация\RMcodex`.
-
-## Протокол контрольной точки
-
-При запросе "сделай контрольную точку" или при риске потери контекста:
-
-1. Обновить только изменившиеся разделы `docs/current-state.md`.
-2. Если появилось архитектурное решение, добавить или обновить ADR в `docs/decisions/`.
-3. Если изменились источники правды, skills или порядок восстановления, обновить этот манифест.
-4. Если изменился план параллельной работы, обновить `docs/08-parallel-agent-execution-plan.md`.
-5. Если изменился переносимый стартовый контекст, обновить `docs/next-chat-prompt.md`.
-6. Обновить Graphify инкрементально: `graphify . --update --no-viz`. Если команда недоступна или падает, записать риск в `current-state`.
-7. Зафиксировать проверки: тесты, `manage.py check`, линтеры, `git diff --check` или причину, почему проверка не запускалась.
-
-## Текущее состояние восстановления
-
-- Stage audit 2026-07-14: добавлен `docs/12-project-stage-audit-and-pivot-plan.md`. Вывод: состояние проекта не потеряно, но свежие сессии локально зациклились на безопасных UX/control срезах вокруг persisted-планов переноса. Reschedule-блок считается достаточно закрытым для текущей фазы; новые микросрезы вокруг `/reschedule-plans/`, chain/step anchors, архивных подсказок, registry/work queue/dashboard сигналов не брать без конкретного бага, требования пользователя или нового утвержденного контракта. Следующий фокус переведен на `docs/13-schedule-capacity-v2-contract.md` по расписанию, групповым занятиям, кабинетам, вместимости и доступности специалистов.
-- Schedule-capacity contract 2026-07-14: добавлен `docs/13-schedule-capacity-v2-contract.md`. Первый кодовый срез после него - `schedule-capacity-validation-source`: единый источник истины для конфликтов получателей/специалистов/кабинетов и доступности, подключение к существующим формам/сервисам без миграций, если аудит не выявит реальную нехватку схемы.
-- Schedule validation foundation 2026-07-14: добавлен `operations/schedule_validation.py`, а `operations/forms.py`, `operations/services/scheduling.py`, `operations/services/rescheduling_plans.py` и `operations/views/scheduling_helpers.py` переключены на него. Это foundation-рефактор без изменения поведения и без миграций; добавлены focused `ScheduleValidationTests`; полный `pytest -q` прошел (`437 passed`). Graphify code-index обновлен до `3944` nodes / `14191` edges.
-- Model-level schedule validation 2026-07-14: `Appointment.clean()` переключен на общий schedule validation contract для snapshot-занятий. Существующие `AppointmentParticipant`/`AppointmentStaffAssignment` теперь являются источником правды для прямого `full_clean()`; legacy fallback применяется только если snapshot-строк нет. Полный `pytest -q` прошел (`440 passed`). Graphify code-index обновлен до `3950` nodes / `14206` edges.
-- Calendar API schedule validation 2026-07-14: `operations/api.py::move_conflict_messages()` переключен на общий `appointment_validation_conflicts()`; drag-and-drop использует тот же snapshot/legacy/capacity/staff-availability контракт. Полный `pytest -q` прошел (`441 passed`). Graphify code-index обновлен до `3953` nodes / `14224` edges.
-- Free-slot schedule validation 2026-07-14: `operations/services/scheduling.py::find_overlaps()` и `find_free_slots()` переключены на общий `appointment_group_conflicts()` для групповых получателей, нескольких специалистов, кабинетных лимитов и запрета групп. Массовый перенос по отсутствию специалиста передает участников в `find_free_slots()` вместо отдельной пост-фильтрации. Полный `pytest -q` прошел (`444 passed`). Graphify code-index обновлен до `3961` nodes / `14242` edges.
-- First schedule-capacity slice closed 2026-07-14: backend/service/API acceptance review по `docs/13-schedule-capacity-v2-contract.md` выполнен. Закрыты общий schedule validation, form/model/API/free-slot/manual-move/shift-helper интеграции. Следующие DB/ledger/payroll/grants/status или глубокие schedule changes начинать с нового контракта.
-- Financial fact source contract 2026-07-15: добавлен `docs/14-financial-fact-source-contract.md`. Следующий кодовый срез - `financial-fact-source-foundation`: общий read-only helper/service для факта списанного занятия, переключение payroll/reports без миграций и без изменения поведения.
-- Financial fact foundation 2026-07-15: добавлен `operations/services/financial_facts.py`, payroll/reports переключены на общий `AppointmentChargeFact`, focused parity-регрессии добавлены. Без моделей, миграций, `billing.apply_decision()`, ledger semantics, статусов, templates или UI. Полный `pytest -q` прошел (`449 passed`); Graphify code-index обновлен до `3988` nodes / `14263` edges.
-- Financial integrity audit contract 2026-07-15: добавлен `docs/15-financial-integrity-audit-contract.md`. Следующий срез - `financial-integrity-audit-source`: read-only сервис issue-ов для charge/participant/ledger расхождений, без auto-fix, моделей, миграций, UI или изменения billing/payroll/grant semantics.
-- Financial integrity audit source 2026-07-15: добавлен `operations/services/financial_integrity.py` с `FinancialIntegrityIssue`, issue codes/severity и `audit_appointments()`. Сервис read-only, использует `AppointmentChargeFact`, покрывает missing debit/stale legacy/stale ledger/invalid participant charge/mixed funding. Полный `pytest -q` прошел (`455 passed`); Graphify code-index обновлен до `4026` nodes / `14410` edges.
-- Financial integrity surfacing contract 2026-07-15: добавлен `docs/16-financial-integrity-surfacing-contract.md`. Следующий срез - `dashboard-work-queue-financial-integrity-signal`: вывести issue count/card на dashboard и section в work queue без auto-fix, migrations, POST actions или изменения финансовых расчетов. Lazyweb MCP недоступен; fallback на существующие UI-паттерны и Browser QA.
-- Последний существенный срез: read-only схема атомарных цепочек переноса. Через миграцию `operations.0021_reschedule_chains` добавлены `AppointmentRescheduleChain`, `AppointmentRescheduleStepDependency`, nullable поля `chain/chain_position/chain_required` на `AppointmentRescheduleStep`, admin и auditlog registration. До этого реализовано закрытие альтернативных шагов после применения одного варианта, периодные read-only метрики `/reschedule-plans/`, применение одиночного шага с одноразовым разрешением кабинета (`AppointmentRoomOverride` с причиной и автором), read-only контроль реестра, ручной разбор `review_conflict`, `staff_absence` план без отмены занятий, ручное применение `approved`-шага, первый persisted-план переноса, связь `AppointmentConfirmation.reschedule_step`, отправка согласований и итог `confirmation_status/confirmation_summary`, а Stage 5 UX/UI закрыт финальным аудитом `data-label`.
-- Срез 2 по `docs/10-reschedule-chain-dependencies-contract.md` реализован: сервис `create_chain_for_steps()` создает chain/dependencies из выбранных `move`-шагов без применения расписания, проверяет cycle/mismatch и запрещает трактовать альтернативы одного `source_appointment` как цепочку. Detail плана показывает read-only блок цепочек.
-- Кодовая база уже содержит модель групповых занятий, участников, назначений специалистов, лимитов кабинетов, грантовых квот, payroll и preview-импорта.
-- Последняя полная проверка после построения цепочки без применения: focused `ReschedulingPlanServiceTests` + `ReschedulePlanViewTests` прошел (`36 passed`), `.\.venv-test\Scripts\python.exe manage.py check`, `.\.venv-test\Scripts\python.exe manage.py makemigrations --check --dry-run`, `.\.venv-test\Scripts\python.exe -m ruff check operations` и полный `.\.venv-test\Scripts\python.exe -m pytest -q` прошли; 398 тестов, 1 прежнее предупреждение django-tasks о будущей замене `CheckConstraint.check`.
-- Проверка миграций: `.\.venv-test\Scripts\python.exe manage.py makemigrations --check --dry-run` прошла с `No changes detected`.
-- В `operations/management/commands/seed_demo.py` изменен только порядок импортов через `ruff --fix`; логика seed-команды и демо-данные не менялись.
-- `git diff --check` по файлам UX-срезов и стабилизации табеля, грант-отчета, дашборда, рабочей очереди, низких балансов в очереди, мобильного кабинета специалиста, предпросмотра импорта, справочников кабинетов/услуг/специалистов/источников финансирования/ставок специалистов, общего шаблона форм, форм кабинетов, форм услуг, форм источников финансирования, форм специалистов, форм ставок специалистов, расчетного листа payroll, массового переноса, отмены занятия, ручного переноса, формы платежа, списка балансов, форм балансовых счетов, карточки получателя, списка получателей, форм получателя/представителей, форм программ/каскадов, edge-case удаления балансового счета, all-archived источников и period-aware статуса ставок, миграции средств между каскадами, публичного согласования занятия, списка рекомендаций, списка документов, списка согласий, форм документов/согласий/рекомендаций, экрана "Завтра", форм грантовых квот/распределений и `seed_demo.py` дал только предупреждения о будущей замене LF на CRLF.
-- Browser QA выполнена через in-app Browser: desktop 1280px и mobile 390px для дашборда, рабочей очереди, грант-отчета и табеля; общестраничного overflow и console errors не найдено.
-- Для UX-срезов после первоначальной Browser QA выполнен Playwright-фолбэк вне репозитория: 28 GET-страниц проверены на desktop 1280px и mobile 390px, всего 56 проверок. HTTP 4xx/5xx, console/page errors и горизонтальный overflow не найдены; выборочно просмотрены скриншоты мобильной формы счета баланса, desktop-списка ставок, мобильного грант-отчета и desktop-импорта получателей. In-app Browser tool по-прежнему не был доступен через discovery в этой сессии; Playwright установлен во временный каталог `%TEMP%\rmcodex-playwright-qa`, скриншоты и JSON-отчет лежат во временном `%TEMP%\rmcodex-browser-qa`.
-- Объектная Browser QA выполнена через тот же Playwright-фолбэк: 28 URL с реальными ID локальной dev-базы проверены на desktop/mobile, всего 56 проверок. HTTP 4xx/5xx, console/page errors и общестраничного overflow не найдено. Найден и исправлен мобильный UX-долг в карточке получателя: таблица счетов баланса на 390px превращена в карточки с видимыми кнопками `Править`/`Пополнить`. Артефакты лежат во временных `%TEMP%\rmcodex-browser-qa-objects` и `%TEMP%\rmcodex-browser-qa-recipient-fix`.
-- Карточка получателя дополнительно стабилизирована: таблицы представителей, блоков программ, предстоящих и прошедших занятий в `recipient_detail` на 390px превращены в карточки с `data-label`; будущие и прошедшие занятия показывают участников группы и назначения специалистов без горизонтального скролла. Browser QA desktop/mobile чистая; артефакты лежат во временном `%TEMP%\rmcodex-browser-qa-recipient-detail-tables`.
-- Реестры поддержки получателя дополнительно стабилизированы: таблицы рекомендаций, документов и согласий на 390px превращены в карточки с `data-label`; action-ячейка рекомендаций и table wrappers без горизонтального скролла. Browser QA desktop/mobile чистая; артефакты лежат во временном `%TEMP%\rmcodex-browser-qa-support-tables`.
-- Мастер расписания каскада дополнительно стабилизирован: preview-таблица "Предложенные окна" на 390px превращена в карточки с `data-label`; проверен POST `action=preview`, создание занятий не запускалось. Browser QA desktop/mobile чистая; артефакты лежат во временном `%TEMP%\rmcodex-browser-qa-program-wizard-table`.
-- Dashboard дополнительно стабилизирован: таблицы "Сегодня" и "Низкие балансы" на 390px превращены в карточки с `data-label`; Browser QA desktop/mobile чистая, проверены 2 `ops-table`, без overflow. Артефакты лежат во временном `%TEMP%\rmcodex-browser-qa-dashboard-tables`.
-- Экран "Завтра" дополнительно стабилизирован: таблица "Занятия дня" на 390px превращена в карточки с `data-label`; проверено групповое занятие с несколькими получателями и специалистами. Browser QA desktop/mobile чистая; артефакты лежат во временном `%TEMP%\rmcodex-browser-qa-tomorrow-table`.
-- Рабочая очередь администратора дополнительно стабилизирована: таблица низких балансов в `#queue-balances` на 390px превращена в карточки с `data-label`; кнопки "Пополнить"/"Счет" остаются внутри viewport. Browser QA desktop/mobile чистая; артефакты лежат во временном `%TEMP%\rmcodex-browser-qa-work-queue-balances`.
-- Справочники дополнительно стабилизированы: общий `directory-table` в списках получателей, услуг, кабинетов, источников финансирования, специалистов и ставок на 390px превращен в карточки с `data-label`; Browser QA desktop/mobile чистая для 6 URL. Артефакты лежат во временном `%TEMP%\rmcodex-browser-qa-directory-tables`.
-- Предпросмотр импорта получателей дополнительно стабилизирован: таблицы распознанных колонок и строк файла на 390px превращены в карточки с `data-label`; Browser QA desktop/mobile чистая, проверены POST preview без записи в БД. Артефакты лежат во временном `%TEMP%\rmcodex-browser-qa-import-preview-tables`.
-- Список балансов дополнительно стабилизирован: таблица счетов на 390px превращена в карточки с `data-label`; Browser QA desktop/mobile чистая, проверены кнопки "Править"/"Пополнить"/"Удалить" без POST-действий. Артефакты лежат во временном `%TEMP%\rmcodex-browser-qa-balances-table`.
-- Финальный аудит `templates/operations/*.html` показал, что видимых `<td>` без `data-label` больше нет; пустая строка расчетного листа payroll размечена `data-label="Строки"`.
-- `payroll_sheet_detail` дополнительно проверен через локальную QA-фикстуру payroll: стандартная валидация отклонила занятие вне окна 09:00-18:00, затем создан draft расчетного листа с 1 строкой на 700 руб. Найден и исправлен мобильный UX-долг строк начислений: таблица payroll на 390px превращена в карточки с `data-label`. Повторная desktop/mobile Browser QA чистая; артефакты лежат во временных `%TEMP%\rmcodex-browser-qa-payroll-sheet` и `%TEMP%\rmcodex-browser-qa-payroll-sheet-fix`.
-- Мобильный кабинет специалиста дополнительно стабилизирован: таблицы "Рабочий график" и "Отпуск и отгулы" в `specialist_home` на 390px превращены в карточки с `data-label`, кнопка действия рабочего окна остается внутри viewport. Browser QA desktop/mobile чистая; артефакты лежат во временном `%TEMP%\rmcodex-browser-qa-specialist-home`.
-- Табель специалиста дополнительно стабилизирован: таблицы дней периода, итогов, сохраненных начислений, расчетных листов и расшифровки начислений в `staff_timesheet` на 390px превращены в карточки с `data-label`. Browser QA desktop/mobile чистая; артефакты лежат во временном `%TEMP%\rmcodex-browser-qa-staff-timesheet`.
-- Карточка занятия дополнительно стабилизирована: таблицы участников, специалистов, операций баланса, истории email, других занятий и audit в `appointment_detail` на 390px превращены в карточки с `data-label`; фиксированная сетка форм списания/каскадов заменена на auto-fit, чтобы поля и кнопки не обрезались в двухколоночной detail-grid. Browser QA desktop/mobile чистая; артефакты лежат во временном `%TEMP%\rmcodex-browser-qa-appointment-detail`.
-- Грант-отчет дополнительно стабилизирован: таблицы баланса, квот, выделений получателям, сертификатов и скидок в `grant_report` на 390px превращены в карточки с `data-label`; внутренний scrollWidth у action-таблиц устранен, кнопка "Удалить" в действиях грант-отчета больше не наследует зеленый primary-стиль. Browser QA desktop/mobile чистая; артефакты лежат во временном `%TEMP%\rmcodex-browser-qa-grant-report`.
-- POST-пути занятия дополнительно проверены через Browser QA на mobile 390px: списание конкретного участника группы создает debit ledger, отмена день-в-день без ack остается на форме с ошибкой, отмена с ack меняет статус без автоматического списания, ручной перенос группы создает новое занятие с 2 участниками и 2 специалистами. Код не менялся; артефакты лежат во временном `%TEMP%\rmcodex-browser-qa-post-flows`.
-- Для Browser QA локальная dev-база была мигрирована до `operations.0020`, создан/обновлен технический `qa_admin`; это локальное состояние окружения, не production. В последнем срезе создана и затем очищена синтетическая фикстура `browserqa_reschedule_alternatives`; detail плана `/reschedule-plans/18/` проверен через bundled Playwright на desktop/mobile: после применения первого варианта альтернатива стала "Пропущен", форм повторного применения не осталось, overflow и console errors нет.
-- Graphify-граф обновлен 2026-07-12 после установки недостающего Python-пакета `openai` в interpreter из `graphify-out/.graphify_python`. Semantic extraction через Gemini прошла для 48 docs; `graphify-out/graph.json` обновлен до 3433 nodes / 12881 edges, `GRAPH_REPORT.md` - до 203 communities. Старый curated graph сохранен Graphify в ignored backup `graphify-out/2026-07-12/`. `graphify query` снова видит свежие `apply_chain()`, `revalidate_chain()` и `create_chain_for_steps()`.
-- Latest chain slice status 2026-07-12: `apply_chain(chain)` is implemented, registry-level chain UX/metrics are implemented, and Browser QA passed via bundled Playwright + system Chrome on desktop 1365x900 and mobile 390x844. The checked URL was `/reschedule-plans/?focus=chain_ready&metrics_period=7`; artifacts are in `%TEMP%\rmcodex-browser-qa-chain-metrics`.
-
-## Ближайшие задачи
-
-- Открыть следующий явный контракт перед новыми изменениями БД, ledger, payroll, грантов, статусов или более глубокой логики расписания. Первый backend/service/API срез `schedule-capacity-validation-source` закрыт; не продолжать его как бесконечный audit-loop.
-- Не продолжать reschedule UX/control микросрезы без конкретного бага, требования пользователя или нового утвержденного контракта.
-- Не начинать новые миграции без явного владельца БД и сверки с `docs/07-updated-domain-model-after-interview.md`, `docs/08-parallel-agent-execution-plan.md` и `docs/12-project-stage-audit-and-pivot-plan.md`.
-- Обновить semantic-часть Graphify только если доступен LLM API key через переменную окружения; code-only граф можно обновлять локально командой `graphify update . --no-cluster`.
-
-## Постоянные риски
-
-- Нельзя параллельно менять `operations/models.py` и chain миграций несколькими агентами.
-- Нельзя коммитить секреты, production-конфиги, реальные персональные данные и реальные Excel-выгрузки.
-- Старые legacy-поля `Appointment.child`, `Appointment.staff_member`, `Appointment.billing_account` нельзя удалять до полного backfill и переключения отчетов.
-- Граф Graphify полезен как индекс, но устаревший граф не должен считаться источником правды против свежих документов и кода.
-
-- Graphify was repaired on 2026-07-12 with a temporary in-process Google AI Studio key; do not record that key in project files. If the key was pasted into chat, prefer rotating it in Google AI Studio after this maintenance window.
-- Latest dashboard/work queue slice 2026-07-12: active ready/stale/failed reschedule chains are now surfaced in the main dashboard and administrator work queue without DB changes. Dashboard focus/metric links point to existing `/reschedule-plans/?focus=chain_*`; work queue has `#queue-reschedule-chains` with direct plan links. Verification: focused tests, related view tests, `manage.py check`, migration dry-run, `ruff check operations`, `git diff --check`, full pytest (`410 passed`), and Playwright desktop/mobile Browser QA all passed. Artifacts: `%TEMP%\rmcodex-browser-qa-dashboard-chain`.
-- Latest chain ordering/filter slice 2026-07-12: dashboard/work queue now sort chain attention by operational severity (`failed`, then `stale`, then `ready`) through a read-only queryset annotation, and registry filters `chain_ready`/`chain_stale`/`chain_failed` have regression coverage. No DB, model, ledger, payroll, or schedule mutation. Verification: focused ordering tests (`2 passed`), related view tests (`35 passed`), Ruff, `manage.py check`, and migration dry-run (`No changes detected`) passed.
-- Graphify code-index was updated after the latest chain ordering/filter slice: `graphify update . --no-cluster` re-extracted `134/134` code files and wrote `3868` nodes / `13945` edges. Semantic docs extraction still needs `GEMINI_API_KEY`/`GOOGLE_API_KEY`; do not write the key to project files.
-- Latest work queue chain next-action slice 2026-07-12: `#queue-reschedule-chains` cards now explain the next action per status (failed -> resolve error in plan, stale -> revalidate in plan, ready -> final check/apply in plan) without direct POST actions from the queue. Verification: focused pytest (`1 passed`), related view tests (`37 passed`), Ruff, `manage.py check`, migration dry-run, and Playwright desktop/mobile Browser QA passed; artifacts are in `%TEMP%\rmcodex-browser-qa-chain-next-actions`.
-- Graphify code-index was updated after the work queue chain next-action slice: `graphify update . --no-cluster` re-extracted `134/134` code files and wrote `3869` nodes / `13947` edges. Semantic docs extraction still needs `GEMINI_API_KEY`/`GOOGLE_API_KEY`; do not write the key to project files.
-- Latest chain detail diagnostics slice 2026-07-12: `/reschedule-plans/<id>/` now explains stale/blocked/failed chains in place from `validation_summary.apply_error`, `validation_summary.issues`, and step `validation_messages`; chain action messages and the apply confirm are Russian. No DB/model/migration/ledger/payroll/schedule mutation. Verification: focused detail tests (`5 passed`), full `ReschedulePlanViewTests` (`29 passed`), related service/view/work-queue tests (`66 passed`), Ruff, `manage.py check`, migration dry-run, full pytest (`417 passed`), and Playwright desktop/mobile Browser QA passed; artifacts are in `%TEMP%\rmcodex-browser-qa-chain-detail-diagnostics`.
-- Graphify code-index was updated after the chain detail diagnostics slice: `graphify update . --no-cluster` re-extracted `134/134` code files and wrote `3877` nodes / `13998` edges. Semantic docs extraction still needs `GEMINI_API_KEY`/`GOOGLE_API_KEY`; do not write the key to project files.
-- Latest chain deep-link slice 2026-07-12: `/work-queue/` chain cards now link directly to the exact chain block in `/reschedule-plans/<id>/#chain-<id>`, and detail chain cards expose stable anchors with `scroll-margin-top`. No DB/model/migration/ledger/payroll/schedule/status mutation. Verification: focused view tests (`2 passed`), related view tests (`40 passed`), Ruff, `manage.py check`, migration dry-run, full pytest (`417 passed`), secret scan, and in-app Browser desktop/mobile QA passed with synthetic `browserqa_chain_anchor` data; QA data was cleaned and runserver on 8039 was stopped.
-- Graphify code-index was updated after the chain deep-link slice: `graphify update . --no-cluster` re-extracted `134/134` code files and wrote `3877` nodes / `13998` edges. Semantic docs extraction still needs `GEMINI_API_KEY`/`GOOGLE_API_KEY`; do not write the key to project files.
-- Latest registry chain deep-link slice 2026-07-12: `/reschedule-plans/` rows with active failed/stale/ready chains now choose `primary_attention_chain` by operational priority and link directly to `/reschedule-plans/<id>/#chain-<chain_id>`. No DB/model/migration/ledger/payroll/schedule/status mutation. Verification: focused registry tests (`3 passed`), related view tests (`41 passed`), Ruff, `manage.py check`, migration dry-run, full pytest (`418 passed`), secret scan, and in-app Browser desktop/mobile QA passed with synthetic `browserqa_registry_chain_anchor` data; QA data was cleaned and runserver on 8040 was stopped.
-- Graphify code-index was updated after the registry chain deep-link slice: `graphify update . --no-cluster` re-extracted `134/134` code files and wrote `3878` nodes / `14000` edges. Semantic docs extraction still needs `GEMINI_API_KEY`/`GOOGLE_API_KEY`; do not write the key to project files.
-- Latest chain POST anchor slice 2026-07-12: `revalidate_chain` and `apply_chain` redirects now return to `/reschedule-plans/<id>/#chain-<chain_id>`, preserving the administrator's place in plan detail after flash messages. No DB/model/migration/ledger/payroll/schedule/status mutation. Verification: focused POST tests (`2 passed`), related view tests (`41 passed`), Ruff, `manage.py check`, migration dry-run, full pytest (`418 passed`), secret scan, and in-app Browser desktop/mobile QA passed with synthetic `browserqa_chain_post_anchor` data; QA data was cleaned and runserver on 8041 was stopped.
-- Graphify code-index was updated after the chain POST anchor slice: `graphify update . --no-cluster` re-extracted `134/134` code files and wrote `3879` nodes / `14003` edges. Semantic docs extraction still needs `GEMINI_API_KEY`/`GOOGLE_API_KEY`; do not write the key to project files.
-- Latest terminal chain action slice 2026-07-12: `/reschedule-plans/<id>/` now hides `revalidate_chain` for terminal chains (`applying/applied/cancelled`) and shows a read-only hint instead, matching the existing service guard. No DB/model/migration/ledger/payroll/schedule/status mutation. Verification: focused detail tests (`3 passed`), related view tests (`42 passed`), Ruff, `manage.py check`, migration dry-run, full pytest (`419 passed`), and in-app Browser desktop/mobile QA passed with synthetic `browserqa_terminal_chain_actions` data; QA data was cleaned and runserver on 8042 was stopped.
-- Graphify code-index was updated after the terminal chain action slice: `graphify update . --no-cluster` re-extracted `134/134` code files and wrote `3880` nodes / `14005` edges. Semantic docs extraction was not rerun; do not write LLM API keys to project files.
-- Latest step POST anchor slice 2026-07-12: `apply_step`, `mark_review_conflict_resolved`, and `send_step_confirmations` redirects now return to `/reschedule-plans/<id>/#step-<step_id>`, and plan detail exposes stable `step-*` anchors plus a small hash-scroll helper for reliable mobile landing after flash messages. No DB/model/migration/ledger/payroll/schedule/status-rule mutation. Verification: focused step tests (`7 passed`), related view tests (`42 passed`), Ruff, `manage.py check`, migration dry-run, and in-app Browser desktop/mobile QA passed with synthetic `browserqa_step_anchor*` data; QA data was cleaned and runserver on 8043 was stopped.
-- Graphify code-index was updated after the step POST anchor slice: `graphify update . --no-cluster` re-extracted `134/134` code files and wrote `3880` nodes / `14005` edges. Semantic docs extraction was not rerun; do not write LLM API keys to project files.
-- Latest registry step deep-link slice 2026-07-12: `/reschedule-plans/` rows without active chains now choose `primary_attention_step` by priority (`failed`, `review_conflict`, `stale`, `declined`, `waiting`, `ready/applicable`) and link to `/reschedule-plans/<id>/#step-<step_id>` with action text `Открыть шаг`. Active attention chains still take priority over step links. No DB/model/migration/ledger/payroll/schedule/status-rule mutation. Verification: focused registry tests (`7 passed`), related view tests (`43 passed`), Ruff, `manage.py check`, migration dry-run, and in-app Browser desktop/mobile QA passed with synthetic `browserqa_step_registry_anchor` data; QA data was cleaned and runserver on 8044 was stopped.
-- Graphify code-index was updated after the registry step deep-link slice: `graphify update . --no-cluster` re-extracted `134/134` code files and wrote `3881` nodes / `14009` edges. Semantic docs extraction was not rerun; do not write LLM API keys to project files.
-- Latest work queue step attention slice 2026-07-13: `/work-queue/` now surfaces non-chain reschedule plan steps that need administrator attention, using the same priority as the registry (`failed`, `review_conflict`, `stale`, `declined`, `waiting`, `ready/applicable`) and linking directly to `/reschedule-plans/<id>/#step-<step_id>`. Chain-covered steps remain excluded so chain cards keep priority. No DB/model/migration/ledger/payroll/schedule/status-rule mutation. Verification: focused tests (`4 passed`), full `operations/tests/test_views.py` (`222 passed`), full pytest (`422 passed`), Django check, migration dry-run, touched-file Ruff, secret scan, and in-app Browser desktop/mobile QA passed with synthetic `browserqa_work_queue_step_anchor` data; QA data was cleaned and runserver on 8045 was stopped. Repository-wide `ruff check .` still has pre-existing unrelated failures in `scripts/build_viewer.py` and `scripts/launcher.py`.
-- Graphify code-index was updated after the work queue step attention slice: `graphify update . --no-cluster` re-extracted `134/134` code files and wrote `3889` nodes / `14043` edges. Semantic docs extraction was not rerun; do not write LLM API keys to project files.
-- Latest dashboard step signal slice 2026-07-13: the main dashboard now counts non-chain reschedule step tasks in `priority_total`, shows a `Разобрать шаги переноса` focus-card, and adds a "шагов переноса в очереди" metric linking to `/work-queue/#queue-reschedule-steps`. Work queue now has a `queue-*` hash-scroll helper so dashboard links land with the target section visible. No DB/model/migration/ledger/payroll/schedule/status-rule mutation. Verification: focused tests (`3 passed`), full `operations/tests/test_views.py` (`223 passed`), full pytest (`423 passed`), Django check, migration dry-run, touched-file Ruff, secret scan, and in-app Browser desktop/mobile QA passed with synthetic `browserqa_dashboard_step_signal` data; QA data was cleaned and runserver on 8046 was stopped.
-- Graphify code-index was updated after the dashboard step signal slice: `graphify update . --no-cluster` re-extracted `134/134` code files and wrote `3891` nodes / `14051` edges. Semantic docs extraction was not rerun; do not write LLM API keys to project files.
-- Latest step confirmation link slice 2026-07-13: `/work-queue/` confirmation cards backed by `AppointmentConfirmation.reschedule_step` now show reschedule-step context and link to `/reschedule-plans/<plan_id>/#step-<step_id>` with action text `Открыть шаг переноса`; ordinary appointment confirmations still link to the appointment detail. No DB/model/migration/ledger/payroll/schedule/status-rule mutation. Verification: focused tests (`3 passed`), full `operations/tests/test_views.py` (`224 passed`), full pytest (`424 passed`), Django check, migration dry-run, touched-file Ruff, secret scan, and in-app Browser desktop/mobile QA passed with synthetic `browserqa_step_confirmation_link` data; QA data was cleaned and runserver on 8047 was stopped.
-- Graphify code-index was updated after the step confirmation link slice: `graphify update . --no-cluster` re-extracted `134/134` code files and wrote `3892` nodes / `14054` edges. Semantic docs extraction was not rerun; do not write LLM API keys to project files.
-- Latest target-highlight slice 2026-07-13: reschedule deep-link targets now have CSS-only `:target` feedback for `#chain-*`, `#step-*`, and `#queue-*`, so administrator links visibly land on the relevant chain, step, or work-queue panel. No DB/model/migration/ledger/payroll/schedule/route/status-rule mutation. Verification: Django check, migration dry-run, full pytest (`424 passed`), secret scan, `git diff --check`, and in-app Browser desktop/mobile QA passed with synthetic `browserqa_target_highlight` data; QA data was cleaned and runserver on 8048 was stopped.
-- Graphify code-index after the target-highlight CSS slice reported no graph changes; current graph remains `3892` nodes / `14054` edges. Semantic docs extraction was not rerun; do not write LLM API keys to project files.
-- Latest terminal plan guard slice 2026-07-13: `docs/11-plan-terminal-status-contract.md` is added; `revalidate_plan(plan)` now rejects terminal plans (`applied/cancelled`) before mutating validation state, and plan detail hides the plan-level revalidate form for terminal plans. No DB/model/migration/ledger/payroll/schedule/billing mutation. Verification: focused tests (`5 passed`), related service/view/work-queue tests (`76 passed`), Ruff, Django check, migration dry-run, full pytest (`427 passed`), and Playwright desktop/mobile Browser QA fallback passed with synthetic `browserqa_terminal_plan_guard` data; QA data was cleaned and runserver on 8049 was stopped.
-- Graphify code-index was updated after the terminal plan guard slice: `graphify update . --no-cluster` re-extracted `135/135` code files and wrote `3902` nodes / `14067` edges. Semantic docs extraction was not rerun; do not write LLM API keys to project files.
-- Latest terminal plan action lock slice 2026-07-13: `docs/11-plan-terminal-status-contract.md` now covers all mutating plan detail actions for terminal plans. Services reject terminal plans before `revalidate_chain`, `apply_chain`, `apply_step`, sending confirmations, or marking review-conflict steps resolved; UI hides those forms for terminal plans. No DB/model/migration/ledger/payroll/schedule/billing mutation. Verification: focused tests (`6 passed`), related service/view/work-queue tests (`80 passed`), Ruff, Django check, migration dry-run, full pytest (`431 passed`), and Playwright desktop/mobile Browser QA fallback passed with synthetic `browserqa_terminal_plan_action_lock` data; QA data was cleaned and runserver on 8050 was stopped.
-- Graphify code-index was updated after the terminal plan action lock slice: `graphify update . --no-cluster` re-extracted `135/135` code files and wrote `3907` nodes / `14084` edges. Semantic docs extraction was not rerun; do not write LLM API keys to project files.
-- Latest terminal-plan confirmation queue slice 2026-07-13: dashboard/work queue email-confirmation attention now excludes confirmations tied to steps of terminal reschedule plans while keeping ordinary appointment confirmations and active-plan step confirmations. No DB/model/migration/ledger/payroll/schedule/status mutation. Verification: focused tests (`3 passed`), full view tests (`229 passed`), full pytest (`432 passed`), Ruff, Django check, migration dry-run, and Playwright desktop/mobile Browser QA fallback passed with synthetic `browserqa_terminal_confirmation_queue` data; QA data was cleaned and runserver on 8051 was stopped.
-- Graphify code-index was updated after the terminal-plan confirmation queue slice: `graphify update . --no-cluster` re-extracted `135/135` code files and wrote `3910` nodes / `14095` edges. Semantic docs extraction was not rerun; do not write LLM API keys to project files.
-- Latest terminal-plan registry attention slice 2026-07-13: `/reschedule-plans/` treats `focus` as active control only. Terminal history views remain available, but applied/cancelled plans no longer get primary attention chain/step links and show neutral "План завершен" control text; terminal status plus attention focus returns no active rows. No DB/model/migration/ledger/payroll/schedule/status mutation. Verification: focused registry tests (`5 passed`), related view/work-queue tests (`54 passed`), full pytest (`434 passed`), Ruff, Django check, migration dry-run, and Playwright desktop/mobile Browser QA fallback passed with synthetic `browserqa_terminal_plan_registry` data; QA data was cleaned and runserver on 8052 was stopped.
-- Graphify code-index was updated after the terminal-plan registry attention slice: `graphify update . --no-cluster` re-extracted `135/135` code files and wrote `3912` nodes / `14105` edges. Semantic docs extraction was not rerun; do not write LLM API keys to project files.
-- Latest terminal status constant centralization slice 2026-07-14: dashboard/work queue and registry views now reference `plan_svc.TERMINAL_PLAN_STATUSES` instead of duplicating terminal plan status lists locally. Refactor-only; no DB/model/migration/ledger/payroll/schedule/status/template behavior change. Verification: focused tests (`5 passed`), related view/work-queue tests (`54 passed`), Ruff, Django check, migration dry-run, and `git diff --check` passed with only LF->CRLF warnings. Graphify code-index was updated to `3912` nodes / `14107` edges.
-- Latest terminal-plan registry confirmation archive slice 2026-07-14: `/reschedule-plans/` terminal history rows now show neutral "Архив согласований" in the confirmations column instead of active-looking waiting/declined/approved badges. No DB/model/migration/ledger/payroll/schedule/status mutation. Verification: focused tests (`2 passed`), related view/work-queue tests (`54 passed`), full pytest (`434 passed`), Ruff, Django check, migration dry-run, and Playwright desktop/mobile Browser QA fallback passed with synthetic `browserqa_terminal_confirmation_archive` data; QA data was cleaned and runserver on 8053 was stopped. Graphify remains `3912` nodes / `14107` edges.
-- Latest terminal-plan detail confirmation archive slice 2026-07-14: `/reschedule-plans/<id>/` terminal plans now show "Архив согласований" plus muted last-status text in step confirmation cells; mutating forms remain hidden. No DB/model/migration/ledger/payroll/schedule/status mutation. Verification: focused tests (`2 passed`), related view/work-queue tests (`54 passed`), full pytest (`434 passed`), Ruff, Django check, migration dry-run, and Playwright desktop/mobile Browser QA fallback passed with synthetic `browserqa_terminal_detail_confirmation_archive` data; QA data was cleaned and runserver on 8054 was stopped. Graphify remains `3912` nodes / `14107` edges.
-- Latest terminal-plan detail archive-copy slice 2026-07-14: `/reschedule-plans/<id>/` top status/control copy now differentiates active plans from applied/cancelled read-only history. Active plans keep pre-apply guidance; applied/cancelled plans explain closed actions and preserved history. No DB/model/migration/ledger/payroll/schedule/status mutation. Verification: focused tests (`3 passed`), related view/work-queue tests (`54 passed`), full pytest (`434 passed`), Ruff, Django check, migration dry-run, secret scan, and Playwright desktop/mobile Browser QA fallback passed with synthetic `browserqa_terminal_plan_copy` data; QA data was cleaned and runserver on 8055 was stopped. Graphify remains `3912` nodes / `14107` edges.
-- Latest terminal-plan chain archive-copy slice 2026-07-14: `/reschedule-plans/<id>/#chain-<id>` now explains chains in applied/cancelled plans as saved decision history, while active plans keep pre-apply validation copy. A ready chain inside a terminal plan no longer shows the generic current-chain-status unavailable reason. No DB/model/migration/ledger/payroll/schedule/status mutation. Verification: focused tests (`4 passed`), related view/work-queue tests (`54 passed`), full pytest (`434 passed`), Ruff, Django check, migration dry-run, secret scan, and Playwright desktop/mobile Browser QA fallback passed with synthetic `browserqa_terminal_chain_copy` data; QA data was cleaned and runserver on 8056 was stopped. Graphify remains `3912` nodes / `14107` edges.
-- Latest chain-to-step detail link slice 2026-07-14: `/reschedule-plans/<id>/#chain-<id>` chain table rows now link to their detailed `#step-<id>` rows via "Шаг N" anchors, reusing existing target highlighting and hash-scroll. No DB/model/migration/ledger/payroll/schedule/status mutation. Verification: focused test (`1 passed`), related view/work-queue tests (`54 passed`), full pytest (`434 passed`), Ruff, Django check, migration dry-run, secret scan, and Playwright desktop/mobile Browser QA fallback passed with synthetic `browserqa_chain_step_links` data; QA data was cleaned and runserver on 8057 was stopped. Graphify remains `3912` nodes / `14107` edges.
-- Latest chain dependency-to-step link slice 2026-07-14: `/reschedule-plans/<id>/#chain-<id>` dependency table predecessor/successor cells now link to their detailed `#step-<id>` rows, matching chain step table navigation. No DB/model/migration/ledger/payroll/schedule/status mutation. Verification: focused test (`1 passed`), related view/work-queue tests (`54 passed`), full pytest (`434 passed`), Ruff, Django check, migration dry-run, secret scan, and Playwright desktop/mobile Browser QA fallback passed with synthetic `browserqa_chain_dependency_links` data; QA data was cleaned and runserver on 8058 was stopped. Graphify remains `3912` nodes / `14107` edges.
-- Latest terminal-plan header move-link slice 2026-07-14: `/reschedule-plans/<id>/` hides the header "К переносу" workflow link for applied/cancelled plans while preserving "К занятию"; active plans keep both links. No DB/model/migration/ledger/payroll/schedule/status mutation. Verification: focused tests (`2 passed`), related view/work-queue tests (`54 passed`), full pytest (`434 passed`), Ruff, Django check, migration dry-run, secret scan, and Playwright desktop/mobile Browser QA fallback passed with synthetic `browserqa_terminal_header_move` data; QA data was cleaned and runserver on 8059 was stopped. Graphify remains `3912` nodes / `14107` edges.
-- Latest schedule-capacity free-slot slice 2026-07-14: `operations/services/scheduling.py::find_overlaps()` and `find_free_slots()` now use the shared schedule validation contract for group children, multiple staff, room capacity, and `allow_group_sessions=false`. `ConflictReport.room_over_limit` covers empty-room group-rule breaches, and staff absence mass-reschedule suggestions now flow through `find_free_slots()` instead of a local post-filter. No DB/model migration/ledger/payroll/grants/status mutation. Verification: touched-file Ruff, Django check, migration dry-run, service tests (`116 passed`), view tests (`231 passed`), full pytest (`444 passed`). Browser QA was not run because no templates/JS/calendar copy changed in this slice. Graphify code-index updated to `3961` nodes / `14242` edges.
-- Latest financial fact foundation slice 2026-07-15: `operations/services/financial_facts.py` now provides `AppointmentChargeFact`/`appointment_charge_fact()` as the shared read-only source for charged appointment facts. Payroll and reports use it for funding source, mixed funding, billing label, single participant/ledger and grant quota fact filtering. No DB/model migration, `billing.apply_decision()`, ledger semantics, status, template, or UI mutation. Verification: Ruff, Django check, migration dry-run, service tests (`121 passed`), view tests (`231 passed`), full pytest (`449 passed`), `git diff --check` with only LF->CRLF warnings. Graphify code-index updated to `3988` nodes / `14263` edges.
-- Latest financial integrity audit contract 2026-07-15: `docs/15-financial-integrity-audit-contract.md` defines the next read-only audit source for financial inconsistencies around charge facts, participants and ledger. No code yet in this contract.
-- Latest financial integrity audit source 2026-07-15: `operations/services/financial_integrity.py` provides read-only financial issue detection for participant charge without account, charge without debit ledger, stale legacy charge with participants, stale debit ledger without charge fact, ledger/account mismatches and mixed funding info. No DB/model migration, `billing.apply_decision()`, payroll/grant semantics, status, template, or UI mutation. Verification: Ruff, Django check, migration dry-run, service tests (`127 passed`), full pytest (`455 passed`). Graphify code-index updated to `4026` nodes / `14410` edges.
-- Latest financial integrity surfacing contract 2026-07-15: `docs/16-financial-integrity-surfacing-contract.md` defines the next UI/operations slice for dashboard/work queue issue visibility. No code yet in this contract.
-- Latest financial integrity surfacing implementation 2026-07-15: dashboard now shows financial integrity metric/focus-card and includes issue count in `priority_total`; work queue now has summary item "Финансовый контроль" and section `#queue-financial-integrity` with severity/code/message plus appointment/account links. Added task-card severity CSS for warning/danger/info. No DB/model migration, no POST actions, no auto-fix/backfill, no `billing.apply_decision()`, payroll/grant/report/status semantics change. Verification: touched-file Ruff, Django check, migration dry-run, focused `WorkQueueViewTests` (`15 passed`), full pytest (`457 passed`, 1 existing django-tasks warning), `git diff --check` only LF->CRLF warnings, and Playwright desktop/mobile Browser QA fallback passed; artifacts are in `%TEMP%\rmcodex-browser-qa-financial-integrity-signal`; QA data was cleaned and runserver on 8063 was stopped. Graphify code-index updated to `4052` nodes / `14461` edges; semantic extraction was not rerun.
-- Latest financial integrity cache/triage contract 2026-07-15: `docs/17-financial-integrity-cache-and-triage-contract.md` defines the DB-backed workflow for `FinancialIntegrityCheckRun`, persisted deduplicated findings, triage statuses and runner service.
-- Latest financial integrity issue key foundation 2026-07-15: `financial_integrity_issue_key(issue)` now returns a SHA-256 fingerprint from issue code and source object ids for future persisted finding deduplication. No DB/model migration or financial semantic change. Verification: touched-file Ruff, service tests (`130 passed`), Django check, migration dry-run, full pytest (`460 passed`, 1 existing django-tasks warning), `git diff --check` only LF->CRLF warnings. Graphify code-index updated to `4076` nodes / `14497` edges; semantic extraction was not rerun.
-- Latest financial integrity cache schema/runner 2026-07-15: `FinancialIntegrityCheckRun` and `FinancialIntegrityFinding` plus migration `operations.0022` are added. `operations.services.financial_integrity_checks.run_financial_integrity_check()` persists issue findings by `issue_key`, updates run counts, resolves unseen open/acknowledged findings, and reopens resolved findings when the same key returns. Dashboard/work queue are not switched yet; no auto-fix/backfill or billing/ledger/payroll/grant/report/status semantics changed. Verification: touched-file Ruff, service tests (`135 passed`), Django check, migration dry-run, full pytest (`465 passed`, 1 existing django-tasks warning), `git diff --check` only LF->CRLF warnings. Graphify code-index updated to `4102` nodes / `14589` edges; semantic extraction was not rerun.
-- Latest financial integrity check command 2026-07-15: management command `run_financial_integrity_check` runs the persisted check runner with `run_type=management_command` and prints summary counts. No UI switch, no auto-fix/backfill, no financial semantic change. Verification: touched-file Ruff, service tests (`136 passed`), Django check, migration dry-run, full pytest (`466 passed`, 1 existing django-tasks warning). Graphify code-index updated to `4109` nodes / `14604` edges; semantic extraction was not rerun.
-- Latest financial integrity cached reader 2026-07-15: dashboard/work queue now read persisted active `FinancialIntegrityFinding` rows (`open` and `acknowledged`) instead of running synchronous `audit_appointments()` on GET. `resolved`/`ignored` findings are hidden from counts and queue. Work queue uses denormalized finding snapshot fields and links to appointment/account when FK remains. No DB/model/migration changes, no auto-fix/backfill/triage UI, no `billing.apply_decision()`, payroll/grant/report/status semantic change. Verification: touched-file Ruff, focused `WorkQueueViewTests` (`17 passed`), Django check, migration dry-run, full view tests (`235 passed`), full pytest (`468 passed`, 1 existing django-tasks warning), and Playwright desktop/mobile Browser QA fallback passed; artifacts are in `%TEMP%\rmcodex-browser-qa-financial-integrity-cache-reader`; QA data was cleaned and runserver on 8064 was stopped. Graphify code-index updated to `4112` nodes / `14639` edges; semantic extraction was not rerun.
-- Latest financial integrity triage/runner contract 2026-07-15: `docs/18-financial-integrity-triage-and-runner-contract.md` defines the next stage for finding triage actions, detail page, auditlog/event-table choice, ignore/reopen policy, and scheduled/manual runner operations. Docs-only; no code/model/migration/financial semantic changes.
-- Latest financial integrity audit/admin visibility 2026-07-15: `FinancialIntegrityCheckRun` and `FinancialIntegrityFinding` are registered in auditlog registry and Django admin. Admin visibility includes list display, filters, search, autocomplete links and date hierarchy; auditlog tests verify registry/admin presence and finding update LogEntry for `status`/`triage_note`. No model/migration/runner/financial semantic changes. Verification: touched-file Ruff, auditlog tests (`6 passed`), Django check, migration dry-run, full pytest (`470 passed`, 1 existing django-tasks warning). Graphify code-index updated to `4137` nodes / `14844` edges; semantic extraction was not rerun.
-- Latest financial integrity triage service 2026-07-15: `operations/services/financial_integrity_triage.py` provides finding-only actions `acknowledge_finding`, `return_finding_to_open`, `ignore_finding`, and `reopen_finding`; invalid transitions raise `FinancialIntegrityTriageError`, ignore requires note, all actions require actor and update triage fields. No UI/URL/template/model/migration/runner/financial semantic changes. Verification: touched-file Ruff, service tests (`144 passed`), Django check, migration dry-run, full pytest (`478 passed`, 1 existing django-tasks warning). Graphify code-index updated to `4161` nodes / `14938` edges; semantic extraction was not rerun.
-- Latest financial integrity work queue triage actions 2026-07-15: `/work-queue/#queue-financial-integrity` now exposes POST actions for active findings: accept (`open -> acknowledged`), return (`acknowledged -> open`) and ignore with required note (`open/acknowledged -> ignored`). The view uses `operations.services.financial_integrity_triage`, CSRF, staff permission and `safe_next_url`, and returns to the financial queue anchor. No model/migration/runner/billing/ledger/payroll/grant/report/status semantic changes. Verification: touched-file Ruff, focused `WorkQueueViewTests` (`23 passed`), Django check, migration dry-run, full pytest (`484 passed`, 1 existing django-tasks warning), `git diff --check`, and Playwright desktop/mobile Browser QA fallback passed; artifacts are in `%TEMP%\rmcodex-browser-qa-financial-triage-actions`; QA data was cleaned and runserver on 8065 was stopped. Graphify code-index updated to `4171` nodes / `14961` edges; semantic extraction was not rerun.
-- Latest financial integrity finding detail 2026-07-15: `/financial-integrity/findings/<id>/` shows a persisted finding detail page with source links, denormalized snapshot, triage state, payload, safe triage actions and scoped appointment recheck. Work queue cards now link to `Разбор`. No model/migration/runner/billing/ledger/payroll/grant/report/status semantic changes. Verification: touched-file Ruff, focused `WorkQueueViewTests` (`27 passed`), Django check, migration dry-run, full pytest (`488 passed`, 1 existing django-tasks warning), and Playwright desktop/mobile Browser QA fallback passed; artifacts are in `%TEMP%\rmcodex-browser-qa-financial-detail`; QA data was cleaned and runserver on 8066 was stopped. Graphify code-index updated to `4182` nodes / `15020` edges; semantic extraction was not rerun.
-- Latest financial integrity runner operations 2026-07-15: `/work-queue/#queue-financial-integrity` shows latest `FinancialIntegrityCheckRun` status/counts and failed-run error message without running full audit on GET. No full-run UI button was added; production manual/cron command is documented in `docs/PRODUCTION_DEPLOYMENT.md`. No model/migration/runner semantic/billing/ledger/payroll/grant/report/status changes. Verification already passed before this checkpoint: touched-file Ruff, focused `WorkQueueViewTests` (`30 passed`), Django check, migration dry-run, full pytest (`491 passed`, 1 existing django-tasks warning), and Playwright desktop/mobile Browser QA fallback; artifacts are in `%TEMP%\rmcodex-browser-qa-financial-runner-ops`; QA data was cleaned and runserver on 8067 was stopped. Graphify code-index updated to `4191` nodes / `15044` edges; semantic extraction was not rerun.
-- Latest financial integrity history/report contract 2026-07-15: `docs/19-financial-integrity-history-and-manager-report-contract.md` defines the DB-owner path for typed `FinancialIntegrityFindingEvent`, finding timeline and read-only manager trend report. Initial docs-only contract had Graphify code-index `4205` nodes / `15057` edges.
-- Latest financial integrity event schema/service 2026-07-15: `FinancialIntegrityFindingEvent` plus migration `operations.0023_financialintegrityfindingevent` are added; admin/auditlog registration and idempotent event service are in place. Runner records `created`/`resolved`/`reopened`, triage records `acknowledged`/`returned_to_open`/`ignored`/`reopened`, scoped recheck records `scoped_recheck`; no noisy `seen_again`, no auto-fix/backfill, no manager report UI/timeline rendering yet. Verification: Ruff, service tests (`145 passed`), auditlog tests (`6 passed`), `WorkQueueViewTests` (`30 passed`), Django check, migration dry-run, full pytest (`492 passed`, 1 existing django-tasks warning). Graphify code-index updated to `4222` nodes / `15254` edges; semantic extraction was not rerun.
-- Recovery priority now: do not re-implement `dashboard-work-queue-financial-integrity-signal`, `financial-integrity-cache-schema-and-runner`, `run_financial_integrity_check`, `financial-integrity-cache-reader`, docs/18, `financial-integrity-audit-admin-visibility`, `financial-integrity-triage-service`, `financial-integrity-work-queue-triage-actions`, `financial-integrity-finding-detail`, `financial-integrity-runner-operations`, docs/19, or `financial-integrity-event-schema-service`; they are complete. Next likely safe step is detail timeline UI from docs/19 or read-only manager trend report, not both at once. Do not modify `billing.apply_decision()`, payroll/grant semantics, report UI, appointment/payment statuses, event table or auto-fix/backfill outside docs/19 and without a single DB owner when migrations are involved. A separate manager chain dashboard remains deferred until real usage shows a concrete gap beyond registry metrics plus dashboard/work queue/detail diagnostics/deep links.
-- Latest financial integrity detail timeline UI 2026-07-15: `/financial-integrity/findings/<id>/` now shows a read-only timeline from `FinancialIntegrityFindingEvent` with event type, time, actor/system label, status transition, note and run id. GET detail does not create events. No DB/model/migration/billing/ledger/payroll/grant/report/status semantic changes. Verification: touched-file Ruff, focused `WorkQueueViewTests` (`30 passed`), Django check, migration dry-run, full pytest (`492 passed`, 1 existing django-tasks warning), and Playwright Browser QA fallback passed on desktop 1365x900 and mobile 390x844; artifacts are in `%TEMP%\rmcodex-browser-qa-financial-timeline`; QA data was cleaned and runserver on 8068 was stopped. Next safe docs/19 slice is read-only manager trend report; do not restart detail timeline UI.
-- Graphify code-index after financial integrity detail timeline UI: `4229` nodes / `15275` edges; semantic extraction was not rerun and no API key was written to project files.
-- Latest financial integrity manager trend report 2026-07-15: `/financial-integrity/report/` is implemented as a read-only manager screen over persisted `FinancialIntegrityCheckRun`, `FinancialIntegrityFinding` and `FinancialIntegrityFindingEvent`. It supports 7/30/90/custom periods, summary cards, active age buckets, code dynamics, current code/status structure, active finding links and latest runs; dashboard and work queue link to it. GET does not run audit and does not write events/runs or financial data. Verification: touched-file Ruff, focused `WorkQueueViewTests` (`33 passed`), Django check, migration dry-run `No changes detected`, full pytest (`495 passed`, 1 existing django-tasks warning), and Playwright Browser QA fallback passed on desktop 1365x900 and mobile 390x844; artifacts are in `%TEMP%\rmcodex-browser-qa-financial-report`; runserver on 8069 was stopped. Docs/19 implementation line is now complete; do not restart event schema/service, detail timeline or manager report without a concrete bug/new requirement.
-- Graphify code-index after financial integrity manager trend report: `4236` nodes / `15294` edges; semantic extraction was not rerun and no API key was written to project files.
-- Latest group payroll policy contract 2026-07-15: `docs/20-group-payroll-policy-contract.md` added as proposed docs-only contract for the remaining Stage 6 gap "для группы можно выбрать принцип начисления". It proposes additive `StaffCompensationRule` group policy/session scope fields, `PayrollAccrual` snapshots, shared compensation helper for timesheet and persisted payroll, tests and Browser QA requirements. No code/model/migration/payroll semantic changes yet. Next safe implementation requires one DB/payroll owner; do not parallelize `operations/models.py`, migrations, `operations/services/payroll.py` or `operations/services/reports.py`. Graphify code-index after contract: `4256` nodes / `15313` edges; semantic extraction was not rerun and no API key was written to project files.
-- Latest group payroll policy foundation 2026-07-15: `StaffCompensationRule` now has `session_scope`, `group_pay_policy`, `group_fixed_amount`; `PayrollAccrual` stores group policy/count/unit snapshots; migration `operations.0024` is additive with defaults and check constraints. `operations.services.compensation.calculate_staff_compensation()` is the shared formula for timesheet and persisted payroll. UI ставок and payroll sheet expose group policy/units. `FundingStaffAllocation.session_pay_amount` remains per-session grant override. Verification: Ruff, Django check, migration dry-run, focused service/view tests, full pytest `500 passed`, Playwright desktop/mobile QA passed; artifacts `%TEMP%\rmcodex-browser-qa-group-payroll-policy`. Graphify code-index after foundation: `4275` nodes / `15347` edges; semantic extraction was not rerun. Do not redo this foundation without a bug/new requirement; future grant per-recipient or fixed project payroll needs a separate contract.
-- Latest expenses/assets/contracts contract 2026-07-15: `docs/21-expenses-assets-contracts-contract.md` added as the next proposed financial domain contract. It separates center expenses from recipient `BalanceAccount`/`LedgerEntry`, proposes `Counterparty`, `CenterExpenseCategory`, `CenterExpense`, `ExpenseFundingSplit`, later `EquipmentAsset`, `ContractTemplate`, `DonationContract`, `ServiceContract`, and defines vertical slices from `expenses-foundation-schema` to reports/contracts/import preview. Code/models/migrations were not changed. Next safe code step requires one DB owner and must not change `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, billing decisions or grant semantics. Graphify code-index after contract: `4308` nodes / `15379` edges; semantic extraction was not rerun and no API key was written to project files.
-- Latest expenses foundation schema 2026-07-15: first code slice from `docs/21` is complete. Added `Counterparty`, `CenterExpenseCategory`, `CenterExpense`, `ExpenseFundingSplit`, migration `operations.0025`, admin/auditlog registration, and `operations.services.expenses` validation for split totals and `approved/paid` readiness. Existing `BalanceAccount`, `LedgerEntry`, `Payment`, payroll, billing decisions and grant semantics were not changed. Verification: Ruff, Django check, migration dry-run `No changes detected`, focused expenses/auditlog tests `13 passed`, full pytest `507 passed`. Browser QA was not required because templates/JS/product UI did not change. Graphify code-index after foundation: `4353` nodes / `15919` edges; semantic extraction was not rerun. Next safe slice: `expenses-basic-ui` or read-only manager report on top of this schema, not contracts/assets/import write-path yet.
-- Latest expenses basic UI 2026-07-15: second code slice from `docs/21` is complete without DB/model/migration changes. Added `/expenses/`, `/expenses/new/`, `/expenses/<id>/edit/`, `operations.views.expenses`, `CenterExpenseForm`, `ExpenseFundingSplitFormSet`, list/form templates, nav link, filters, summary cards, duplicate funding-source validation, and non-draft edit protection. No `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing or grant semantics changed. Verification: Ruff, Django check, migration dry-run `No changes detected`, focused expense UI tests `12 passed`, full pytest `513 passed`, Browser QA desktop/mobile passed with artifacts `%TEMP%\rmcodex-browser-qa-expenses-basic-ui`. Graphify code-index after UI: `4386` nodes / `16432` edges; semantic extraction was not rerun and no API key was written to project files. Next safe slice: `expenses-manager-report` read-only or category/counterparty product UI before report; do not start approve/pay/assets/contracts/import write-path without a separate contract.
-- Latest expenses manager report 2026-07-15: third code slice from `docs/21` is complete without DB/model/migration changes. Added `operations.services.expense_reports`, `/expenses/report/`, report template, navigation from expenses list, filters by dates/status/category/funding source, category/source/status breakdowns, unbalanced-expense control and expense links. Funding-source report uses split amounts, not full expense amounts. No `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing or grant semantics changed. Verification: Ruff, Django check, migration dry-run `No changes detected`, focused tests `18 passed`, full pytest `519 passed`, Browser QA desktop/mobile passed with artifacts `%TEMP%\rmcodex-browser-qa-expenses-manager-report`. Gemini/Google API key is stored only in user-level Windows env, not project files. Graphify code-index after report: `4421` nodes / `16565` edges; semantic extraction was not rerun in this slice. Next safe slice: `assets-registry` with one DB-owner or category/counterparty product UI; do not start approve/pay/contracts/import write-path without a separate contract.
-- Latest assets registry 2026-07-16: fourth code slice from `docs/21` is complete. Added additive model/migration `EquipmentAsset` (`operations.0026`), admin/auditlog registration, `EquipmentAssetForm`, `/assets/`, `/assets/new/`, `/assets/<id>/edit/`, list/form templates and nav link. Asset can link only to `CenterExpense` category `equipment`; non-empty inventory number is unique; writeoff/archive changes status only and does not delete purchase expense. No `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing or grant semantics changed. Verification: Ruff, Django check, migration dry-run `No changes detected`, focused asset/admin/view tests `11 passed`, full pytest `528 passed`, Browser QA desktop/mobile passed with artifacts `%TEMP%\rmcodex-browser-qa-assets-registry`. Graphify code-index after assets: `4461` nodes / `16971` edges; semantic extraction was not rerun in this slice. Next safe slice: `contracts-registry` with one DB-owner or category/counterparty product UI; do not start approve/pay/import write-path without a separate contract.
-- Latest contracts registry 2026-07-16: fifth code slice from `docs/21` is complete. Added additive models/migration `ContractTemplate`, `DonationContract`, `ServiceContract` (`operations.0027`), admin/auditlog registration, forms, `/contracts/`, create/edit routes for templates/donation/service contracts, list/form templates and nav link. Contracts can exist without files; donation contracts link `Counterparty` + `FundingSource`; service contracts link `Child` + `RecipientRepresentative` signatory. Validation covers signatory ownership/non-signer, document ownership/category, date order, positive donation amount limit and unique type+number+signed date. No `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing or grant semantics changed. Verification: Ruff, Django check, migration dry-run `No changes detected`, focused contract/admin/view tests `14 passed`, full pytest `540 passed`, Browser QA desktop/mobile passed with artifacts `%TEMP%\rmcodex-browser-qa-contracts-registry`; runserver 8077 stopped. Graphify code-index after contracts: `4531` nodes / `18018` edges; semantic extraction was not rerun. Next safe slice: `contracts-generation-and-import-preview` for generation/Excel preview without DB writes, or small category/counterparty UI; do not start approve/pay/import write-path with DB writes without a separate contract.
-- Latest contracts generation/import preview 2026-07-17: sixth and final code slice from `docs/21` is complete. Added read-only PDF downloads for `DonationContract`/`ServiceContract` and `/contracts/import-preview/` for Excel/CSV/TSV validation of counterparties, expenses, donation contracts and service contracts. Preview validates columns, dates, amounts, reference data, statuses and service-contract signer ownership; it never writes rows. PDF generation uses structured contract data/template metadata and does not save a `Document`; full Word placeholder generation remains a future separate contract. No model/migration changes and no `LedgerEntry`, `BalanceAccount`, `Payment`, payroll, billing, grant or appointment-status semantics changed. Verification: Ruff, Django check, migration dry-run `No changes detected`, focused tests `14 passed`, full pytest `547 passed`, in-app Browser checks plus full Playwright desktop/mobile E2E passed with artifacts `%TEMP%\rmcodex-browser-qa-contract-generation-preview`; runserver 8078 stopped. Graphify code-index after slice: `4570` nodes / `18329` edges; semantic extraction was not rerun and no API key was written to project files. Do not restart docs/21 slices without a concrete bug/new requirement; next safe work needs a new contract for category/counterparty product UI, Word-template legal generation, approve/pay, or import write-path.
-- Latest category/counterparty directory UI 2026-07-18: `docs/22-category-counterparty-directory-contract.md` is implemented. Added `/directories/expenses/`, forms and routes for `CenterExpenseCategory` create/edit/activate/deactivate and `Counterparty` create/edit/archive/restore. UI shows filtered category/counterparty tables, usage counts, summary and next-action; expenses/contracts/import preview now link to the directory. No models/migrations and no ledger/balance/payment/payroll/billing/grant/appointment-status semantics changed. Verification: Ruff, Django check, migration dry-run `No changes detected`, related view tests `24 passed`, full pytest `553 passed`, in-app Browser desktop/mobile QA passed with artifacts `%TEMP%\rmcodex-browser-qa-expense-directories`; runserver 8079 stopped. Graphify code-index after slice: `4614` nodes / `18538` edges; semantic extraction was not rerun and no API key was written to project files. Next safe work needs a new contract for Word-template legal generation, approve/pay, import write-path or expanded legal requisites.
-- Latest contract Word generation 2026-07-18: `docs/23-contract-word-generation-contract.md` is implemented. Added `python-docx==1.2.0`, `operations.services.contract_documents`, POST routes `/contracts/services/<id>/word/` and `/contracts/donations/<id>/word/`, and Word buttons in `/contracts/`. Service contracts generate/update a recipient `Document(category=contract)` and link it to `ServiceContract.document`; donation contracts download `.docx` without creating `Document` because the current `Document` model requires `child`. Placeholder v1 covers contract, child, representative, counterparty, funding source and donation amount fields. No models/migrations and no ledger/balance/payment/payroll/billing/grant/appointment-status semantics changed. Verification: Ruff, Django check, migration dry-run `No changes detected`, focused contract tests `13 passed`, related document/contract/directory tests `24 passed`, full pytest `557 passed`, Python Playwright desktop/mobile QA passed with artifacts `%TEMP%\rmcodex-browser-qa-contract-word`; runserver 8080 stopped. Graphify code-index after slice: `4670` nodes / `18767` edges; semantic extraction was not rerun and no API key was written to project files. Next safe work needs a separate contract for donation-document model support, legal requisites, approve/pay or import write-path.
-- Latest document template source inventory 2026-07-18: `docs/24-document-template-source-inventory.md` maps the local untracked `docshablon/` source samples to target system areas without committing raw personal/legal/banking data. `.gitignore` now excludes `docshablon/`. The inventory identifies 8 source examples across one-time/monthly donation contracts, recipient paid/free/care/certificate contracts, B2B organization service contract and photo/video consent. No code/model/migration/financial/scheduling semantics changed. `graphify update .` was attempted but refused to shrink the existing graph from 4670 nodes to 4630; no `--force` was used and raw `docshablon/` files were not semantically extracted. Next safe code slice is `template-placeholder-expansion-v2` without migrations; all DB changes for legal profiles, document targets, service specs, certificate links and B2B contracts require one migration owner.
-
-## Latest Recovery Note 2026-07-18: template-placeholder-expansion-v2
-
-- `docs/25-template-placeholder-expansion-v2-contract.md` is implemented as a no-migration slice.
-- Source samples under `docshablon/` remain local ignored PII/legal/banking examples; do not commit them, copy their raw text into docs, or run semantic extraction on them.
-- Current Word-template support includes grouped placeholders in `operations.services.contract_documents` and a grouped sidebar reference on `ContractTemplate` create/edit pages.
-- Supported v2 placeholders are replaced during `.docx` generation; not-yet-modeled legal/spec/certificate placeholders become `_______________`.
-- New uploaded contract template files must be `.docx`; legacy `.doc` files must be converted outside the app first.
-- Verification for the latest code slice: Ruff format/check, Django check, migration dry-run `No changes detected`, focused/related contract tests `24 passed`, full pytest `561 passed`, and Python Playwright desktop/mobile QA for `/contracts/templates/new/`.
-- Graphify should stay an index only. The previous `graphify update .` refused shrink `4670 -> 4630`; do not use `--force` or semantic extraction on raw `docshablon/` without an explicit sanitized corpus decision.
-- Next high-value DB-owner contract: center legal profile plus generalized document targets/signed snapshots. Keep donation-document storage, B2B contracts, consents, acts, approve/pay and import write-path separate unless a new contract explicitly combines them.
-
-## Latest Recovery Note 2026-07-18: document-target-foundation
-
-- `docs/26-legal-document-targets-and-center-profile-contract.md` is added and its first vertical slice is implemented.
-- Migration `operations.0028_document_counterparty_document_target_type_and_more` expands `Document` with `target_type`, nullable `child` (`SET_NULL`) and optional `counterparty`.
-- Existing recipient documents remain valid through default `target_type=recipient`; validation/DB constraints require `child` for recipient documents and `counterparty` for counterparty documents.
-- `/documents/` and `/documents/new/` now work for recipient, center, counterparty and generic contract documents instead of assuming every document has a `Child`.
-- Service contract Word generation still saves a recipient contract document for the contract child.
-- Donation contract Word generation now saves/updates a counterparty contract document and links it to `DonationContract.document`; PDF downloads remain read-only.
-- No ledger/balance/payment/billing/payroll/grant/schedule/appointment-status semantics changed.
-- Verification: Ruff format/check, Django check, migration dry-run `No changes detected`, focused document/contract tests `31 passed`, full pytest `566 passed`, Python Playwright desktop/mobile QA for documents list/form with artifacts `%TEMP%\rmcodex-browser-qa-document-targets`; runserver `8082` stopped.
-- Graphify code-index after this slice: `4731` nodes / `18868` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and must not be sent to semantic extraction.
-- Next safe slice: `center-legal-profile-foundation` from docs/26. Signed legal snapshots should follow after center profile. B2B/consents/acts, approve/pay and import write-path remain separate contracts.
-
-## Latest Recovery Note 2026-07-18: center-legal-profile-foundation
-
-- Second slice from `docs/26-legal-document-targets-and-center-profile-contract.md` is implemented.
-- Migration `operations.0029_centerlegalprofile` adds `CenterLegalProfile` with one active profile constraint.
-- Product UI `/center/legal-profile/` stores center legal, license, address, contact and bank requisites; base navigation has item "Центр".
-- `center.*` Word placeholders now use the active profile for new service/donation contract generation; blank/missing fields keep blank fallback.
-- Already generated files are not rewritten and no signed snapshot layer exists yet.
-- No ledger/balance/payment/billing/payroll/grant/schedule/appointment-status semantics changed.
-- Verification: Ruff check, Django check, migration dry-run `No changes detected`, related focused tests `43 passed`, full pytest `571 passed`, Python Playwright desktop/mobile QA for `/center/legal-profile/` with artifacts `%TEMP%\rmcodex-browser-qa-center-profile`; runserver `8083` stopped.
-- Graphify code-index after this slice: `4757` nodes / `19251` edges. Semantic extraction was not rerun.
-- Next safe slice: `contract-signed-snapshot` from docs/26 before B2B contracts, consents, acts or legally significant signed versions.
-
-## Latest Recovery Note 2026-07-18: contract-signed-snapshot
-
-- Third slice from `docs/26-legal-document-targets-and-center-profile-contract.md` is implemented.
-- Migration `operations.0030_contractlegalsnapshot` adds `ContractLegalSnapshot`.
-- Each generated contract `Document` can have one legal snapshot. The snapshot links to exactly one `ServiceContract` or `DonationContract`, stores `contract_kind`, uses `PROTECT` for document/contract links and stores JSON snapshots of contract, center, recipient, representative, counterparty, funding source and template values.
-- Service and donation Word generation creates or updates this snapshot after saving/updating the related `Document`; repeated Word generation updates the same document snapshot instead of creating duplicates.
-- Generation rejects a linked `Document` that already has a legal snapshot for another contract, before rewriting the file.
-- `/contracts/` shows a compact "реквизиты зафиксированы" status for files with snapshots.
-- This is not yet an immutable signed-version archive: signed file versioning, signature status, B2B contracts, consents and acts remain separate future contracts.
-- No ledger/balance/payment/billing/payroll/grant/schedule/appointment-status semantics changed.
-- Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused snapshot/document/contract/audit tests `37 passed`, full pytest `574 passed`, Python Playwright desktop/mobile QA for `/contracts/` with artifacts `%TEMP%\rmcodex-browser-qa-contract-snapshots`; runserver `8094` stopped.
-- Graphify code-index after this slice: `4790` nodes / `19559` edges. Semantic extraction was not rerun and raw `docshablon/` remains ignored/private.
-- Next safe slice: explicit contract for `legal-template-families` or immutable signed versions. Do not start B2B/consents/acts/approve-pay/import write-path without a new contract.
-
-## Latest Recovery Note 2026-07-18: legal-template-families
-
-- `docs/27-legal-template-families-contract.md` is added and its first slice is implemented.
-- Migration `operations.0031_alter_contracttemplate_template_type` expands `ContractTemplate.TemplateType` choices without changing existing stored values.
-- New families: recipient free service, recipient care, recipient certificate/maternity-capital, project donation, B2B organization service, photo/video consent and acts.
-- Shared allowlists on `ContractTemplate` drive both model validation and form querysets.
-- Current `ServiceContract` accepts only recipient-service families; current `DonationContract` accepts only donation/project/sponsor families. B2B/consent/act templates are catalog-only until separate domain contracts exist.
-- No ledger/balance/payment/billing/payroll/grant/schedule/appointment-status semantics changed.
-- Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused contract tests `33 passed`, full pytest `579 passed`, Python Playwright desktop/mobile QA for `/contracts/templates/new/` with artifacts `%TEMP%\rmcodex-browser-qa-template-families`; runserver `8095` stopped.
-- Graphify code-index after this slice: `4810` nodes / `19584` edges. Semantic extraction was not rerun.
-- Next safe slice: representative/child legal fields, service-contract spec/funding, or another explicit legal-document contract. Do not start B2B/consent/act generation without separate contracts.
-
-## Latest Recovery Note 2026-07-18: representative-child-legal-fields
-
-- `docs/28-representative-child-legal-fields-contract.md` is added and implemented.
-- Migration `operations.0032_child_registration_address_child_residential_address_and_more` adds additive legal fields only.
-- `ParentGuardian` now stores passport series/number, issuing authority/date and registration address. `Child` now stores registration and residential addresses.
-- `RepresentativeForm` and `RecipientForm` expose these fields; recipient detail shows registration/residential addresses.
-- Service-contract Word placeholders fill representative passport/address and recipient address fields; `ContractLegalSnapshot` stores the same legal values at generation time.
-- No ledger/balance/payment/billing/payroll/grant/schedule/appointment-status semantics changed.
-- Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused recipient/contract tests `44 passed`, full pytest `582 passed`, Python Playwright desktop/mobile QA with artifacts `%TEMP%\rmcodex-browser-qa-legal-fields`; runserver `8096` stopped.
-- Graphify code-index after this slice: `4826` nodes / `19603` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
-- Next safe slice: `service-contract-spec-and-funding` or `certificate-contract-link`. Keep B2B/consent/act generation, approve/pay and import write-path under separate contracts.
-
-## Latest Recovery Note 2026-07-18: service-contract-spec-and-funding
-
-- `docs/29-service-contract-spec-and-funding-contract.md` is added and implemented.
-- Migration `operations.0033_servicecontractline_servicecontract_funding_source_and_more` adds nullable `ServiceContract.funding_source` and `ServiceContractLine`.
-- `ServiceContractLine` stores service, legal service name, quantity, unit, unit price, period, sort order and notes. Line amount is computed, not stored.
-- Service contract create/edit saves line formset atomically with the contract and ignores untouched blank extra rows with default unit.
-- `/contracts/` shows service-contract funding source, spec summary and computed contract amount.
-- Word generation fills service-contract `funding_source.*`, `contract.amount`, `service_spec.rows` and first-line `service_spec.*`; `ContractLegalSnapshot` stores funding source, service lines and total amount.
-- No ledger/balance/payment/billing/payroll/grant/schedule/appointment-status semantics changed.
-- Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused contract tests `40 passed`, full pytest `588 passed`, Python Playwright desktop/mobile QA with artifacts `%TEMP%\rmcodex-browser-qa-service-contract-spec`; runserver `8097` stopped.
-- Graphify code-index after this slice: `4868` nodes / `20003` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
-- Next safe slice: `certificate-contract-link`, immutable signed-file archive, or a separate B2B/consent/act contract. Do not connect service contract lines to ledger/import write-path without a new contract.
-
-## Latest Recovery Note 2026-07-18: certificate-contract-link
-
-- `docs/30-certificate-contract-link-contract.md` is added and implemented.
-- Migration `operations.0034_servicecontract_certificate_and_more` adds nullable `ServiceContract.certificate` and a certificate/status index.
-- `ServiceContract.clean()` rejects certificates that belong to another child.
-- `ServiceContractForm` filters certificate choices by selected child on bound POST and edit forms; the field remains optional for drafts.
-- `Certificate` is registered in Django admin so `ServiceContractAdmin.autocomplete_fields` can reference it safely.
-- `/contracts/` shows certificate type and number for linked service contracts.
-- Word generation fills `certificate.type`, `certificate.number`, `certificate.total_amount`, `certificate.remaining_amount`, `certificate.valid_from`, `certificate.valid_until`; `certificate.payer_name` remains blank fallback until payer modeling exists.
-- `ContractLegalSnapshot.contract_snapshot["certificate"]` stores certificate id/type/number/amounts/dates.
-- No certificate balance mutation, ledger/balance/payment/billing/payroll/grant/schedule/appointment-status semantics changed.
-- Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused contract tests `43 passed`, full pytest `591 passed`, Python Playwright desktop/mobile QA with artifacts `%TEMP%\rmcodex-browser-qa-certificate-contract-link`; runserver `8098` stopped.
-- Graphify code-index after this slice: `4885` nodes / `20203` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
-- Next safe slice: immutable signed-file archive, B2B contract contract, consent/act generation contract, or certificate payer/source modeling. Do not mutate certificate остатки or ledger from contracts without a new contract.
-
-## Latest Recovery Note 2026-07-18: immutable-contract-signed-file-archive
-
-- `docs/31-immutable-contract-signed-file-archive-contract.md` is added and implemented.
-- Migration `operations.0035_contractsignedfile` adds `ContractSignedFile`.
-- `ContractSignedFile` stores one immutable signed archive for exactly one service/donation contract: source `Document`, archive file, original filename, content type, size, SHA-256, signed date, uploader, status and frozen snapshot copies.
-- `ContractSignedFile.save()` prevents changes to archived contract/file/checksum/snapshot fields after creation; void status remains the non-destructive correction path.
-- `archive_service_contract_signed_file()` and `archive_donation_contract_signed_file()` require an existing generated contract `Document` with `ContractLegalSnapshot`.
-- `/contracts/` shows the latest active signed archive link and POST archive action for service/donation contracts with a snapshot; `/contracts/signed-files/<id>/download/` downloads the archive.
-- No ledger/balance/payment/billing/payroll/grant/certificate-balance/schedule/appointment-status semantics changed.
-- Verification: Ruff check, Django check, migration dry-run `No changes detected`, focused contract tests `49 passed`, full pytest `597 passed`, in-app Browser desktop/mobile QA for service/donation archive links; in-app Browser cannot handle downloads, download route is covered by Django test. Runserver `8099` stopped and synthetic `BQA-SIGNED-*` QA data cleaned.
-- Graphify code-index after this slice: `4932` nodes / `20613` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
-- Next safe slice: B2B organization-service contract contract, consent template generation, legal acts, or certificate payer/source modeling. Keep approve/pay/import write-path and certificate-balance mutation under separate contracts.
-
-## Latest Recovery Note 2026-07-18: organization-service-contract
-
-- `docs/32-organization-service-contract-contract.md` is added and implemented.
-- Migration `operations.0036_organizationservicecontract_and_more` adds `OrganizationServiceContract` and `OrganizationServiceContractLine`.
-- `ContractLegalSnapshot` and `ContractSignedFile` now support `contract_kind=organization_service` and nullable `organization_contract`; constraints still require exactly one target contract.
-- B2B contracts link a `Counterparty`, optional `FundingSource`, organization-service template and service specification lines. They do not require `Child` or `RecipientRepresentative`.
-- Word generation creates/updates counterparty `Document(category=contract)`, writes a legal snapshot and fills center/counterparty/funding/contract/service-spec placeholders.
-- `/contracts/` has a separate B2B block with create/edit, Word, PDF, archive and signed archive download link.
-- No ledger/balance/payment/billing/payroll/grant/certificate-balance/schedule/appointment-status/acts/import semantics changed.
-- Verification: Ruff, Django check, migration dry-run `No changes detected`, focused contract/view tests `55 passed`, full pytest `603 passed`, in-app Browser desktop/mobile QA for B2B list/snapshot/archive link; in-app Browser cannot handle download events, download routes are covered by Django tests. Synthetic `BQA-ORG-*` QA data was cleaned and runserver `8100` stopped.
-- Graphify code-index after this slice: `4996` nodes / `21474` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
-- Next safe slice: consent template generation, legal acts, certificate payer/source modeling, or another explicit contract. Do not connect B2B contracts to payments, ledger, balances, payroll, grants, schedules or import write-path without a new contract.
-
-## Latest Recovery Note 2026-07-19: consent-template-generation
-
-- `docs/33-consent-template-generation-contract.md` is added and implemented.
-- Migration `operations.0037_consent_signatory_representative_consent_template_and_more` adds optional `Consent.signatory_representative` and optional `Consent.template`.
-- `Consent` validates same-recipient signatory, consent template allowlist, recipient consent document ownership and date order.
-- `ContractTemplate.consent_template_types()` allows `consent_photo_video` and `other`.
-- Word generation for consent creates/updates recipient `Document(category=consent)`, links it to `Consent.document` and fills center/child/representative/consent placeholders.
-- `/consents/` shows signatory, template, document link and POST `Word` action.
-- No consent signed archive/snapshot, new `DocumentTemplate`, acts, schedule blocking, email/public consent flows, ledger/balance/payment/billing/payroll/grant/status/import semantics changed.
-- Verification: Ruff, Django check, migration dry-run `No changes detected`, focused legal/consent tests `26 passed`, full pytest `607 passed`, in-app Browser desktop/mobile QA for consent list and Word-triggered document link; in-app Browser cannot handle download events, download routes are covered by Django tests. Synthetic `BQAConsent*` QA data was cleaned and runserver `8101` stopped.
-- Graphify code-index after this slice: `5028` nodes / `21578` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
-- Next safe slice: legal acts, signed archive/snapshot for consents, certificate payer/source modeling, or another explicit contract. Do not connect consents to schedule blocking/public permissions/finance/grants/import write-path without a new contract.
-
-## Latest Recovery Note 2026-07-19: contract-acts-generation
-
-- `docs/34-contract-acts-generation-contract.md` is added and implemented.
-- Migration `operations.0038_alter_document_category_contractact` adds `Document.Category.ACT` and `ContractAct`.
-- `ContractAct` links exactly one `ServiceContract` or `OrganizationServiceContract`; it stores act number/date/period/amount/status/template/document and snapshot JSON fields.
-- Act templates are limited to `ContractTemplate.ACT` and `OTHER`.
-- Word generation creates/updates `Document(category=act)`: recipient document for service-contract acts and counterparty document for B2B acts.
-- Act Word fills `act.*` plus existing center/contract/recipient/representative/counterparty/funding/service-spec placeholders and updates act snapshot fields.
-- `/contracts/` has an acts block, create/edit routes and POST `Word` action.
-- No immutable signed archive for acts, consent archive, appointment linkage, ledger/balance/payment/billing/payroll/grant/status/import semantics changed.
-- Verification passed: Ruff touched Python/migration, Django check, migration dry-run `No changes detected`, focused contract/view tests `62 passed`, full pytest `612 passed`, Playwright desktop/mobile QA for acts; QA data and generated media file were cleaned and runserver `8102` stopped.
-- Graphify code-index after this slice: `5086` nodes / `22128` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
-- Save-point commit created: `48c491a feat: add contract act generation`; final secret scan and `git diff --check` passed before commit.
-
-## Latest Recovery Note 2026-07-19: act-signed-file-archive
-
-- `docs/35-act-signed-file-archive-contract.md` is added and implemented.
-- Migration `operations.0039_contractactsignedfile` adds `ContractActSignedFile`.
-- `ContractActSignedFile` stores immutable signed archive copies for generated acts: one `ContractAct`, source `Document(category=act)`, archive file, original filename, content type, size, SHA-256, signed date, uploaded user, active/void status and frozen snapshots.
-- Source documents are validated against act ownership. Immutable fields cannot be changed after creation; correction path is `status=void` with `void_reason`.
-- `/contracts/` shows latest active signed archive links for acts and POST `Зафиксировать` after Word generation/snapshot; `/contracts/acts/signed-files/<id>/download/` serves archive files.
-- Existing `ContractSignedFile` for contracts was not changed.
-- No appointment linkage, act payment workflow, ledger/balance/payment/billing/payroll/grant/status/schedule/import semantics changed.
-- Verification passed: Ruff touched Python/migration, Django check, migration dry-run `No changes detected`, focused contract/view tests `66 passed`, full pytest `616 passed`, Playwright desktop/mobile QA for act archive UI/download; synthetic `BQA-ACTARCH-*` data was cleaned and runserver `8103` stopped.
-- Graphify code-index after this slice: `5122` nodes / `22406` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private.
-- Next safe work: signed archive/snapshot for consents, certificate payer/source modeling, or another explicit contract. Do not connect acts to appointments, finance, grants, payroll or import write-path without a new contract.
-
-## Latest Recovery Note 2026-07-19: consent-signed-file-archive
-
-- `docs/36-consent-signed-file-archive-contract.md` is added and implemented.
-- Migration `operations.0040_consentsignedfile` adds `ConsentSignedFile`.
-- `ConsentSignedFile` stores immutable signed archive copies for generated consents: one `Consent`, source recipient `Document(category=consent)`, archive file, original filename, content type, size, SHA-256, signed date, uploaded user, active/void status and frozen consent/center/recipient/representative/template snapshots.
-- Source documents are validated against consent recipient ownership. Immutable fields cannot be changed after creation; correction path is `status=void` with `void_reason`.
-- `/consents/` shows latest active signed archive links for consents and POST `Зафиксировать` after Word generation; `/consents/signed-files/<id>/download/` serves archive files.
-- Existing `ContractSignedFile` for contracts and `ContractActSignedFile` for acts were not changed.
-- No schedule blocking, public consent flow, appointment linkage, ledger/balance/payment/billing/payroll/grant/status/import semantics changed.
-- Verification passed: Ruff touched Python/migration, Django check, migration dry-run `No changes detected`, focused model/view tests `34 passed`, full pytest `620 passed`, Playwright desktop/mobile QA for consent archive UI/download; synthetic `BQA-CONSENTARCH*` data was cleaned and runserver `8104` stopped.
-- Graphify code-index after this slice: `5157` nodes / `22691` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: certificate payer/source modeling, external signed-file upload flow, consent legal snapshot if needed, or another explicit contract. Do not connect consents to schedule blocking/public permissions/finance/grants/import write-path without a new contract.
-
-## Latest Recovery Note 2026-07-19: external-signed-file-upload
-
-- `docs/37-external-signed-file-upload-contract.md` is added and implemented.
-- No new migrations were created.
-- `SignedArchiveUploadForm` validates uploaded signed files: `.pdf`, `.docx`, `.jpg`, `.jpeg`, `.png`, max 15 МБ.
-- Existing archive POST actions for service/donation/B2B contracts, acts and consents now accept optional `signed_file`: no file keeps generated-Word copy behavior; attached file archives the uploaded payload.
-- Uploaded archive files keep the same source generated `Document` and frozen snapshots; original filename/content type/size/SHA-256 come from the uploaded file.
-- `/contracts/` and `/consents/` show compact upload controls next to `Зафиксировать`; download routes return uploaded payloads.
-- No models/migrations, archive immutability, ledger/balance/payment/billing/payroll/grant/status/schedule/import semantics changed.
-- Verification passed: Ruff touched Python, Django check, migration dry-run `No changes detected`, focused upload/view tests `13 passed`, full pytest `624 passed`, Playwright desktop/mobile QA for service contract + consent upload/download; synthetic `BQA-SIGNED-UPLOAD*` data was cleaned and runserver `8105` stopped.
-- Graphify code-index after this slice: `5186` nodes / `22856` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: certificate payer/source modeling, consent legal snapshot if needed, or another explicit contract. Do not connect document uploads to finance/schedule/grants/public permission flows/import write-path without a new contract.
-
-## Latest Recovery Note 2026-07-19: certificate-payer-source
-
-- `docs/38-certificate-payer-source-contract.md` is added and implemented.
-- Migration `operations.0041_certificate_funding_source_certificate_payer_name_and_more` adds nullable certificate payer/source fields and lookup indexes.
-- `Certificate` now has nullable `funding_source`, `payer_representative`, `payer_name` plus lookup indexes.
-- `Certificate.clean()` rejects a payer representative from another recipient; `payer_display_name` resolves explicit payer name, then representative, then funding source.
-- Word generation fills `certificate.funding_source`, `certificate.payer_name`, `certificate.payer_relationship` and stores payer/source details in legal snapshots.
-- `/contracts/` shows the certificate payer for linked service contracts when set; Django admin shows/searches source and payer fields; `Certificate` is registered in auditlog.
-- No certificate balance mutation, ledger/balance/payment/billing/payroll/grant/schedule/status/import semantics changed.
-- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused contract/view/auditlog tests, full pytest `626 passed`, Playwright desktop/mobile QA for `/contracts/`.
-- Browser QA synthetic `BQA-CERTPAYER*` data was cleaned and local runserver `8106` stopped.
-- Graphify code-index after this slice: `5206` nodes / `22885` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: consent legal snapshot if needed, certificate CRUD/import preview, or another explicit contract. Do not connect certificates to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.
-
-## Latest Recovery Note 2026-07-19: recipient-certificate-crud
-
-- `docs/39-recipient-certificate-crud-contract.md` is added and implemented.
-- No migrations were created.
-- `CertificateForm` fixes the recipient from the route, filters payer representatives by that recipient and validates amount/date consistency.
-- Added `recipient_certificate_create` and `recipient_certificate_edit` routes/views.
-- Recipient detail now has a certificate create action and `recipient-certificates-table` with type, number, source, payer, balance, validity and edit action.
-- No certificate balance mutation, ledger/balance/payment/billing/payroll/grant/schedule/status/import semantics changed.
-- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused recipient tests `6 passed`, full pytest `630 passed`, Playwright desktop/mobile QA for recipient detail/create/edit.
-- Browser QA synthetic `BQA-CERTCRUD*` data was cleaned and local runserver `8107` stopped.
-- Graphify code-index after this slice: `5229` nodes / `22978` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: consent legal snapshot if needed, certificate import preview, or another explicit contract. Do not connect certificates to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.
-
-## Latest Recovery Note 2026-07-19: certificate-import-preview
-
-- `docs/40-certificate-import-preview-contract.md` is added and implemented.
-- No migrations were created.
-- `/contracts/import-preview/` now supports type `certificates` / `Сертификаты`.
-- Preview maps certificate columns by Russian labels and English aliases.
-- Row validation checks recipient lookup, certificate type, amounts, date order, funding source existence and payer representative ownership.
-- Duplicate certificate number for a recipient is a warning.
-- Preview is read-only: it does not create `Certificate` and does not mutate balances, payments, ledger, payroll, grants, schedules or statuses.
-- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused import-preview tests `9 passed`, full pytest `632 passed`, Playwright desktop/mobile QA for certificate CSV upload.
-- Browser QA synthetic `BQA-CERTIMPORT*` data was cleaned and local runserver `8108` stopped.
-- Graphify code-index after this slice: `5245` nodes / `23031` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: consent legal snapshot if needed, certificate import write-path only after a separate explicit contract, or another approved vertical slice. Do not connect certificate preview to balance mutation, payments, ledger, grants, schedules or import write-path without a new contract.
-
-## Latest Recovery Note 2026-07-19: certificate-import-write-path-contract
-
-- `docs/41-certificate-import-write-path-contract.md` is added as a proposed DB-owner contract.
-- Code, models, migrations, templates and tests were not changed in this docs-only slice.
-- Contract requires a two-step persisted import flow: preview creates `ImportBatch`/`ImportBatchRow`; explicit apply creates `Certificate` rows atomically.
-- The proposed first write-path must be idempotent: repeated apply on one batch must not create duplicates.
-- Existing certificate with same recipient and non-empty number should be skipped, not updated or duplicated.
-- Autocreating recipients, representatives, funding sources, contracts, balance accounts or payments from the certificate import is out of scope.
-- Any future `Certificate` DB unique constraint on number is marked potentially dangerous and separate from the first write-path.
-- Graphify code-index after this docs-only slice: `5262` nodes / `23047` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-
-## Latest Recovery Note 2026-07-19: import-batch-foundation
-
-- First DB-owner slice from `docs/41-certificate-import-write-path-contract.md` is implemented.
-- Migration `operations.0042_importbatch_importbatchrow_and_more` adds `ImportBatch` and `ImportBatchRow`.
-- `ImportBatch` stores kind/status, original filename, source SHA-256, uploader/apply metadata, row counters, header snapshot and error summary.
-- `ImportBatchRow` stores row number/status, raw/normalized values, errors, warnings and future target reference fields.
-- New import models are registered in Django admin and auditlog.
-- Certificate preview now persists batch + rows only for `certificates`; other preview types remain unchanged.
-- `/contracts/import-preview/` shows saved batch summary after certificate preview.
-- Apply/write-path is not implemented yet: no `Certificate`, `BalanceAccount`, `Payment`, `LedgerEntry`, payroll, grants, schedules or statuses are created/changed from the file.
-- Verification passed: Ruff touched Python and full `operations`, Django check, migration dry-run `No changes detected`, focused import/audit tests `9 passed`, full pytest `632 passed`, Playwright desktop/mobile QA for persisted certificate preview batch.
-- Browser QA synthetic `BQA-IMPORTBATCH*` data was cleaned and local runserver `8109` stopped.
-- Graphify code-index after this slice: `5282` nodes / `23504` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: certificate import apply endpoint using persisted batch rows, or another explicit vertical slice. Apply must remain idempotent and must not create finance/schedule facts.
-
-## Latest Recovery Note 2026-07-19: certificate-import-apply
-
-- Second write-path slice from `docs/41-certificate-import-write-path-contract.md` is implemented without new migrations.
-- `apply_certificate_import_batch()` applies only persisted certificate batches and uses atomic row/batch locking.
-- Invalid-row batches are blocked; terminal batches are idempotent and do not duplicate certificates.
-- Valid rows create `Certificate` and mark row targets; duplicate existing child+number rows are skipped.
-- `/imports/batches/<id>/apply/` is POST-only from admin/staff context and requires hold-confirm hidden `confirm_apply=1`.
-- `/contracts/import-preview/` shows the apply hold button only for valid saved certificate preview batches.
-- No `BalanceAccount`, `Payment`, `LedgerEntry`, payroll, grants, schedules, appointment billing/statuses or contracts are created/changed by apply.
-- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused import/view tests `59 passed`, full pytest `638 passed`, Playwright desktop/mobile QA for preview + hold-to-confirm apply. Synthetic `BQA-CERT-APPLY-*` data was cleaned and runserver `8110` stopped.
-- Graphify code-index after this slice: `5308` nodes / `23671` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: batch result/history links or a separate certificate-balance contract. Do not connect certificates to balances, payments, ledger, grants, schedules or appointment statuses without a new contract.
-
-## Latest Recovery Note 2026-07-19: import-batch-detail
-
-- Follow-up UI slice from `docs/41-certificate-import-write-path-contract.md` is implemented without new migrations.
-- Added read-only `/imports/batches/<id>/` detail page with batch counters and row-level statuses/errors/warnings.
-- Applied certificate rows resolve target `Certificate` and link to the recipient card `#recipient-certificates`.
-- Apply endpoint redirects to detail after success, validation error or missing hold confirmation.
-- `/contracts/import-preview/` links saved preview batches to detail; detail keeps hold-to-confirm apply when applicable.
-- No balance/payment/ledger/payroll/grant/schedule/status/contract semantics changed.
-- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `ContractRegistryViewTests` `50 passed`, full pytest `639 passed`, Playwright desktop/mobile QA for preview -> detail -> hold apply -> certificate target link. Synthetic `BQA-CERT-DETAIL-*` data was hard-cleaned and runserver `8111` stopped.
-- Graphify code-index after this slice: `5320` nodes / `23709` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: batch list/history page across many imports or a separate certificate-balance contract.
-
-## Latest Recovery Note 2026-07-19: import-batch-list
-
-- Follow-up UI slice from `docs/41-certificate-import-write-path-contract.md` is implemented without new migrations.
-- Added read-only `/imports/batches/` list page for recent import batches.
-- List shows latest 100 batches with type/file/status/row counters/applied counts/dates and links to detail.
-- `/contracts/import-preview/` links to import history; detail links back to all batches.
-- No balance/payment/ledger/payroll/grant/schedule/status/contract semantics changed.
-- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `ContractRegistryViewTests` `51 passed`, full pytest `640 passed`, Playwright desktop/mobile QA for preview -> batch list -> detail. Synthetic batch-list data was cleaned and runserver `8112` stopped.
-- Graphify code-index after this slice: `5326` nodes / `23716` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: filtering/search/pagination for long import history or a separate certificate-balance contract.
-
-## Latest Recovery Note 2026-07-19: certificate-balance-ledger-contract
-
-- Added docs-only `docs/42-certificate-balance-ledger-contract.md`.
-- Decision: `Certificate` remains legal/source data; spendable current остаток should be derived from linked `BalanceAccount.current_balance`.
-- Proposed model: nullable one-to-one `Certificate.balance_account` with same-child, money-unit and funding consistency validation.
-- Proposed service: idempotently create linked money account with `initial_amount=0` and opening `LedgerEntry(CREDIT)`; do not create `Payment`.
-- Appointment charging should debit the linked account through existing billing flow and must not mutate `Certificate.remaining_amount`.
-- Deferred risks: renaming `remaining_amount`, auto-backfill, DB amount constraints without preflight and certificate-number uniqueness.
-- Code/models/migrations/templates/tests were not changed in this docs-only slice.
-- Graphify code-index after this slice: `5344` nodes / `23733` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-
-## Latest Recovery Note 2026-07-19: certificate-balance-ledger first slice
-
-- First DB-owner slice from `docs/42-certificate-balance-ledger-contract.md` is implemented.
-- Migration `operations.0043_certificate_balance_account_and_more` adds nullable one-to-one `Certificate.balance_account`.
-- `Certificate.effective_remaining_amount` uses linked `BalanceAccount.current_balance`; `Certificate.remaining_amount` remains the imported/start snapshot and is not mutated by appointment debits.
-- `operations.services.certificates.ensure_certificate_balance_account()` atomically and idempotently creates a linked money account with `initial_amount=0` and opening `LedgerEntry(CREDIT)`.
-- Creating the account does not create `Payment`, appointment debit, payroll, grant allocation, contract, schedule or status changes.
-- Recipient detail has a POST-only hold-to-confirm action to create the linked account; linked certificates show account link and effective current balance.
-- Certificate panel spans the recipient detail grid on desktop so the financial action is visible.
-- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused related tests `81 passed`, full pytest `648 passed`, Playwright desktop/mobile Browser QA fallback. Synthetic `BQA-CERT-BALANCE-*` data was cleaned and runserver `8113` stopped.
-- Graphify code-index after this slice: `5374` nodes / `24033` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: optional certificate account labeling in global balance screens or a separate preflight/backfill contract. Do not auto-backfill, rename `remaining_amount`, add amount/number constraints or change billing semantics without a new contract.
-
-## Latest Recovery Note 2026-07-19: certificate-balance-backfill-preflight
-
-- `docs/43-certificate-balance-backfill-preflight-contract.md` is added and implemented as a read-only safety slice.
-- `operations.services.certificates.certificate_balance_preflight_report()` counts total/linked/unlinked certificates, positive-balance backfill candidates, zero-balance unlinked certificates, data issues and duplicate non-empty certificate numbers per recipient.
-- Management command `audit_certificate_balance_backfill` prints the report with optional `--details` and `--sample-limit`.
-- Preflight issue codes cover missing funding source, negative amounts, remaining greater than total, invalid dates, linked account child/unit/funding mismatches and duplicate certificate numbers.
-- The command output uses technical IDs/sample groups and no recipient names.
-- The preflight does not create `BalanceAccount`, `LedgerEntry`, `Payment`, appointments, payroll facts, grant allocations, contracts, schedules or status changes.
-- Local command run on the current database found 2 existing certificates without funding source and changed no records.
-- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `CertificateBalancePreflightTests` `2 passed`, full pytest `650 passed`.
-- Browser QA was not needed because there are no UI changes.
-- Graphify code-index after this slice: `5402` nodes / `24122` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: run the command on production/staging, then write a separate backfill contract if the counts are acceptable. Do not auto-backfill, rename `remaining_amount`, add amount/number constraints or change billing semantics without that next contract.
-
-## Latest Recovery Note 2026-07-19: certificate-balance-backfill-command
-
-- `docs/44-certificate-balance-backfill-command-contract.md` is added and implemented.
-- `operations.services.certificates.backfill_certificate_balance_accounts()` supports dry-run/apply, optional scoped certificate IDs and idempotent account creation through `ensure_certificate_balance_account()`.
-- Management command `backfill_certificate_balance_accounts` is dry-run by default.
-- Real writes require `--apply --confirm`; preflight issues block apply unless `--allow-existing-issues` is passed.
-- Apply creates linked money `BalanceAccount` plus opening `LedgerEntry(CREDIT)` only for valid unlinked positive-balance certificates.
-- Zero-balance certificates are skipped in this slice.
-- The command does not mutate `Certificate.remaining_amount` and does not create `Payment`, appointments, payroll, grants, contracts, schedules or status changes.
-- Local dry-run on the current database reported `0` candidates and existing preflight issues; real apply was not run.
-- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `CertificateBalancePreflightTests` `6 passed`, full pytest `654 passed`.
-- Browser QA was not needed because there are no UI changes.
-- Graphify code-index after this slice: `5433` nodes / `24183` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: run dry-run/preflight on staging/production and review counts before any apply. Still deferred: zero-balance policy, data cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.
-
-## Latest Recovery Note 2026-07-19: certificate-account-labels
-
-- `docs/45-certificate-account-labels-contract.md` is added and implemented as a no-migration UI/read-only slice.
-- `BalanceAccount` has read-only `certificate_link_label` and `is_certificate_linked` for accounts connected through `Certificate.balance_account`.
-- `BalanceAccount.__str__()` is unchanged to keep legacy report/audit/export labels stable.
-- `/balances/` and recipient detail show a compact `Сертификат` provenance marker with certificate type and number.
-- Appointment/billing/payment account selectors append `сертификат: ...` for linked certificate accounts.
-- No certificate balance, `Certificate.remaining_amount`, ledger, payment, appointment billing/status, payroll, grant, contract, schedule or import semantics changed.
-- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `BalancesViewTests` `10 passed`, full pytest `657 passed`, Playwright Browser QA fallback desktop/mobile for balances and recipient detail. Synthetic `BQA-Labels-*` data was cleaned and runserver `8114` stopped.
-- Graphify code-index after this slice: `5454` nodes / `24356` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: run certificate backfill dry-run/preflight on staging/production, or choose a new explicit contract. Still deferred: zero-balance policy, data cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.
-
-## Latest Recovery Note 2026-07-21: certificate-backfill-readiness-work-queue
-
-- `docs/46-certificate-backfill-readiness-work-queue-contract.md` is added and implemented as a no-migration UI/read-only slice.
-- `/work-queue/` now shows summary item `Сертификаты` and read-only panel `#queue-certificates` from the existing certificate preflight service.
-- The panel shows total/linked/unlinked counters, candidates, zero-balance certificates, issue counts, duplicate groups and sample certificate IDs.
-- Duplicate certificate numbers are masked; only technical recipient id and duplicate count are shown.
-- Candidate and issue sample IDs link to certificate edit pages for manual admin cleanup.
-- There are no forms and no POST apply action in the panel.
-- GET `/work-queue/` does not create accounts/ledger and does not mutate certificate balance fields or any finance/schedule/payroll/grant/status facts.
-- Verification passed: Ruff, focused `WorkQueueViewTests` `36 passed`, Playwright Browser QA fallback desktop/mobile for `/work-queue/#queue-certificates`. Synthetic `BQA-QUEUE-*` data was cleaned and runserver `8115` stopped.
-- Graphify code-index after this slice: `5471` nodes / `24390` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: run certificate backfill dry-run/preflight on staging/production and use this queue panel to guide cleanup, or choose a new explicit contract. Still deferred: UI-triggered backfill, zero-balance policy, data cleanup automation, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.
-
-## Latest Recovery Note 2026-07-21: certificate-backfill-readiness-report
-
-- `docs/47-certificate-backfill-readiness-report-contract.md` is added and implemented as a no-migration UI/read-only slice.
-- `/certificates/backfill-readiness/` is an administrator-only detailed report over the certificate balance-account preflight.
-- Added read-only helpers `certificate_balance_preflight_issue_querysets()` and `certificate_balance_zero_balance_without_account_queryset()`.
-- The report shows readiness summary, issue rows, duplicate groups, positive-balance candidates and zero-balance certificates.
-- Duplicate certificate numbers and recipient full names are not displayed; the UI uses technical certificate IDs and child IDs for cleanup.
-- `/work-queue/#queue-certificates` links to the detailed report.
-- GET report does not create `BalanceAccount`, `LedgerEntry`, `Payment`, appointments, payroll, grants, contracts, schedules or statuses and does not mutate `Certificate.balance_account` or `Certificate.remaining_amount`.
-- Verification passed: Ruff, Django check, migration dry-run `No changes detected`, focused `WorkQueueViewTests` `39 passed`, full pytest `663 passed`, Playwright Browser QA fallback desktop/mobile for report and work queue link. Synthetic `BQA-CERT-REPORT-*` data was cleaned and runserver `8116` stopped. Secret scan found no fragments of the previously supplied Graphify key or Google AI key patterns.
-- Graphify code-index after this slice: `5493` nodes / `24427` edges. Semantic extraction was not rerun; raw `docshablon/` remains ignored/private and no API key is stored in project files.
-- Next safe work: run certificate preflight/backfill dry-run on staging/production, inspect the detailed report for cleanup, then decide whether a guarded scoped dry-run UI is needed. Still deferred: UI-triggered apply, zero-balance policy, automated cleanup, rename `remaining_amount`, amount/date constraints and certificate-number uniqueness.
+| `docs/00-input-summary.md` | Исходный обзор входных материалов. |
+| `docs/01-prd.md` | Канонический PRD, роли, сценарии и readiness matrix. |
+| `docs/02-tech-stack-research.md` | Исследование стека. |
+| `docs/03-ux-ui-and-implementation-plan.md` | Базовая UX/UI карта; сверять с PRD. |
+| `docs/04-clarifying-questions.md` | Исторический список вопросов. |
+| `docs/05-domain-rules-mvp.md`, `docs/06-mvp-technical-model.md` | Старый MVP baseline, не текущий контракт. |
+| `docs/07-updated-domain-model-after-interview.md` | Доменная модель после интервью. |
+| `docs/08-parallel-agent-execution-plan.md` | Владение зонами и правила параллельной работы. |
+| `docs/09-*.md` ... `docs/13-*.md` | Переносы, цепочки и единая проверка вместимости расписания. |
+| `docs/14-*.md` ... `docs/19-*.md` | Финансовый факт и financial-integrity контур. |
+| `docs/20-group-payroll-policy-contract.md` | Групповая зарплатная политика. |
+| `docs/21-*.md`, `docs/22-*.md` | Расходы, активы, категории и контрагенты. |
+| `docs/23-*.md` ... `docs/39-*.md` | Договоры, шаблоны, документы, акты, согласия и сертификаты. |
+| `docs/40-*.md` ... `docs/47-*.md` | Импорт и баланс сертификатов, preflight и readiness UI. |
+| `docs/decisions/ADR-001-*.md` | Django/PostgreSQL/local-first. |
+| `docs/decisions/ADR-002-*.md` | Балансовые счета и ledger. |
+| `docs/decisions/ADR-003-*.md` | Полномочия и ручные решения. |
+| `docs/interviews/*.md` | Первичные интервью; читать при спорном требовании. |
+| `docs/PRODUCTION_DEPLOYMENT.md` | Развертывание и эксплуатация production. |
+| `docs/current-state.md` | Компактная текущая контрольная точка. |
+| `docs/archive/prd/` | Сохраненные старые PRD, не источники текущих требований. |
+| `docs/archive/recovery/` | Полные старые журналы и промпты, не читать по умолчанию. |
+| `docshablon/` | Приватные исходные образцы документов; не коммитить. |
+| `docs/24-document-template-source-inventory.md` | Обезличенный индекс `docshablon/`. |
+
+## 4. Архитектурные владельцы
+
+- Один ведущий агент владеет PRD, доменной моделью и порядком срезов.
+- Только один DB owner одновременно меняет `operations/models.py` и цепочку
+  миграций.
+- Параллельные агенты допустимы после фиксации контракта для read-only аудита,
+  UI, тестов и документации в непересекающихся файлах.
+- Финансы, расписание, статусы и полномочия меняются только вертикальным срезом:
+  контракт, БД, сервис, UI, аудит и тесты.
+
+## 5. Skills и инструменты
+
+| Skill/инструмент | Использование |
+| --- | --- |
+| `database-schema-designer` | Схема, constraints, indexes и безопасные миграции. |
+| `graphify` | Индекс связей и поиск затронутых зон, не копия документации. |
+| `documentation-and-adrs` | PRD, ADR и контрольные точки. |
+| `planning-and-task-breakdown` | Вертикальные срезы и acceptance criteria. |
+| `code-review-and-quality` | Ревью перед merge. |
+| `security-and-hardening` | Роли, персональные данные, uploads и внешние ссылки. |
+| `frontend-ui-engineering` | Рабочие интерфейсы администратора/руководителя. |
+| `browser-testing-with-devtools` | Browser smoke после UI-изменений, когда доступен. |
+| `git-workflow-and-versioning` | Малые проверенные коммиты и удаленная страховка. |
+
+Graphify может работать локально для индекса кода. Semantic extraction требует
+внешнюю LLM-модель и ее ключ, но не является обязательной для продолжения.
+Ключи нельзя хранить в tracked-файлах проекта.
+
+## 6. Контрольная точка
+
+При завершении среза обновлять только:
+
+1. один актуальный раздел в `docs/current-state.md`;
+2. изменившуюся строку readiness matrix в `docs/01-prd.md`;
+3. ADR, только если принято новое архитектурное решение;
+4. этот манифест, только если изменились источники, skills или порядок чтения;
+5. Graphify один раз после завершенного эпика, если он доступен.
+
+Перед остановкой: `git status`, secret scan, focused tests, полный регресс при
+общем изменении, commit и push. Незакоммиченные изменения перечислять явно.

@@ -9,9 +9,15 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 
+from operations.services.authority import is_center_operator, is_director_user
+
 
 def is_admin_user(user) -> bool:
-    return user.is_staff
+    return is_center_operator(user)
+
+
+def is_director(user) -> bool:
+    return is_director_user(user)
 
 
 def safe_next_url(request, fallback: str) -> str:

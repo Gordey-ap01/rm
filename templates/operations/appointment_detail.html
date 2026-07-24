@@ -234,7 +234,7 @@
 
     <h3>История отправок</h3>
     <table class="appointment-detail-table appointment-confirmations-table">
-      <thead><tr><th>Дата</th><th>Кому</th><th>Email</th><th>Ответ</th><th>Отправка</th><th></th></tr></thead>
+      <thead><tr><th>Дата</th><th>Кому</th><th>Email</th><th>Ответ</th><th>Отправка</th><th>Действие</th></tr></thead>
       <tbody>
       {% for item in confirmations %}
         <tr>
@@ -250,9 +250,38 @@
             {% endif %}
           </td>
           <td data-label="Email">{{ item.email }}</td>
-          <td data-label="Ответ">{{ item.get_status_display }}</td>
+          <td data-label="Ответ">
+            {{ item.get_status_display }}
+            {% if item.current_decision_record %}
+              <br><small>
+                {{ item.current_decision_record.get_source_display }}
+                {% if item.current_decision_record.actor %}
+                  — {{ item.current_decision_record.actor }}
+                {% endif %}
+              </small>
+              {% if item.current_decision_record.note %}
+                <br><small>{{ item.current_decision_record.note }}</small>
+              {% endif %}
+            {% endif %}
+          </td>
           <td data-label="Отправка">{{ item.get_delivery_status_display }}</td>
-          <td data-label="Действие"><a class="button-link secondary small-action" href="{% url 'appointment_confirmation_public' item.token %}">Ссылка</a></td>
+          <td data-label="Действие">
+            <a class="button-link secondary small-action" href="{% url 'appointment_confirmation_public' item.token %}">Ссылка</a>
+            {% if item.can_resolve_manually %}
+              <form method="post" action="{% url 'appointment_confirmation_resolve' item.pk %}" class="confirmation-manual-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'appointment_detail' appointment.pk %}">
+                <label>
+                  <span class="visually-hidden">Основание ручного решения</span>
+                  <input type="text" name="reason" minlength="5" maxlength="1000" required placeholder="Основание решения">
+                </label>
+                <div class="inline-actions">
+                  <button type="submit" name="action" value="confirm" class="small-action">Подтвердить</button>
+                  <button type="submit" name="action" value="decline" class="button-link secondary small-action">Отклонить</button>
+                </div>
+              </form>
+            {% endif %}
+          </td>
         </tr>
       {% empty %}
         <tr><td colspan="6" data-label="История">Письма по занятию еще не отправлялись.</td></tr>

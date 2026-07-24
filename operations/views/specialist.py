@@ -8,7 +8,7 @@ from datetime import datetime, time, timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -23,6 +23,8 @@ from operations.models import (
     StaffMember,
     TimeOffRequest,
 )
+
+from ._common import is_admin_user
 
 
 @dataclass(frozen=True)
@@ -503,6 +505,7 @@ def time_off_request_create(request):
 
 
 @login_required
+@user_passes_test(is_admin_user)
 def time_off_request_decide(request, pk: int):
     time_off = get_object_or_404(TimeOffRequest.objects.select_related("staff_member"), pk=pk)
     if request.method == "POST":

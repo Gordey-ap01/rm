@@ -2913,6 +2913,160 @@ class AppointmentConfirmation(TimeStampedModel):
         return f"{self.appointment} -> {self.email}"
 
 
+class AppointmentConfirmationDecision(TimeStampedModel):
+    class Decision(models.TextChoices):
+        CONFIRMED = AppointmentConfirmation.Status.CONFIRMED, "Подтвердить"
+        DECLINED = AppointmentConfirmation.Status.DECLINED, "Отклонить"
+
+    class Source(models.TextChoices):
+        SPECIALIST_RESPONSE = "specialist_response", "Ответ специалиста"
+        REPRESENTATIVE_RESPONSE = "representative_response", "Ответ представителя"
+        RECIPIENT_RESPONSE = "recipient_response", "Ответ получателя"
+        ADMINISTRATOR_MANUAL = "administrator_manual", "Ручное решение администратора"
+        DIRECTOR_MANUAL = "director_manual", "Ручное решение руководителя"
+
+    class ActorRole(models.TextChoices):
+        DIRECTOR = "director", "Руководитель"
+        ADMINISTRATOR = "administrator", "Администратор"
+        SPECIALIST = "specialist", "Специалист"
+        REPRESENTATIVE = "representative", "Представитель"
+        RECIPIENT = "recipient", "Получатель"
+
+    confirmation = models.ForeignKey(
+        AppointmentConfirmation,
+        verbose_name="согласование",
+        on_delete=models.CASCADE,
+        related_name="decision_history",
+    )
+    decision = models.CharField("решение", max_length=30, choices=Decision.choices)
+    source = models.CharField("источник решения", max_length=40, choices=Source.choices)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="решение зафиксировал",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="appointment_confirmation_decisions",
+    )
+    actor_role_snapshot = models.CharField(
+        "роль на момент решения",
+        max_length=30,
+        choices=ActorRole.choices,
+    )
+    note = models.TextField("основание или комментарий", blank=True)
+    supersedes = models.ForeignKey(
+        "self",
+        verbose_name="переопределяет решение",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="superseded_by",
+    )
+    is_current = models.BooleanField("текущее решение", default=True)
+
+    class Meta:
+        verbose_name = "решение по согласованию"
+        verbose_name_plural = "решения по согласованиям"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["confirmation"],
+                condition=Q(is_current=True),
+                name="unique_current_confirmation_decision",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~Q(
+                        source__in=[
+                            "administrator_manual",
+                            "director_manual",
+                        ]
+                    )
+                    | Q(actor__isnull=False)
+                ),
+                name="confirmation_manual_decision_actor_required",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~Q(
+                        source__in=[
+                            "administrator_manual",
+                            "director_manual",
+                        ]
+                    )
+                    | ~Q(note="")
+                ),
+                name="confirmation_manual_decision_note_required",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        source="specialist_response",
+                        actor_role_snapshot="specialist",
+                    )
+                    | Q(
+                        source="representative_response",
+                        actor_role_snapshot="representative",
+                    )
+                    | Q(
+                        source="recipient_response",
+                        actor_role_snapshot="recipient",
+                    )
+                    | Q(
+                        source="administrator_manual",
+                        actor_role_snapshot="administrator",
+                    )
+                    | Q(
+                        source="director_manual",
+                        actor_role_snapshot="director",
+                    )
+                ),
+                name="confirmation_decision_source_role_match",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["confirmation", "is_current", "created_at"]),
+            models.Index(fields=["source", "created_at"]),
+        ]
+
+    def clean(self) -> None:
+        errors = {}
+        manual_sources = {
+            self.Source.ADMINISTRATOR_MANUAL,
+            self.Source.DIRECTOR_MANUAL,
+        }
+        if self.source in manual_sources and not self.actor_id:
+            errors["actor"] = "Для ручного решения нужен пользователь."
+        if self.source in manual_sources and len(self.note.strip()) < 5:
+            errors["note"] = "Укажите основание ручного решения не короче 5 символов."
+        expected_roles = {
+            self.Source.SPECIALIST_RESPONSE: self.ActorRole.SPECIALIST,
+            self.Source.REPRESENTATIVE_RESPONSE: self.ActorRole.REPRESENTATIVE,
+            self.Source.RECIPIENT_RESPONSE: self.ActorRole.RECIPIENT,
+            self.Source.ADMINISTRATOR_MANUAL: self.ActorRole.ADMINISTRATOR,
+            self.Source.DIRECTOR_MANUAL: self.ActorRole.DIRECTOR,
+        }
+        if expected_roles.get(self.source) != self.actor_role_snapshot:
+            errors["actor_role_snapshot"] = (
+                "Роль на момент решения не соответствует источнику решения."
+            )
+        if (
+            self.supersedes_id
+            and self.confirmation_id
+            and self.supersedes.confirmation_id != self.confirmation_id
+        ):
+            errors["supersedes"] = "Можно переопределить решение только этого согласования."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.confirmation_id}: {self.get_decision_display()} ({self.get_source_display()})"
+
+
 class StaffAvailability(TimeStampedModel):
     class Weekday(models.IntegerChoices):
         MONDAY = 0, "Понедельник"

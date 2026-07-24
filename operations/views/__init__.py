@@ -23,7 +23,11 @@ from .compensation_rules import (
     staff_compensation_rule_list,
     staff_compensation_rule_toggle,
 )
-from .confirmations import appointment_confirmation_public, appointment_send_confirmation
+from .confirmations import (
+    appointment_confirmation_public,
+    appointment_confirmation_resolve,
+    appointment_send_confirmation,
+)
 from .consents import (
     consent_archive_signed,
     consent_create,
@@ -171,6 +175,7 @@ __all__ = [
     "appointment_billing",
     "appointment_cancel",
     "appointment_confirmation_public",
+    "appointment_confirmation_resolve",
     "appointment_create",
     "appointment_detail",
     "appointment_detail_context",

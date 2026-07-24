@@ -10,7 +10,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -23,7 +23,8 @@ from operations.forms import (
     AppointmentParticipantProgramForm,
     BillingDecisionForm,
 )
-from operations.models import Appointment, LedgerEntry
+from operations.models import Appointment, AppointmentConfirmationDecision, LedgerEntry
+from operations.services.authority import AuthorityRole, authority_role
 
 from ._common import is_admin_user, safe_next_url
 from .scheduling_helpers import suggested_shift_candidates, suggested_transfer_slots
@@ -565,6 +566,7 @@ def appointment_detail_context(
     billing_form=None,
     participant_billing_form=None,
     participant_program_form=None,
+    actor=None,
 ) -> dict:
     local_day = timezone.localtime(appointment.starts_at).date()
     participants = list(
@@ -605,8 +607,35 @@ def appointment_detail_context(
             "representative",
             "sent_by",
             "staff_assignment__staff_member",
-        ).order_by("-created_at")
+        )
+        .prefetch_related(
+            Prefetch(
+                "decision_history",
+                queryset=AppointmentConfirmationDecision.objects.filter(
+                    is_current=True
+                ).select_related("actor"),
+                to_attr="current_decision_rows",
+            )
+        )
+        .order_by("-created_at")
     )
+    viewer_role = authority_role(actor)
+    can_resolve_confirmations = viewer_role in {
+        AuthorityRole.DIRECTOR,
+        AuthorityRole.ADMINISTRATOR,
+    }
+    for confirmation in confirmations:
+        confirmation.current_decision_record = (
+            confirmation.current_decision_rows[0]
+            if confirmation.current_decision_rows
+            else None
+        )
+        confirmation.can_resolve_manually = can_resolve_confirmations and (
+            not confirmation.current_decision_record
+            or confirmation.current_decision_record.source
+            != AppointmentConfirmationDecision.Source.DIRECTOR_MANUAL
+            or viewer_role == AuthorityRole.DIRECTOR
+        )
     staff_assignments = appointment.staff_assignments.select_related("staff_member").order_by(
         "starts_at_snapshot", "staff_member__full_name"
     )
@@ -670,6 +699,7 @@ def appointment_detail_context(
         ),
         "ledger_entries": ledger_entries,
         "confirmations": confirmations,
+        "can_resolve_confirmations": can_resolve_confirmations,
         "audit_entries": appointment_audit_entries(
             appointment, participants, staff_assignments, ledger_entries, confirmations
         ),
@@ -689,7 +719,9 @@ def appointment_detail(request, pk: int):
         pk=pk,
     )
     return render(
-        request, "operations/appointment_detail.html", appointment_detail_context(appointment)
+        request,
+        "operations/appointment_detail.html",
+        appointment_detail_context(appointment, actor=request.user),
     )
 
 
@@ -869,7 +901,7 @@ def appointment_billing(request, pk: int):
             return render(
                 request,
                 "operations/appointment_detail.html",
-                appointment_detail_context(appointment, **context_kwargs),
+                appointment_detail_context(appointment, actor=request.user, **context_kwargs),
                 status=400,
             )
     return redirect("appointment_detail", pk=appointment.pk)
@@ -889,7 +921,11 @@ def appointment_participant_program(request, pk: int):
         return render(
             request,
             "operations/appointment_detail.html",
-            appointment_detail_context(appointment, participant_program_form=form),
+            appointment_detail_context(
+                appointment,
+                participant_program_form=form,
+                actor=request.user,
+            ),
             status=400,
         )
     return redirect("appointment_detail", pk=appointment.pk)
