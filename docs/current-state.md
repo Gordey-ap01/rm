@@ -63,33 +63,38 @@
   связь с занятием, поэтому не возникает ложный факт для payroll/grant.
 - Добавлен `.github/workflows/ci.yml`: чистая PostgreSQL 17, миграции, Django
   check, Ruff и полный pytest для каждого push/pull request.
+- PostgreSQL-locking не применяется к nullable стороне `LEFT JOIN`: блокировщик
+  расписания читает только строку занятия, а certificate/каскады явно
+  ограничивают `FOR UPDATE` обязательными строками-владельцами. Миграций и
+  изменения продуктовых правил для этого исправления не потребовалось.
 
 ## Проверки
 
 - Focused authority/confirmation/time-off/audit tests: пройдены.
-- Полный SQLite regression: `699 passed, 5 skipped`; пропущены только пять
+- Полный SQLite regression: `699 passed, 6 skipped`; пропущены только шесть
   PostgreSQL-only concurrency tests, отдельно пройденные на PostgreSQL 17.
 - Ruff: пройден.
 - Django system check: пройден.
 - `makemigrations --check --dry-run`: изменений не обнаружено.
-- PostgreSQL 17: migrations `0001-0045` и актуальный focused suite `34 passed`
-  в disposable-контейнере; ручные решения, две гонки вместимости и гонка
-  списания проходят.
+- PostgreSQL 17: migrations `0001-0045`, focused suite `109 passed` и полный
+  suite `705 passed` в disposable-контейнере; ручные решения, две гонки
+  вместимости, гонка списания и nullable locking-path проходят.
 - Browser smoke локального сценария администратора: «Списать» создает один
   debit, «Не списывать» очищает ledger занятия и возвращает остаток; mobile
   `390px` без horizontal overflow, console errors отсутствуют.
-- CI workflow YAML локально разобран; его команды check/Ruff/migration state
-  пройдены. Первый статус GitHub runner будет получен после push.
+- Первый GitHub CI run выявил недопустимый `FOR UPDATE` nullable `LEFT JOIN`;
+  причина исправлена и воспроизведена полным локальным PostgreSQL suite.
+  Повторный статус GitHub runner будет получен после push.
 - Playwright browser smoke: work queue администратора, «Завтра» руководителя и
   мобильный кабинет специалиста пройдены; horizontal overflow `0`.
-- Graphify code index обновлен локально без LLM/API key: `5753` nodes,
-  `25463` edges. Семантическая копия документации не создавалась.
+- Graphify code index обновлен локально без LLM/API key: `5755` nodes,
+  `25468` edges. Семантическая копия документации не создавалась.
 
 ## Следующая работа
 
 1. Закрыть приемку цельного сценария администратора от записи до списания и сценарий
    руководителя от заявки специалиста до табеля/выплаты.
-2. Проверить первый GitHub CI run, затем подготовить backup/restore, monitoring
+2. Проверить исправленный GitHub CI run, затем подготовить backup/restore, monitoring
    и production preflight.
 
 ## Глобальная готовность

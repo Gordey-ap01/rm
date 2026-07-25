@@ -36,6 +36,14 @@ PostgreSQL 17 service container с одноразовой базой `rehab_ci`.
 - failure любого этапа останавливает проверку pull request;
 - workflow не выполняет deploy, backup или изменение production.
 
+## Первичная валидация
+
+Первый удаленный run обнаружил PostgreSQL-несовместимое блокирование nullable
+`LEFT JOIN` в ранее неисполнявшихся SQLite-путях. Исправление ограничивает
+`FOR UPDATE` строкой-владельцем либо исключает ненужный join; после него полный
+локальный PostgreSQL 17 suite проходит (`705 passed`). Повторный remote run
+остается обязательным перед признанием CI-приемки завершенной.
+
 ## Границы
 
 CI не заменяет отдельную production-приемку: restore drill, SMTP, мониторинг,

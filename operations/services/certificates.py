@@ -289,7 +289,7 @@ def ensure_certificate_balance_account(
     the linked account ledger and initialized by an opening credit entry.
     """
     locked = (
-        Certificate.objects.select_for_update()
+        Certificate.objects.select_for_update(of=("self",))
         .select_related("child", "funding_source", "balance_account")
         .get(pk=certificate.pk)
     )

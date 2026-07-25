@@ -6096,7 +6096,7 @@
       "label": "ensure_room_capacity()",
       "file_type": "code",
       "source_file": "operations/schedule_writes.py",
-      "source_location": "L81",
+      "source_location": "L80",
       "_origin": "ast"
     },
     {
@@ -6124,11 +6124,11 @@
       "_origin": "ast"
     },
     {
-      "id": "operations_schedule_writes_rationale_92",
+      "id": "operations_schedule_writes_rationale_91",
       "label": "Re-check room capacity after `lock_schedule_write()` acquired the lock.",
       "file_type": "rationale",
       "source_file": "operations/schedule_writes.py",
-      "source_location": "L92",
+      "source_location": "L91",
       "_origin": "ast"
     },
     {
@@ -10304,7 +10304,7 @@
       "label": "_finish_plan_if_all_steps_terminal()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L269",
+      "source_location": "L271",
       "_origin": "ast"
     },
     {
@@ -10312,7 +10312,7 @@
       "label": "_skip_alternative_steps_for_source()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L282",
+      "source_location": "L284",
       "_origin": "ast"
     },
     {
@@ -10320,7 +10320,7 @@
       "label": "AppointmentRescheduleStep",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L282",
+      "source_location": "L284",
       "_origin": "ast"
     },
     {
@@ -10328,7 +10328,7 @@
       "label": "_appointment_children()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L303",
+      "source_location": "L305",
       "_origin": "ast"
     },
     {
@@ -10336,7 +10336,7 @@
       "label": "Appointment",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L303",
+      "source_location": "L305",
       "_origin": "ast"
     },
     {
@@ -10344,7 +10344,7 @@
       "label": "_appointment_staff_for_move()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L313",
+      "source_location": "L315",
       "_origin": "ast"
     },
     {
@@ -10352,7 +10352,7 @@
       "label": "StaffMember",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L313",
+      "source_location": "L315",
       "_origin": "ast"
     },
     {
@@ -10360,7 +10360,7 @@
       "label": "_participant_snapshot()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L339",
+      "source_location": "L341",
       "_origin": "ast"
     },
     {
@@ -10368,7 +10368,7 @@
       "label": "_staff_snapshot()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L372",
+      "source_location": "L374",
       "_origin": "ast"
     },
     {
@@ -10376,7 +10376,7 @@
       "label": "_representative_targets()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L413",
+      "source_location": "L415",
       "_origin": "ast"
     },
     {
@@ -10384,7 +10384,7 @@
       "label": "ParentGuardian",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L413",
+      "source_location": "L415",
       "_origin": "ast"
     },
     {
@@ -10392,7 +10392,7 @@
       "label": "AppointmentParticipant",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L413",
+      "source_location": "L415",
       "_origin": "ast"
     },
     {
@@ -10400,7 +10400,7 @@
       "label": "_staff_targets()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L449",
+      "source_location": "L451",
       "_origin": "ast"
     },
     {
@@ -10408,7 +10408,7 @@
       "label": "AppointmentStaffAssignment",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L449",
+      "source_location": "L451",
       "_origin": "ast"
     },
     {
@@ -10416,7 +10416,7 @@
       "label": "_conflict_snapshot()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L481",
+      "source_location": "L483",
       "_origin": "ast"
     },
     {
@@ -10424,7 +10424,7 @@
       "label": "_blocking_appointment()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L502",
+      "source_location": "L504",
       "_origin": "ast"
     },
     {
@@ -10432,7 +10432,7 @@
       "label": "_step_messages()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L512",
+      "source_location": "L514",
       "_origin": "ast"
     },
     {
@@ -10440,7 +10440,7 @@
       "label": "_slot_times()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L542",
+      "source_location": "L544",
       "_origin": "ast"
     },
     {
@@ -10448,7 +10448,7 @@
       "label": "_active_staff_appointments()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L548",
+      "source_location": "L550",
       "_origin": "ast"
     },
     {
@@ -10456,7 +10456,7 @@
       "label": "date",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L548",
+      "source_location": "L550",
       "_origin": "ast"
     },
     {
@@ -10464,7 +10464,7 @@
       "label": "_step_time_label()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L576",
+      "source_location": "L578",
       "_origin": "ast"
     },
     {
@@ -10472,7 +10472,7 @@
       "label": "_confirmation_message()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L582",
+      "source_location": "L584",
       "_origin": "ast"
     },
     {
@@ -10480,7 +10480,7 @@
       "label": "_existing_confirmation()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L617",
+      "source_location": "L619",
       "_origin": "ast"
     },
     {
@@ -10488,7 +10488,7 @@
       "label": "AppointmentConfirmation",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L617",
+      "source_location": "L619",
       "_origin": "ast"
     },
     {
@@ -10496,7 +10496,7 @@
       "label": "_confirmation_state_for_step()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L646",
+      "source_location": "L648",
       "_origin": "ast"
     },
     {
@@ -10504,7 +10504,7 @@
       "label": "_update_step_confirmation_state()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L687",
+      "source_location": "L689",
       "_origin": "ast"
     },
     {
@@ -10512,7 +10512,7 @@
       "label": "refresh_step_confirmation_status()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L698",
+      "source_location": "L700",
       "_origin": "ast"
     },
     {
@@ -10520,7 +10520,7 @@
       "label": "create_plan_for_appointment()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L706",
+      "source_location": "L708",
       "_origin": "ast"
     },
     {
@@ -10528,7 +10528,7 @@
       "label": "create_staff_absence_plan()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L831",
+      "source_location": "L833",
       "_origin": "ast"
     },
     {
@@ -10536,7 +10536,7 @@
       "label": "create_confirmations_for_step()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L898",
+      "source_location": "L900",
       "_origin": "ast"
     },
     {
@@ -10544,7 +10544,7 @@
       "label": "_refresh_move_step_validation()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L997",
+      "source_location": "L1001",
       "_origin": "ast"
     },
     {
@@ -10552,7 +10552,7 @@
       "label": "revalidate_plan()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1036",
+      "source_location": "L1040",
       "_origin": "ast"
     },
     {
@@ -10560,7 +10560,7 @@
       "label": "revalidate_chain()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1104",
+      "source_location": "L1108",
       "_origin": "ast"
     },
     {
@@ -10568,7 +10568,7 @@
       "label": "AppointmentRescheduleChain",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1104",
+      "source_location": "L1108",
       "_origin": "ast"
     },
     {
@@ -10576,7 +10576,7 @@
       "label": "_mark_chain_apply_failed()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1345",
+      "source_location": "L1351",
       "_origin": "ast"
     },
     {
@@ -10584,7 +10584,7 @@
       "label": "apply_chain()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1360",
+      "source_location": "L1366",
       "_origin": "ast"
     },
     {
@@ -10592,7 +10592,7 @@
       "label": "mark_review_conflict_step_resolved()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1463",
+      "source_location": "L1471",
       "_origin": "ast"
     },
     {
@@ -10600,7 +10600,7 @@
       "label": "apply_step()",
       "file_type": "code",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1501",
+      "source_location": "L1509",
       "_origin": "ast"
     },
     {
@@ -12784,7 +12784,7 @@
       "label": "RoomCapacityPostgreSQLConcurrencyTests",
       "file_type": "code",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L17",
+      "source_location": "L18",
       "_origin": "ast"
     },
     {
@@ -12792,7 +12792,7 @@
       "label": ".setUp()",
       "file_type": "code",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L18",
+      "source_location": "L19",
       "_origin": "ast"
     },
     {
@@ -12800,7 +12800,7 @@
       "label": "._form_data()",
       "file_type": "code",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L56",
+      "source_location": "L57",
       "_origin": "ast"
     },
     {
@@ -12808,7 +12808,7 @@
       "label": "Child",
       "file_type": "code",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L56",
+      "source_location": "L57",
       "_origin": "ast"
     },
     {
@@ -12816,7 +12816,7 @@
       "label": "StaffMember",
       "file_type": "code",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L56",
+      "source_location": "L57",
       "_origin": "ast"
     },
     {
@@ -12824,7 +12824,7 @@
       "label": "QueryDict",
       "file_type": "code",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L56",
+      "source_location": "L57",
       "_origin": "ast"
     },
     {
@@ -12832,7 +12832,7 @@
       "label": "._run_competing_writers()",
       "file_type": "code",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L76",
+      "source_location": "L77",
       "_origin": "ast"
     },
     {
@@ -12840,7 +12840,7 @@
       "label": "Queue",
       "file_type": "code",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L76",
+      "source_location": "L77",
       "_origin": "ast"
     },
     {
@@ -12848,7 +12848,7 @@
       "label": "._assert_last_place_is_serialized()",
       "file_type": "code",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L105",
+      "source_location": "L106",
       "_origin": "ast"
     },
     {
@@ -12856,7 +12856,7 @@
       "label": ".test_concurrent_form_saves_cannot_take_the_same_last_place()",
       "file_type": "code",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L125",
+      "source_location": "L126",
       "_origin": "ast"
     },
     {
@@ -12864,7 +12864,15 @@
       "label": ".test_concurrent_service_creates_cannot_take_the_same_last_place()",
       "file_type": "code",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L140",
+      "source_location": "L141",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_schedule_writes_roomcapacitypostgresqlconcurrencytests_test_locking_appointment_without_room_does_not_lock_nullable_join",
+      "label": ".test_locking_appointment_without_room_does_not_lock_nullable_join()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_schedule_writes.py",
+      "source_location": "L161",
       "_origin": "ast"
     },
     {
@@ -40967,11 +40975,19 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_50_postgresql_ci_contract_первичная_валидация",
+      "label": "Первичная валидация",
+      "file_type": "document",
+      "source_file": "docs/50-postgresql-ci-contract.md",
+      "source_location": "L39",
+      "_origin": "ast"
+    },
+    {
       "id": "docs_50_postgresql_ci_contract_границы",
       "label": "Границы",
       "file_type": "document",
       "source_file": "docs/50-postgresql-ci-contract.md",
-      "source_location": "L39",
+      "source_location": "L47",
       "_origin": "ast"
     },
     {
@@ -43675,7 +43691,7 @@
       "label": "Проверки",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L67",
+      "source_location": "L71",
       "_origin": "ast"
     },
     {
@@ -43683,7 +43699,7 @@
       "label": "Следующая работа",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L88",
+      "source_location": "L93",
       "_origin": "ast"
     },
     {
@@ -43691,7 +43707,7 @@
       "label": "Глобальная готовность",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L95",
+      "source_location": "L100",
       "_origin": "ast"
     },
     {
@@ -43699,7 +43715,7 @@
       "label": "Риски и запреты",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L118",
+      "source_location": "L123",
       "_origin": "ast"
     },
     {
@@ -57831,7 +57847,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/schedule_writes.py",
-      "source_location": "L81",
+      "source_location": "L80",
       "weight": 1.0
     },
     {
@@ -57841,7 +57857,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/schedule_writes.py",
-      "source_location": "L81",
+      "source_location": "L80",
       "weight": 1.0
     },
     {
@@ -57851,7 +57867,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/schedule_writes.py",
-      "source_location": "L81",
+      "source_location": "L80",
       "weight": 1.0
     },
     {
@@ -57861,7 +57877,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/schedule_writes.py",
-      "source_location": "L78",
+      "source_location": "L77",
       "weight": 1.0
     },
     {
@@ -57871,7 +57887,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/schedule_writes.py",
-      "source_location": "L107",
+      "source_location": "L106",
       "weight": 1.0
     },
     {
@@ -57902,12 +57918,12 @@
       "weight": 1.0
     },
     {
-      "source": "operations_schedule_writes_rationale_92",
+      "source": "operations_schedule_writes_rationale_91",
       "target": "operations_schedule_writes_ensure_room_capacity",
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "operations/schedule_writes.py",
-      "source_location": "L92",
+      "source_location": "L91",
       "weight": 1.0
     },
     {
@@ -72431,7 +72447,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L269",
+      "source_location": "L271",
       "weight": 1.0
     },
     {
@@ -72441,7 +72457,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L269",
+      "source_location": "L271",
       "weight": 1.0
     },
     {
@@ -72451,7 +72467,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L269",
+      "source_location": "L271",
       "weight": 1.0
     },
     {
@@ -72460,7 +72476,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L282",
+      "source_location": "L284",
       "weight": 1.0
     },
     {
@@ -72470,7 +72486,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L282",
+      "source_location": "L284",
       "weight": 1.0
     },
     {
@@ -72479,7 +72495,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L303",
+      "source_location": "L305",
       "weight": 1.0
     },
     {
@@ -72489,7 +72505,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L303",
+      "source_location": "L305",
       "weight": 1.0
     },
     {
@@ -72499,7 +72515,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L303",
+      "source_location": "L305",
       "weight": 1.0
     },
     {
@@ -72508,7 +72524,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L313",
+      "source_location": "L315",
       "weight": 1.0
     },
     {
@@ -72518,7 +72534,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L313",
+      "source_location": "L315",
       "weight": 1.0
     },
     {
@@ -72528,7 +72544,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L313",
+      "source_location": "L315",
       "weight": 1.0
     },
     {
@@ -72537,7 +72553,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L339",
+      "source_location": "L341",
       "weight": 1.0
     },
     {
@@ -72547,7 +72563,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L339",
+      "source_location": "L341",
       "weight": 1.0
     },
     {
@@ -72557,7 +72573,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L339",
+      "source_location": "L341",
       "weight": 1.0
     },
     {
@@ -72566,7 +72582,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L372",
+      "source_location": "L374",
       "weight": 1.0
     },
     {
@@ -72576,7 +72592,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L372",
+      "source_location": "L374",
       "weight": 1.0
     },
     {
@@ -72586,7 +72602,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L372",
+      "source_location": "L374",
       "weight": 1.0
     },
     {
@@ -72596,7 +72612,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L372",
+      "source_location": "L374",
       "weight": 1.0
     },
     {
@@ -72605,7 +72621,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L413",
+      "source_location": "L415",
       "weight": 1.0
     },
     {
@@ -72615,7 +72631,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L413",
+      "source_location": "L415",
       "weight": 1.0
     },
     {
@@ -72625,7 +72641,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L413",
+      "source_location": "L415",
       "weight": 1.0
     },
     {
@@ -72635,7 +72651,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L413",
+      "source_location": "L415",
       "weight": 1.0
     },
     {
@@ -72644,7 +72660,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L449",
+      "source_location": "L451",
       "weight": 1.0
     },
     {
@@ -72654,7 +72670,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L449",
+      "source_location": "L451",
       "weight": 1.0
     },
     {
@@ -72664,7 +72680,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L449",
+      "source_location": "L451",
       "weight": 1.0
     },
     {
@@ -72674,7 +72690,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L449",
+      "source_location": "L451",
       "weight": 1.0
     },
     {
@@ -72683,7 +72699,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L481",
+      "source_location": "L483",
       "weight": 1.0
     },
     {
@@ -72693,7 +72709,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L481",
+      "source_location": "L483",
       "weight": 1.0
     },
     {
@@ -72702,7 +72718,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L502",
+      "source_location": "L504",
       "weight": 1.0
     },
     {
@@ -72712,7 +72728,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L502",
+      "source_location": "L504",
       "weight": 1.0
     },
     {
@@ -72722,7 +72738,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L502",
+      "source_location": "L504",
       "weight": 1.0
     },
     {
@@ -72731,7 +72747,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L512",
+      "source_location": "L514",
       "weight": 1.0
     },
     {
@@ -72741,7 +72757,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L512",
+      "source_location": "L514",
       "weight": 1.0
     },
     {
@@ -72751,7 +72767,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L512",
+      "source_location": "L514",
       "weight": 1.0
     },
     {
@@ -72761,7 +72777,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L512",
+      "source_location": "L514",
       "weight": 1.0
     },
     {
@@ -72770,7 +72786,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L542",
+      "source_location": "L544",
       "weight": 1.0
     },
     {
@@ -72779,7 +72795,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L548",
+      "source_location": "L550",
       "weight": 1.0
     },
     {
@@ -72789,7 +72805,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L548",
+      "source_location": "L550",
       "weight": 1.0
     },
     {
@@ -72799,7 +72815,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L548",
+      "source_location": "L550",
       "weight": 1.0
     },
     {
@@ -72809,7 +72825,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L548",
+      "source_location": "L550",
       "weight": 1.0
     },
     {
@@ -72818,7 +72834,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L576",
+      "source_location": "L578",
       "weight": 1.0
     },
     {
@@ -72828,7 +72844,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L576",
+      "source_location": "L578",
       "weight": 1.0
     },
     {
@@ -72837,7 +72853,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L582",
+      "source_location": "L584",
       "weight": 1.0
     },
     {
@@ -72847,7 +72863,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L582",
+      "source_location": "L584",
       "weight": 1.0
     },
     {
@@ -72856,7 +72872,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L617",
+      "source_location": "L619",
       "weight": 1.0
     },
     {
@@ -72866,7 +72882,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L617",
+      "source_location": "L619",
       "weight": 1.0
     },
     {
@@ -72876,7 +72892,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L617",
+      "source_location": "L619",
       "weight": 1.0
     },
     {
@@ -72886,7 +72902,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L617",
+      "source_location": "L619",
       "weight": 1.0
     },
     {
@@ -72896,7 +72912,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L617",
+      "source_location": "L619",
       "weight": 1.0
     },
     {
@@ -72906,7 +72922,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L617",
+      "source_location": "L619",
       "weight": 1.0
     },
     {
@@ -72915,7 +72931,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L646",
+      "source_location": "L648",
       "weight": 1.0
     },
     {
@@ -72925,7 +72941,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L646",
+      "source_location": "L648",
       "weight": 1.0
     },
     {
@@ -72935,7 +72951,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L646",
+      "source_location": "L648",
       "weight": 1.0
     },
     {
@@ -72944,7 +72960,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L687",
+      "source_location": "L689",
       "weight": 1.0
     },
     {
@@ -72954,7 +72970,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L687",
+      "source_location": "L689",
       "weight": 1.0
     },
     {
@@ -72963,7 +72979,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L698",
+      "source_location": "L700",
       "weight": 1.0
     },
     {
@@ -72973,7 +72989,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L698",
+      "source_location": "L700",
       "weight": 1.0
     },
     {
@@ -72982,7 +72998,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L706",
+      "source_location": "L708",
       "weight": 1.0
     },
     {
@@ -72992,7 +73008,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L706",
+      "source_location": "L708",
       "weight": 1.0
     },
     {
@@ -73002,7 +73018,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L706",
+      "source_location": "L708",
       "weight": 1.0
     },
     {
@@ -73012,7 +73028,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L706",
+      "source_location": "L708",
       "weight": 1.0
     },
     {
@@ -73021,7 +73037,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L831",
+      "source_location": "L833",
       "weight": 1.0
     },
     {
@@ -73031,7 +73047,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L831",
+      "source_location": "L833",
       "weight": 1.0
     },
     {
@@ -73041,7 +73057,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L831",
+      "source_location": "L833",
       "weight": 1.0
     },
     {
@@ -73051,7 +73067,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L831",
+      "source_location": "L833",
       "weight": 1.0
     },
     {
@@ -73061,7 +73077,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L831",
+      "source_location": "L833",
       "weight": 1.0
     },
     {
@@ -73070,7 +73086,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L898",
+      "source_location": "L900",
       "weight": 1.0
     },
     {
@@ -73080,7 +73096,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L898",
+      "source_location": "L900",
       "weight": 1.0
     },
     {
@@ -73090,7 +73106,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L898",
+      "source_location": "L900",
       "weight": 1.0
     },
     {
@@ -73100,7 +73116,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L898",
+      "source_location": "L900",
       "weight": 1.0
     },
     {
@@ -73109,7 +73125,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L997",
+      "source_location": "L1001",
       "weight": 1.0
     },
     {
@@ -73119,7 +73135,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L997",
+      "source_location": "L1001",
       "weight": 1.0
     },
     {
@@ -73128,7 +73144,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1036",
+      "source_location": "L1040",
       "weight": 1.0
     },
     {
@@ -73138,7 +73154,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1036",
+      "source_location": "L1040",
       "weight": 1.0
     },
     {
@@ -73148,7 +73164,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1036",
+      "source_location": "L1040",
       "weight": 1.0
     },
     {
@@ -73157,7 +73173,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1104",
+      "source_location": "L1108",
       "weight": 1.0
     },
     {
@@ -73167,7 +73183,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1104",
+      "source_location": "L1108",
       "weight": 1.0
     },
     {
@@ -73177,7 +73193,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1104",
+      "source_location": "L1108",
       "weight": 1.0
     },
     {
@@ -73186,7 +73202,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1345",
+      "source_location": "L1351",
       "weight": 1.0
     },
     {
@@ -73195,7 +73211,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1360",
+      "source_location": "L1366",
       "weight": 1.0
     },
     {
@@ -73205,7 +73221,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1360",
+      "source_location": "L1366",
       "weight": 1.0
     },
     {
@@ -73215,7 +73231,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1360",
+      "source_location": "L1366",
       "weight": 1.0
     },
     {
@@ -73225,7 +73241,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1360",
+      "source_location": "L1366",
       "weight": 1.0
     },
     {
@@ -73234,7 +73250,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1463",
+      "source_location": "L1471",
       "weight": 1.0
     },
     {
@@ -73244,7 +73260,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1463",
+      "source_location": "L1471",
       "weight": 1.0
     },
     {
@@ -73254,7 +73270,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1463",
+      "source_location": "L1471",
       "weight": 1.0
     },
     {
@@ -73263,7 +73279,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1501",
+      "source_location": "L1509",
       "weight": 1.0
     },
     {
@@ -73273,7 +73289,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1501",
+      "source_location": "L1509",
       "weight": 1.0
     },
     {
@@ -73283,7 +73299,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1501",
+      "source_location": "L1509",
       "weight": 1.0
     },
     {
@@ -73293,7 +73309,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L198",
+      "source_location": "L200",
       "weight": 1.0
     },
     {
@@ -73303,7 +73319,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L219",
+      "source_location": "L221",
       "weight": 1.0
     },
     {
@@ -73313,7 +73329,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L262",
+      "source_location": "L264",
       "weight": 1.0
     },
     {
@@ -73323,7 +73339,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L521",
+      "source_location": "L523",
       "weight": 1.0
     },
     {
@@ -73333,7 +73349,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L522",
+      "source_location": "L524",
       "weight": 1.0
     },
     {
@@ -73343,7 +73359,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L589",
+      "source_location": "L591",
       "weight": 1.0
     },
     {
@@ -73353,7 +73369,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L690",
+      "source_location": "L692",
       "weight": 1.0
     },
     {
@@ -73363,7 +73379,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L702",
+      "source_location": "L704",
       "weight": 1.0
     },
     {
@@ -73373,7 +73389,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L713",
+      "source_location": "L715",
       "weight": 1.0
     },
     {
@@ -73383,7 +73399,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L735",
+      "source_location": "L737",
       "weight": 1.0
     },
     {
@@ -73393,32 +73409,12 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L740",
+      "source_location": "L742",
       "weight": 1.0
     },
     {
       "source": "services_rescheduling_plans_create_plan_for_appointment",
       "target": "services_rescheduling_plans_participant_snapshot",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L755",
-      "weight": 1.0
-    },
-    {
-      "source": "services_rescheduling_plans_create_plan_for_appointment",
-      "target": "services_rescheduling_plans_staff_snapshot",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L756",
-      "weight": 1.0
-    },
-    {
-      "source": "services_rescheduling_plans_create_plan_for_appointment",
-      "target": "services_rescheduling_plans_conflict_snapshot",
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
@@ -73428,12 +73424,32 @@
     },
     {
       "source": "services_rescheduling_plans_create_plan_for_appointment",
+      "target": "services_rescheduling_plans_staff_snapshot",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/rescheduling_plans.py",
+      "source_location": "L758",
+      "weight": 1.0
+    },
+    {
+      "source": "services_rescheduling_plans_create_plan_for_appointment",
+      "target": "services_rescheduling_plans_conflict_snapshot",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/services/rescheduling_plans.py",
+      "source_location": "L759",
+      "weight": 1.0
+    },
+    {
+      "source": "services_rescheduling_plans_create_plan_for_appointment",
       "target": "services_rescheduling_plans_blocking_appointment",
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L791",
+      "source_location": "L793",
       "weight": 1.0
     },
     {
@@ -73443,7 +73459,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L854",
+      "source_location": "L856",
       "weight": 1.0
     },
     {
@@ -73453,7 +73469,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L866",
+      "source_location": "L868",
       "weight": 1.0
     },
     {
@@ -73463,7 +73479,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L867",
+      "source_location": "L869",
       "weight": 1.0
     },
     {
@@ -73473,7 +73489,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L920",
+      "source_location": "L924",
       "weight": 1.0
     },
     {
@@ -73483,7 +73499,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L931",
+      "source_location": "L935",
       "weight": 1.0
     },
     {
@@ -73493,7 +73509,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L932",
+      "source_location": "L936",
       "weight": 1.0
     },
     {
@@ -73503,7 +73519,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L937",
+      "source_location": "L941",
       "weight": 1.0
     },
     {
@@ -73513,7 +73529,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L962",
+      "source_location": "L966",
       "weight": 1.0
     },
     {
@@ -73523,7 +73539,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L993",
+      "source_location": "L997",
       "weight": 1.0
     },
     {
@@ -73533,7 +73549,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L994",
+      "source_location": "L998",
       "weight": 1.0
     },
     {
@@ -73543,7 +73559,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1002",
+      "source_location": "L1006",
       "weight": 1.0
     },
     {
@@ -73553,7 +73569,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1011",
+      "source_location": "L1015",
       "weight": 1.0
     },
     {
@@ -73563,7 +73579,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1038",
+      "source_location": "L1042",
       "weight": 1.0
     },
     {
@@ -73573,7 +73589,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1056",
+      "source_location": "L1060",
       "weight": 1.0
     },
     {
@@ -73583,7 +73599,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1064",
+      "source_location": "L1068",
       "weight": 1.0
     },
     {
@@ -73593,7 +73609,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1100",
+      "source_location": "L1104",
       "weight": 1.0
     },
     {
@@ -73603,7 +73619,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1116",
+      "source_location": "L1120",
       "weight": 1.0
     },
     {
@@ -73613,7 +73629,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1271",
+      "source_location": "L1277",
       "weight": 1.0
     },
     {
@@ -73623,7 +73639,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1290",
+      "source_location": "L1296",
       "weight": 1.0
     },
     {
@@ -73633,7 +73649,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1304",
+      "source_location": "L1310",
       "weight": 1.0
     },
     {
@@ -73643,7 +73659,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1335",
+      "source_location": "L1341",
       "weight": 1.0
     },
     {
@@ -73653,7 +73669,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1375",
+      "source_location": "L1381",
       "weight": 1.0
     },
     {
@@ -73663,7 +73679,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1379",
+      "source_location": "L1385",
       "weight": 1.0
     },
     {
@@ -73673,7 +73689,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1405",
+      "source_location": "L1413",
       "weight": 1.0
     },
     {
@@ -73683,7 +73699,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1428",
+      "source_location": "L1436",
       "weight": 1.0
     },
     {
@@ -73693,7 +73709,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1448",
+      "source_location": "L1456",
       "weight": 1.0
     },
     {
@@ -73703,7 +73719,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1449",
+      "source_location": "L1457",
       "weight": 1.0
     },
     {
@@ -73713,7 +73729,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1452",
+      "source_location": "L1460",
       "weight": 1.0
     },
     {
@@ -73723,7 +73739,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1454",
+      "source_location": "L1462",
       "weight": 1.0
     },
     {
@@ -73733,7 +73749,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1473",
+      "source_location": "L1481",
       "weight": 1.0
     },
     {
@@ -73743,7 +73759,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1477",
+      "source_location": "L1485",
       "weight": 1.0
     },
     {
@@ -73753,7 +73769,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1513",
+      "source_location": "L1523",
       "weight": 1.0
     },
     {
@@ -73763,7 +73779,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1518",
+      "source_location": "L1528",
       "weight": 1.0
     },
     {
@@ -73773,7 +73789,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1531",
+      "source_location": "L1541",
       "weight": 1.0
     },
     {
@@ -73783,7 +73799,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1556",
+      "source_location": "L1566",
       "weight": 1.0
     },
     {
@@ -73793,7 +73809,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1557",
+      "source_location": "L1567",
       "weight": 1.0
     },
     {
@@ -78430,7 +78446,7 @@
     },
     {
       "source": "tests_test_schedule_writes",
-      "target": "operations_services",
+      "target": "operations_schedule_writes",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -78440,11 +78456,21 @@
     },
     {
       "source": "tests_test_schedule_writes",
+      "target": "operations_services",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_schedule_writes.py",
+      "source_location": "L15",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_schedule_writes",
       "target": "tests_test_schedule_writes_roomcapacitypostgresqlconcurrencytests",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L17",
+      "source_location": "L18",
       "weight": 1.0
     },
     {
@@ -78453,7 +78479,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L17",
+      "source_location": "L18",
       "weight": 1.0
     },
     {
@@ -78462,7 +78488,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L18",
+      "source_location": "L19",
       "weight": 1.0
     },
     {
@@ -78471,7 +78497,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L56",
+      "source_location": "L57",
       "weight": 1.0
     },
     {
@@ -78481,7 +78507,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L56",
+      "source_location": "L57",
       "weight": 1.0
     },
     {
@@ -78491,7 +78517,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L56",
+      "source_location": "L57",
       "weight": 1.0
     },
     {
@@ -78501,7 +78527,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L56",
+      "source_location": "L57",
       "weight": 1.0
     },
     {
@@ -78510,7 +78536,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L76",
+      "source_location": "L77",
       "weight": 1.0
     },
     {
@@ -78520,7 +78546,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L76",
+      "source_location": "L77",
       "weight": 1.0
     },
     {
@@ -78529,7 +78555,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L105",
+      "source_location": "L106",
       "weight": 1.0
     },
     {
@@ -78539,7 +78565,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L105",
+      "source_location": "L106",
       "weight": 1.0
     },
     {
@@ -78548,7 +78574,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L125",
+      "source_location": "L126",
       "weight": 1.0
     },
     {
@@ -78557,7 +78583,16 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L140",
+      "source_location": "L141",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_schedule_writes_roomcapacitypostgresqlconcurrencytests",
+      "target": "tests_test_schedule_writes_roomcapacitypostgresqlconcurrencytests_test_locking_appointment_without_room_does_not_lock_nullable_join",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_schedule_writes.py",
+      "source_location": "L161",
       "weight": 1.0
     },
     {
@@ -78567,7 +78602,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L57",
+      "source_location": "L58",
       "weight": 1.0
     },
     {
@@ -78577,7 +78612,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L78",
+      "source_location": "L79",
       "weight": 1.0
     },
     {
@@ -78587,7 +78622,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L132",
+      "source_location": "L133",
       "weight": 1.0
     },
     {
@@ -78597,7 +78632,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L134",
+      "source_location": "L135",
       "weight": 1.0
     },
     {
@@ -78607,7 +78642,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L152",
+      "source_location": "L153",
       "weight": 1.0
     },
     {
@@ -78617,7 +78652,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L154",
+      "source_location": "L155",
       "weight": 1.0
     },
     {
@@ -142434,11 +142469,20 @@
     },
     {
       "source": "docs_50_postgresql_ci_contract_контракт_ci_postgresql_17",
-      "target": "docs_50_postgresql_ci_contract_границы",
+      "target": "docs_50_postgresql_ci_contract_первичная_валидация",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/50-postgresql-ci-contract.md",
       "source_location": "L39",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_50_postgresql_ci_contract_контракт_ci_postgresql_17",
+      "target": "docs_50_postgresql_ci_contract_границы",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/50-postgresql-ci-contract.md",
+      "source_location": "L47",
       "weight": 1.0
     },
     {
@@ -145390,7 +145434,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L67",
+      "source_location": "L71",
       "weight": 1.0
     },
     {
@@ -145399,7 +145443,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L88",
+      "source_location": "L93",
       "weight": 1.0
     },
     {
@@ -145408,7 +145452,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L95",
+      "source_location": "L100",
       "weight": 1.0
     },
     {
@@ -145417,7 +145461,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L118",
+      "source_location": "L123",
       "weight": 1.0
     },
     {
@@ -151498,6 +151542,16 @@
       "weight": 1.0
     },
     {
+      "source": "tests_test_schedule_writes",
+      "target": "operations_schedule_writes_lock_schedule_write",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_schedule_writes.py",
+      "source_location": "L14",
+      "weight": 1.0
+    },
+    {
       "source": "tests_test_services",
       "target": "operations_models_appointment",
       "relation": "imports",
@@ -156254,7 +156308,7 @@
       "context": "submodule_import",
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L14",
+      "source_location": "L15",
       "weight": 1.0
     },
     {
@@ -156754,7 +156808,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/schedule_writes.py",
-      "source_location": "L97",
+      "source_location": "L96",
       "weight": 1.0
     },
     {
@@ -156954,7 +157008,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L526",
+      "source_location": "L528",
       "weight": 1.0
     },
     {
@@ -156964,7 +157018,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L534",
+      "source_location": "L536",
       "weight": 1.0
     },
     {
@@ -156974,7 +157028,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L536",
+      "source_location": "L538",
       "weight": 1.0
     },
     {
@@ -156984,7 +157038,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L544",
+      "source_location": "L546",
       "weight": 1.0
     },
     {
@@ -156994,7 +157048,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1454",
+      "source_location": "L1462",
       "weight": 1.0
     },
     {
@@ -271640,7 +271694,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L249",
+      "source_location": "L251",
       "weight": 1.0
     },
     {
@@ -271651,7 +271705,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "operations/services/rescheduling_plans.py",
-      "source_location": "L1544",
+      "source_location": "L1554",
       "weight": 1.0
     },
     {
@@ -272916,7 +272970,18 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "operations/tests/test_schedule_writes.py",
-      "source_location": "L43",
+      "source_location": "L44",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_schedule_writes_roomcapacitypostgresqlconcurrencytests_test_locking_appointment_without_room_does_not_lock_nullable_join",
+      "target": "operations_schedule_writes_lock_schedule_write",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "operations/tests/test_schedule_writes.py",
+      "source_location": "L170",
       "weight": 1.0
     },
     {

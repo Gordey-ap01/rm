@@ -64,11 +64,10 @@ def lock_schedule_write(
     with transaction.atomic():
         appointment = None
         if appointment_id:
-            appointment = (
-                Appointment.objects.select_for_update()
-                .select_related("room")
-                .get(pk=appointment_id)
-            )
+            # ``room`` is optional.  Loading it in this locking query creates a
+            # LEFT JOIN, which PostgreSQL cannot lock on its nullable side.
+            # The foreign-key value is already present on ``Appointment``.
+            appointment = Appointment.objects.select_for_update().get(pk=appointment_id)
 
         ids = {int(room_id) for room_id in room_ids if room_id}
         if appointment and appointment.room_id:

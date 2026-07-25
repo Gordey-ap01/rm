@@ -120,7 +120,7 @@
     "semantic_hash": ""
   },
   "operations/services/billing.py": {
-    "mtime": 1784951505.8100412,
+    "mtime": 1784953607.2352407,
     "ast_hash": "c8619e767bc7573faab826c0757ee53f",
     "semantic_hash": ""
   },
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784952179.1167214,
-    "ast_hash": "40d84e64ba3763ab1ebf42d01f6a617c",
+    "mtime": 1784953607.2374048,
+    "ast_hash": "238de9663935ecde40bdbec7086b8948",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -870,8 +870,8 @@
     "semantic_hash": "4eee83446240dcb62366531da9b366dc"
   },
   "operations/services/rescheduling_plans.py": {
-    "mtime": 1783996546.8002996,
-    "ast_hash": "797d6e75f128f31b6defee12c37f393a",
+    "mtime": 1784953607.2368684,
+    "ast_hash": "8a7d94ad3fbb78182d00e6c088e0cc22",
     "semantic_hash": ""
   },
   "operations/views/rescheduling_plans.py": {
@@ -1340,8 +1340,8 @@
     "semantic_hash": ""
   },
   "operations/services/certificates.py": {
-    "mtime": 1784620274.2127266,
-    "ast_hash": "669e175b22fc01187e1894ba3b5f327b",
+    "mtime": 1784952740.2262554,
+    "ast_hash": "5ebfb15e46520c86ee0566e3fab5bbb7",
     "semantic_hash": ""
   },
   "operations/management/commands/audit_certificate_balance_backfill.py": {
@@ -1465,8 +1465,8 @@
     "semantic_hash": ""
   },
   "operations/schedule_writes.py": {
-    "mtime": 1784949706.8891258,
-    "ast_hash": "9bc1777e4f7dace0c3a4528f2fec2a94",
+    "mtime": 1784952740.223591,
+    "ast_hash": "afb17196c4e739b5ba97bf45fa31d8e3",
     "semantic_hash": ""
   },
   "operations/tests/test_billing_decisions.py": {
@@ -1475,8 +1475,8 @@
     "semantic_hash": ""
   },
   "operations/tests/test_schedule_writes.py": {
-    "mtime": 1784949651.6374235,
-    "ast_hash": "0de7ea9f9d4e9278ffdf5ff272058bc3",
+    "mtime": 1784952740.228368,
+    "ast_hash": "97019f357f3eaeb16cf7e4f8e7b3e58d",
     "semantic_hash": ""
   },
   "docs/49-postgresql-schedule-billing-write-serialization-contract.md": {
@@ -1500,8 +1500,8 @@
     "semantic_hash": ""
   },
   "docs/50-postgresql-ci-contract.md": {
-    "mtime": 1784952147.2650259,
-    "ast_hash": "a8181fd9b2c372e929746cb9ebed9148",
+    "mtime": 1784953475.0024843,
+    "ast_hash": "cb08ae23443d144e9f76c482d900319b",
     "semantic_hash": ""
   }
 }

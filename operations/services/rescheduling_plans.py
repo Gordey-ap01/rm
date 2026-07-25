@@ -171,7 +171,9 @@ def create_chain_for_steps(
         raise ValidationError("Цепочку нельзя создать для завершенного или отмененного плана.")
     step_id_set = set(step_ids)
     steps = list(
-        AppointmentRescheduleStep.objects.select_for_update()
+        AppointmentRescheduleStep.objects.select_for_update(
+            of=("self", "source_appointment")
+        )
         .select_related("source_appointment")
         .filter(plan=plan, pk__in=step_id_set)
         .order_by("position", "pk")
@@ -901,7 +903,9 @@ def create_confirmations_for_step(
     actor: Any = None,
 ) -> StepConfirmationResult:
     step = (
-        AppointmentRescheduleStep.objects.select_for_update()
+        AppointmentRescheduleStep.objects.select_for_update(
+            of=("self", "plan", "source_appointment")
+        )
         .select_related(
             "plan",
             "source_appointment",
@@ -1103,7 +1107,7 @@ def revalidate_plan(plan: AppointmentReschedulePlan) -> PlanValidationResult:
 @transaction.atomic
 def revalidate_chain(chain: AppointmentRescheduleChain) -> ChainValidationResult:
     chain = (
-        AppointmentRescheduleChain.objects.select_for_update()
+        AppointmentRescheduleChain.objects.select_for_update(of=("self", "plan"))
         .select_related("plan")
         .get(pk=chain.pk)
     )
@@ -1116,7 +1120,9 @@ def revalidate_chain(chain: AppointmentRescheduleChain) -> ChainValidationResult
     _raise_if_terminal_plan(chain.plan, verb="перепроверять")
 
     steps = list(
-        AppointmentRescheduleStep.objects.select_for_update()
+        AppointmentRescheduleStep.objects.select_for_update(
+            of=("self", "source_appointment")
+        )
         .select_related(
             "source_appointment",
             "proposed_primary_staff",
@@ -1368,7 +1374,7 @@ def apply_chain(
     try:
         with transaction.atomic():
             chain = (
-                AppointmentRescheduleChain.objects.select_for_update()
+                AppointmentRescheduleChain.objects.select_for_update(of=("self", "plan"))
                 .select_related("plan")
                 .get(pk=chain_pk)
             )
@@ -1383,7 +1389,9 @@ def apply_chain(
                 raise ValidationError("Chain is not ready after revalidation.")
 
             steps = list(
-                AppointmentRescheduleStep.objects.select_for_update()
+                AppointmentRescheduleStep.objects.select_for_update(
+                    of=("self", "source_appointment")
+                )
                 .select_related(
                     "source_appointment",
                     "proposed_primary_staff",
@@ -1506,7 +1514,9 @@ def apply_step(
     allow_room_override: bool = False,
 ) -> AppointmentRescheduleStep:
     step = (
-        AppointmentRescheduleStep.objects.select_for_update()
+        AppointmentRescheduleStep.objects.select_for_update(
+            of=("self", "plan", "source_appointment")
+        )
         .select_related("plan", "source_appointment", "proposed_primary_staff", "proposed_room")
         .get(pk=step.pk)
     )

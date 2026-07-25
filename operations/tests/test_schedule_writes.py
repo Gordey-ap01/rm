@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from operations.forms import AppointmentForm
 from operations.models import Appointment, Child, Room, Service, StaffMember
+from operations.schedule_writes import lock_schedule_write
 from operations.services import appointments as appointment_svc
 
 
@@ -152,3 +153,20 @@ class RoomCapacityPostgreSQLConcurrencyTests(TransactionTestCase):
         outcomes = self._run_competing_writers(writer)
 
         self._assert_last_place_is_serialized(outcomes)
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Совместимость блокировок проверяется только на PostgreSQL.",
+    )
+    def test_locking_appointment_without_room_does_not_lock_nullable_join(self):
+        appointment = Appointment.objects.create(
+            child=self.children[1],
+            staff_member=self.staff[1],
+            service=self.service,
+            starts_at=self.starts_at + timedelta(hours=1),
+            ends_at=self.ends_at + timedelta(hours=1),
+        )
+
+        with lock_schedule_write(appointment_id=appointment.pk) as locked:
+            self.assertEqual(locked.appointment.pk, appointment.pk)
+            self.assertEqual(locked.rooms_by_id, {})
