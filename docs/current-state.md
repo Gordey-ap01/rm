@@ -115,6 +115,8 @@
   списания, гонка выплаты, nullable locking-path и сквозные сценарии проходят.
 - GitHub Actions run `30154850160` для commit `81611d9` успешно прошел
   PostgreSQL 17 migrations, Django check, Ruff и полный pytest за `5m16s`.
+- GitHub Actions run `30156267128` для commit `4c2e09e` успешно прошел чистую
+  PostgreSQL 17, миграции, Django check, Ruff и полный pytest за `5m10s`.
 - Browser smoke локального сценария администратора: «Списать» создает один
   debit, «Не списывать» очищает ledger занятия и возвращает остаток; mobile
   `390px` без horizontal overflow, console errors отсутствуют.

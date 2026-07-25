@@ -44515,7 +44515,7 @@
       "label": "Следующая работа",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L137",
+      "source_location": "L139",
       "_origin": "ast"
     },
     {
@@ -44523,7 +44523,7 @@
       "label": "Глобальная готовность",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L146",
+      "source_location": "L148",
       "_origin": "ast"
     },
     {
@@ -44531,7 +44531,7 @@
       "label": "Риски и запреты",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L169",
+      "source_location": "L171",
       "_origin": "ast"
     },
     {
@@ -147844,7 +147844,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L137",
+      "source_location": "L139",
       "weight": 1.0
     },
     {
@@ -147853,7 +147853,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L146",
+      "source_location": "L148",
       "weight": 1.0
     },
     {
@@ -147862,7 +147862,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L169",
+      "source_location": "L171",
       "weight": 1.0
     },
     {
