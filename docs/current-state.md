@@ -84,7 +84,8 @@
   `390px` без horizontal overflow, console errors отсутствуют.
 - Первый GitHub CI run выявил недопустимый `FOR UPDATE` nullable `LEFT JOIN`;
   причина исправлена и воспроизведена полным локальным PostgreSQL suite.
-  Повторный статус GitHub runner будет получен после push.
+  Повторный GitHub Actions run
+  `30144312125` успешно прошел миграции, линтер и полный PostgreSQL suite.
 - Playwright browser smoke: work queue администратора, «Завтра» руководителя и
   мобильный кабинет специалиста пройдены; horizontal overflow `0`.
 - Graphify code index обновлен локально без LLM/API key: `5755` nodes,
@@ -94,8 +95,8 @@
 
 1. Закрыть приемку цельного сценария администратора от записи до списания и сценарий
    руководителя от заявки специалиста до табеля/выплаты.
-2. Проверить исправленный GitHub CI run, затем подготовить backup/restore, monitoring
-   и production preflight.
+2. Подготовить backup/restore, monitoring и production preflight; включить
+   branch protection после согласования репозитория.
 
 ## Глобальная готовность
 

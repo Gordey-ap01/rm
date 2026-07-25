@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784953607.2374048,
-    "ast_hash": "238de9663935ecde40bdbec7086b8948",
+    "mtime": 1784954480.3906665,
+    "ast_hash": "622798455940259771e871b42e046fbb",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -1500,8 +1500,8 @@
     "semantic_hash": ""
   },
   "docs/50-postgresql-ci-contract.md": {
-    "mtime": 1784953475.0024843,
-    "ast_hash": "cb08ae23443d144e9f76c482d900319b",
+    "mtime": 1784954480.3921742,
+    "ast_hash": "0b21315a9c71b82e63bec6368566cab4",
     "semantic_hash": ""
   }
 }

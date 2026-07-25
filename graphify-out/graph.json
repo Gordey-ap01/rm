@@ -40987,7 +40987,7 @@
       "label": "Границы",
       "file_type": "document",
       "source_file": "docs/50-postgresql-ci-contract.md",
-      "source_location": "L47",
+      "source_location": "L48",
       "_origin": "ast"
     },
     {
@@ -43699,7 +43699,7 @@
       "label": "Следующая работа",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L93",
+      "source_location": "L94",
       "_origin": "ast"
     },
     {
@@ -43707,7 +43707,7 @@
       "label": "Глобальная готовность",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L100",
+      "source_location": "L101",
       "_origin": "ast"
     },
     {
@@ -43715,7 +43715,7 @@
       "label": "Риски и запреты",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L123",
+      "source_location": "L124",
       "_origin": "ast"
     },
     {
@@ -142482,7 +142482,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/50-postgresql-ci-contract.md",
-      "source_location": "L47",
+      "source_location": "L48",
       "weight": 1.0
     },
     {
@@ -145443,7 +145443,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L93",
+      "source_location": "L94",
       "weight": 1.0
     },
     {
@@ -145452,7 +145452,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L100",
+      "source_location": "L101",
       "weight": 1.0
     },
     {
@@ -145461,7 +145461,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L123",
+      "source_location": "L124",
       "weight": 1.0
     },
     {
