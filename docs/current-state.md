@@ -118,6 +118,9 @@ Production preflight, health и проверяемый backup/restore завер
   PostgreSQL 17 migrations, Django check, Ruff и полный pytest за `5m16s`.
 - GitHub Actions run `30156267128` для commit `4c2e09e` успешно прошел чистую
   PostgreSQL 17, миграции, Django check, Ruff и полный pytest за `5m10s`.
+- GitHub Actions run `30178291144` для commit `0a3c820` успешно прошел чистую
+  PostgreSQL 17: dependency guard, Compose/preflight, Linux restore-drill и
+  полный pytest (`718 passed`) за `6m36s`.
 - Browser smoke локального сценария администратора: «Списать» создает один
   debit, «Не списывать» очищает ledger занятия и возвращает остаток; mobile
   `390px` без horizontal overflow, console errors отсутствуют.
