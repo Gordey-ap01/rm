@@ -15,8 +15,8 @@
     "semantic_hash": ""
   },
   "operations/api.py": {
-    "mtime": 1784017345.3637226,
-    "ast_hash": "6cc28af53005a2754c801c231e04069d",
+    "mtime": 1784950409.0922565,
+    "ast_hash": "b4150ec7853803e9da39f408f85ff948",
     "semantic_hash": ""
   },
   "operations/apps.py": {
@@ -25,8 +25,8 @@
     "semantic_hash": ""
   },
   "operations/forms.py": {
-    "mtime": 1784912250.970536,
-    "ast_hash": "097768bcb88e4e3f989a1a8febf3d67a",
+    "mtime": 1784950957.9790018,
+    "ast_hash": "23d88e2aa5ad547b38f881b0512c4008",
     "semantic_hash": ""
   },
   "operations/management/__init__.py": {
@@ -105,8 +105,8 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/models.py": {
-    "mtime": 1784913064.586225,
-    "ast_hash": "213c259615c468b6a32964d3683b190d",
+    "mtime": 1784949706.8972032,
+    "ast_hash": "7a6d76584f8e4724f994f70befcbba03",
     "semantic_hash": ""
   },
   "operations/services/__init__.py": {
@@ -115,14 +115,14 @@
     "semantic_hash": ""
   },
   "operations/services/appointments.py": {
-    "mtime": 1782487990.4802697,
-    "ast_hash": "e56314f2c0c382c3cc2cc802e4d04703",
-    "semantic_hash": "e56314f2c0c382c3cc2cc802e4d04703"
+    "mtime": 1784949740.3023722,
+    "ast_hash": "d51b332ed8ec0e0af13405170c183c3e",
+    "semantic_hash": ""
   },
   "operations/services/billing.py": {
-    "mtime": 1782448804.8548841,
-    "ast_hash": "a34248f4fbb980266bd36e7d05921b23",
-    "semantic_hash": "a34248f4fbb980266bd36e7d05921b23"
+    "mtime": 1784951505.8100412,
+    "ast_hash": "c8619e767bc7573faab826c0757ee53f",
+    "semantic_hash": ""
   },
   "operations/services/notifications.py": {
     "mtime": 1782302900.0007498,
@@ -135,9 +135,9 @@
     "semantic_hash": ""
   },
   "operations/services/program_wizard.py": {
-    "mtime": 1782301090.1091993,
-    "ast_hash": "a8f95d23b4b3bf19da07658c81e9e007",
-    "semantic_hash": "a8f95d23b4b3bf19da07658c81e9e007"
+    "mtime": 1784949711.947654,
+    "ast_hash": "670c4fc20b11f6c81efe589361e6050f",
+    "semantic_hash": ""
   },
   "operations/services/reports.py": {
     "mtime": 1784912272.579954,
@@ -155,8 +155,8 @@
     "semantic_hash": "50782352c5fa9df21258784a69f4da41"
   },
   "operations/tests.py": {
-    "mtime": 1784912441.4632177,
-    "ast_hash": "9c452235e39081aeaf07883313bbb56a",
+    "mtime": 1784951514.351638,
+    "ast_hash": "fb8b33bbfa16bde229dbac3f1d51c97c",
     "semantic_hash": ""
   },
   "operations/tests/test_auditlog.py": {
@@ -165,8 +165,8 @@
     "semantic_hash": ""
   },
   "operations/tests/test_services.py": {
-    "mtime": 1784456239.83739,
-    "ast_hash": "8866d59143a9f4f8f3e85ee96c78231c",
+    "mtime": 1784951548.4140615,
+    "ast_hash": "c93d5dcff9001a5dd1f15b3ca496237b",
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
@@ -405,8 +405,8 @@
     "semantic_hash": "4743b79b7b2298e1650284eda55e92cb"
   },
   "docs/01-prd.md": {
-    "mtime": 1784913618.940683,
-    "ast_hash": "db98b0d6eedd507ea64e57d681b3de9d",
+    "mtime": 1784951659.8912332,
+    "ast_hash": "1cff1dd0d96522815a60d31f3fbdf7b6",
     "semantic_hash": ""
   },
   "docs/02-tech-stack-research.md": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784913618.9446933,
-    "ast_hash": "457300ce3f16f8f41ac76f76e831fbb9",
+    "mtime": 1784951931.1436183,
+    "ast_hash": "6882c8ff19be7a7d762633f58b329841",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -820,8 +820,8 @@
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784913618.9426894,
-    "ast_hash": "bd82d635f0bf4546f7417961e5cb9d84",
+    "mtime": 1784951659.889723,
+    "ast_hash": "f912e30bb11b1fa4b8b3fe974ed86bdb",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1460,8 +1460,38 @@
     "semantic_hash": ""
   },
   "docs/48-time-off-decision-authority-contract.md": {
-    "mtime": 1784912053.4727314,
-    "ast_hash": "c77ac68db6ceab2a53e90a5cc9bdbb5b",
+    "mtime": 1784913694.3125312,
+    "ast_hash": "6b82f508eaaaff92a6edfd78b6b378a4",
+    "semantic_hash": ""
+  },
+  "operations/schedule_writes.py": {
+    "mtime": 1784949706.8891258,
+    "ast_hash": "9bc1777e4f7dace0c3a4528f2fec2a94",
+    "semantic_hash": ""
+  },
+  "operations/tests/test_billing_decisions.py": {
+    "mtime": 1784951112.4221282,
+    "ast_hash": "aacd043f4bd048ed4377eba5154d3876",
+    "semantic_hash": ""
+  },
+  "operations/tests/test_schedule_writes.py": {
+    "mtime": 1784949651.6374235,
+    "ast_hash": "0de7ea9f9d4e9278ffdf5ff272058bc3",
+    "semantic_hash": ""
+  },
+  "docs/49-postgresql-schedule-billing-write-serialization-contract.md": {
+    "mtime": 1784951931.1426184,
+    "ast_hash": "cf5564e16dfb7e57084c018fd890daf5",
+    "semantic_hash": ""
+  },
+  "docs/decisions/ADR-004-typed-decision-journals-over-generic-workflow.md": {
+    "mtime": 1784913721.9324038,
+    "ast_hash": "ebfb6ae6ccf5ed9cda8e519823fbadc5",
+    "semantic_hash": ""
+  },
+  "docs/decisions/ADR-005-room-row-locks-for-configurable-capacity.md": {
+    "mtime": 1784950764.139908,
+    "ast_hash": "803da3f53a02b0eca638fce751bc2c8f",
     "semantic_hash": ""
   }
 }

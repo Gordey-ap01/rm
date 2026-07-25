@@ -51,7 +51,7 @@
 | `docs/23-*.md` ... `docs/39-*.md` | Договоры, шаблоны, документы, акты, согласия и сертификаты. |
 | `docs/40-*.md` ... `docs/47-*.md` | Импорт и баланс сертификатов, preflight и readiness UI. |
 | `docs/48-time-off-decision-authority-contract.md` | Решения по отсутствиям и обязательный контроль руководителя. |
-| `docs/49-postgresql-schedule-billing-write-serialization-contract.md` | Контракт конкурентной записи: подэтап A вместимости завершен, B списаний следующий. |
+| `docs/49-postgresql-schedule-billing-write-serialization-contract.md` | Контракт конкурентной записи: A вместимость и B идемпотентное списание завершены. |
 | `docs/decisions/ADR-001-*.md` | Django/PostgreSQL/local-first. |
 | `docs/decisions/ADR-002-*.md` | Балансовые счета и ledger. |
 | `docs/decisions/ADR-003-*.md` | Полномочия и ручные решения. |

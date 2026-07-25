@@ -346,6 +346,31 @@ class AppointmentWorkflowTests(TestCase):
         self.assertEqual(LedgerEntry.objects.filter(appointment=appointment).count(), 1)
         self.assertEqual(self.account.current_balance, Decimal("9"))
 
+    def test_billing_decision_do_not_charge_unlinks_the_active_debit(self):
+        appointment = self.create_appointment()
+        charge_data = {
+            "billing_decision": Appointment.BillingDecision.CHARGE,
+            "billing_account": self.account.id,
+            "amount": "-1",
+            "reason": "Списать",
+        }
+        self.client.post(reverse("appointment_billing", args=[appointment.pk]), charge_data)
+
+        response = self.client.post(
+            reverse("appointment_billing", args=[appointment.pk]),
+            {
+                "billing_decision": Appointment.BillingDecision.DO_NOT_CHARGE,
+                "reason": "Не списывать",
+            },
+        )
+
+        appointment.refresh_from_db()
+        self.account.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(appointment.billing_decision, Appointment.BillingDecision.DO_NOT_CHARGE)
+        self.assertFalse(LedgerEntry.objects.filter(appointment=appointment).exists())
+        self.assertEqual(self.account.current_balance, Decimal("10"))
+
     def create_group_appointment_with_second_participant(self):
         second_child = Child.objects.create(
             last_name="Петров",

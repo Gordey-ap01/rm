@@ -1194,67 +1194,21 @@ class BillingDecisionForm(forms.Form):
                     self.add_error("billing_account", "Счет не подходит для услуги занятия.")
         return cleaned
 
-    @transaction.atomic
     def save(self, user):
-        decision = self.cleaned_data["billing_decision"]
-        reason = self.cleaned_data.get("reason", "").strip() or "Решение администратора по занятию."
-        appointment = self.appointment
+        # Import lazily: forms load while the services package imports modules that use forms.
+        from operations.services import billing as billing_svc
 
-        if self.participant:
-            participant = self.participant
-            if decision == Appointment.BillingDecision.CHARGE:
-                account = self.cleaned_data["billing_account"]
-                amount = self.cleaned_data["amount"]
-                participant.billing_decision = Appointment.BillingDecision.CHARGE
-                participant.billing_account = account
-                participant.price_snapshot = (
-                    appointment.service.default_price if appointment.service_id else None
-                )
-                participant.save(
-                    update_fields=[
-                        "billing_decision",
-                        "billing_account",
-                        "price_snapshot",
-                        "updated_at",
-                    ]
-                )
-                sync_participant_ledger_to_target(
-                    participant, {"account": account, "amount": amount}, user, reason
-                )
-            else:
-                participant.billing_decision = Appointment.BillingDecision.DO_NOT_CHARGE
-                participant.billing_account = None
-                participant.price_snapshot = None
-                participant.save(
-                    update_fields=[
-                        "billing_decision",
-                        "billing_account",
-                        "price_snapshot",
-                        "updated_at",
-                    ]
-                )
-                sync_participant_ledger_to_target(participant, None, user, reason)
-            sync_appointment_billing_summary(appointment)
-            return appointment
-
-        if decision == Appointment.BillingDecision.CHARGE:
-            account = self.cleaned_data["billing_account"]
-            amount = self.cleaned_data["amount"]
-            appointment.billing_decision = Appointment.BillingDecision.CHARGE
-            appointment.billing_account = account
-            appointment.save(update_fields=["billing_decision", "billing_account", "updated_at"])
-            sync_ledger_to_target(
-                appointment,
-                {account.id: {"account": account, "amount": amount}},
-                user,
-                reason,
-            )
-        else:
-            appointment.billing_decision = Appointment.BillingDecision.DO_NOT_CHARGE
-            appointment.billing_account = None
-            appointment.save(update_fields=["billing_decision", "billing_account", "updated_at"])
-            sync_ledger_to_target(appointment, {}, user, reason)
-        return appointment
+        result = billing_svc.apply_decision(
+            self.appointment,
+            decision=self.cleaned_data["billing_decision"],
+            account=self.cleaned_data.get("billing_account"),
+            amount=self.cleaned_data.get("amount"),
+            reason=self.cleaned_data.get("reason", "").strip()
+            or "Решение администратора по занятию.",
+            actor=user,
+            participant=self.participant,
+        )
+        return result.appointment
 
 
 class AppointmentParticipantProgramForm(forms.Form):

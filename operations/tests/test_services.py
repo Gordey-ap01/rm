@@ -596,6 +596,26 @@ class BillingServiceTests(_FixturesMixin, TestCase):
         self.assertIsNotNone(result.entry)
         self.assertEqual(result.entry.entry_type, LedgerEntry.EntryType.DEBIT)
 
+    def test_repeating_charge_keeps_one_active_debit_and_balance(self):
+        for _ in range(2):
+            billing_svc.apply_decision(
+                self.appt,
+                decision=Appointment.BillingDecision.CHARGE,
+                account=self.account,
+                amount=Decimal("-1"),
+                actor=self.user,
+            )
+
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.current_balance, Decimal("9"))
+        self.assertEqual(
+            LedgerEntry.objects.filter(
+                appointment=self.appt,
+                entry_type=LedgerEntry.EntryType.DEBIT,
+            ).count(),
+            1,
+        )
+
     def test_apply_charge_rejects_session_account_for_another_child(self):
         second_parent = ParentGuardian.objects.create(
             last_name="Петров", first_name="Петр", phone="+7 900 000-10-02"
@@ -691,6 +711,40 @@ class BillingServiceTests(_FixturesMixin, TestCase):
 
         self.assertFalse(LedgerEntry.objects.filter(appointment=self.appt).exists())
 
+    def test_apply_decision_charges_selected_group_participant(self):
+        participant_child = Child.objects.create(
+            last_name="Группа", first_name="Выбранный участник"
+        )
+        participant_account = BalanceAccount.objects.create(
+            child=participant_child,
+            funding_source=self.funding,
+            unit=BalanceAccount.Unit.SESSIONS,
+            service_scope=BalanceAccount.ServiceScope.ANY,
+            initial_amount=Decimal("3"),
+        )
+        participant = AppointmentParticipant.objects.create(
+            appointment=self.appt,
+            child=participant_child,
+            starts_at_snapshot=self.appt.starts_at,
+            ends_at_snapshot=self.appt.ends_at,
+            appointment_status=self.appt.status,
+        )
+
+        result = billing_svc.apply_decision(
+            self.appt,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=participant_account,
+            amount=Decimal("-1"),
+            actor=self.user,
+            participant=participant,
+        )
+
+        participant.refresh_from_db()
+        self.assertEqual(participant.billing_decision, Appointment.BillingDecision.CHARGE)
+        self.assertEqual(participant.billing_account, participant_account)
+        self.assertEqual(result.entry.appointment_participant, participant)
+        self.assertEqual(participant_account.current_balance, Decimal("2"))
+
     def test_sync_ledger_for_decision_rejects_group_without_specific_participant(self):
         second_child = Child.objects.create(last_name="Группа", first_name="Сервис")
         AppointmentParticipant.objects.create(
@@ -729,8 +783,18 @@ class BillingServiceTests(_FixturesMixin, TestCase):
             actor=self.user,
         )
         self.appt.refresh_from_db()
+        self.account.refresh_from_db()
         self.assertEqual(self.appt.billing_decision, Appointment.BillingDecision.DO_NOT_CHARGE)
         self.assertEqual(LedgerEntry.objects.filter(appointment=self.appt).count(), 0)
+        self.assertEqual(self.account.current_balance, Decimal("10"))
+        self.assertTrue(
+            LedgerEntry.objects.filter(
+                account=self.account,
+                appointment__isnull=True,
+                entry_type=LedgerEntry.EntryType.CORRECTION,
+                amount=Decimal("1"),
+            ).exists()
+        )
         self.assertGreaterEqual(result.removed, 1)
 
     def test_top_up_creates_payment_and_ledger(self):

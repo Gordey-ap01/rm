@@ -12,6 +12,7 @@ from django.db.models import Q
 
 from operations.models import (
     Appointment,
+    AppointmentParticipant,
     BalanceAccount,
     Child,
     FundingSource,
@@ -33,8 +34,13 @@ def _default_amount_for(account: BalanceAccount, appointment: Appointment) -> De
     return -appointment.service.default_price
 
 
-def _sync_appointment_billing_summary(appointment: Appointment) -> None:
-    participants = list(appointment.participants.select_related("billing_account").order_by("pk"))
+def _sync_appointment_billing_summary(
+    appointment: Appointment,
+    *,
+    participants: list[AppointmentParticipant] | None = None,
+) -> None:
+    if participants is None:
+        participants = list(appointment.participants.select_related("billing_account").order_by("pk"))
     if not participants:
         return
     billing_decision = Appointment.BillingDecision.UNDECIDED
@@ -64,11 +70,81 @@ def _sync_appointment_billing_summary(appointment: Appointment) -> None:
     appointment.billing_account = billing_account
 
 
-def _single_participant_or_none(appointment: Appointment):
-    participants = list(appointment.participants.order_by("pk")[:2])
+def _single_participant_or_none(
+    participants: list[AppointmentParticipant],
+) -> AppointmentParticipant | None:
     if len(participants) > 1:
         raise ValueError("Для группового занятия нужно выбрать конкретного участника.")
     return participants[0] if participants else None
+
+
+def _locked_participant(
+    appointment: Appointment,
+    participant: AppointmentParticipant | None,
+) -> tuple[AppointmentParticipant | None, list[AppointmentParticipant]]:
+    participants = list(
+        AppointmentParticipant.objects.select_for_update()
+        .filter(appointment=appointment)
+        .order_by("pk")
+    )
+    if participant is None:
+        return _single_participant_or_none(participants), participants
+
+    for locked_participant in participants:
+        if locked_participant.pk == participant.pk:
+            return locked_participant, participants
+    raise ValueError("Участник не относится к выбранному занятию или был удален.")
+
+
+def _locked_ledger_entries(
+    appointment: Appointment,
+    participant: AppointmentParticipant | None,
+) -> list[LedgerEntry]:
+    entries = LedgerEntry.objects.select_for_update().filter(appointment=appointment)
+    if participant is not None:
+        entries = entries.filter(
+            Q(appointment_participant=participant) | Q(appointment_participant__isnull=True)
+        )
+    else:
+        entries = entries.filter(appointment_participant__isnull=True)
+    return list(entries.order_by("pk"))
+
+
+def _unlink_entries(entries: list[LedgerEntry]) -> int:
+    for entry in entries:
+        entry.appointment = None
+        entry.save(update_fields=["appointment", "updated_at"])
+    return len(entries)
+
+
+def _reverse_and_unlink_entries(
+    entries: list[LedgerEntry],
+    *,
+    appointment: Appointment,
+    participant: AppointmentParticipant | None,
+    reason: str,
+    actor: Any,
+) -> int:
+    """Keep an append-only audit trail while returning the linked account balance to zero."""
+    totals_by_account: dict[int, Decimal] = defaultdict(lambda: Decimal("0"))
+    accounts_by_id: dict[int, BalanceAccount] = {}
+    for entry in entries:
+        totals_by_account[entry.account_id] += entry.amount
+        accounts_by_id[entry.account_id] = entry.account
+
+    for account_id, total in totals_by_account.items():
+        if total >= 0:
+            continue
+        LedgerEntry.objects.create(
+            account=accounts_by_id[account_id],
+            entry_type=LedgerEntry.EntryType.CORRECTION,
+            amount=-total,
+            appointment_participant=participant,
+            price_snapshot=appointment.service.default_price,
+            reason=f"Отмена списания занятия #{appointment.pk}: {reason}",
+            created_by=actor,
+        )
+    return _unlink_entries(entries)
 
 
 def apply_decision(
@@ -79,38 +155,47 @@ def apply_decision(
     amount: Decimal | None = None,
     reason: str = "Решение администратора по занятию.",
     actor: Any = None,
+    participant: AppointmentParticipant | None = None,
 ) -> DecisionResult:
     """Применяет решение по списанию: ``CHARGE`` / ``DO_NOT_CHARGE``.
 
     Атомарно (одна транзакция):
     - Меняет ``billing_decision`` и ``billing_account`` на занятии.
     - Для ``CHARGE``: создаёт/обновляет ``LedgerEntry`` списания.
-    - Для ``DO_NOT_CHARGE``: отвязывает все ``LedgerEntry`` от занятия
-      (записи сохраняются в журнале для аудита).
+    - Для ``DO_NOT_CHARGE``: создает correction-проводку для возврата остатка,
+      затем отвязывает исторические ``LedgerEntry`` от занятия.
     """
     if decision not in (Appointment.BillingDecision.CHARGE, Appointment.BillingDecision.DO_NOT_CHARGE):
         raise ValueError(f"Неизвестное решение: {decision!r}")
 
     with transaction.atomic():
-        participant = _single_participant_or_none(appointment)
-        ledger_qs = LedgerEntry.objects.filter(appointment=appointment)
-        if participant is not None:
-            ledger_qs = ledger_qs.filter(Q(appointment_participant=participant) | Q(appointment_participant__isnull=True))
-        else:
-            ledger_qs = ledger_qs.filter(appointment_participant__isnull=True)
+        # Every standard decision locks in this order to serialize one appointment's fact.
+        appointment = (
+            Appointment.objects.select_for_update().select_related("service").get(pk=appointment.pk)
+        )
+        participant, participants = _locked_participant(appointment, participant)
 
+        locked_account = None
         if decision == Appointment.BillingDecision.CHARGE:
             if account is None:
                 raise ValueError("Для списания нужно передать счёт баланса.")
-            if not account.can_pay_for(appointment.service):
+            locked_account = BalanceAccount.objects.select_for_update().get(pk=account.pk)
+            if not locked_account.can_pay_for(appointment.service):
                 raise ValueError("Счёт не подходит для этой услуги.")
             expected_child_id = participant.child_id if participant is not None else appointment.child_id
-            if account.child_id != expected_child_id:
+            if locked_account.child_id != expected_child_id:
                 raise ValueError("Счёт не принадлежит получателю занятия.")
 
-        if participant is not None:
-            if decision == Appointment.BillingDecision.DO_NOT_CHARGE:
-                removed = ledger_qs.update(appointment=None)
+        ledger_entries = _locked_ledger_entries(appointment, participant)
+        if decision == Appointment.BillingDecision.DO_NOT_CHARGE:
+            removed = _reverse_and_unlink_entries(
+                ledger_entries,
+                appointment=appointment,
+                participant=participant,
+                reason=reason,
+                actor=actor,
+            )
+            if participant is not None:
                 participant.billing_decision = Appointment.BillingDecision.DO_NOT_CHARGE
                 participant.billing_account = None
                 participant.price_snapshot = None
@@ -122,78 +207,26 @@ def apply_decision(
                         "updated_at",
                     ]
                 )
-                _sync_appointment_billing_summary(appointment)
-                return DecisionResult(appointment=appointment, entry=None, removed=removed)
-
-            signed = amount if amount is not None else _default_amount_for(account, appointment)
-            if signed >= 0:
-                raise ValueError("Сумма списания должна быть отрицательной.")
-
-            ledger_qs.exclude(account=account).update(appointment=None)
-            entry = ledger_qs.filter(account=account).first()
-            if entry is None:
-                entry = LedgerEntry.objects.create(
-                    appointment=appointment,
-                    account=account,
-                    entry_type=LedgerEntry.EntryType.DEBIT,
-                    amount=signed,
-                    appointment_participant=participant,
-                    price_snapshot=appointment.service.default_price,
-                    reason=reason,
-                    created_by=actor,
-                )
+                _sync_appointment_billing_summary(appointment, participants=participants)
             else:
-                entry.entry_type = LedgerEntry.EntryType.DEBIT
-                entry.amount = signed
-                entry.appointment_participant = participant
-                entry.price_snapshot = appointment.service.default_price
-                entry.reason = reason
-                entry.created_by = actor
-                entry.save(
-                    update_fields=[
-                        "entry_type",
-                        "amount",
-                        "appointment_participant",
-                        "price_snapshot",
-                        "reason",
-                        "created_by",
-                        "updated_at",
-                    ]
-                )
-            participant.billing_decision = Appointment.BillingDecision.CHARGE
-            participant.billing_account = account
-            participant.price_snapshot = appointment.service.default_price
-            participant.save(
-                update_fields=[
-                    "billing_decision",
-                    "billing_account",
-                    "price_snapshot",
-                    "updated_at",
-                ]
-            )
-            _sync_appointment_billing_summary(appointment)
-            return DecisionResult(appointment=appointment, entry=entry, removed=0)
-
-        appointment.billing_decision = decision
-        appointment.billing_account = account if decision == Appointment.BillingDecision.CHARGE else None
-        appointment.save(update_fields=["billing_decision", "billing_account", "updated_at"])
-
-        if decision == Appointment.BillingDecision.DO_NOT_CHARGE:
-            removed = ledger_qs.update(appointment=None)
+                appointment.billing_decision = Appointment.BillingDecision.DO_NOT_CHARGE
+                appointment.billing_account = None
+                appointment.save(update_fields=["billing_decision", "billing_account", "updated_at"])
             return DecisionResult(appointment=appointment, entry=None, removed=removed)
 
-        signed = amount if amount is not None else _default_amount_for(account, appointment)
+        signed = amount if amount is not None else _default_amount_for(locked_account, appointment)
         if signed >= 0:
             raise ValueError("Сумма списания должна быть отрицательной.")
 
-        # Снимем связь с любыми ledger-записями по ДРУГОМУ счёту.
-        ledger_qs.exclude(account=account).update(appointment=None)
-
-        entry = ledger_qs.filter(account=account).first()
+        matching_entries = [entry for entry in ledger_entries if entry.account_id == locked_account.pk]
+        entry = matching_entries[0] if matching_entries else None
+        removed = _unlink_entries(
+            [candidate for candidate in ledger_entries if candidate is not entry]
+        )
         if entry is None:
             entry = LedgerEntry.objects.create(
                 appointment=appointment,
-                account=account,
+                account=locked_account,
                 entry_type=LedgerEntry.EntryType.DEBIT,
                 amount=signed,
                 appointment_participant=participant,
@@ -219,7 +252,25 @@ def apply_decision(
                     "updated_at",
                 ]
             )
-        return DecisionResult(appointment=appointment, entry=entry, removed=0)
+
+        if participant is not None:
+            participant.billing_decision = Appointment.BillingDecision.CHARGE
+            participant.billing_account = locked_account
+            participant.price_snapshot = appointment.service.default_price
+            participant.save(
+                update_fields=[
+                    "billing_decision",
+                    "billing_account",
+                    "price_snapshot",
+                    "updated_at",
+                ]
+            )
+            _sync_appointment_billing_summary(appointment, participants=participants)
+        else:
+            appointment.billing_decision = Appointment.BillingDecision.CHARGE
+            appointment.billing_account = locked_account
+            appointment.save(update_fields=["billing_decision", "billing_account", "updated_at"])
+        return DecisionResult(appointment=appointment, entry=entry, removed=removed)
 
 
 @transaction.atomic
