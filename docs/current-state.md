@@ -102,6 +102,8 @@
 - PostgreSQL 17: migrations `0001-0046` и полный suite `713 passed` в
   disposable-контейнере; ручные решения, две гонки вместимости, гонка
   списания, гонка выплаты и nullable locking-path проходят.
+- GitHub Actions run `30154850160` для commit `81611d9` успешно прошел
+  PostgreSQL 17 migrations, Django check, Ruff и полный pytest за `5m16s`.
 - Browser smoke локального сценария администратора: «Списать» создает один
   debit, «Не списывать» очищает ledger занятия и возвращает остаток; mobile
   `390px` без horizontal overflow, console errors отсутствуют.
