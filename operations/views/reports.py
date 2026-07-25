@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -38,7 +38,7 @@ from operations.services import (
     scheduling as sched_svc,
 )
 
-from ._common import is_admin_user
+from ._common import is_admin_user, is_director
 
 
 def _grant_report_url(
@@ -272,10 +272,23 @@ def _payroll_sheet_summary_items(payroll_sheet: PayrollSheet) -> list[dict[str, 
     ]
 
 
-def _payroll_sheet_next_action(payroll_sheet: PayrollSheet) -> dict[str, str]:
+def _payroll_sheet_next_action(
+    payroll_sheet: PayrollSheet, *, can_approve: bool
+) -> dict[str, str]:
     line_count = len(_payroll_sheet_lines(payroll_sheet))
     if payroll_sheet.status == PayrollSheet.Status.DRAFT:
         if line_count:
+            if not can_approve:
+                return {
+                    "tone": "info",
+                    "label": "Следующее действие",
+                    "title": "Проверить и передать руководителю",
+                    "detail": (
+                        "Сверьте услуги, источники и ставки. Лист останется черновиком "
+                        "до утверждения руководителем."
+                    ),
+                    "href": "#payroll-sheet-lines",
+                }
             return {
                 "tone": "warning",
                 "label": "Следующий шаг",
@@ -725,6 +738,8 @@ def payroll_sheet_detail(request, pk: int):
         action = request.POST.get("action")
         try:
             if action == "approve":
+                if not is_director(request.user):
+                    raise PermissionDenied("Утвердить расчетный лист может только руководитель.")
                 payroll_svc.approve_payroll_sheet(payroll_sheet, actor=request.user)
                 messages.success(request, "Расчетный лист утвержден.")
             else:
@@ -733,14 +748,19 @@ def payroll_sheet_detail(request, pk: int):
             messages.error(request, str(exc))
         return redirect("payroll_sheet_detail", pk=payroll_sheet.pk)
 
+    can_approve_payroll_sheet = is_director(request.user)
     return render(
         request,
         "operations/payroll_sheet_detail.html",
         {
             "payroll_sheet": payroll_sheet,
             "payroll_sheet_summary_items": _payroll_sheet_summary_items(payroll_sheet),
-            "payroll_sheet_next_action": _payroll_sheet_next_action(payroll_sheet),
+            "payroll_sheet_next_action": _payroll_sheet_next_action(
+                payroll_sheet,
+                can_approve=can_approve_payroll_sheet,
+            ),
             "payroll_sheet_timesheet_url": _payroll_sheet_timesheet_url(payroll_sheet),
+            "can_approve_payroll_sheet": can_approve_payroll_sheet,
         },
     )
 

@@ -1687,6 +1687,124 @@ class StaffTimesheetViewTests(NewViewsTestBase):
         self.assertEqual(response.status_code, 200)
 
 
+class PayrollDirectorAuthorityTests(NewViewsTestBase):
+    def setUp(self):
+        super().setUp()
+        self.operator = User.objects.create_user("payroll-operator", password="x", is_staff=True)
+        self.director = User.objects.create_superuser("payroll-director", password="x")
+
+    def _create_draft_sheet(self):
+        day = timezone.localdate()
+        starts_at = _local_dt(day, time(10, 0))
+        appointment = Appointment.objects.create(
+            child=self.child,
+            service=self.service,
+            staff_member=self.staff,
+            room=self.room,
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(minutes=30),
+            status=Appointment.Status.COMPLETED,
+        )
+        billing_svc.apply_decision(
+            appointment,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=self.account,
+            actor=self.operator,
+        )
+        StaffCompensationRule.objects.create(
+            staff_member=self.staff,
+            service=self.service,
+            amount=Decimal("500"),
+        )
+        self.client.force_login(self.operator)
+        response = self.client.post(
+            reverse("staff_timesheet", args=[self.staff.pk]),
+            {
+                "date_from": day.isoformat(),
+                "date_to": day.isoformat(),
+                "action": "create_payroll_sheet",
+            },
+        )
+        sheet = PayrollSheet.objects.get(staff_member=self.staff, date_from=day, date_to=day)
+        self.assertRedirects(response, reverse("payroll_sheet_detail", args=[sheet.pk]))
+        return sheet
+
+    def test_administrator_can_prepare_but_cannot_approve_payroll_sheet(self):
+        sheet = self._create_draft_sheet()
+        detail_url = reverse("payroll_sheet_detail", args=[sheet.pk])
+
+        response = self.client.get(detail_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["can_approve_payroll_sheet"])
+        self.assertEqual(
+            response.context["payroll_sheet_next_action"]["title"],
+            "Проверить и передать руководителю",
+        )
+        self.assertNotContains(response, 'name="action" value="approve"')
+
+        response = self.client.post(detail_url, {"action": "approve"})
+        self.assertEqual(response.status_code, 403)
+        sheet.refresh_from_db()
+        self.assertEqual(sheet.status, PayrollSheet.Status.DRAFT)
+        self.assertIsNone(sheet.approved_by)
+        self.assertIsNone(sheet.approved_at)
+        self.assertEqual(
+            PayrollAccrual.objects.get(staff_member=self.staff).status,
+            PayrollAccrual.Status.DRAFT,
+        )
+
+        self.client.force_login(self.director)
+        response = self.client.get(detail_url)
+        self.assertEqual(response.context["payroll_sheet_next_action"]["title"], "Проверить и утвердить")
+        response = self.client.post(detail_url, {"action": "approve"})
+        self.assertRedirects(response, detail_url)
+        sheet.refresh_from_db()
+        self.assertEqual(sheet.status, PayrollSheet.Status.APPROVED)
+        self.assertEqual(sheet.approved_by, self.director)
+        self.assertIsNotNone(sheet.approved_at)
+        self.assertEqual(
+            PayrollAccrual.objects.get(staff_member=self.staff).status,
+            PayrollAccrual.Status.APPROVED,
+        )
+
+    def test_only_director_can_manage_compensation_rules(self):
+        rule = StaffCompensationRule.objects.create(
+            staff_member=self.staff,
+            service=self.service,
+            amount=Decimal("500"),
+        )
+
+        self.client.logout()
+        response = self.client.get(reverse("staff_compensation_rule_list"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("login"), response["Location"])
+
+        self.client.force_login(self.operator)
+
+        response = self.client.get(reverse("staff_timesheet", args=[self.staff.pk]))
+        self.assertFalse(response.context["can_manage_compensation_rules"])
+        self.assertNotContains(response, reverse("staff_compensation_rule_list"))
+
+        for url in (
+            reverse("staff_compensation_rule_list"),
+            reverse("staff_compensation_rule_create"),
+            reverse("staff_compensation_rule_edit", args=[rule.pk]),
+        ):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 403)
+
+        response = self.client.post(reverse("staff_compensation_rule_toggle", args=[rule.pk]))
+        self.assertEqual(response.status_code, 403)
+        rule.refresh_from_db()
+        self.assertTrue(rule.is_active)
+
+        self.client.force_login(self.director)
+        response = self.client.post(reverse("staff_compensation_rule_toggle", args=[rule.pk]))
+        self.assertRedirects(response, reverse("staff_compensation_rule_list"))
+        rule.refresh_from_db()
+        self.assertFalse(rule.is_active)
+
+
 class GrantReportViewTests(NewViewsTestBase):
     def test_grant_report_renders(self):
         response = self.client.get(reverse("grant_report"))

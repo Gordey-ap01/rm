@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -11,7 +10,7 @@ from django.utils import timezone
 from operations.forms import StaffCompensationRuleForm
 from operations.models import StaffCompensationRule
 
-from ._common import is_admin_user
+from ._common import director_required
 
 
 def compensation_rule_is_effective(rule: StaffCompensationRule, today) -> bool:
@@ -226,8 +225,7 @@ def compensation_rule_form_control_items(
     ]
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@director_required
 def staff_compensation_rule_list(request):
     rules = list(StaffCompensationRule.objects.select_related(
         "staff_member", "service", "funding_source"
@@ -250,8 +248,7 @@ def staff_compensation_rule_list(request):
     )
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@director_required
 def staff_compensation_rule_create(request):
     if request.method == "POST":
         form = StaffCompensationRuleForm(request.POST)
@@ -279,8 +276,7 @@ def staff_compensation_rule_create(request):
     )
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@director_required
 def staff_compensation_rule_edit(request, pk: int):
     rule = get_object_or_404(
         StaffCompensationRule.objects.select_related("staff_member", "service", "funding_source"),
@@ -312,8 +308,7 @@ def staff_compensation_rule_edit(request, pk: int):
     )
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@director_required
 def staff_compensation_rule_toggle(request, pk: int):
     rule = get_object_or_404(StaffCompensationRule, pk=pk)
     if request.method == "POST":

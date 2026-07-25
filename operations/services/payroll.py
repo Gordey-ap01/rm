@@ -7,6 +7,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils import timezone
 
@@ -19,6 +20,7 @@ from operations.models import (
     StaffCompensationRule,
     StaffMember,
 )
+from operations.services.authority import is_director_user
 from operations.services.compensation import calculate_staff_compensation
 from operations.services.financial_facts import appointment_charge_fact
 
@@ -229,19 +231,35 @@ def create_payroll_sheet_for_staff(
 
 @transaction.atomic
 def approve_payroll_sheet(sheet: PayrollSheet, *, actor: Any = None) -> PayrollSheet:
+    if not is_director_user(actor):
+        raise PermissionDenied("Утвердить расчетный лист может только руководитель.")
+
+    sheet = PayrollSheet.objects.select_for_update().get(pk=sheet.pk)
     if sheet.status != PayrollSheet.Status.DRAFT:
         raise ValueError("Утвердить можно только черновик расчетного листа.")
 
+    lines = list(
+        PayrollSheetLine.objects.select_for_update()
+        .filter(payroll_sheet=sheet)
+        .order_by("pk")
+    )
+    accrual_ids = [line.payroll_accrual_id for line in lines]
+    accruals = list(
+        PayrollAccrual.objects.select_for_update().filter(pk__in=accrual_ids).order_by("pk")
+    )
+    if len(accruals) != len(accrual_ids) or any(
+        accrual.status != PayrollAccrual.Status.DRAFT for accrual in accruals
+    ):
+        raise ValueError("В расчетном листе есть начисления, которые уже нельзя утвердить.")
+
     now = timezone.now()
-    total = sum((line.amount for line in sheet.lines.all()), Decimal("0"))
+    total = sum((line.amount for line in lines), Decimal("0"))
     sheet.total_amount = total
     sheet.status = PayrollSheet.Status.APPROVED
     sheet.approved_by = actor
     sheet.approved_at = now
     sheet.save(update_fields=["total_amount", "status", "approved_by", "approved_at", "updated_at"])
-    PayrollAccrual.objects.filter(
-        sheet_lines__payroll_sheet=sheet, status=PayrollAccrual.Status.DRAFT
-    ).update(
+    PayrollAccrual.objects.filter(pk__in=accrual_ids).update(
         status=PayrollAccrual.Status.APPROVED,
         approved_by=actor,
         approved_at=now,

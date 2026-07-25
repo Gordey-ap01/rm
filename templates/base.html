@@ -44,7 +44,9 @@
           <li class="nav-item"><a class="nav-link" href="{% url 'center_legal_profile' %}"><i class="bi bi-building"></i> Центр</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'expense_directory_list' %}"><i class="bi bi-tags"></i> Справочники</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'funding_source_list' %}"><i class="bi bi-cash-stack"></i> Источники</a></li>
+          {% if can_manage_compensation_rules %}
           <li class="nav-item"><a class="nav-link" href="{% url 'staff_compensation_rule_list' %}"><i class="bi bi-currency-exchange"></i> Ставки</a></li>
+          {% endif %}
           <li class="nav-item"><a class="nav-link" href="{% url 'document_list' %}"><i class="bi bi-file-earmark-text"></i> Документы</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'consent_list' %}"><i class="bi bi-file-earmark-check"></i> Согласия</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'grant_report' %}"><i class="bi bi-graph-up-arrow"></i> Гранты</a></li>

@@ -10,7 +10,7 @@ from unittest import mock
 
 from django.contrib.auth.models import User
 from django.core import mail
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -5085,7 +5085,13 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
             date_to=self.day,
             actor=self.user,
         )
-        payroll_svc.approve_payroll_sheet(sheet, actor=self.user)
+        with self.assertRaises(PermissionDenied):
+            payroll_svc.approve_payroll_sheet(sheet, actor=self.user)
+        sheet.refresh_from_db()
+        self.assertEqual(sheet.status, PayrollSheet.Status.DRAFT)
+
+        director = User.objects.create_superuser("payroll-director", password="x")
+        payroll_svc.approve_payroll_sheet(sheet, actor=director)
 
         sheet.refresh_from_db()
         accrual = PayrollAccrual.objects.get(staff_member=self.staff_a)

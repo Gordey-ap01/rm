@@ -128,7 +128,7 @@
         {% endif %}
       </ul>
 
-      {% if payroll_sheet.status == "draft" %}
+      {% if payroll_sheet.status == "draft" and can_approve_payroll_sheet %}
         <form method="post" class="payroll-sheet-actions">
           {% csrf_token %}
           <button type="submit" name="action" value="approve">Утвердить расчетный лист</button>
