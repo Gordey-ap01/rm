@@ -13076,6 +13076,62 @@
       "_origin": "ast"
     },
     {
+      "id": "tests_test_operational_acceptance",
+      "label": "test_operational_acceptance.py",
+      "file_type": "code",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_operational_acceptance_local_datetime",
+      "label": "_local_datetime()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L36",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_operational_acceptance_operationalacceptancetests",
+      "label": "OperationalAcceptanceTests",
+      "file_type": "code",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L43",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_operational_acceptance_operationalacceptancetests_setup",
+      "label": ".setUp()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L46",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_operational_acceptance_operationalacceptancetests_test_administrator_to_director_path_keeps_one_financial_fact_per_stage",
+      "label": ".test_administrator_to_director_path_keeps_one_financial_fact_per_stage()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L84",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_operational_acceptance_operationalacceptancetests_test_administrator_vacation_decision_blocks_schedule_until_director_resolves",
+      "label": ".test_administrator_vacation_decision_blocks_schedule_until_director_resolves()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L204",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_operational_acceptance_rationale_44",
+      "label": "Acceptance tests for the public write-paths shared by centre roles.",
+      "file_type": "rationale",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L44",
+      "_origin": "ast"
+    },
+    {
       "id": "tests_test_payroll_payout",
       "label": "test_payroll_payout.py",
       "file_type": "code",
@@ -41671,6 +41727,86 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_53_operational_e2e_acceptance_contract",
+      "label": "53-operational-e2e-acceptance-contract.md",
+      "file_type": "document",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_53_operational_e2e_acceptance_contract_контракт_среза_сквозная_приемка_операционного_и_управленческого_контуров",
+      "label": "Контракт среза: сквозная приемка операционного и управленческого контуров",
+      "file_type": "document",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_53_operational_e2e_acceptance_contract_основание",
+      "label": "Основание",
+      "file_type": "document",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L7",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_53_operational_e2e_acceptance_contract_граница_среза",
+      "label": "Граница среза",
+      "file_type": "document",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L16",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_53_operational_e2e_acceptance_contract_сценарий_a_занятие_до_выплаты",
+      "label": "Сценарий A: занятие до выплаты",
+      "file_type": "document",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L41",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_53_operational_e2e_acceptance_contract_сценарий_b_отпуск_и_приоритет_руководителя",
+      "label": "Сценарий B: отпуск и приоритет руководителя",
+      "file_type": "document",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L58",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_53_operational_e2e_acceptance_contract_инварианты_приемки",
+      "label": "Инварианты приемки",
+      "file_type": "document",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L73",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_53_operational_e2e_acceptance_contract_реализация_и_проверки",
+      "label": "Реализация и проверки",
+      "file_type": "document",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L85",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_53_operational_e2e_acceptance_contract_параллельная_работа",
+      "label": "Параллельная работа",
+      "file_type": "document",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L99",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_53_operational_e2e_acceptance_contract_открытое_продолжение",
+      "label": "Открытое продолжение",
+      "file_type": "document",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L106",
+      "_origin": "ast"
+    },
+    {
       "id": "docs_critical_stack_ux_review_2026_06_10",
       "label": "CRITICAL_STACK_UX_REVIEW_2026-06-10.md",
       "file_type": "document",
@@ -44363,7 +44499,7 @@
       "label": "Что сделано в текущем срезе",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L21",
+      "source_location": "L24",
       "_origin": "ast"
     },
     {
@@ -44371,7 +44507,7 @@
       "label": "Проверки",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L93",
+      "source_location": "L102",
       "_origin": "ast"
     },
     {
@@ -44379,7 +44515,7 @@
       "label": "Следующая работа",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L124",
+      "source_location": "L137",
       "_origin": "ast"
     },
     {
@@ -44387,7 +44523,7 @@
       "label": "Глобальная готовность",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L133",
+      "source_location": "L146",
       "_origin": "ast"
     },
     {
@@ -44395,7 +44531,7 @@
       "label": "Риски и запреты",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L156",
+      "source_location": "L169",
       "_origin": "ast"
     },
     {
@@ -45043,7 +45179,7 @@
       "label": "4. Архитектурные владельцы",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L71",
+      "source_location": "L72",
       "_origin": "ast"
     },
     {
@@ -45051,7 +45187,7 @@
       "label": "5. Skills и инструменты",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L81",
+      "source_location": "L82",
       "_origin": "ast"
     },
     {
@@ -45059,7 +45195,7 @@
       "label": "6. Контрольная точка",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L99",
+      "source_location": "L100",
       "_origin": "ast"
     },
     {
@@ -79656,6 +79792,169 @@
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_expenses.py",
       "source_location": "L340",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "datetime",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "decimal",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "django_contrib_auth_models",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L4",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "django_core_exceptions",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "django_test",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L6",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "django_utils",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L7",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_services",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L28",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "tests_test_operational_acceptance_local_datetime",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L36",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "tests_test_operational_acceptance_operationalacceptancetests",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L43",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "testcase",
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L43",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "tests_test_operational_acceptance_operationalacceptancetests_setup",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L46",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "tests_test_operational_acceptance_operationalacceptancetests_test_administrator_to_director_path_keeps_one_financial_fact_per_stage",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L84",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "tests_test_operational_acceptance_operationalacceptancetests_test_administrator_vacation_decision_blocks_schedule_until_director_resolves",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L204",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests_test_administrator_to_director_path_keeps_one_financial_fact_per_stage",
+      "target": "tests_test_operational_acceptance_local_datetime",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L89",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests_test_administrator_vacation_decision_blocks_schedule_until_director_resolves",
+      "target": "tests_test_operational_acceptance_local_datetime",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L230",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance_rationale_44",
+      "target": "tests_test_operational_acceptance_operationalacceptancetests",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L44",
       "weight": 1.0
     },
     {
@@ -144507,6 +144806,87 @@
       "weight": 1.0
     },
     {
+      "source": "docs_53_operational_e2e_acceptance_contract",
+      "target": "docs_53_operational_e2e_acceptance_contract_контракт_среза_сквозная_приемка_операционного_и_управленческого_контуров",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_53_operational_e2e_acceptance_contract_контракт_среза_сквозная_приемка_операционного_и_управленческого_контуров",
+      "target": "docs_53_operational_e2e_acceptance_contract_основание",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L7",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_53_operational_e2e_acceptance_contract_контракт_среза_сквозная_приемка_операционного_и_управленческого_контуров",
+      "target": "docs_53_operational_e2e_acceptance_contract_граница_среза",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L16",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_53_operational_e2e_acceptance_contract_контракт_среза_сквозная_приемка_операционного_и_управленческого_контуров",
+      "target": "docs_53_operational_e2e_acceptance_contract_сценарий_a_занятие_до_выплаты",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L41",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_53_operational_e2e_acceptance_contract_контракт_среза_сквозная_приемка_операционного_и_управленческого_контуров",
+      "target": "docs_53_operational_e2e_acceptance_contract_сценарий_b_отпуск_и_приоритет_руководителя",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L58",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_53_operational_e2e_acceptance_contract_контракт_среза_сквозная_приемка_операционного_и_управленческого_контуров",
+      "target": "docs_53_operational_e2e_acceptance_contract_инварианты_приемки",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L73",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_53_operational_e2e_acceptance_contract_контракт_среза_сквозная_приемка_операционного_и_управленческого_контуров",
+      "target": "docs_53_operational_e2e_acceptance_contract_реализация_и_проверки",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L85",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_53_operational_e2e_acceptance_contract_контракт_среза_сквозная_приемка_операционного_и_управленческого_контуров",
+      "target": "docs_53_operational_e2e_acceptance_contract_параллельная_работа",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L99",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_53_operational_e2e_acceptance_contract_контракт_среза_сквозная_приемка_операционного_и_управленческого_контуров",
+      "target": "docs_53_operational_e2e_acceptance_contract_открытое_продолжение",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/53-operational-e2e-acceptance-contract.md",
+      "source_location": "L106",
+      "weight": 1.0
+    },
+    {
       "source": "docs_critical_stack_ux_review_2026_06_10",
       "target": "docs_critical_stack_ux_review_2026_06_10_критический_срез_проекта_rmcodex",
       "relation": "contains",
@@ -147446,7 +147826,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L21",
+      "source_location": "L24",
       "weight": 1.0
     },
     {
@@ -147455,7 +147835,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L93",
+      "source_location": "L102",
       "weight": 1.0
     },
     {
@@ -147464,7 +147844,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L124",
+      "source_location": "L137",
       "weight": 1.0
     },
     {
@@ -147473,7 +147853,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L133",
+      "source_location": "L146",
       "weight": 1.0
     },
     {
@@ -147482,7 +147862,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L156",
+      "source_location": "L169",
       "weight": 1.0
     },
     {
@@ -148121,7 +148501,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L71",
+      "source_location": "L72",
       "weight": 1.0
     },
     {
@@ -148130,7 +148510,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L81",
+      "source_location": "L82",
       "weight": 1.0
     },
     {
@@ -148139,7 +148519,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L99",
+      "source_location": "L100",
       "weight": 1.0
     },
     {
@@ -153593,6 +153973,176 @@
       "weight": 1.0
     },
     {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_appointment",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_centerexpense",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_child",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_fundingsource",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_ledgerentry",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_parentguardian",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_payment",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_payrollaccrual",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_payrollpayout",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_payrollsheet",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_payrollsheetlifecycleevent",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_room",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_service",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_staffcompensationrule",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_staffmember",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_timeoffrequest",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "operations_models_timeoffrequestdecision",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
       "source": "tests_test_payroll_payout",
       "target": "operations_models_payrollaccrual",
       "relation": "imports",
@@ -158520,6 +159070,46 @@
       "confidence": "EXTRACTED",
       "source_file": "operations/tests/test_expenses.py",
       "source_location": "L19",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "services_appointments",
+      "relation": "imports_from",
+      "context": "submodule_import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L28",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "services_billing",
+      "relation": "imports_from",
+      "context": "submodule_import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L28",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "services_payroll",
+      "relation": "imports_from",
+      "context": "submodule_import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L28",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance",
+      "target": "services_time_off_decisions",
+      "relation": "imports_from",
+      "context": "submodule_import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L28",
       "weight": 1.0
     },
     {
@@ -243229,6 +243819,159 @@
       "weight": 0.8
     },
     {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_appointment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_centerexpense",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_child",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_fundingsource",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_ledgerentry",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_parentguardian",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_payment",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_payrollaccrual",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_payrollpayout",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_payrollsheet",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_payrollsheetlifecycleevent",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_room",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_service",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_staffcompensationrule",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_staffmember",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_timeoffrequest",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests",
+      "target": "operations_models_timeoffrequestdecision",
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L9",
+      "weight": 0.8
+    },
+    {
       "source": "operations_tests_test_payroll_payout_py_staffmember",
       "target": "operations_models_payrollaccrual",
       "relation": "uses",
@@ -281028,6 +281771,28 @@
       "confidence_score": 1.0,
       "source_file": "operations/tests/test_expenses.py",
       "source_location": "L205",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests_test_administrator_to_director_path_keeps_one_financial_fact_per_stage",
+      "target": "time",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L89",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_operational_acceptance_operationalacceptancetests_test_administrator_vacation_decision_blocks_schedule_until_director_resolves",
+      "target": "time",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "operations/tests/test_operational_acceptance.py",
+      "source_location": "L230",
       "weight": 1.0
     },
     {

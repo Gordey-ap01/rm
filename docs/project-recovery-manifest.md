@@ -55,6 +55,7 @@
 | `docs/50-postgresql-ci-contract.md` | Обязательная CI-проверка PostgreSQL 17, миграций, линтера и полного pytest. |
 | `docs/51-payroll-director-approval-contract.md` | Реализованный срез: ставки и утверждение payroll только руководителем. |
 | `docs/52-payroll-payout-lifecycle-contract.md` | Реализованный срез: передача листа в выплату, полный факт выплаты и неизменяемый журнал. |
+| `docs/53-operational-e2e-acceptance-contract.md` | Реализованный срез: сквозная service-приемка записи, списания, payroll, выплаты и приоритета руководителя по отпуску. |
 | `docs/decisions/ADR-001-*.md` | Django/PostgreSQL/local-first. |
 | `docs/decisions/ADR-002-*.md` | Балансовые счета и ledger. |
 | `docs/decisions/ADR-003-*.md` | Полномочия и ручные решения. |

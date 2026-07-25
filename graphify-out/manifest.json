@@ -405,8 +405,8 @@
     "semantic_hash": "4743b79b7b2298e1650284eda55e92cb"
   },
   "docs/01-prd.md": {
-    "mtime": 1784975703.8082004,
-    "ast_hash": "2cbd3babf8123228f90a0f55e386688d",
+    "mtime": 1784978396.884723,
+    "ast_hash": "7a92a3566c055953376e9f34d83065ca",
     "semantic_hash": ""
   },
   "docs/02-tech-stack-research.md": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784975747.8110735,
-    "ast_hash": "b5be7cd7d8429ad2dd28294063b4d68c",
+    "mtime": 1784978738.5357163,
+    "ast_hash": "4d32942d2d21041e420c2b60fbf7f887",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -820,8 +820,8 @@
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784975703.80874,
-    "ast_hash": "9daf533dc39ffdeced56ce49dbe540c3",
+    "mtime": 1784978396.8868475,
+    "ast_hash": "6f35a3d7428f0ff0a9a1419016f10e34",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1527,6 +1527,16 @@
   "docs/52-payroll-payout-lifecycle-contract.md": {
     "mtime": 1784975703.8066094,
     "ast_hash": "1edbda34e88549aa2801702272e302d1",
+    "semantic_hash": ""
+  },
+  "operations/tests/test_operational_acceptance.py": {
+    "mtime": 1784978570.2551131,
+    "ast_hash": "7916985af700ee6e4f9a7599beca97f2",
+    "semantic_hash": ""
+  },
+  "docs/53-operational-e2e-acceptance-contract.md": {
+    "mtime": 1784978738.5347176,
+    "ast_hash": "31bb6185e8848e2bad6771b39100b1e8",
     "semantic_hash": ""
   }
 }

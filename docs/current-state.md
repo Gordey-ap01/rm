@@ -6,7 +6,9 @@
 
 Этап: приемка полномочий и финансового контура. PostgreSQL-устойчивость
 записей расписания и списаний, два доказательных среза полномочий, оба
-подэтапа A+B и payroll до факта выплаты руководителем завершены.
+подэтапа A+B, payroll до факта выплаты и сквозная service-приемка завершены.
+Следующий этап — production preflight и browser-приемка уже реализованных
+рабочих ролей.
 
 Цель этапа: ожидающие согласования и финансовые решения разделены по ролям,
 а руководитель имеет окончательный приоритет в управленческих областях без
@@ -17,6 +19,7 @@
 - `docs/01-prd.md`, разделы 2-4 и 6;
 - `docs/decisions/ADR-003-approval-authority-and-manual-resolution.md`;
 - `docs/07-updated-domain-model-after-interview.md`.
+- `docs/53-operational-e2e-acceptance-contract.md`.
 
 ## Что сделано в текущем срезе
 
@@ -89,19 +92,27 @@
 - Экран листа различает права: администратор видит историю, но не финансовые
   команды; руководитель передает лист в выплату и фиксирует платеж с датой,
   способом и реквизитом.
+- Добавлен `docs/53-operational-e2e-acceptance-contract.md` и два сквозных
+  теста public service write-paths. Операционный сценарий доказывает путь
+  `занятие -> отметка специалиста -> одно списание -> начисление -> табель ->
+  полная выплата` без создания `Payment` получателя или `CenterExpense`;
+  сценарий отпуска доказывает немедленную защиту расписания решением
+  администратора и окончательный приоритет руководителя.
 
 ## Проверки
 
 - Focused payroll payout tests: `8 passed, 1 skipped` на SQLite; пропущена
   только PostgreSQL-only гонка выплаты, отдельно пройденная на PostgreSQL 17.
-- Полный SQLite regression: `706 passed, 7 skipped`; пропуски — только
+- Focused operational acceptance: `2 passed` на SQLite и на свежей PostgreSQL
+  базе после миграций `0001-0046`.
+- Полный SQLite regression после сквозной приемки: `708 passed, 7 skipped`; пропуски — только
   PostgreSQL-only concurrency tests, отдельно пройденные на PostgreSQL 17.
 - Ruff: пройден.
 - Django system check: пройден.
 - `makemigrations --check --dry-run`: изменений не обнаружено.
-- PostgreSQL 17: migrations `0001-0046` и полный suite `713 passed` в
-  disposable-контейнере; ручные решения, две гонки вместимости, гонка
-  списания, гонка выплаты и nullable locking-path проходят.
+- PostgreSQL 17: миграции `0001-0046` с пустой базы и полный suite `715 passed`
+  в disposable-контейнере; ручные решения, две гонки вместимости, гонка
+  списания, гонка выплаты, nullable locking-path и сквозные сценарии проходят.
 - GitHub Actions run `30154850160` для commit `81611d9` успешно прошел
   PostgreSQL 17 migrations, Django check, Ruff и полный pytest за `5m16s`.
 - Browser smoke локального сценария администратора: «Списать» создает один
@@ -119,16 +130,16 @@
 - Playwright payout smoke: оператор не видит команд передачи/выплаты;
   руководитель фиксирует банковскую выплату через UI, видит реквизит и два
   события истории. На `390px` horizontal overflow `0`, console errors нет.
-- Graphify code index обновлен локально без LLM/API key: `5840` nodes,
-  `26291` edges. Семантическое обновление документов не применено: внешний
+- Graphify code index обновлен локально без LLM/API key: `5857` nodes,
+  `26357` edges. Семантическое обновление документов не применено: внешний
   Gemini backend недоступен по региону/лимиту, но это не блокирует кодовый граф.
 
 ## Следующая работа
 
-1. Закрыть приемку цельного сценария администратора от записи до списания и
-   сценарий руководителя от заявки специалиста до табеля/выплаты.
-2. Подготовить backup/restore, monitoring и production preflight; включить
+1. Подготовить backup/restore, monitoring, SMTP и production preflight; включить
    branch protection после согласования репозитория.
+2. Выполнить цельную browser-приемку администратора и руководителя на
+   обезличенных сценариях, включая узкий мобильный viewport.
 3. Продолжить persisted transfer/conversion и приемку grant/report контуров по
    readiness matrix `docs/01-prd.md`.
 
