@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import datetime as dtmod
 
+from django.core.exceptions import ValidationError
 from django.http import HttpResponseForbidden
 from django.utils import timezone
 from ninja import NinjaAPI, Schema, Status
 from ninja.security import django_auth
 
+from operations import schedule_writes as schedule_write_svc
 from operations.models import (
     ACTIVE_APPOINTMENT_STATUSES,
     Appointment,
@@ -17,6 +19,7 @@ from operations.models import (
     TimeOffRequest,
 )
 from operations.schedule_validation import (
+    appointment_validation_children,
     appointment_validation_conflicts,
     appointment_validation_staff_members,
     staff_unavailability_reason,
@@ -230,29 +233,52 @@ def move_appointment(request, pk: int, payload: AppointmentMoveIn):
             ErrorOut(detail="Конфликт расписания: " + "; ".join(conflict_messages) + "."),
         )
 
-    appointment.starts_at = new_start
-    appointment.ends_at = new_end
-    appointment.staff_availability_override = False
-    appointment.staff_availability_override_reason = ""
     try:
-        appointment.save(validate_schedule=True, sync_legacy=False)
-    except Exception as e:
-        return Status(400, ErrorOut(detail=str(e)))
-    now = timezone.now()
-    appointment.participants.update(
-        starts_at_snapshot=appointment.starts_at,
-        ends_at_snapshot=appointment.ends_at,
-        appointment_status=appointment.status,
-        updated_at=now,
-    )
-    appointment.staff_assignments.update(
-        starts_at_snapshot=appointment.starts_at,
-        ends_at_snapshot=appointment.ends_at,
-        appointment_status=appointment.status,
-        override_availability=False,
-        override_reason="",
-        updated_at=now,
-    )
+        with schedule_write_svc.lock_schedule_write(
+            appointment_id=appointment.pk,
+            room_ids=[appointment.room_id],
+        ) as locked:
+            appointment = locked.appointment
+            if appointment is None:  # Defensive: appointment_id is present above.
+                return Status(404, ErrorOut(detail="Appointment not found"))
+            schedule_write_svc.ensure_room_capacity(
+                starts_at=new_start,
+                ends_at=new_end,
+                children=appointment_validation_children(appointment),
+                staff_members=appointment_validation_staff_members(appointment),
+                room=locked.room_for(appointment.room_id),
+                status=appointment.status,
+                exclude_pk=appointment.pk,
+            )
+            appointment.starts_at = new_start
+            appointment.ends_at = new_end
+            appointment.staff_availability_override = False
+            appointment.staff_availability_override_reason = ""
+            appointment.save(validate_schedule=True, sync_legacy=False)
+            now = timezone.now()
+            appointment.participants.update(
+                starts_at_snapshot=appointment.starts_at,
+                ends_at_snapshot=appointment.ends_at,
+                appointment_status=appointment.status,
+                updated_at=now,
+            )
+            appointment.staff_assignments.update(
+                starts_at_snapshot=appointment.starts_at,
+                ends_at_snapshot=appointment.ends_at,
+                appointment_status=appointment.status,
+                override_availability=False,
+                override_reason="",
+                updated_at=now,
+            )
+    except ValidationError as exc:
+        return Status(400, ErrorOut(detail="; ".join(exc.messages)))
+    except Exception:
+        return Status(
+            400,
+            ErrorOut(
+                detail="Не удалось перенести занятие. Обновите календарь и повторите действие."
+            ),
+        )
     return {"ok": True}
 
 

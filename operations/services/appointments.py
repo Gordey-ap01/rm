@@ -12,6 +12,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from operations import schedule_writes as schedule_write_svc
 from operations.models import (
     Appointment,
     AppointmentParticipant,
@@ -87,6 +88,32 @@ def _copy_rescheduled_staff_assignments(
         )
 
 
+def _rescheduled_staff_members(
+    appointment: Appointment,
+    primary_staff: StaffMember,
+) -> list[StaffMember]:
+    """Return the assignment set that will exist on a rescheduled appointment."""
+
+    assignments = list(
+        appointment.staff_assignments.select_related("staff_member").order_by("pk")
+    )
+    if not assignments:
+        return [primary_staff]
+
+    members: list[StaffMember] = []
+    primary_replaced = False
+    for assignment in assignments:
+        staff = assignment.staff_member
+        if assignment.role == AppointmentStaffAssignment.Role.PRIMARY and not primary_replaced:
+            staff = primary_staff
+            primary_replaced = True
+        if staff not in members:
+            members.append(staff)
+    if primary_staff not in members:
+        members.insert(0, primary_staff)
+    return members
+
+
 def create_appointment(
     *,
     child: Child,
@@ -106,19 +133,31 @@ def create_appointment(
     :py:meth:`Appointment.full_clean`, который проверяет пересечения и бизнес-правила.
     Для bulk-операций передавайте ``validate_schedule=False``.
     """
-    appointment = Appointment(
-        child=child,
-        staff_member=staff_member,
-        service=service,
-        room=room,
-        starts_at=starts_at,
-        ends_at=ends_at,
-        status=status,
-        billing_account=billing_account,
-        admin_note=admin_note,
-    )
-    appointment.save(validate_schedule=validate_schedule)
-    return appointment
+    room_id = getattr(room, "pk", None)
+    with schedule_write_svc.lock_schedule_write(room_ids=[room_id]) as locked:
+        locked_room = locked.room_for(room_id)
+        if validate_schedule:
+            schedule_write_svc.ensure_room_capacity(
+                starts_at=starts_at,
+                ends_at=ends_at,
+                children=[child],
+                staff_members=[staff_member],
+                room=locked_room,
+                status=status,
+            )
+        appointment = Appointment(
+            child=child,
+            staff_member=staff_member,
+            service=service,
+            room=locked_room,
+            starts_at=starts_at,
+            ends_at=ends_at,
+            status=status,
+            billing_account=billing_account,
+            admin_note=admin_note,
+        )
+        appointment.save(validate_schedule=validate_schedule)
+        return appointment
 
 
 @transaction.atomic
@@ -133,56 +172,85 @@ def reschedule(
     actor: Any = None,
 ) -> MoveResult:
     """Переносит занятие: помечает исходное как ``RESCHEDULED`` и создаёт новое."""
-    participants = list(
-        appointment.participants.select_related("child", "billing_account", "program_block").order_by("pk")
-    )
-    legacy_child = appointment.child
-    legacy_billing_account = appointment.billing_account
-    if participants and all(participant.child_id != appointment.child_id for participant in participants):
-        legacy_child = participants[0].child
-        legacy_billing_account = participants[0].billing_account
+    room_id = getattr(room, "pk", None)
+    with schedule_write_svc.lock_schedule_write(
+        appointment_id=appointment.pk,
+        room_ids=[room_id],
+    ) as locked:
+        appointment = locked.appointment
+        if appointment is None:  # Defensive: appointment_id is required above.
+            raise Appointment.DoesNotExist
 
-    local_start = timezone.localtime(starts_at)
-    note_lines = [appointment.admin_note, f"Перенесено на {local_start:%d.%m.%Y %H:%M}.", note]
-    appointment.admin_note = "\n".join(part for part in note_lines if part)
-    appointment.status = Appointment.Status.RESCHEDULED
-    appointment.save(update_fields=["status", "admin_note", "updated_at"], sync_legacy=False)
-    now = timezone.now()
-    appointment.participants.update(
-        appointment_status=Appointment.Status.RESCHEDULED,
-        starts_at_snapshot=appointment.starts_at,
-        ends_at_snapshot=appointment.ends_at,
-        updated_at=now,
-    )
-    appointment.staff_assignments.update(
-        appointment_status=Appointment.Status.RESCHEDULED,
-        starts_at_snapshot=appointment.starts_at,
-        ends_at_snapshot=appointment.ends_at,
-        updated_at=now,
-    )
+        participants = list(
+            appointment.participants.select_related(
+                "child", "billing_account", "program_block"
+            ).order_by("pk")
+        )
+        children = [participant.child for participant in participants] or [appointment.child]
+        target_room = locked.room_for(room_id)
+        schedule_write_svc.ensure_room_capacity(
+            starts_at=starts_at,
+            ends_at=ends_at,
+            children=children,
+            staff_members=_rescheduled_staff_members(appointment, staff_member),
+            room=target_room,
+            status=Appointment.Status.CONFIRMED,
+            exclude_pk=appointment.pk,
+        )
 
-    new = Appointment.objects.create(
-        child=legacy_child,
-        service=appointment.service,
-        staff_member=staff_member,
-        room=room,
-        starts_at=starts_at,
-        ends_at=ends_at,
-        status=Appointment.Status.CONFIRMED,
-        attendance_status=Appointment.AttendanceStatus.UNKNOWN,
-        billing_decision=Appointment.BillingDecision.UNDECIDED,
-        billing_account=legacy_billing_account,
-        source_appointment=appointment,
-        series=appointment.series,
-        program_block=appointment.program_block,
-        sequence_number=appointment.sequence_number,
-        session_type=appointment.session_type,
-        title=appointment.title,
-        admin_note=note,
-    )
-    _copy_rescheduled_participants(appointment, new)
-    _copy_rescheduled_staff_assignments(appointment, new, staff_member)
-    return MoveResult(old=appointment, new=new)
+        legacy_child = appointment.child
+        legacy_billing_account = appointment.billing_account
+        if participants and all(
+            participant.child_id != appointment.child_id for participant in participants
+        ):
+            legacy_child = participants[0].child
+            legacy_billing_account = participants[0].billing_account
+
+        local_start = timezone.localtime(starts_at)
+        note_lines = [
+            appointment.admin_note,
+            f"Перенесено на {local_start:%d.%m.%Y %H:%M}.",
+            note,
+        ]
+        appointment.admin_note = "\n".join(part for part in note_lines if part)
+        appointment.status = Appointment.Status.RESCHEDULED
+        appointment.save(update_fields=["status", "admin_note", "updated_at"], sync_legacy=False)
+        now = timezone.now()
+        appointment.participants.update(
+            appointment_status=Appointment.Status.RESCHEDULED,
+            starts_at_snapshot=appointment.starts_at,
+            ends_at_snapshot=appointment.ends_at,
+            updated_at=now,
+        )
+        appointment.staff_assignments.update(
+            appointment_status=Appointment.Status.RESCHEDULED,
+            starts_at_snapshot=appointment.starts_at,
+            ends_at_snapshot=appointment.ends_at,
+            updated_at=now,
+        )
+
+        new = Appointment.objects.create(
+            child=legacy_child,
+            service=appointment.service,
+            staff_member=staff_member,
+            room=target_room,
+            starts_at=starts_at,
+            ends_at=ends_at,
+            status=Appointment.Status.CONFIRMED,
+            attendance_status=Appointment.AttendanceStatus.UNKNOWN,
+            billing_decision=Appointment.BillingDecision.UNDECIDED,
+            billing_account=legacy_billing_account,
+            source_appointment=appointment,
+            series=appointment.series,
+            program_block=appointment.program_block,
+            sequence_number=appointment.sequence_number,
+            session_type=appointment.session_type,
+            title=appointment.title,
+            admin_note=note,
+        )
+        _copy_rescheduled_participants(appointment, new)
+        _copy_rescheduled_staff_assignments(appointment, new, staff_member)
+        return MoveResult(old=appointment, new=new)
 
 
 @transaction.atomic

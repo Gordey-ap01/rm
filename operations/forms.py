@@ -13,6 +13,7 @@ from django.db.models import Q, Sum
 from django.forms.models import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone
 
+from . import schedule_writes as schedule_write_svc
 from .models import (
     ACTIVE_APPOINTMENT_STATUSES,
     Appointment,
@@ -401,19 +402,7 @@ class AppointmentForm(forms.ModelForm):
         return str(raw).lower() in {"1", "on", "true", "yes"}
 
     def _room_limit_message(self, room: Room, conflicts: dict) -> str:
-        reasons = conflicts.get("room_limit_reasons") or {}
-        parts = []
-        if reasons.get("staff"):
-            parts.append(
-                f"специалистов {reasons.get('staff_total')} при лимите {room.effective_max_staff_count}"
-            )
-        if reasons.get("recipients"):
-            parts.append(
-                f"получателей {reasons.get('recipient_total')} при лимите {room.effective_max_recipient_count}"
-            )
-        if reasons.get("group"):
-            parts.append("кабинет не отмечен как разрешенный для групповых занятий")
-        return "; ".join(parts) or "кабинет превышает правила вместимости"
+        return schedule_write_svc.room_limit_message(room, conflicts)
 
     def clean(self):
         cleaned = super().clean()
@@ -686,7 +675,29 @@ class AppointmentForm(forms.ModelForm):
             "staff_availability_override_reason", ""
         )
         if commit:
-            with transaction.atomic():
+            with schedule_write_svc.lock_schedule_write(
+                appointment_id=appointment.pk,
+                room_ids=[appointment.room_id],
+            ) as locked:
+                room = locked.room_for(appointment.room_id)
+                room_conflicts = schedule_write_svc.ensure_room_capacity(
+                    starts_at=appointment.starts_at,
+                    ends_at=appointment.ends_at,
+                    children=self._selected_children(self.cleaned_data),
+                    staff_members=self._selected_staff_members(self.cleaned_data),
+                    room=room,
+                    status=appointment.status,
+                    exclude_pk=appointment.pk,
+                    allow_override=bool(self.cleaned_data.get("room_limit_override")),
+                )
+                self.cleaned_data["room_limit_override"] = bool(
+                    room_conflicts.get("room_over_limit")
+                )
+                if self.cleaned_data["room_limit_override"] and room:
+                    self.room_limit_warning = schedule_write_svc.room_limit_message(
+                        room,
+                        room_conflicts,
+                    )
                 if self.cleaned_data.get("room_limit_override"):
                     appointment._skip_room_limit_validation = True
                 try:
@@ -741,19 +752,7 @@ class AppointmentMoveForm(forms.Form):
         return str(raw).lower() in {"1", "on", "true", "yes"}
 
     def _room_limit_message(self, room: Room, conflicts: dict) -> str:
-        reasons = conflicts.get("room_limit_reasons") or {}
-        parts = []
-        if reasons.get("staff"):
-            parts.append(
-                f"специалистов {reasons.get('staff_total')} при лимите {room.effective_max_staff_count}"
-            )
-        if reasons.get("recipients"):
-            parts.append(
-                f"получателей {reasons.get('recipient_total')} при лимите {room.effective_max_recipient_count}"
-            )
-        if reasons.get("group"):
-            parts.append("кабинет не отмечен как разрешенный для групповых занятий")
-        return "; ".join(parts) or "кабинет превышает правила вместимости"
+        return schedule_write_svc.room_limit_message(room, conflicts)
 
     def _participant_children(self):
         participants = list(self.appointment.participants.select_related("child").order_by("pk"))
@@ -927,70 +926,118 @@ class AppointmentMoveForm(forms.Form):
 
     @transaction.atomic
     def save(self):
-        old = self.appointment
         starts_at = self.cleaned_data["starts_at"]
         ends_at = self.cleaned_data["ends_at"]
         staff_member = self.cleaned_data["staff_member"]
         room = self.cleaned_data["room"]
         note = self.cleaned_data.get("admin_note", "").strip()
-        participants = list(
-            old.participants.select_related("child", "billing_account").order_by("pk")
-        )
-        legacy_child = old.child
-        legacy_billing_account = old.billing_account
-        if participants and all(
-            participant.child_id != old.child_id for participant in participants
-        ):
-            legacy_child = participants[0].child
-            legacy_billing_account = participants[0].billing_account
-        local_start = timezone.localtime(starts_at)
+        with schedule_write_svc.lock_schedule_write(
+            appointment_id=self.appointment.pk,
+            room_ids=[room.pk if room else None],
+        ) as locked:
+            old = locked.appointment
+            if old is None:  # Defensive: appointment_id is always present above.
+                raise forms.ValidationError("Исходное занятие не найдено.")
 
-        old.status = Appointment.Status.RESCHEDULED
-        old.admin_note = "\n".join(
-            part
-            for part in [
-                old.admin_note,
-                f"Перенесено на {local_start:%d.%m.%Y %H:%M}.",
-                note,
-            ]
-            if part
-        )
-        old.save(update_fields=["status", "admin_note", "updated_at"])
+            participants = list(
+                old.participants.select_related("child", "billing_account").order_by("pk")
+            )
+            children = [participant.child for participant in participants] or [old.child]
+            assignments = list(
+                old.staff_assignments.select_related("staff_member").order_by("pk")
+            )
+            move_staff_members = []
+            primary_replaced = False
+            for assignment in assignments:
+                member = assignment.staff_member
+                if (
+                    assignment.role == AppointmentStaffAssignment.Role.PRIMARY
+                    and not primary_replaced
+                ):
+                    member = staff_member
+                    primary_replaced = True
+                if member not in move_staff_members:
+                    move_staff_members.append(member)
+            if staff_member not in move_staff_members:
+                move_staff_members.insert(0, staff_member)
 
-        new = Appointment(
-            child=legacy_child,
-            service=old.service,
-            staff_member=staff_member,
-            room=room,
-            starts_at=starts_at,
-            ends_at=ends_at,
-            status=Appointment.Status.CONFIRMED,
-            attendance_status=Appointment.AttendanceStatus.UNKNOWN,
-            billing_decision=Appointment.BillingDecision.UNDECIDED,
-            billing_account=legacy_billing_account,
-            source_appointment=old,
-            series=old.series,
-            program_block=old.program_block,
-            sequence_number=old.sequence_number,
-            session_type=old.session_type,
-            title=old.title,
-            staff_availability_override=self.cleaned_data.get("staff_availability_override", False),
-            staff_availability_override_reason=self.cleaned_data.get(
-                "staff_availability_override_reason", ""
-            ),
-            admin_note=note,
-        )
-        if self.cleaned_data.get("room_limit_override"):
-            new._skip_room_limit_validation = True
-        try:
-            new.save()
-        finally:
-            if hasattr(new, "_skip_room_limit_validation"):
-                del new._skip_room_limit_validation
-        self._copy_participants(old, new)
-        self._copy_staff_assignments(old, new, staff_member)
-        self._save_room_override(new)
-        return new
+            locked_room = locked.room_for(room.pk if room else None)
+            room_conflicts = schedule_write_svc.ensure_room_capacity(
+                starts_at=starts_at,
+                ends_at=ends_at,
+                children=children,
+                staff_members=move_staff_members,
+                room=locked_room,
+                status=Appointment.Status.CONFIRMED,
+                exclude_pk=old.pk,
+                allow_override=bool(self.cleaned_data.get("room_limit_override")),
+            )
+            self.cleaned_data["room_limit_override"] = bool(
+                room_conflicts.get("room_over_limit")
+            )
+            if self.cleaned_data["room_limit_override"] and locked_room:
+                self.room_limit_warning = schedule_write_svc.room_limit_message(
+                    locked_room,
+                    room_conflicts,
+                )
+
+            legacy_child = old.child
+            legacy_billing_account = old.billing_account
+            if participants and all(
+                participant.child_id != old.child_id for participant in participants
+            ):
+                legacy_child = participants[0].child
+                legacy_billing_account = participants[0].billing_account
+            local_start = timezone.localtime(starts_at)
+
+            old.status = Appointment.Status.RESCHEDULED
+            old.admin_note = "\n".join(
+                part
+                for part in [
+                    old.admin_note,
+                    f"Перенесено на {local_start:%d.%m.%Y %H:%M}.",
+                    note,
+                ]
+                if part
+            )
+            old.save(update_fields=["status", "admin_note", "updated_at"])
+
+            new = Appointment(
+                child=legacy_child,
+                service=old.service,
+                staff_member=staff_member,
+                room=locked_room,
+                starts_at=starts_at,
+                ends_at=ends_at,
+                status=Appointment.Status.CONFIRMED,
+                attendance_status=Appointment.AttendanceStatus.UNKNOWN,
+                billing_decision=Appointment.BillingDecision.UNDECIDED,
+                billing_account=legacy_billing_account,
+                source_appointment=old,
+                series=old.series,
+                program_block=old.program_block,
+                sequence_number=old.sequence_number,
+                session_type=old.session_type,
+                title=old.title,
+                staff_availability_override=self.cleaned_data.get(
+                    "staff_availability_override", False
+                ),
+                staff_availability_override_reason=self.cleaned_data.get(
+                    "staff_availability_override_reason", ""
+                ),
+                admin_note=note,
+            )
+            if self.cleaned_data.get("room_limit_override"):
+                new._skip_room_limit_validation = True
+            try:
+                new.save()
+            finally:
+                if hasattr(new, "_skip_room_limit_validation"):
+                    del new._skip_room_limit_validation
+            self._copy_participants(old, new)
+            self._copy_staff_assignments(old, new, staff_member)
+            self._save_room_override(new)
+            return new
 
 
 class AppointmentCancelForm(forms.Form):

@@ -1076,6 +1076,8 @@ class AppointmentSeries(TimeStampedModel):
 
         from django.utils import timezone
 
+        from operations import schedule_writes
+
         days_raw = [d.strip().upper() for d in self.days_of_week.split(",")]
         weekdays = {self.DAY_MAP[d] for d in days_raw if d in self.DAY_MAP}
         if not weekdays:
@@ -1111,18 +1113,30 @@ class AppointmentSeries(TimeStampedModel):
                     + 1
                 )
             try:
-                Appointment.objects.create(
-                    child=self.child,
-                    staff_member=self.staff_member,
-                    service=self.service,
-                    room=self.room,
-                    starts_at=starts_at,
-                    ends_at=ends_at,
-                    status=Appointment.Status.CONFIRMED,
-                    series=self,
-                    program_block=self.program_block,
-                    sequence_number=sequence_number,
-                )
+                with schedule_writes.lock_schedule_write(
+                    room_ids=[self.room_id],
+                ) as locked:
+                    room = locked.room_for(self.room_id)
+                    schedule_writes.ensure_room_capacity(
+                        starts_at=starts_at,
+                        ends_at=ends_at,
+                        children=[self.child],
+                        staff_members=[self.staff_member],
+                        room=room,
+                        status=Appointment.Status.CONFIRMED,
+                    )
+                    Appointment.objects.create(
+                        child=self.child,
+                        staff_member=self.staff_member,
+                        service=self.service,
+                        room=room,
+                        starts_at=starts_at,
+                        ends_at=ends_at,
+                        status=Appointment.Status.CONFIRMED,
+                        series=self,
+                        program_block=self.program_block,
+                        sequence_number=sequence_number,
+                    )
             except ValidationError:
                 continue
             created += 1

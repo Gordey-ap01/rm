@@ -12,6 +12,7 @@ from django.db import transaction
 from django.db.models import QuerySet
 from django.utils import timezone
 
+from operations import schedule_writes
 from operations.models import Appointment, BalanceAccount, ProgramBlock, Room, StaffMember
 from operations.services import scheduling
 
@@ -354,29 +355,44 @@ def create_schedule_from_preview(
 ) -> ScheduleCreateResult:
     appointments: list[Appointment] = []
     block = preview.block
-    for slot in preview.slots:
-        _validate_slot_still_free(block, slot)
-        override_reason = ""
-        if slot.availability_warning:
-            override_reason = f"Создано мастером расписания вне графика: {slot.availability_warning}."
-            if actor:
-                override_reason += f" Администратор: {actor}."
-        appointment = Appointment.objects.create(
-            child=block.program.child,
-            service=block.service,
-            staff_member=slot.staff_member,
-            room=slot.room,
-            starts_at=slot.starts_at,
-            ends_at=slot.ends_at,
-            status=status,
-            billing_account=block.balance_account if block.balance_account_id else None,
-            billing_decision=Appointment.BillingDecision.UNDECIDED,
-            program_block=block,
-            staff_availability_override=bool(slot.availability_warning),
-            staff_availability_override_reason=override_reason,
-            admin_note="Создано мастером автоподбора каскада.",
-        )
-        appointments.append(appointment)
+    with schedule_writes.lock_schedule_write(
+        room_ids=[slot.room.pk for slot in preview.slots],
+    ) as locked:
+        for slot in preview.slots:
+            _validate_slot_still_free(block, slot)
+            room = locked.room_for(slot.room.pk)
+            schedule_writes.ensure_room_capacity(
+                starts_at=slot.starts_at,
+                ends_at=slot.ends_at,
+                children=[block.program.child],
+                staff_members=[slot.staff_member],
+                room=room,
+                status=status,
+            )
+            override_reason = ""
+            if slot.availability_warning:
+                override_reason = (
+                    "Создано мастером расписания вне графика: "
+                    f"{slot.availability_warning}."
+                )
+                if actor:
+                    override_reason += f" Администратор: {actor}."
+            appointment = Appointment.objects.create(
+                child=block.program.child,
+                service=block.service,
+                staff_member=slot.staff_member,
+                room=room,
+                starts_at=slot.starts_at,
+                ends_at=slot.ends_at,
+                status=status,
+                billing_account=block.balance_account if block.balance_account_id else None,
+                billing_decision=Appointment.BillingDecision.UNDECIDED,
+                program_block=block,
+                staff_availability_override=bool(slot.availability_warning),
+                staff_availability_override_reason=override_reason,
+                admin_note="Создано мастером автоподбора каскада.",
+            )
+            appointments.append(appointment)
 
     if appointments:
         block.status = ProgramBlock.Status.SCHEDULED
