@@ -7,8 +7,9 @@
 Этап: приемка полномочий и финансового контура. PostgreSQL-устойчивость
 записей расписания и списаний, два доказательных среза полномочий, оба
 подэтапа A+B, payroll до факта выплаты и сквозная service-приемка завершены.
-Production preflight, health и проверяемый backup/restore завершены. Следующий
-этап — цельная browser-приемка уже реализованных рабочих ролей и выбор внешних
+Production preflight, health, проверяемый backup/restore и цельная
+browser-приемка рабочих ролей завершены. Следующий этап — persisted
+transfer/conversion, приемка грантовых/управленческих отчетов и выбор внешних
 эксплуатационных поставщиков.
 
 Цель этапа: ожидающие согласования и финансовые решения разделены по ролям,
@@ -99,6 +100,11 @@ Production preflight, health и проверяемый backup/restore завер
   полная выплата` без создания `Payment` получателя или `CenterExpense`;
   сценарий отпуска доказывает немедленную защиту расписания решением
   администратора и окончательный приоритет руководителя.
+- Добавлен `docs/55-browser-role-acceptance-contract.md`: отдельная локальная
+  browser-приемка администратора, руководителя и специалиста на временной
+  обезличенной БД. Администратор не видит payroll-команды руководителя,
+  руководитель проходит `approved -> sent -> paid` через UI, mobile-кабинет
+  специалиста на `390px` не имеет horizontal overflow.
 
 ## Проверки
 
@@ -139,19 +145,23 @@ Production preflight, health и проверяемый backup/restore завер
 - Локальный disposable production restore-drill прошел: проверены DB+media,
   отказ поврежденного архива и cleanup временного Compose-проекта. Внешние
   SMTP, monitoring и offsite backup остаются отдельными решениями владельца.
+- Цельная browser-приемка ролей от 2026-07-26 прошла на локальной временной
+  БД: все экраны ответили `200`, browser console/page errors и HTTP `4xx`/`5xx`
+  отсутствовали, desktop и mobile screenshots проверены визуально. Временные
+  данные, settings и процесс удалены после запуска.
 - Graphify code index обновлен локально без LLM/API key: `5904` nodes,
   `26423` edges. Семантическое обновление документов не применено: внешний
   Gemini backend недоступен по региону/лимиту, но это не блокирует кодовый граф.
 
 ## Следующая работа
 
-1. Выполнить цельную browser-приемку администратора и руководителя на
-   обезличенных сценариях, включая узкий мобильный viewport.
-2. Выбрать владельца и поставщиков для offsite backup, monitoring/alerting и
+1. Выбрать владельца и поставщиков для offsite backup, monitoring/alerting и
    реального SMTP; хранить секреты только вне Git. Включить branch protection
    после согласования репозитория.
-3. Продолжить persisted transfer/conversion и приемку grant/report контуров по
+2. Продолжить persisted transfer/conversion и приемку grant/report контуров по
    readiness matrix `docs/01-prd.md`.
+3. Перед пилотом проверить mobile-кабинет на физическом телефоне и провести
+   обезличенные рабочие сценарии центра.
 
 ## Глобальная готовность
 
@@ -170,8 +180,8 @@ Production preflight, health и проверяемый backup/restore завер
 
 - завершенная матрица ролей во всех управленческих действиях;
 - PostgreSQL concurrency и idempotency tests;
-- цельные browser-сценарии администратора и руководителя;
-- offsite backup, monitoring/alerting, реальный SMTP и browser-приемка;
+- offsite backup, monitoring/alerting и реальный SMTP;
+- регулярный targeted browser smoke и приемка на физическом телефоне;
 - приемка на реальных обезличенных сценариях центра;
 - доработка грантовых квот, переводов/конвертации и отчетов руководителя по
   readiness matrix из `docs/01-prd.md`.
