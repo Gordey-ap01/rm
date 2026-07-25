@@ -46,7 +46,9 @@ from .models import (
     ParentGuardian,
     Payment,
     PayrollAccrual,
+    PayrollPayout,
     PayrollSheet,
+    PayrollSheetLifecycleEvent,
     PayrollSheetLine,
     ProgramBlock,
     RecipientRepresentative,
@@ -1671,6 +1673,58 @@ class PayrollSheetLineAdmin(admin.ModelAdmin):
     search_fields = ("payroll_sheet__staff_member__full_name", "service__name", "note")
     list_filter = ("service",)
     autocomplete_fields = ("payroll_sheet", "payroll_accrual", "appointment", "service")
+
+
+class PayrollFinancialAuditAdmin(admin.ModelAdmin):
+    """Show payroll facts in Django admin without permitting a second write path."""
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return request.method in {"GET", "HEAD"} and super().has_change_permission(request, obj)
+
+
+@admin.register(PayrollPayout)
+class PayrollPayoutAdmin(PayrollFinancialAuditAdmin):
+    list_display = ("paid_at", "payroll_sheet", "amount", "method", "reference", "recorded_by")
+    search_fields = ("payroll_sheet__staff_member__full_name", "reference", "note")
+    list_filter = ("method", "paid_at")
+    readonly_fields = (
+        "payroll_sheet",
+        "amount",
+        "method",
+        "paid_at",
+        "reference",
+        "note",
+        "recorded_by",
+        "created_at",
+        "updated_at",
+    )
+    date_hierarchy = "paid_at"
+
+
+@admin.register(PayrollSheetLifecycleEvent)
+class PayrollSheetLifecycleEventAdmin(PayrollFinancialAuditAdmin):
+    list_display = ("occurred_at", "payroll_sheet", "event_type", "status_from", "status_to", "actor")
+    search_fields = ("payroll_sheet__staff_member__full_name", "note", "actor__username")
+    list_filter = ("event_type", "occurred_at")
+    readonly_fields = (
+        "payroll_sheet",
+        "event_type",
+        "status_from",
+        "status_to",
+        "actor",
+        "actor_role_snapshot",
+        "note",
+        "occurred_at",
+        "created_at",
+        "updated_at",
+    )
+    date_hierarchy = "occurred_at"
 
 
 @admin.register(Note)

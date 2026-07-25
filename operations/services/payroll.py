@@ -15,7 +15,9 @@ from operations.models import (
     Appointment,
     AppointmentStaffAssignment,
     PayrollAccrual,
+    PayrollPayout,
     PayrollSheet,
+    PayrollSheetLifecycleEvent,
     PayrollSheetLine,
     StaffCompensationRule,
     StaffMember,
@@ -229,10 +231,136 @@ def create_payroll_sheet_for_staff(
     return sheet
 
 
+def _lock_sheet_lines_and_accruals(
+    sheet: PayrollSheet,
+) -> tuple[list[PayrollSheetLine], list[PayrollAccrual], Decimal]:
+    """Lock the payroll fact rows in the same order for every financial transition."""
+
+    lines = list(
+        PayrollSheetLine.objects.select_for_update()
+        .filter(payroll_sheet=sheet)
+        .order_by("pk")
+    )
+    if not lines:
+        raise ValueError("В расчетном листе нет строк начислений.")
+
+    accrual_ids = [line.payroll_accrual_id for line in lines]
+    accruals = list(
+        PayrollAccrual.objects.select_for_update().filter(pk__in=accrual_ids).order_by("pk")
+    )
+    if len(accruals) != len(accrual_ids):
+        raise ValueError("В расчетном листе есть отсутствующие начисления.")
+
+    total = sum((line.amount for line in lines), Decimal("0"))
+    if sheet.total_amount != total:
+        raise ValueError("Итог расчетного листа не совпадает с его строками.")
+    return lines, accruals, total
+
+
+def _require_director(actor: Any, action: str) -> None:
+    if not is_director_user(actor):
+        raise PermissionDenied(f"{action} может только руководитель.")
+
+
+@transaction.atomic
+def send_payroll_sheet(
+    sheet: PayrollSheet,
+    *,
+    note: str,
+    actor: Any = None,
+) -> PayrollSheet:
+    _require_director(actor, "Передать расчетный лист в выплату")
+    note = note.strip()
+    if len(note) < 5:
+        raise ValueError("Укажите основание передачи в выплату не короче 5 символов.")
+
+    sheet = PayrollSheet.objects.select_for_update().get(pk=sheet.pk)
+    if sheet.status != PayrollSheet.Status.APPROVED:
+        raise ValueError("Передать в выплату можно только утвержденный расчетный лист.")
+
+    _, accruals, _ = _lock_sheet_lines_and_accruals(sheet)
+    if any(accrual.status != PayrollAccrual.Status.APPROVED for accrual in accruals):
+        raise ValueError("В листе есть начисления, не готовые к выплате.")
+
+    now = timezone.now()
+    sheet.status = PayrollSheet.Status.SENT
+    sheet.save(update_fields=["status", "updated_at"])
+    PayrollSheetLifecycleEvent.objects.create(
+        payroll_sheet=sheet,
+        event_type=PayrollSheetLifecycleEvent.EventType.SENT,
+        status_from=PayrollSheet.Status.APPROVED,
+        status_to=PayrollSheet.Status.SENT,
+        actor=actor,
+        actor_role_snapshot=PayrollSheetLifecycleEvent.ActorRole.DIRECTOR,
+        note=note,
+        occurred_at=now,
+    )
+    return sheet
+
+
+@transaction.atomic
+def record_payroll_payout(
+    sheet: PayrollSheet,
+    *,
+    amount: Decimal,
+    method: str,
+    paid_at: date,
+    reference: str = "",
+    note: str = "",
+    actor: Any = None,
+) -> PayrollPayout:
+    _require_director(actor, "Зафиксировать выплату")
+    if amount is None or amount <= 0:
+        raise ValueError("Сумма выплаты должна быть положительной.")
+    if method not in PayrollPayout.Method.values:
+        raise ValueError("Выберите допустимый способ выплаты.")
+    if paid_at is None:
+        raise ValueError("Укажите дату выплаты.")
+
+    sheet = PayrollSheet.objects.select_for_update().get(pk=sheet.pk)
+    if sheet.status != PayrollSheet.Status.SENT:
+        raise ValueError("Зафиксировать выплату можно только после передачи в выплату.")
+
+    _, accruals, total = _lock_sheet_lines_and_accruals(sheet)
+    if any(accrual.status != PayrollAccrual.Status.APPROVED for accrual in accruals):
+        raise ValueError("В листе есть начисления, не готовые к выплате.")
+    if amount != total:
+        raise ValueError("Сумма выплаты должна точно совпадать с итогом расчетного листа.")
+    if PayrollPayout.objects.select_for_update().filter(payroll_sheet=sheet).exists():
+        raise ValueError("Для этого расчетного листа уже зафиксирована выплата.")
+
+    payout = PayrollPayout.objects.create(
+        payroll_sheet=sheet,
+        amount=amount,
+        method=method,
+        paid_at=paid_at,
+        reference=reference.strip(),
+        note=note.strip(),
+        recorded_by=actor,
+    )
+    now = timezone.now()
+    sheet.status = PayrollSheet.Status.PAID
+    sheet.save(update_fields=["status", "updated_at"])
+    PayrollAccrual.objects.filter(pk__in=[accrual.pk for accrual in accruals]).update(
+        status=PayrollAccrual.Status.PAID,
+        updated_at=now,
+    )
+    PayrollSheetLifecycleEvent.objects.create(
+        payroll_sheet=sheet,
+        event_type=PayrollSheetLifecycleEvent.EventType.PAID,
+        status_from=PayrollSheet.Status.SENT,
+        status_to=PayrollSheet.Status.PAID,
+        actor=actor,
+        actor_role_snapshot=PayrollSheetLifecycleEvent.ActorRole.DIRECTOR,
+        note=note.strip(),
+        occurred_at=now,
+    )
+    return payout
+
+
 @transaction.atomic
 def approve_payroll_sheet(sheet: PayrollSheet, *, actor: Any = None) -> PayrollSheet:
-    if not is_director_user(actor):
-        raise PermissionDenied("Утвердить расчетный лист может только руководитель.")
+    _require_director(actor, "Утвердить расчетный лист")
 
     sheet = PayrollSheet.objects.select_for_update().get(pk=sheet.pk)
     if sheet.status != PayrollSheet.Status.DRAFT:

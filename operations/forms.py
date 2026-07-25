@@ -44,6 +44,7 @@ from .models import (
     OrganizationServiceContractLine,
     ParentGuardian,
     Payment,
+    PayrollPayout,
     ProgramBlock,
     RecipientRepresentative,
     Recommendation,
@@ -3603,6 +3604,42 @@ class TimeSheetFilterForm(forms.Form):
         if date_from and date_to and date_to < date_from:
             raise forms.ValidationError("Дата окончания не может быть раньше даты начала.")
         return cleaned
+
+
+class PayrollSheetSendForm(forms.Form):
+    note = forms.CharField(
+        label="Основание передачи в выплату",
+        min_length=5,
+        max_length=2000,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+
+    def clean_note(self):
+        return self.cleaned_data["note"].strip()
+
+
+class PayrollPayoutRecordForm(forms.Form):
+    amount = forms.DecimalField(
+        label="Сумма выплаты",
+        min_value=Decimal("0.01"),
+        max_digits=12,
+        decimal_places=2,
+    )
+    method = forms.ChoiceField(label="Способ выплаты", choices=PayrollPayout.Method.choices)
+    paid_at = forms.DateField(label="Дата выплаты", widget=DATE_INPUT, initial=timezone.localdate)
+    reference = forms.CharField(label="Номер платежа / документа", max_length=200, required=False)
+    note = forms.CharField(
+        label="Комментарий",
+        max_length=2000,
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+
+    def clean_reference(self):
+        return self.cleaned_data["reference"].strip()
+
+    def clean_note(self):
+        return self.cleaned_data["note"].strip()
 
 
 class GrantReportFilterForm(forms.Form):

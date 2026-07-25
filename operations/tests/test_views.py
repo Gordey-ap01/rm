@@ -1674,7 +1674,7 @@ class StaffTimesheetViewTests(NewViewsTestBase):
         detail_response = self.client.get(detail_url)
         self.assertEqual(
             detail_response.context["payroll_sheet_next_action"]["title"],
-            "Лист утвержден",
+            "Передать в выплату",
         )
         self.assertContains(detail_response, self.funding.name)
         self.assertContains(detail_response, "500,00 / За занятие")

@@ -20,6 +20,8 @@ from operations.forms import (
     FundingStaffAllocationQuickForm,
     GrantRecipientAllocationQuickForm,
     GrantReportFilterForm,
+    PayrollPayoutRecordForm,
+    PayrollSheetSendForm,
     TimeSheetFilterForm,
 )
 from operations.models import (
@@ -308,6 +310,14 @@ def _payroll_sheet_next_action(
         }
 
     if payroll_sheet.status == PayrollSheet.Status.APPROVED:
+        if can_approve:
+            return {
+                "tone": "warning",
+                "label": "Следующий шаг",
+                "title": "Передать в выплату",
+                "detail": "Укажите основание передачи во внутренний контур выплаты.",
+                "href": "#payroll-sheet-send",
+            }
         approved_at = (
             timezone.localtime(payroll_sheet.approved_at).strftime("%d.%m.%Y %H:%M")
             if payroll_sheet.approved_at
@@ -324,6 +334,23 @@ def _payroll_sheet_next_action(
             "title": "Лист утвержден",
             "detail": f"Утвердил: {approved_by}; дата: {approved_at}.",
             "href": "#payroll-sheet-lines",
+        }
+
+    if payroll_sheet.status == PayrollSheet.Status.SENT:
+        if can_approve:
+            return {
+                "tone": "warning",
+                "label": "Следующий шаг",
+                "title": "Зафиксировать выплату",
+                "detail": "Укажите дату, способ и реквизиты фактической выплаты.",
+                "href": "#payroll-sheet-payout",
+            }
+        return {
+            "tone": "info",
+            "label": "Статус",
+            "title": "Лист передан в выплату",
+            "detail": "Ожидается фиксация фактической выплаты руководителем.",
+            "href": "#payroll-sheet-history",
         }
 
     if payroll_sheet.status == PayrollSheet.Status.PAID:
@@ -725,12 +752,13 @@ def staff_timesheet(request, pk: int):
 def payroll_sheet_detail(request, pk: int):
     payroll_sheet = get_object_or_404(
         PayrollSheet.objects.select_related(
-            "staff_member", "created_by", "approved_by"
+            "staff_member", "created_by", "approved_by", "payout"
         ).prefetch_related(
             "lines__service",
             "lines__appointment",
             "lines__payroll_accrual",
             "lines__payroll_accrual__funding_source",
+            "lifecycle_events__actor",
         ),
         pk=pk,
     )
@@ -742,6 +770,36 @@ def payroll_sheet_detail(request, pk: int):
                     raise PermissionDenied("Утвердить расчетный лист может только руководитель.")
                 payroll_svc.approve_payroll_sheet(payroll_sheet, actor=request.user)
                 messages.success(request, "Расчетный лист утвержден.")
+            elif action == "send":
+                if not is_director(request.user):
+                    raise PermissionDenied("Передать расчетный лист в выплату может только руководитель.")
+                send_form = PayrollSheetSendForm(request.POST)
+                if not send_form.is_valid():
+                    messages.error(request, "Укажите основание передачи в выплату не короче 5 символов.")
+                else:
+                    payroll_svc.send_payroll_sheet(
+                        payroll_sheet,
+                        note=send_form.cleaned_data["note"],
+                        actor=request.user,
+                    )
+                    messages.success(request, "Расчетный лист передан в выплату.")
+            elif action == "record_payout":
+                if not is_director(request.user):
+                    raise PermissionDenied("Зафиксировать выплату может только руководитель.")
+                payout_form = PayrollPayoutRecordForm(request.POST)
+                if not payout_form.is_valid():
+                    messages.error(request, "Проверьте дату, способ и сумму выплаты.")
+                else:
+                    payroll_svc.record_payroll_payout(
+                        payroll_sheet,
+                        amount=payout_form.cleaned_data["amount"],
+                        method=payout_form.cleaned_data["method"],
+                        paid_at=payout_form.cleaned_data["paid_at"],
+                        reference=payout_form.cleaned_data["reference"],
+                        note=payout_form.cleaned_data["note"],
+                        actor=request.user,
+                    )
+                    messages.success(request, "Фактическая выплата зафиксирована.")
             else:
                 messages.error(request, "Неизвестное действие с расчетным листом.")
         except ValueError as exc:
@@ -749,6 +807,7 @@ def payroll_sheet_detail(request, pk: int):
         return redirect("payroll_sheet_detail", pk=payroll_sheet.pk)
 
     can_approve_payroll_sheet = is_director(request.user)
+    payroll_payout = getattr(payroll_sheet, "payout", None)
     return render(
         request,
         "operations/payroll_sheet_detail.html",
@@ -761,6 +820,12 @@ def payroll_sheet_detail(request, pk: int):
             ),
             "payroll_sheet_timesheet_url": _payroll_sheet_timesheet_url(payroll_sheet),
             "can_approve_payroll_sheet": can_approve_payroll_sheet,
+            "payroll_sheet_send_form": PayrollSheetSendForm(),
+            "payroll_payout_form": PayrollPayoutRecordForm(
+                initial={"amount": payroll_sheet.total_amount}
+            ),
+            "payroll_payout": payroll_payout,
+            "payroll_sheet_lifecycle_events": payroll_sheet.lifecycle_events.all(),
         },
     )
 

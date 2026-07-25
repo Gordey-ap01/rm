@@ -10,8 +10,8 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/admin.py": {
-    "mtime": 1784912114.0162294,
-    "ast_hash": "1a64264157b5ff8d40bb09db3460153b",
+    "mtime": 1784969938.3148644,
+    "ast_hash": "659f3372e43df2a11daf2299050e430f",
     "semantic_hash": ""
   },
   "operations/api.py": {
@@ -20,13 +20,13 @@
     "semantic_hash": ""
   },
   "operations/apps.py": {
-    "mtime": 1784912114.0146513,
-    "ast_hash": "39567baaca9ca0475649bad8d09534a1",
+    "mtime": 1784969938.3132868,
+    "ast_hash": "82f654a8afa504a9b0cf3f62addd70ca",
     "semantic_hash": ""
   },
   "operations/forms.py": {
-    "mtime": 1784950957.9790018,
-    "ast_hash": "23d88e2aa5ad547b38f881b0512c4008",
+    "mtime": 1784969938.3122387,
+    "ast_hash": "279f4bf1c52bf446ee91cc0da6e59211",
     "semantic_hash": ""
   },
   "operations/management/__init__.py": {
@@ -105,8 +105,8 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/models.py": {
-    "mtime": 1784949706.8972032,
-    "ast_hash": "7a6d76584f8e4724f994f70befcbba03",
+    "mtime": 1784970088.4003036,
+    "ast_hash": "4866e557e5a1d0eb4f2332a1ee0680c7",
     "semantic_hash": ""
   },
   "operations/services/__init__.py": {
@@ -170,8 +170,8 @@
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
-    "mtime": 1784956667.693729,
-    "ast_hash": "b6d0215fedb200091f24538fefcb0fa0",
+    "mtime": 1784970710.7232924,
+    "ast_hash": "88b282aca720fc5fa8daff056ed60d33",
     "semantic_hash": ""
   },
   "operations/urls.py": {
@@ -240,8 +240,8 @@
     "semantic_hash": "c87d4eef2d383f0a72bcbdf88bd860bc"
   },
   "operations/views/reports.py": {
-    "mtime": 1784955802.4383812,
-    "ast_hash": "55e39000ab5508bff78e8bfc3b9ad800",
+    "mtime": 1784970065.9005218,
+    "ast_hash": "1f1bbda32a256b5c2f44e743abcfab1b",
     "semantic_hash": ""
   },
   "operations/views/schedule.py": {
@@ -405,8 +405,8 @@
     "semantic_hash": "4743b79b7b2298e1650284eda55e92cb"
   },
   "docs/01-prd.md": {
-    "mtime": 1784956629.2877326,
-    "ast_hash": "ff48eedeceb13a9a5f2aaa92947fb49f",
+    "mtime": 1784975703.8082004,
+    "ast_hash": "2cbd3babf8123228f90a0f55e386688d",
     "semantic_hash": ""
   },
   "docs/02-tech-stack-research.md": {
@@ -730,8 +730,8 @@
     "semantic_hash": ""
   },
   "operations/services/payroll.py": {
-    "mtime": 1784955131.0083594,
-    "ast_hash": "f0e2c505d11574a6eb51b48bb0cd19d8",
+    "mtime": 1784969974.4964356,
+    "ast_hash": "60a9f83a4287e8b8cfecfddacc1240a5",
     "semantic_hash": ""
   },
   "operations/views/compensation_rules.py": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1784956807.632442,
-    "ast_hash": "61ac2b578c05f9cab8389db31065e9bb",
+    "mtime": 1784975747.8110735,
+    "ast_hash": "b5be7cd7d8429ad2dd28294063b4d68c",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -820,8 +820,8 @@
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1784956629.2893095,
-    "ast_hash": "6f4f4c547010b955c8b082eab2ff7e8d",
+    "mtime": 1784975703.80874,
+    "ast_hash": "9daf533dc39ffdeced56ce49dbe540c3",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -830,8 +830,8 @@
     "semantic_hash": ""
   },
   "templates/operations/payroll_sheet_detail.html": {
-    "mtime": 1784955060.4227738,
-    "ast_hash": "0b0d0632476b321215d5f0004b3535d7",
+    "mtime": 1784970055.8314316,
+    "ast_hash": "465fbc5fce658ce501e6b8f7c00ea1aa",
     "semantic_hash": ""
   },
   "templates/operations/recipient_import_preview.html": {
@@ -1512,6 +1512,21 @@
   "docs/51-payroll-director-approval-contract.md": {
     "mtime": 1784956629.2866845,
     "ast_hash": "31468c96bfd8091d7bd17d67d6c633cd",
+    "semantic_hash": ""
+  },
+  "operations/migrations/0046_payroll_payout_lifecycle.py": {
+    "mtime": 1784970093.7740724,
+    "ast_hash": "c1407085447a7465c66125ee0a4ac1ad",
+    "semantic_hash": ""
+  },
+  "operations/tests/test_payroll_payout.py": {
+    "mtime": 1784975806.0714147,
+    "ast_hash": "2255b781aace9b1a8c87775a98d5026c",
+    "semantic_hash": ""
+  },
+  "docs/52-payroll-payout-lifecycle-contract.md": {
+    "mtime": 1784975703.8066094,
+    "ast_hash": "1edbda34e88549aa2801702272e302d1",
     "semantic_hash": ""
   }
 }

@@ -2677,7 +2677,7 @@ class PayrollSheet(TimeStampedModel):
     class Status(models.TextChoices):
         DRAFT = "draft", "Черновик"
         APPROVED = "approved", "Утвержден"
-        SENT = "sent", "Отправлен"
+        SENT = "sent", "Передан в выплату"
         PAID = "paid", "Выплачен"
         CANCELLED = "cancelled", "Отменен"
 
@@ -2781,6 +2781,180 @@ class PayrollSheetLine(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.payroll_sheet} / {self.work_date:%d.%m.%Y} / {self.amount}"
+
+
+class PayrollPayout(TimeStampedModel):
+    """One immutable full payment recorded for a payroll sheet."""
+
+    class Method(models.TextChoices):
+        BANK_TRANSFER = "bank_transfer", "Банковский перевод"
+        CASH = "cash", "Наличные"
+        OTHER = "other", "Другое"
+
+    payroll_sheet = models.OneToOneField(
+        PayrollSheet,
+        verbose_name="расчетный лист",
+        on_delete=models.PROTECT,
+        related_name="payout",
+    )
+    amount = models.DecimalField("сумма выплаты", max_digits=12, decimal_places=2)
+    method = models.CharField("способ выплаты", max_length=30, choices=Method.choices)
+    paid_at = models.DateField("дата выплаты", default=timezone.localdate)
+    reference = models.CharField("номер платежа / документа", max_length=200, blank=True)
+    note = models.TextField("комментарий", blank=True)
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="выплату зафиксировал",
+        on_delete=models.PROTECT,
+        related_name="recorded_payroll_payouts",
+    )
+
+    class Meta:
+        verbose_name = "выплата специалисту"
+        verbose_name_plural = "выплаты специалистам"
+        ordering = ["-paid_at", "-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(amount__gt=0), name="payroll_payout_amount_positive"
+            ),
+        ]
+        indexes = [models.Index(fields=["-paid_at"])]
+
+    immutable_fields = (
+        "payroll_sheet_id",
+        "amount",
+        "method",
+        "paid_at",
+        "reference",
+        "note",
+        "recorded_by_id",
+    )
+
+    def clean(self) -> None:
+        if self.amount is None or self.amount <= 0:
+            raise ValidationError({"amount": "Сумма выплаты должна быть положительной."})
+
+    def _ensure_immutable_fields(self) -> None:
+        if not self.pk:
+            return
+        current = type(self).objects.get(pk=self.pk)
+        if any(getattr(self, field) != getattr(current, field) for field in self.immutable_fields):
+            raise ValidationError(
+                "Зафиксированную выплату нельзя изменять. Для корректировки нужен отдельный "
+                "финансовый документ."
+            )
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.full_clean()
+        self._ensure_immutable_fields()
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.payroll_sheet} / {self.amount}"
+
+
+class PayrollSheetLifecycleEvent(TimeStampedModel):
+    """Append-only journal for payroll transitions with financial consequences."""
+
+    class EventType(models.TextChoices):
+        SENT = PayrollSheet.Status.SENT, "Передан в выплату"
+        PAID = PayrollSheet.Status.PAID, "Выплата зафиксирована"
+
+    class ActorRole(models.TextChoices):
+        DIRECTOR = "director", "Руководитель"
+
+    payroll_sheet = models.ForeignKey(
+        PayrollSheet,
+        verbose_name="расчетный лист",
+        on_delete=models.PROTECT,
+        related_name="lifecycle_events",
+    )
+    event_type = models.CharField("тип события", max_length=30, choices=EventType.choices)
+    status_from = models.CharField("статус был", max_length=30, choices=PayrollSheet.Status.choices)
+    status_to = models.CharField("статус стал", max_length=30, choices=PayrollSheet.Status.choices)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="действие выполнил",
+        on_delete=models.PROTECT,
+        related_name="payroll_sheet_lifecycle_events",
+    )
+    actor_role_snapshot = models.CharField(
+        "роль на момент действия",
+        max_length=30,
+        choices=ActorRole.choices,
+    )
+    note = models.TextField("основание", blank=True)
+    occurred_at = models.DateTimeField("время действия", default=timezone.now, db_index=True)
+
+    class Meta:
+        verbose_name = "событие расчетного листа"
+        verbose_name_plural = "события расчетных листов"
+        ordering = ["-occurred_at", "-pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type="sent",
+                        status_from="approved",
+                        status_to="sent",
+                        actor_role_snapshot="director",
+                    )
+                    | Q(
+                        event_type="paid",
+                        status_from="sent",
+                        status_to="paid",
+                        actor_role_snapshot="director",
+                    )
+                ),
+                name="payroll_lifecycle_event_valid_transition",
+            ),
+            models.CheckConstraint(
+                condition=Q(event_type="paid") | ~Q(note=""),
+                name="payroll_sent_event_note_required",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["payroll_sheet", "-occurred_at"]),
+            models.Index(fields=["event_type", "-occurred_at"]),
+        ]
+
+    immutable_fields = (
+        "payroll_sheet_id",
+        "event_type",
+        "status_from",
+        "status_to",
+        "actor_id",
+        "actor_role_snapshot",
+        "note",
+        "occurred_at",
+    )
+
+    def clean(self) -> None:
+        expected_transitions = {
+            self.EventType.SENT: (PayrollSheet.Status.APPROVED, PayrollSheet.Status.SENT),
+            self.EventType.PAID: (PayrollSheet.Status.SENT, PayrollSheet.Status.PAID),
+        }
+        if expected_transitions.get(self.event_type) != (self.status_from, self.status_to):
+            raise ValidationError("Недопустимый переход состояния расчетного листа.")
+        if self.actor_role_snapshot != self.ActorRole.DIRECTOR:
+            raise ValidationError({"actor_role_snapshot": "Действие может выполнить руководитель."})
+        if self.event_type == self.EventType.SENT and len(self.note.strip()) < 5:
+            raise ValidationError({"note": "Укажите основание передачи в выплату."})
+
+    def _ensure_immutable_fields(self) -> None:
+        if not self.pk:
+            return
+        current = type(self).objects.get(pk=self.pk)
+        if any(getattr(self, field) != getattr(current, field) for field in self.immutable_fields):
+            raise ValidationError("Событие расчетного листа нельзя изменять после создания.")
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.full_clean()
+        self._ensure_immutable_fields()
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.payroll_sheet_id}: {self.get_event_type_display()}"
 
 
 class Note(TimeStampedModel):

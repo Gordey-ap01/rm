@@ -95,6 +95,40 @@
         </table>
       </div>
     </section>
+
+    <section class="panel payroll-sheet-panel" id="payroll-sheet-history">
+      <div class="payroll-sheet-panel-head">
+        <div>
+          <h2>История выплаты</h2>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="grid payroll-sheet-table">
+          <thead>
+            <tr>
+              <th>Время</th>
+              <th>Событие</th>
+              <th>Кто выполнил</th>
+              <th>Основание</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for event in payroll_sheet_lifecycle_events %}
+              <tr>
+                <td data-label="Время">{{ event.occurred_at|date:"d.m.Y H:i" }}</td>
+                <td data-label="Событие">{{ event.get_event_type_display }}</td>
+                <td data-label="Кто выполнил">{{ event.actor }}</td>
+                <td data-label="Основание">{{ event.note|default:"—" }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="4" data-label="История">Финансовых действий еще нет.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 
   <aside class="payroll-sheet-sidebar">
@@ -126,12 +160,64 @@
             </span>
           </li>
         {% endif %}
+        {% if payroll_payout %}
+          <li>
+            <strong>Выплата</strong>
+            <span>{{ payroll_payout.amount }} руб., {{ payroll_payout.get_method_display }}</span>
+          </li>
+          <li>
+            <strong>Дата выплаты</strong>
+            <span>{{ payroll_payout.paid_at|date:"d.m.Y" }}{% if payroll_payout.reference %} — {{ payroll_payout.reference }}{% endif %}</span>
+          </li>
+          <li>
+            <strong>Зафиксировал</strong>
+            <span>{{ payroll_payout.recorded_by }}</span>
+          </li>
+        {% endif %}
       </ul>
 
       {% if payroll_sheet.status == "draft" and can_approve_payroll_sheet %}
         <form method="post" class="payroll-sheet-actions">
           {% csrf_token %}
           <button type="submit" name="action" value="approve">Утвердить расчетный лист</button>
+        </form>
+      {% endif %}
+
+      {% if payroll_sheet.status == "approved" and can_approve_payroll_sheet %}
+        <form method="post" class="payroll-sheet-actions" id="payroll-sheet-send">
+          {% csrf_token %}
+          <div>
+            {{ payroll_sheet_send_form.note.label_tag }}
+            {{ payroll_sheet_send_form.note }}
+          </div>
+          <button type="submit" name="action" value="send">Передать в выплату</button>
+        </form>
+      {% endif %}
+
+      {% if payroll_sheet.status == "sent" and can_approve_payroll_sheet %}
+        <form method="post" class="payroll-sheet-actions" id="payroll-sheet-payout">
+          {% csrf_token %}
+          <div>
+            {{ payroll_payout_form.amount.label_tag }}
+            {{ payroll_payout_form.amount }}
+          </div>
+          <div>
+            {{ payroll_payout_form.method.label_tag }}
+            {{ payroll_payout_form.method }}
+          </div>
+          <div>
+            {{ payroll_payout_form.paid_at.label_tag }}
+            {{ payroll_payout_form.paid_at }}
+          </div>
+          <div>
+            {{ payroll_payout_form.reference.label_tag }}
+            {{ payroll_payout_form.reference }}
+          </div>
+          <div>
+            {{ payroll_payout_form.note.label_tag }}
+            {{ payroll_payout_form.note }}
+          </div>
+          <button type="submit" name="action" value="record_payout">Зафиксировать выплату</button>
         </form>
       {% endif %}
 
