@@ -61,6 +61,8 @@
   повторный или конкурентный `charge` не создает второй debit.
 - `do_not_charge` возвращает остаток correction-проводкой и убирает активную
   связь с занятием, поэтому не возникает ложный факт для payroll/grant.
+- Добавлен `.github/workflows/ci.yml`: чистая PostgreSQL 17, миграции, Django
+  check, Ruff и полный pytest для каждого push/pull request.
 
 ## Проверки
 
@@ -76,16 +78,19 @@
 - Browser smoke локального сценария администратора: «Списать» создает один
   debit, «Не списывать» очищает ledger занятия и возвращает остаток; mobile
   `390px` без horizontal overflow, console errors отсутствуют.
+- CI workflow YAML локально разобран; его команды check/Ruff/migration state
+  пройдены. Первый статус GitHub runner будет получен после push.
 - Playwright browser smoke: work queue администратора, «Завтра» руководителя и
   мобильный кабинет специалиста пройдены; horizontal overflow `0`.
-- Graphify code index обновлен локально без LLM/API key: `5747` nodes,
-  `25458` edges. Семантическая копия документации не создавалась.
+- Graphify code index обновлен локально без LLM/API key: `5753` nodes,
+  `25463` edges. Семантическая копия документации не создавалась.
 
 ## Следующая работа
 
 1. Закрыть приемку цельного сценария администратора от записи до списания и сценарий
    руководителя от заявки специалиста до табеля/выплаты.
-2. Подготовить CI PostgreSQL, backup/restore, monitoring и production preflight.
+2. Проверить первый GitHub CI run, затем подготовить backup/restore, monitoring
+   и production preflight.
 
 ## Глобальная готовность
 

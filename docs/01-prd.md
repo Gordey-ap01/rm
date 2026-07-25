@@ -217,7 +217,7 @@
 | Мобильный кабинет | Базово реализован | Постоянный browser smoke и проверка телефона |
 | Документы и сертификаты | Широко реализованы | Production cleanup и правовая приемка |
 | Excel | Частично | Общий безопасный write-path после стабилизации |
-| Production | Частично | CI PostgreSQL, backup restore, SMTP, monitoring |
+| Production | Частично | CI PostgreSQL; backup restore, SMTP и monitoring |
 
 Статусы этой таблицы меняются только после завершения вертикального сценария,
 а не после отдельной модели, формы или шаблона.

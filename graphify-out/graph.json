@@ -40927,6 +40927,54 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_50_postgresql_ci_contract",
+      "label": "50-postgresql-ci-contract.md",
+      "file_type": "document",
+      "source_file": "docs/50-postgresql-ci-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_50_postgresql_ci_contract_контракт_ci_postgresql_17",
+      "label": "Контракт: CI PostgreSQL 17",
+      "file_type": "document",
+      "source_file": "docs/50-postgresql-ci-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_50_postgresql_ci_contract_цель",
+      "label": "Цель",
+      "file_type": "document",
+      "source_file": "docs/50-postgresql-ci-contract.md",
+      "source_location": "L7",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_50_postgresql_ci_contract_workflow",
+      "label": "Workflow",
+      "file_type": "document",
+      "source_file": "docs/50-postgresql-ci-contract.md",
+      "source_location": "L13",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_50_postgresql_ci_contract_acceptance_criteria",
+      "label": "Acceptance Criteria",
+      "file_type": "document",
+      "source_file": "docs/50-postgresql-ci-contract.md",
+      "source_location": "L31",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_50_postgresql_ci_contract_границы",
+      "label": "Границы",
+      "file_type": "document",
+      "source_file": "docs/50-postgresql-ci-contract.md",
+      "source_location": "L39",
+      "_origin": "ast"
+    },
+    {
       "id": "docs_critical_stack_ux_review_2026_06_10",
       "label": "CRITICAL_STACK_UX_REVIEW_2026-06-10.md",
       "file_type": "document",
@@ -43627,7 +43675,7 @@
       "label": "Проверки",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L65",
+      "source_location": "L67",
       "_origin": "ast"
     },
     {
@@ -43635,7 +43683,7 @@
       "label": "Следующая работа",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L84",
+      "source_location": "L88",
       "_origin": "ast"
     },
     {
@@ -43643,7 +43691,7 @@
       "label": "Глобальная готовность",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L90",
+      "source_location": "L95",
       "_origin": "ast"
     },
     {
@@ -43651,7 +43699,7 @@
       "label": "Риски и запреты",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L113",
+      "source_location": "L118",
       "_origin": "ast"
     },
     {
@@ -44299,7 +44347,7 @@
       "label": "4. Архитектурные владельцы",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L68",
+      "source_location": "L69",
       "_origin": "ast"
     },
     {
@@ -44307,7 +44355,7 @@
       "label": "5. Skills и инструменты",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L78",
+      "source_location": "L79",
       "_origin": "ast"
     },
     {
@@ -44315,7 +44363,7 @@
       "label": "6. Контрольная точка",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L96",
+      "source_location": "L97",
       "_origin": "ast"
     },
     {
@@ -142349,6 +142397,51 @@
       "weight": 1.0
     },
     {
+      "source": "docs_50_postgresql_ci_contract",
+      "target": "docs_50_postgresql_ci_contract_контракт_ci_postgresql_17",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/50-postgresql-ci-contract.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_50_postgresql_ci_contract_контракт_ci_postgresql_17",
+      "target": "docs_50_postgresql_ci_contract_цель",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/50-postgresql-ci-contract.md",
+      "source_location": "L7",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_50_postgresql_ci_contract_контракт_ci_postgresql_17",
+      "target": "docs_50_postgresql_ci_contract_workflow",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/50-postgresql-ci-contract.md",
+      "source_location": "L13",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_50_postgresql_ci_contract_контракт_ci_postgresql_17",
+      "target": "docs_50_postgresql_ci_contract_acceptance_criteria",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/50-postgresql-ci-contract.md",
+      "source_location": "L31",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_50_postgresql_ci_contract_контракт_ci_postgresql_17",
+      "target": "docs_50_postgresql_ci_contract_границы",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/50-postgresql-ci-contract.md",
+      "source_location": "L39",
+      "weight": 1.0
+    },
+    {
       "source": "docs_critical_stack_ux_review_2026_06_10",
       "target": "docs_critical_stack_ux_review_2026_06_10_критический_срез_проекта_rmcodex",
       "relation": "contains",
@@ -145297,7 +145390,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L65",
+      "source_location": "L67",
       "weight": 1.0
     },
     {
@@ -145306,7 +145399,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L84",
+      "source_location": "L88",
       "weight": 1.0
     },
     {
@@ -145315,7 +145408,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L90",
+      "source_location": "L95",
       "weight": 1.0
     },
     {
@@ -145324,7 +145417,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L113",
+      "source_location": "L118",
       "weight": 1.0
     },
     {
@@ -145963,7 +146056,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L68",
+      "source_location": "L69",
       "weight": 1.0
     },
     {
@@ -145972,7 +146065,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L78",
+      "source_location": "L79",
       "weight": 1.0
     },
     {
@@ -145981,7 +146074,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L96",
+      "source_location": "L97",
       "weight": 1.0
     },
     {

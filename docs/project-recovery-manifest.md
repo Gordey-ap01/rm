@@ -52,6 +52,7 @@
 | `docs/40-*.md` ... `docs/47-*.md` | Импорт и баланс сертификатов, preflight и readiness UI. |
 | `docs/48-time-off-decision-authority-contract.md` | Решения по отсутствиям и обязательный контроль руководителя. |
 | `docs/49-postgresql-schedule-billing-write-serialization-contract.md` | Контракт конкурентной записи: A вместимость и B идемпотентное списание завершены. |
+| `docs/50-postgresql-ci-contract.md` | Обязательная CI-проверка PostgreSQL 17, миграций, линтера и полного pytest. |
 | `docs/decisions/ADR-001-*.md` | Django/PostgreSQL/local-first. |
 | `docs/decisions/ADR-002-*.md` | Балансовые счета и ledger. |
 | `docs/decisions/ADR-003-*.md` | Полномочия и ручные решения. |
