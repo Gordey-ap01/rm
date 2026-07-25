@@ -1,5 +1,6 @@
 .env
 .env.production
+.restore-drill.*
 .venv/
 .venv-test/
 *.egg-info/

@@ -3,8 +3,10 @@ from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
 from operations.api import api
+from operations.views import healthcheck
 
 urlpatterns = [
+    path("healthz/", healthcheck, name="healthcheck"),
     path("admin/", admin.site.urls),
     path(
         "login/",

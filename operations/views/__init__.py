@@ -99,6 +99,7 @@ from .funding_sources import (
     funding_source_list,
     funding_source_restore,
 )
+from .health import healthcheck as healthcheck
 from .imports import (
     contract_import_preview,
     import_batch_apply,

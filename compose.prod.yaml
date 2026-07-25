@@ -13,7 +13,8 @@ services:
       - caddy-config:/config
       - media-data:/srv/media:ro
     depends_on:
-      - web
+      web:
+        condition: service_healthy
 
   web:
     build: .
@@ -33,6 +34,13 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    healthcheck:
+      test:
+        ["CMD-SHELL", "python -c \"import urllib.request; request = urllib.request.Request('http://127.0.0.1:8000/healthz/', headers={'X-Forwarded-Proto': 'https'}); urllib.request.urlopen(request, timeout=5)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   db:
     image: postgres:17

@@ -87,13 +87,21 @@ nano .env.production
 - `DJANGO_ALLOWED_HOSTS`;
 - `DJANGO_CSRF_TRUSTED_ORIGINS`;
 - `POSTGRES_PASSWORD`;
+- `BACKUP_DIR` на существующий абсолютный каталог вне рабочего дерева;
+- `BACKUP_RETENTION_DAYS`;
 - SMTP-настройки для писем.
+
+Файл содержит только однострочные значения переменных окружения, без shell-кода.
+Не использовать `CHANGE_ME`, домены `example`/`invalid` и development passwords:
+`production_preflight.sh` намеренно их отклоняет.
 
 Запуск:
 
 ```bash
+./scripts/production_preflight.sh --config-only
 docker compose --env-file .env.production -f compose.prod.yaml up -d --build
 docker compose --env-file .env.production -f compose.prod.yaml exec web python manage.py createsuperuser
+./scripts/production_preflight.sh
 ```
 
 Проверка:
@@ -101,6 +109,7 @@ docker compose --env-file .env.production -f compose.prod.yaml exec web python m
 ```bash
 docker compose --env-file .env.production -f compose.prod.yaml ps
 docker compose --env-file .env.production -f compose.prod.yaml logs -f web
+curl --fail https://ваш-домен/healthz/
 ```
 
 После этого открыть:
@@ -114,8 +123,13 @@ https://ваш-домен
 Ручной запуск:
 
 ```bash
-sh scripts/backup_prod.sh
+./scripts/backup_prod.sh
+./scripts/verify_backup_prod.sh /absolute/path/to/backup
 ```
+
+Один backup - это atomic timestamp-каталог с `db.dump` в custom PostgreSQL
+format, `media.tar.gz`, `SHA256SUMS` и metadata. Скрипт проверяет оба архива до
+публикации набора. Не удалять `.partial-*` вручную во время работающего backup.
 
 Cron для ежедневного бэкапа в 03:20:
 
@@ -126,10 +140,28 @@ crontab -e
 Добавить:
 
 ```cron
-20 3 * * * cd /opt/rm && /bin/sh scripts/backup_prod.sh >> /var/log/rm-backup.log 2>&1
+20 3 * * * cd /opt/rm && /usr/bin/env bash scripts/backup_prod.sh >> /var/log/rm-backup.log 2>&1
 ```
 
 Важно: локальные бэкапы на том же сервере защищают от ошибки в базе, но не защищают от потери сервера. Для серьёзной эксплуатации нужен второй слой: S3/объектное хранилище или выгрузка на другой сервер.
+
+## Восстановление
+
+Команда ниже разрушительна: она останавливает только `web`, пересоздаёт БД и
+заменяет media. До неё руководитель должен подтвердить окно работ, а оператор -
+создать свежий backup текущего состояния, если это возможно.
+
+```bash
+./scripts/verify_backup_prod.sh /absolute/path/to/backup
+./scripts/restore_prod.sh --confirm /absolute/path/to/backup
+./scripts/production_preflight.sh
+```
+
+Не использовать restore на production как первый тест. В CI уже выполняется
+изолированный restore-drill; staging drill перед первым реальным запуском всё
+равно обязателен. После выбора владельца monitoring настроить внешнюю проверку
+`https://ваш-домен/healthz/`; до этого сохранить cron-логи backup и финансовой
+проверки и назначить ответственного за их просмотр.
 
 ## Финансовая проверка
 

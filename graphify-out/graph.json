@@ -13268,6 +13268,46 @@
       "_origin": "ast"
     },
     {
+      "id": "tests_test_production_preflight",
+      "label": "test_production_preflight.py",
+      "file_type": "code",
+      "source_file": "operations/tests/test_production_preflight.py",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_production_preflight_healthcheckviewtests",
+      "label": "HealthcheckViewTests",
+      "file_type": "code",
+      "source_file": "operations/tests/test_production_preflight.py",
+      "source_location": "L8",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_production_preflight_healthcheckviewtests_test_healthcheck_returns_minimal_success_response",
+      "label": ".test_healthcheck_returns_minimal_success_response()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_production_preflight.py",
+      "source_location": "L9",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_production_preflight_healthcheckviewtests_test_healthcheck_returns_service_unavailable_when_database_is_down",
+      "label": ".test_healthcheck_returns_service_unavailable_when_database_is_down()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_production_preflight.py",
+      "source_location": "L16",
+      "_origin": "ast"
+    },
+    {
+      "id": "tests_test_production_preflight_healthcheckviewtests_test_healthcheck_rejects_non_get_request",
+      "label": ".test_healthcheck_rejects_non_get_request()",
+      "file_type": "code",
+      "source_file": "operations/tests/test_production_preflight.py",
+      "source_location": "L22",
+      "_origin": "ast"
+    },
+    {
       "id": "tests_test_schedule_writes",
       "label": "test_schedule_writes.py",
       "file_type": "code",
@@ -21012,6 +21052,30 @@
       "_origin": "ast"
     },
     {
+      "id": "views_health",
+      "label": "health.py",
+      "file_type": "code",
+      "source_file": "operations/views/health.py",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "views_health_healthcheck",
+      "label": "healthcheck()",
+      "file_type": "code",
+      "source_file": "operations/views/health.py",
+      "source_location": "L9",
+      "_origin": "ast"
+    },
+    {
+      "id": "views_health_rationale_1",
+      "label": "Minimal unauthenticated liveness and database-readiness endpoint.",
+      "file_type": "rationale",
+      "source_file": "operations/views/health.py",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
       "id": "views_imports",
       "label": "imports.py",
       "file_type": "code",
@@ -22895,6 +22959,126 @@
       "_origin": "ast"
     },
     {
+      "id": "scripts_production_common",
+      "label": "_production_common.sh",
+      "file_type": "code",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "d_радостьмояавтоматизация_rmcodex_scripts_production_common_sh__entry",
+      "label": "_production_common.sh script",
+      "file_type": "code",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_production_common_production_fail",
+      "label": "production_fail()",
+      "file_type": "code",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L9",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_production_common_load_production_environment",
+      "label": "load_production_environment()",
+      "file_type": "code",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L14",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_production_common_environment_value",
+      "label": "environment_value()",
+      "file_type": "code",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L24",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_production_common_require_environment_value",
+      "label": "require_environment_value()",
+      "file_type": "code",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L32",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_production_common_ensure_not_placeholder",
+      "label": "ensure_not_placeholder()",
+      "file_type": "code",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L40",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_production_common_compose_host_path",
+      "label": "compose_host_path()",
+      "file_type": "code",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L53",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_production_common_production_compose",
+      "label": "production_compose()",
+      "file_type": "code",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L65",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_production_common_require_absolute_directory",
+      "label": "require_absolute_directory()",
+      "file_type": "code",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L83",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast"
+    },
+    {
       "id": "scripts_backup_prod",
       "label": "backup_prod.sh",
       "file_type": "code",
@@ -22915,6 +23099,18 @@
       "metadata": {
         "language": "bash",
         "kind": "bash_entrypoint"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_backup_prod_cleanup_partial",
+      "label": "cleanup_partial()",
+      "file_type": "code",
+      "source_file": "scripts/backup_prod.sh",
+      "source_location": "L27",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
       },
       "_origin": "ast"
     },
@@ -23108,6 +23304,170 @@
       "file_type": "rationale",
       "source_file": "scripts/launcher.py",
       "source_location": "L91",
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_production_preflight",
+      "label": "production_preflight.sh",
+      "file_type": "code",
+      "source_file": "scripts/production_preflight.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "d_радостьмояавтоматизация_rmcodex_scripts_production_preflight_sh__entry",
+      "label": "production_preflight.sh script",
+      "file_type": "code",
+      "source_file": "scripts/production_preflight.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_restore_drill_ci",
+      "label": "restore_drill_ci.sh",
+      "file_type": "code",
+      "source_file": "scripts/restore_drill_ci.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "d_радостьмояавтоматизация_rmcodex_scripts_restore_drill_ci_sh__entry",
+      "label": "restore_drill_ci.sh script",
+      "file_type": "code",
+      "source_file": "scripts/restore_drill_ci.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_restore_drill_ci_cleanup",
+      "label": "cleanup()",
+      "file_type": "code",
+      "source_file": "scripts/restore_drill_ci.sh",
+      "source_location": "L21",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_restore_drill_ci_wait_for_web",
+      "label": "wait_for_web()",
+      "file_type": "code",
+      "source_file": "scripts/restore_drill_ci.sh",
+      "source_location": "L57",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_restore_prod",
+      "label": "restore_prod.sh",
+      "file_type": "code",
+      "source_file": "scripts/restore_prod.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "d_радостьмояавтоматизация_rmcodex_scripts_restore_prod_sh__entry",
+      "label": "restore_prod.sh script",
+      "file_type": "code",
+      "source_file": "scripts/restore_prod.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_restore_prod_restore_cleanup",
+      "label": "restore_cleanup()",
+      "file_type": "code",
+      "source_file": "scripts/restore_prod.sh",
+      "source_location": "L24",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_function"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_verify_backup_prod",
+      "label": "verify_backup_prod.sh",
+      "file_type": "code",
+      "source_file": "scripts/verify_backup_prod.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "file"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "d_радостьмояавтоматизация_rmcodex_scripts_verify_backup_prod_sh__entry",
+      "label": "verify_backup_prod.sh script",
+      "file_type": "code",
+      "source_file": "scripts/verify_backup_prod.sh",
+      "source_location": "L1",
+      "metadata": {
+        "language": "bash",
+        "kind": "bash_entrypoint"
+      },
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_verify_dependency_manifests",
+      "label": "verify_dependency_manifests.py",
+      "file_type": "code",
+      "source_file": "scripts/verify_dependency_manifests.py",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_verify_dependency_manifests_normalized_dependencies",
+      "label": "normalized_dependencies()",
+      "file_type": "code",
+      "source_file": "scripts/verify_dependency_manifests.py",
+      "source_location": "L14",
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_verify_dependency_manifests_main",
+      "label": "main()",
+      "file_type": "code",
+      "source_file": "scripts/verify_dependency_manifests.py",
+      "source_location": "L30",
+      "_origin": "ast"
+    },
+    {
+      "id": "scripts_verify_dependency_manifests_rationale_1",
+      "label": "Keep the production Docker dependency manifest aligned with pyproject.toml.",
+      "file_type": "rationale",
+      "source_file": "scripts/verify_dependency_manifests.py",
+      "source_location": "L1",
       "_origin": "ast"
     },
     {
@@ -36367,8 +36727,8 @@
       "_origin": "ast"
     },
     {
-      "id": "docs_01_prd_6_матрица_готовности_на_2026_07_25",
-      "label": "6. Матрица готовности на 2026-07-25",
+      "id": "docs_01_prd_6_матрица_готовности_на_2026_07_26",
+      "label": "6. Матрица готовности на 2026-07-26",
       "file_type": "document",
       "source_file": "docs/01-prd.md",
       "source_location": "L203",
@@ -41807,6 +42167,102 @@
       "_origin": "ast"
     },
     {
+      "id": "docs_54_production_preflight_contract",
+      "label": "54-production-preflight-contract.md",
+      "file_type": "document",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_54_production_preflight_contract_контракт_среза_production_preflight_восстановимость_и_наблюдаемость",
+      "label": "Контракт среза: production preflight, восстановимость и наблюдаемость",
+      "file_type": "document",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_54_production_preflight_contract_основание",
+      "label": "Основание",
+      "file_type": "document",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L7",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_54_production_preflight_contract_граница_среза",
+      "label": "Граница среза",
+      "file_type": "document",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L24",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_54_production_preflight_contract_инварианты",
+      "label": "Инварианты",
+      "file_type": "document",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L52",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_54_production_preflight_contract_backup_формат",
+      "label": "Backup формат",
+      "file_type": "document",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L65",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_54_production_preflight_contract_restore_политика",
+      "label": "Restore политика",
+      "file_type": "document",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L81",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_54_production_preflight_contract_внешние_границы",
+      "label": "Внешние границы",
+      "file_type": "document",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L100",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_54_production_preflight_contract_факт_реализации",
+      "label": "Факт реализации",
+      "file_type": "document",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L111",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_54_production_preflight_contract_проверки_приемки",
+      "label": "Проверки приемки",
+      "file_type": "document",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L133",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_54_production_preflight_contract_опасные_точки_миграции",
+      "label": "Опасные точки миграции",
+      "file_type": "document",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L150",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_54_production_preflight_contract_параллельная_работа",
+      "label": "Параллельная работа",
+      "file_type": "document",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L156",
+      "_origin": "ast"
+    },
+    {
       "id": "docs_critical_stack_ux_review_2026_06_10",
       "label": "CRITICAL_STACK_UX_REVIEW_2026-06-10.md",
       "file_type": "document",
@@ -42075,7 +42531,15 @@
       "label": "Бэкапы",
       "file_type": "document",
       "source_file": "docs/PRODUCTION_DEPLOYMENT.md",
-      "source_location": "L112",
+      "source_location": "L121",
+      "_origin": "ast"
+    },
+    {
+      "id": "docs_production_deployment_восстановление",
+      "label": "Восстановление",
+      "file_type": "document",
+      "source_file": "docs/PRODUCTION_DEPLOYMENT.md",
+      "source_location": "L148",
       "_origin": "ast"
     },
     {
@@ -42083,7 +42547,7 @@
       "label": "Финансовая проверка",
       "file_type": "document",
       "source_file": "docs/PRODUCTION_DEPLOYMENT.md",
-      "source_location": "L134",
+      "source_location": "L166",
       "_origin": "ast"
     },
     {
@@ -42091,7 +42555,7 @@
       "label": "Обновление системы",
       "file_type": "document",
       "source_file": "docs/PRODUCTION_DEPLOYMENT.md",
-      "source_location": "L150",
+      "source_location": "L182",
       "_origin": "ast"
     },
     {
@@ -42099,7 +42563,7 @@
       "label": "Что нельзя делать",
       "file_type": "document",
       "source_file": "docs/PRODUCTION_DEPLOYMENT.md",
-      "source_location": "L159",
+      "source_location": "L191",
       "_origin": "ast"
     },
     {
@@ -42107,7 +42571,7 @@
       "label": "Следующий уровень",
       "file_type": "document",
       "source_file": "docs/PRODUCTION_DEPLOYMENT.md",
-      "source_location": "L167",
+      "source_location": "L199",
       "_origin": "ast"
     },
     {
@@ -44499,7 +44963,7 @@
       "label": "Что сделано в текущем срезе",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L24",
+      "source_location": "L25",
       "_origin": "ast"
     },
     {
@@ -44507,7 +44971,7 @@
       "label": "Проверки",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L102",
+      "source_location": "L103",
       "_origin": "ast"
     },
     {
@@ -44515,7 +44979,7 @@
       "label": "Следующая работа",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L139",
+      "source_location": "L140",
       "_origin": "ast"
     },
     {
@@ -44523,7 +44987,7 @@
       "label": "Глобальная готовность",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L148",
+      "source_location": "L150",
       "_origin": "ast"
     },
     {
@@ -44531,7 +44995,7 @@
       "label": "Риски и запреты",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L171",
+      "source_location": "L173",
       "_origin": "ast"
     },
     {
@@ -45179,7 +45643,7 @@
       "label": "4. Архитектурные владельцы",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L72",
+      "source_location": "L73",
       "_origin": "ast"
     },
     {
@@ -45187,7 +45651,7 @@
       "label": "5. Skills и инструменты",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L82",
+      "source_location": "L83",
       "_origin": "ast"
     },
     {
@@ -45195,7 +45659,7 @@
       "label": "6. Контрольная точка",
       "file_type": "document",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L100",
+      "source_location": "L103",
       "_origin": "ast"
     },
     {
@@ -80344,6 +80808,91 @@
       "weight": 1.0
     },
     {
+      "source": "tests_test_production_preflight",
+      "target": "unittest_mock",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_production_preflight.py",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_production_preflight",
+      "target": "django_db",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_production_preflight.py",
+      "source_location": "L3",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_production_preflight",
+      "target": "django_test",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_production_preflight.py",
+      "source_location": "L4",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_production_preflight",
+      "target": "django_urls",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_production_preflight.py",
+      "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_production_preflight",
+      "target": "tests_test_production_preflight_healthcheckviewtests",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_production_preflight.py",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_production_preflight_healthcheckviewtests",
+      "target": "testcase",
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_production_preflight.py",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_production_preflight_healthcheckviewtests",
+      "target": "tests_test_production_preflight_healthcheckviewtests_test_healthcheck_returns_minimal_success_response",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_production_preflight.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_production_preflight_healthcheckviewtests",
+      "target": "tests_test_production_preflight_healthcheckviewtests_test_healthcheck_returns_service_unavailable_when_database_is_down",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_production_preflight.py",
+      "source_location": "L16",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_production_preflight_healthcheckviewtests",
+      "target": "tests_test_production_preflight_healthcheckviewtests_test_healthcheck_rejects_non_get_request",
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/tests/test_production_preflight.py",
+      "source_location": "L22",
+      "weight": 1.0
+    },
+    {
       "source": "tests_test_schedule_writes",
       "target": "datetime",
       "relation": "imports_from",
@@ -92957,7 +93506,7 @@
     },
     {
       "source": "views_init",
-      "target": "views_imports",
+      "target": "views_health",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -92967,17 +93516,17 @@
     },
     {
       "source": "views_init",
-      "target": "views_payments",
+      "target": "views_imports",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L109",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
       "source": "views_init",
-      "target": "views_programs",
+      "target": "views_payments",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -92987,12 +93536,22 @@
     },
     {
       "source": "views_init",
+      "target": "views_programs",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/__init__.py",
+      "source_location": "L111",
+      "weight": 1.0
+    },
+    {
+      "source": "views_init",
       "target": "views_recipients",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -93002,7 +93561,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L130",
+      "source_location": "L131",
       "weight": 1.0
     },
     {
@@ -93012,7 +93571,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -93022,7 +93581,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L146",
+      "source_location": "L147",
       "weight": 1.0
     },
     {
@@ -93032,7 +93591,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L151",
+      "source_location": "L152",
       "weight": 1.0
     },
     {
@@ -93042,7 +93601,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L152",
+      "source_location": "L153",
       "weight": 1.0
     },
     {
@@ -93052,7 +93611,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L153",
+      "source_location": "L154",
       "weight": 1.0
     },
     {
@@ -93062,7 +93621,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L154",
+      "source_location": "L155",
       "weight": 1.0
     },
     {
@@ -93072,7 +93631,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L155",
+      "source_location": "L156",
       "weight": 1.0
     },
     {
@@ -93082,7 +93641,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L165",
+      "source_location": "L166",
       "weight": 1.0
     },
     {
@@ -93092,7 +93651,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L172",
+      "source_location": "L173",
       "weight": 1.0
     },
     {
@@ -100138,6 +100697,54 @@
       "weight": 1.0
     },
     {
+      "source": "views_health",
+      "target": "django_db",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/health.py",
+      "source_location": "L3",
+      "weight": 1.0
+    },
+    {
+      "source": "views_health",
+      "target": "django_http",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/health.py",
+      "source_location": "L4",
+      "weight": 1.0
+    },
+    {
+      "source": "views_health",
+      "target": "django_views_decorators_http",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/health.py",
+      "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "views_health",
+      "target": "views_health_healthcheck",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/health.py",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "views_health_rationale_1",
+      "target": "views_health",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/health.py",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
       "source": "views_imports",
       "target": "django_contrib",
       "relation": "imports_from",
@@ -105705,6 +106312,16 @@
       "weight": 1.0
     },
     {
+      "source": "rehab_center_urls",
+      "target": "operations_views",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "rehab_center/urls.py",
+      "source_location": "L6",
+      "weight": 1.0
+    },
+    {
       "source": "rehab_center_wsgi",
       "target": "os",
       "relation": "imports",
@@ -105734,12 +106351,152 @@
       "weight": 1.0
     },
     {
+      "source": "scripts_production_common",
+      "target": "d_радостьмояавтоматизация_rmcodex_scripts_production_common_sh__entry",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_production_common",
+      "target": "scripts_production_common_production_fail",
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_production_common",
+      "target": "scripts_production_common_load_production_environment",
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L14",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_production_common",
+      "target": "scripts_production_common_environment_value",
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L24",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_production_common",
+      "target": "scripts_production_common_require_environment_value",
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L32",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_production_common",
+      "target": "scripts_production_common_ensure_not_placeholder",
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L40",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_production_common",
+      "target": "scripts_production_common_compose_host_path",
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L53",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_production_common",
+      "target": "scripts_production_common_production_compose",
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L65",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_production_common",
+      "target": "scripts_production_common_require_absolute_directory",
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L83",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_production_common_load_production_environment",
+      "target": "scripts_production_common_production_fail",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L19",
+      "weight": 1.0,
+      "context": "call"
+    },
+    {
+      "source": "scripts_production_common_require_environment_value",
+      "target": "scripts_production_common_production_fail",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L36",
+      "weight": 1.0,
+      "context": "call"
+    },
+    {
+      "source": "scripts_production_common_ensure_not_placeholder",
+      "target": "scripts_production_common_production_fail",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L44",
+      "weight": 1.0,
+      "context": "call"
+    },
+    {
+      "source": "scripts_production_common_require_absolute_directory",
+      "target": "scripts_production_common_production_fail",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/_production_common.sh",
+      "source_location": "L85",
+      "weight": 1.0,
+      "context": "call"
+    },
+    {
       "source": "scripts_backup_prod",
       "target": "d_радостьмояавтоматизация_rmcodex_scripts_backup_prod_sh__entry",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/backup_prod.sh",
       "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_backup_prod",
+      "target": "script_dir_production_common_sh",
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/backup_prod.sh",
+      "source_location": "L8",
+      "weight": 1.0,
+      "context": "import"
+    },
+    {
+      "source": "scripts_backup_prod",
+      "target": "scripts_backup_prod_cleanup_partial",
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/backup_prod.sh",
+      "source_location": "L27",
       "weight": 1.0
     },
     {
@@ -106573,6 +107330,196 @@
       "confidence": "EXTRACTED",
       "source_file": "scripts/launcher.py",
       "source_location": "L91",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_production_preflight",
+      "target": "d_радостьмояавтоматизация_rmcodex_scripts_production_preflight_sh__entry",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/production_preflight.sh",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_production_preflight",
+      "target": "script_dir_production_common_sh",
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/production_preflight.sh",
+      "source_location": "L7",
+      "weight": 1.0,
+      "context": "import"
+    },
+    {
+      "source": "scripts_restore_drill_ci",
+      "target": "d_радостьмояавтоматизация_rmcodex_scripts_restore_drill_ci_sh__entry",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/restore_drill_ci.sh",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_restore_drill_ci",
+      "target": "script_dir_production_common_sh",
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/restore_drill_ci.sh",
+      "source_location": "L8",
+      "weight": 1.0,
+      "context": "import"
+    },
+    {
+      "source": "scripts_restore_drill_ci",
+      "target": "scripts_restore_drill_ci_cleanup",
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/restore_drill_ci.sh",
+      "source_location": "L21",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_restore_drill_ci",
+      "target": "scripts_restore_drill_ci_wait_for_web",
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/restore_drill_ci.sh",
+      "source_location": "L57",
+      "weight": 1.0
+    },
+    {
+      "source": "d_радостьмояавтоматизация_rmcodex_scripts_restore_drill_ci_sh__entry",
+      "target": "scripts_restore_drill_ci_wait_for_web",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/restore_drill_ci.sh",
+      "source_location": "L73",
+      "weight": 1.0,
+      "context": "call"
+    },
+    {
+      "source": "scripts_restore_prod",
+      "target": "d_радостьмояавтоматизация_rmcodex_scripts_restore_prod_sh__entry",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/restore_prod.sh",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_restore_prod",
+      "target": "script_dir_production_common_sh",
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/restore_prod.sh",
+      "source_location": "L7",
+      "weight": 1.0,
+      "context": "import"
+    },
+    {
+      "source": "scripts_restore_prod",
+      "target": "scripts_restore_prod_restore_cleanup",
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/restore_prod.sh",
+      "source_location": "L24",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_verify_backup_prod",
+      "target": "d_радостьмояавтоматизация_rmcodex_scripts_verify_backup_prod_sh__entry",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_backup_prod.sh",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_verify_backup_prod",
+      "target": "script_dir_production_common_sh",
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_backup_prod.sh",
+      "source_location": "L7",
+      "weight": 1.0,
+      "context": "import"
+    },
+    {
+      "source": "scripts_verify_dependency_manifests",
+      "target": "re",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_dependency_manifests.py",
+      "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_verify_dependency_manifests",
+      "target": "sys",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_dependency_manifests.py",
+      "source_location": "L6",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_verify_dependency_manifests",
+      "target": "tomllib",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_dependency_manifests.py",
+      "source_location": "L7",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_verify_dependency_manifests",
+      "target": "pathlib",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_dependency_manifests.py",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_verify_dependency_manifests",
+      "target": "scripts_verify_dependency_manifests_normalized_dependencies",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_dependency_manifests.py",
+      "source_location": "L14",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_verify_dependency_manifests",
+      "target": "scripts_verify_dependency_manifests_main",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_dependency_manifests.py",
+      "source_location": "L30",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_verify_dependency_manifests_main",
+      "target": "scripts_verify_dependency_manifests_normalized_dependencies",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_dependency_manifests.py",
+      "source_location": "L32",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_verify_dependency_manifests_rationale_1",
+      "target": "scripts_verify_dependency_manifests",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_dependency_manifests.py",
+      "source_location": "L1",
       "weight": 1.0
     },
     {
@@ -139236,7 +140183,7 @@
     },
     {
       "source": "docs_01_prd_prd_операционная_система_реабилитационного_центра",
-      "target": "docs_01_prd_6_матрица_готовности_на_2026_07_25",
+      "target": "docs_01_prd_6_матрица_готовности_на_2026_07_26",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/01-prd.md",
@@ -144887,6 +145834,105 @@
       "weight": 1.0
     },
     {
+      "source": "docs_54_production_preflight_contract",
+      "target": "docs_54_production_preflight_contract_контракт_среза_production_preflight_восстановимость_и_наблюдаемость",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_54_production_preflight_contract_контракт_среза_production_preflight_восстановимость_и_наблюдаемость",
+      "target": "docs_54_production_preflight_contract_основание",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L7",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_54_production_preflight_contract_контракт_среза_production_preflight_восстановимость_и_наблюдаемость",
+      "target": "docs_54_production_preflight_contract_граница_среза",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L24",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_54_production_preflight_contract_контракт_среза_production_preflight_восстановимость_и_наблюдаемость",
+      "target": "docs_54_production_preflight_contract_инварианты",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L52",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_54_production_preflight_contract_контракт_среза_production_preflight_восстановимость_и_наблюдаемость",
+      "target": "docs_54_production_preflight_contract_backup_формат",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L65",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_54_production_preflight_contract_контракт_среза_production_preflight_восстановимость_и_наблюдаемость",
+      "target": "docs_54_production_preflight_contract_restore_политика",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L81",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_54_production_preflight_contract_контракт_среза_production_preflight_восстановимость_и_наблюдаемость",
+      "target": "docs_54_production_preflight_contract_внешние_границы",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L100",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_54_production_preflight_contract_контракт_среза_production_preflight_восстановимость_и_наблюдаемость",
+      "target": "docs_54_production_preflight_contract_факт_реализации",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L111",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_54_production_preflight_contract_контракт_среза_production_preflight_восстановимость_и_наблюдаемость",
+      "target": "docs_54_production_preflight_contract_проверки_приемки",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L133",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_54_production_preflight_contract_контракт_среза_production_preflight_восстановимость_и_наблюдаемость",
+      "target": "docs_54_production_preflight_contract_опасные_точки_миграции",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L150",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_54_production_preflight_contract_контракт_среза_production_preflight_восстановимость_и_наблюдаемость",
+      "target": "docs_54_production_preflight_contract_параллельная_работа",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/54-production-preflight-contract.md",
+      "source_location": "L156",
+      "weight": 1.0
+    },
+    {
       "source": "docs_critical_stack_ux_review_2026_06_10",
       "target": "docs_critical_stack_ux_review_2026_06_10_критический_срез_проекта_rmcodex",
       "relation": "contains",
@@ -145171,7 +146217,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/PRODUCTION_DEPLOYMENT.md",
-      "source_location": "L112",
+      "source_location": "L121",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_production_deployment_продакшен_размещение",
+      "target": "docs_production_deployment_восстановление",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/PRODUCTION_DEPLOYMENT.md",
+      "source_location": "L148",
       "weight": 1.0
     },
     {
@@ -145180,7 +146235,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/PRODUCTION_DEPLOYMENT.md",
-      "source_location": "L134",
+      "source_location": "L166",
       "weight": 1.0
     },
     {
@@ -145189,7 +146244,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/PRODUCTION_DEPLOYMENT.md",
-      "source_location": "L150",
+      "source_location": "L182",
       "weight": 1.0
     },
     {
@@ -145198,7 +146253,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/PRODUCTION_DEPLOYMENT.md",
-      "source_location": "L159",
+      "source_location": "L191",
       "weight": 1.0
     },
     {
@@ -145207,7 +146262,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/PRODUCTION_DEPLOYMENT.md",
-      "source_location": "L167",
+      "source_location": "L199",
       "weight": 1.0
     },
     {
@@ -147826,7 +148881,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L24",
+      "source_location": "L25",
       "weight": 1.0
     },
     {
@@ -147835,7 +148890,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L102",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
@@ -147844,7 +148899,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L139",
+      "source_location": "L140",
       "weight": 1.0
     },
     {
@@ -147853,7 +148908,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L148",
+      "source_location": "L150",
       "weight": 1.0
     },
     {
@@ -147862,7 +148917,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/current-state.md",
-      "source_location": "L171",
+      "source_location": "L173",
       "weight": 1.0
     },
     {
@@ -148501,7 +149556,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L72",
+      "source_location": "L73",
       "weight": 1.0
     },
     {
@@ -148510,7 +149565,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L82",
+      "source_location": "L83",
       "weight": 1.0
     },
     {
@@ -148519,7 +149574,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "docs/project-recovery-manifest.md",
-      "source_location": "L100",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
@@ -149204,7 +150259,7 @@
     },
     {
       "source": "views_init",
-      "target": "views_imports",
+      "target": "views_health",
       "relation": "re_exports",
       "context": "export",
       "confidence": "EXTRACTED",
@@ -149214,17 +150269,17 @@
     },
     {
       "source": "views_init",
-      "target": "views_payments",
+      "target": "views_imports",
       "relation": "re_exports",
       "context": "export",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L109",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
       "source": "views_init",
-      "target": "views_programs",
+      "target": "views_payments",
       "relation": "re_exports",
       "context": "export",
       "confidence": "EXTRACTED",
@@ -149234,12 +150289,22 @@
     },
     {
       "source": "views_init",
+      "target": "views_programs",
+      "relation": "re_exports",
+      "context": "export",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/__init__.py",
+      "source_location": "L111",
+      "weight": 1.0
+    },
+    {
+      "source": "views_init",
       "target": "views_recipients",
       "relation": "re_exports",
       "context": "export",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -149249,7 +150314,7 @@
       "context": "export",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L130",
+      "source_location": "L131",
       "weight": 1.0
     },
     {
@@ -149259,7 +150324,7 @@
       "context": "export",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -149269,7 +150334,7 @@
       "context": "export",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L146",
+      "source_location": "L147",
       "weight": 1.0
     },
     {
@@ -149279,7 +150344,7 @@
       "context": "export",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L151",
+      "source_location": "L152",
       "weight": 1.0
     },
     {
@@ -149289,7 +150354,7 @@
       "context": "export",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L152",
+      "source_location": "L153",
       "weight": 1.0
     },
     {
@@ -149299,7 +150364,7 @@
       "context": "export",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L153",
+      "source_location": "L154",
       "weight": 1.0
     },
     {
@@ -149309,7 +150374,7 @@
       "context": "export",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L154",
+      "source_location": "L155",
       "weight": 1.0
     },
     {
@@ -149319,7 +150384,7 @@
       "context": "export",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L155",
+      "source_location": "L156",
       "weight": 1.0
     },
     {
@@ -149329,7 +150394,7 @@
       "context": "export",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L165",
+      "source_location": "L166",
       "weight": 1.0
     },
     {
@@ -149339,7 +150404,7 @@
       "context": "export",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L172",
+      "source_location": "L173",
       "weight": 1.0
     },
     {
@@ -156214,12 +157279,22 @@
     },
     {
       "source": "views_init",
-      "target": "views_imports_contract_import_preview",
+      "target": "views_health_healthcheck",
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
       "source_location": "L102",
+      "weight": 1.0
+    },
+    {
+      "source": "views_init",
+      "target": "views_imports_contract_import_preview",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "operations/views/__init__.py",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
@@ -156229,7 +157304,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L102",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
@@ -156239,7 +157314,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L102",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
@@ -156249,7 +157324,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L102",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
@@ -156259,7 +157334,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L102",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
@@ -156269,7 +157344,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L109",
+      "source_location": "L110",
       "weight": 1.0
     },
     {
@@ -156279,7 +157354,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L110",
+      "source_location": "L111",
       "weight": 1.0
     },
     {
@@ -156289,7 +157364,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L110",
+      "source_location": "L111",
       "weight": 1.0
     },
     {
@@ -156299,7 +157374,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L110",
+      "source_location": "L111",
       "weight": 1.0
     },
     {
@@ -156309,7 +157384,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L110",
+      "source_location": "L111",
       "weight": 1.0
     },
     {
@@ -156319,7 +157394,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -156329,7 +157404,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -156339,7 +157414,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -156349,7 +157424,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -156359,7 +157434,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -156369,7 +157444,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -156379,7 +157454,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -156389,7 +157464,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -156399,7 +157474,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -156409,7 +157484,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -156419,7 +157494,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -156429,7 +157504,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L116",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -156439,7 +157514,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L130",
+      "source_location": "L131",
       "weight": 1.0
     },
     {
@@ -156449,7 +157524,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L130",
+      "source_location": "L131",
       "weight": 1.0
     },
     {
@@ -156459,7 +157534,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L130",
+      "source_location": "L131",
       "weight": 1.0
     },
     {
@@ -156469,7 +157544,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -156479,7 +157554,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -156489,7 +157564,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -156499,7 +157574,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -156509,7 +157584,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -156519,7 +157594,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -156529,7 +157604,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -156539,7 +157614,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -156549,7 +157624,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -156559,7 +157634,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -156569,7 +157644,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -156579,7 +157654,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -156589,7 +157664,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L131",
+      "source_location": "L132",
       "weight": 1.0
     },
     {
@@ -156599,7 +157674,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L146",
+      "source_location": "L147",
       "weight": 1.0
     },
     {
@@ -156609,7 +157684,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L146",
+      "source_location": "L147",
       "weight": 1.0
     },
     {
@@ -156619,7 +157694,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L146",
+      "source_location": "L147",
       "weight": 1.0
     },
     {
@@ -156629,7 +157704,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L151",
+      "source_location": "L152",
       "weight": 1.0
     },
     {
@@ -156639,7 +157714,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L151",
+      "source_location": "L152",
       "weight": 1.0
     },
     {
@@ -156649,7 +157724,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L151",
+      "source_location": "L152",
       "weight": 1.0
     },
     {
@@ -156659,7 +157734,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L152",
+      "source_location": "L153",
       "weight": 1.0
     },
     {
@@ -156669,7 +157744,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L153",
+      "source_location": "L154",
       "weight": 1.0
     },
     {
@@ -156679,7 +157754,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L154",
+      "source_location": "L155",
       "weight": 1.0
     },
     {
@@ -156689,7 +157764,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L154",
+      "source_location": "L155",
       "weight": 1.0
     },
     {
@@ -156699,7 +157774,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L154",
+      "source_location": "L155",
       "weight": 1.0
     },
     {
@@ -156709,7 +157784,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L154",
+      "source_location": "L155",
       "weight": 1.0
     },
     {
@@ -156719,7 +157794,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L154",
+      "source_location": "L155",
       "weight": 1.0
     },
     {
@@ -156729,7 +157804,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L155",
+      "source_location": "L156",
       "weight": 1.0
     },
     {
@@ -156739,7 +157814,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L155",
+      "source_location": "L156",
       "weight": 1.0
     },
     {
@@ -156749,7 +157824,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L155",
+      "source_location": "L156",
       "weight": 1.0
     },
     {
@@ -156759,7 +157834,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L155",
+      "source_location": "L156",
       "weight": 1.0
     },
     {
@@ -156769,7 +157844,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L155",
+      "source_location": "L156",
       "weight": 1.0
     },
     {
@@ -156779,7 +157854,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L155",
+      "source_location": "L156",
       "weight": 1.0
     },
     {
@@ -156789,7 +157864,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L155",
+      "source_location": "L156",
       "weight": 1.0
     },
     {
@@ -156799,7 +157874,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L155",
+      "source_location": "L156",
       "weight": 1.0
     },
     {
@@ -156809,7 +157884,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L165",
+      "source_location": "L166",
       "weight": 1.0
     },
     {
@@ -156819,7 +157894,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L165",
+      "source_location": "L166",
       "weight": 1.0
     },
     {
@@ -156829,7 +157904,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L165",
+      "source_location": "L166",
       "weight": 1.0
     },
     {
@@ -156839,7 +157914,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L165",
+      "source_location": "L166",
       "weight": 1.0
     },
     {
@@ -156849,7 +157924,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L165",
+      "source_location": "L166",
       "weight": 1.0
     },
     {
@@ -156859,7 +157934,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "operations/views/__init__.py",
-      "source_location": "L172",
+      "source_location": "L173",
       "weight": 1.0
     },
     {
@@ -158700,6 +159775,16 @@
       "confidence": "EXTRACTED",
       "source_file": "operations/views/tomorrow.py",
       "source_location": "L17",
+      "weight": 1.0
+    },
+    {
+      "source": "rehab_center_urls",
+      "target": "views_health_healthcheck",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "rehab_center/urls.py",
+      "source_location": "L6",
       "weight": 1.0
     },
     {

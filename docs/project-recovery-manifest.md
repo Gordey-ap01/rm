@@ -1,6 +1,6 @@
 # Манифест восстановления проекта
 
-Дата актуализации: 2026-07-25
+Дата актуализации: 2026-07-26
 
 Назначение: минимальная точка входа после потери сессии. Манифест не
 пересказывает проект, а указывает источники истины и порядок чтения.
@@ -56,6 +56,7 @@
 | `docs/51-payroll-director-approval-contract.md` | Реализованный срез: ставки и утверждение payroll только руководителем. |
 | `docs/52-payroll-payout-lifecycle-contract.md` | Реализованный срез: передача листа в выплату, полный факт выплаты и неизменяемый журнал. |
 | `docs/53-operational-e2e-acceptance-contract.md` | Реализованный срез: сквозная service-приемка записи, списания, payroll, выплаты и приоритета руководителя по отпуску. |
+| `docs/54-production-preflight-contract.md` | Реализованный срез: health, проверяемые backup/restore, CI restore-drill и границы внешнего monitoring/SMTP. |
 | `docs/decisions/ADR-001-*.md` | Django/PostgreSQL/local-first. |
 | `docs/decisions/ADR-002-*.md` | Балансовые счета и ledger. |
 | `docs/decisions/ADR-003-*.md` | Полномочия и ручные решения. |
@@ -92,6 +93,8 @@
 | `frontend-ui-engineering` | Рабочие интерфейсы администратора/руководителя. |
 | `browser-testing-with-devtools` | Browser smoke после UI-изменений, когда доступен. |
 | `git-workflow-and-versioning` | Малые проверенные коммиты и удаленная страховка. |
+| `source-driven-development` | Проверка Django и PostgreSQL-команд по официальной документации. |
+| `shipping-and-launch` | Production preflight, rollback и границы запуска. |
 
 Graphify может работать локально для индекса кода. Semantic extraction требует
 внешнюю LLM-модель и ее ключ, но не является обязательной для продолжения.
