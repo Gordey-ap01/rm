@@ -11,9 +11,13 @@ Production preflight, health, проверяемый backup/restore, цельн�
 browser-приемка рабочих ролей, persisted transfer/conversion и приемка
 грантового отчета завершены. Безопасный жизненный цикл грантового плана по
 `docs/58-grant-plan-versioning-contract.md` реализован и локально принят.
-Активный следующий доменный этап — контракт фиксированной оплаты грантового
-проекта и снимка закрытого донорского отчета; параллельно нужны решения по
-внешней эксплуатации.
+Активный следующий доменный этап описан принятым
+`docs/59-grant-fixed-compensation-and-donor-report-snapshot-contract.md`:
+сначала payroll-бюджет и фиксированная оплата проекта, затем снимок закрытого
+донорского отчета. Независимые schema/product review закрыли XOR payroll,
+provenance бюджета, fixed/per-session исключительность, MVCC-снимок и privacy
+границы. Следующий шаг — 59A-1/`0049` одним DB owner; параллельно нужны решения
+по внешней эксплуатации.
 
 Цель этапа: ожидающие согласования и финансовые решения разделены по ролям,
 а руководитель имеет окончательный приоритет в управленческих областях без
@@ -28,6 +32,8 @@ browser-приемка рабочих ролей, persisted transfer/conversion 
 - `docs/56-persisted-balance-transfer-conversion-contract.md`.
 - `docs/57-grant-management-report-acceptance-contract.md`.
 - `docs/58-grant-plan-versioning-contract.md`.
+- `docs/59-grant-fixed-compensation-and-donor-report-snapshot-contract.md`.
+- `docs/decisions/ADR-007-fixed-grant-payroll-and-immutable-donor-report-snapshots.md`.
 
 ## Что сделано в текущем срезе
 
@@ -227,9 +233,10 @@ browser-приемка рабочих ролей, persisted transfer/conversion 
 1. Выбрать владельца и поставщиков для offsite backup, monitoring/alerting и
    реального SMTP; хранить секреты только вне Git. Включить branch protection
    после согласования репозитория.
-2. Подготовить и согласовать контракт фиксированной оплаты грантового проекта
-   и снимка закрытого донорского отчета. Ledger-backed выделение получателю
-   остается отдельным срезом.
+2. Одним DB owner реализовать 59A-1/`0049`: versioned payroll-бюджет и
+   fixed-позиции, межтабличное исключение fixed/per-session, director-only UI,
+   PostgreSQL concurrency и triggers. Общий payroll меняется только в 59A-2;
+   ledger-backed выделение получателю остается отдельным срезом.
 3. Перед production migration `0048` выполнить backup, `--strict` preflight,
    временно закрыть грантовые записи и подготовить совместимый rollback-релиз.
 4. Отдельно согласовать policy возвратов и обратной конвертации до реализации.
