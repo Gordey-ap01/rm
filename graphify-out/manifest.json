@@ -10,8 +10,8 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/admin.py": {
-    "mtime": 1785022197.35888,
-    "ast_hash": "d8d9a461ee31a45fd903d3f2e6ed4a2c",
+    "mtime": 1785066236.4504316,
+    "ast_hash": "2f311a275502e00237626e0ce23a8f67",
     "semantic_hash": ""
   },
   "operations/api.py": {
@@ -20,13 +20,13 @@
     "semantic_hash": ""
   },
   "operations/apps.py": {
-    "mtime": 1784969938.3132868,
-    "ast_hash": "82f654a8afa504a9b0cf3f62addd70ca",
+    "mtime": 1785066252.8907816,
+    "ast_hash": "15f8ed5e4a4d694698bb522958816c06",
     "semantic_hash": ""
   },
   "operations/forms.py": {
-    "mtime": 1785049009.6756885,
-    "ast_hash": "06e140f5f060c5c234b25337b1dea4fe",
+    "mtime": 1785066035.6722095,
+    "ast_hash": "de10012a095c5aa4fad21688581060a9",
     "semantic_hash": ""
   },
   "operations/management/__init__.py": {
@@ -105,8 +105,8 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/models.py": {
-    "mtime": 1785025106.317883,
-    "ast_hash": "abb3f304ecd740b71f76782239edbde6",
+    "mtime": 1785067916.5930762,
+    "ast_hash": "5b2d70714d9ac90ee9a25366d65cafd6",
     "semantic_hash": ""
   },
   "operations/services/__init__.py": {
@@ -165,23 +165,23 @@
     "semantic_hash": ""
   },
   "operations/tests/test_services.py": {
-    "mtime": 1785052384.7762349,
-    "ast_hash": "900b81cb1092906e22aa1a541ffdfb3d",
+    "mtime": 1785067010.774248,
+    "ast_hash": "2504db14161d5645e8b46db66f36f632",
     "semantic_hash": ""
   },
   "operations/tests/test_views.py": {
-    "mtime": 1785052973.8517835,
-    "ast_hash": "9ff01ef640e92194cb00849534760563",
+    "mtime": 1785068621.549263,
+    "ast_hash": "65d863f516261b4e7b24d8d518168c5f",
     "semantic_hash": ""
   },
   "operations/urls.py": {
-    "mtime": 1784900113.0443287,
-    "ast_hash": "ecac45a18db8f2a9601b564c7925a5d6",
+    "mtime": 1785066180.276498,
+    "ast_hash": "6acd0469f1405c06592d2c44a25f56fa",
     "semantic_hash": ""
   },
   "operations/views/__init__.py": {
-    "mtime": 1784979834.4997785,
-    "ast_hash": "1f2cc59b031886cea6559eba2ee77ddc",
+    "mtime": 1785066180.2749176,
+    "ast_hash": "5282600e4a2c66bca1b188bdf8b4e97d",
     "semantic_hash": ""
   },
   "operations/views/_common.py": {
@@ -240,8 +240,8 @@
     "semantic_hash": "c87d4eef2d383f0a72bcbdf88bd860bc"
   },
   "operations/views/reports.py": {
-    "mtime": 1785052973.847038,
-    "ast_hash": "d47a0b80e638d23aeee3e495495539a3",
+    "mtime": 1785067916.5950725,
+    "ast_hash": "e1fa8a38467640a56859522b72589d6a",
     "semantic_hash": ""
   },
   "operations/views/schedule.py": {
@@ -405,8 +405,8 @@
     "semantic_hash": "4743b79b7b2298e1650284eda55e92cb"
   },
   "docs/01-prd.md": {
-    "mtime": 1785052550.425477,
-    "ast_hash": "1085288017a88ce7b4a51f8264a6cd55",
+    "mtime": 1785069161.1484425,
+    "ast_hash": "bb07fc99724c5615c3a528911ed16c85",
     "semantic_hash": ""
   },
   "docs/02-tech-stack-research.md": {
@@ -575,13 +575,13 @@
     "semantic_hash": ""
   },
   "templates/operations/grant_report.html": {
-    "mtime": 1785052973.8486266,
-    "ast_hash": "bb300aa7f2d3045d3d94a678634c3848",
+    "mtime": 1785066208.4770331,
+    "ast_hash": "2ddeeed6800cb10be42bdfe5ad5be1fa",
     "semantic_hash": ""
   },
   "templates/operations/object_form.html": {
-    "mtime": 1784371760.0186799,
-    "ast_hash": "f2b393918a8cdc99e54a0184e7f5a5d5",
+    "mtime": 1785068621.546424,
+    "ast_hash": "7ae892e9b5e7258a5d9719c823764968",
     "semantic_hash": ""
   },
   "templates/operations/payment_form.html": {
@@ -730,8 +730,8 @@
     "semantic_hash": ""
   },
   "operations/services/payroll.py": {
-    "mtime": 1784969974.4964356,
-    "ast_hash": "60a9f83a4287e8b8cfecfddacc1240a5",
+    "mtime": 1785065929.3329017,
+    "ast_hash": "70327cb6201419b629fbcfb660b04956",
     "semantic_hash": ""
   },
   "operations/views/compensation_rules.py": {
@@ -795,8 +795,8 @@
     "semantic_hash": ""
   },
   "docs/07-updated-domain-model-after-interview.md": {
-    "mtime": 1785052550.4300678,
-    "ast_hash": "193f24b66525bf1d26a9f686da1ea7e8",
+    "mtime": 1785067355.3121188,
+    "ast_hash": "7211531d0d6ac2edbc37bfdb355a325e",
     "semantic_hash": ""
   },
   "docs/08-parallel-agent-execution-plan.md": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1785053384.8313956,
-    "ast_hash": "d4bcd2a606fe5aa6dac3d7ffd1e756c6",
+    "mtime": 1785069161.1474423,
+    "ast_hash": "2e3299dd65d6d5a7b4797f0b23daa902",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -820,8 +820,8 @@
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1785052550.4284594,
-    "ast_hash": "cb634b4e1d7fbdb530c05d7670b08292",
+    "mtime": 1785069192.830788,
+    "ast_hash": "aa8c77af086d2eb0101a1267f3e8a522",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1025,8 +1025,8 @@
     "semantic_hash": ""
   },
   "operations/services/compensation.py": {
-    "mtime": 1784097998.7754922,
-    "ast_hash": "99b4dd1b1b0dd406dc392e64428a276f",
+    "mtime": 1785065893.5170922,
+    "ast_hash": "597357b694786f5a36da85e25aa31923",
     "semantic_hash": ""
   },
   "docs/21-expenses-assets-contracts-contract.md": {
@@ -1607,6 +1607,46 @@
   "docs/57-grant-management-report-acceptance-contract.md": {
     "mtime": 1785052550.4311259,
     "ast_hash": "45afa510de68f86a8b8e55450c8be770",
+    "semantic_hash": ""
+  },
+  "operations/management/commands/check_grant_plan_integrity.py": {
+    "mtime": 1785066560.916936,
+    "ast_hash": "da0eaa4225b9df924b7884298ed4e181",
+    "semantic_hash": ""
+  },
+  "operations/migrations/0048_fundingstaffallocationrevision_and_more.py": {
+    "mtime": 1785067630.4529483,
+    "ast_hash": "deef1ff096710cd9498f50b01ba787e2",
+    "semantic_hash": ""
+  },
+  "operations/services/grant_plans.py": {
+    "mtime": 1785066727.7774093,
+    "ast_hash": "c8dec07d4cdf6e979471d140435a2ce3",
+    "semantic_hash": ""
+  },
+  "operations/tests/test_grant_plans.py": {
+    "mtime": 1785067916.5965788,
+    "ast_hash": "d17c2d7fef0b77a648b1323c11164ce4",
+    "semantic_hash": ""
+  },
+  "scripts/verify_grant_plan_migration.py": {
+    "mtime": 1785067534.8091116,
+    "ast_hash": "1fb97d1571c6b756d3d1ed6d5ec7ac41",
+    "semantic_hash": ""
+  },
+  "docs/58-grant-plan-versioning-contract.md": {
+    "mtime": 1785067466.0361612,
+    "ast_hash": "f7ce21c79798c664d9fd02fc3ad5c605",
+    "semantic_hash": ""
+  },
+  "docs/decisions/ADR-006-typed-grant-plan-revisions-and-current-projection.md": {
+    "mtime": 1785067466.0372255,
+    "ast_hash": "e6c4efdc6bf7fecf66ef59ab2320313b",
+    "semantic_hash": ""
+  },
+  "templates/operations/grant_plan_history.html": {
+    "mtime": 1785066169.6750238,
+    "ast_hash": "7bd0be92cc92c256d62e4c4036ca2416",
     "semantic_hash": ""
   }
 }
