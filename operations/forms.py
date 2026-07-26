@@ -3708,6 +3708,14 @@ class GrantReportFilterForm(forms.Form):
 
 
 class FundingServiceQuotaQuickForm(forms.ModelForm):
+    reason = forms.CharField(
+        label="Основание решения",
+        min_length=5,
+        strip=True,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+    expected_revision_id = forms.IntegerField(required=False, widget=forms.HiddenInput())
+
     class Meta:
         model = FundingServiceQuota
         fields = (
@@ -3738,6 +3746,23 @@ class FundingServiceQuotaQuickForm(forms.ModelForm):
             archived_at__isnull=True
         ).order_by("name")
         self.fields["service"].queryset = Service.objects.filter(is_active=True).order_by("name")
+        if self.instance.pk:
+            self.fields["funding_source"].disabled = True
+            self.fields["service"].disabled = True
+            self.fields["expected_revision_id"].required = True
+            self.initial["expected_revision_id"] = self.instance.current_revision_id
+        self.order_fields(
+            [
+                "funding_source",
+                "service",
+                "planned_sessions",
+                "starts_on",
+                "ends_on",
+                "note",
+                "reason",
+                "expected_revision_id",
+            ]
+        )
 
     def clean(self):
         cleaned = super().clean()
@@ -3749,6 +3774,14 @@ class FundingServiceQuotaQuickForm(forms.ModelForm):
 
 
 class FundingStaffAllocationQuickForm(forms.ModelForm):
+    reason = forms.CharField(
+        label="Основание решения",
+        min_length=5,
+        strip=True,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+    expected_revision_id = forms.IntegerField(required=False, widget=forms.HiddenInput())
+
     class Meta:
         model = FundingStaffAllocation
         fields = (
@@ -3789,7 +3822,10 @@ class FundingStaffAllocationQuickForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["service_quota"].queryset = (
-            FundingServiceQuota.objects.filter(funding_source__archived_at__isnull=True)
+            FundingServiceQuota.objects.filter(
+                funding_source__archived_at__isnull=True,
+                lifecycle_status=FundingServiceQuota.LifecycleStatus.ACTIVE,
+            )
             .select_related("funding_source", "service")
             .order_by("funding_source__name", "service__name", "starts_on")
         )
@@ -3803,6 +3839,31 @@ class FundingStaffAllocationQuickForm(forms.ModelForm):
         self.fields["staff_member"].queryset = StaffMember.objects.filter(
             status=StaffMember.Status.ACTIVE
         ).order_by("full_name")
+        if self.instance.pk:
+            for field_name in (
+                "service_quota",
+                "funding_source",
+                "service",
+                "staff_member",
+            ):
+                self.fields[field_name].disabled = True
+            self.fields["expected_revision_id"].required = True
+            self.initial["expected_revision_id"] = self.instance.current_revision_id
+        self.order_fields(
+            [
+                "service_quota",
+                "funding_source",
+                "service",
+                "staff_member",
+                "allocated_sessions",
+                "session_pay_amount",
+                "starts_on",
+                "ends_on",
+                "note",
+                "reason",
+                "expected_revision_id",
+            ]
+        )
 
     def clean(self):
         cleaned = super().clean()
@@ -3838,6 +3899,20 @@ class FundingStaffAllocationQuickForm(forms.ModelForm):
         if date_from and date_to and date_to < date_from:
             raise forms.ValidationError("Дата окончания не может быть раньше даты начала.")
         return cleaned
+
+
+class GrantPlanCloseForm(forms.Form):
+    close_on = forms.DateField(
+        label="Дата закрытия",
+        widget=DATE_INPUT,
+    )
+    reason = forms.CharField(
+        label="Основание закрытия",
+        min_length=5,
+        strip=True,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+    expected_revision_id = forms.IntegerField(widget=forms.HiddenInput())
 
 
 class GrantRecipientAllocationQuickForm(forms.ModelForm):

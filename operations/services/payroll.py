@@ -112,6 +112,7 @@ def generate_accruals_for_staff(
             "service": appointment.service,
             "funding_source": compensation.funding_source,
             "pay_rule": compensation.rule,
+            "grant_allocation_revision": compensation.allocation_revision,
             "work_date": work_date,
             "starts_at_snapshot": starts_at,
             "ends_at_snapshot": ends_at,
@@ -132,6 +133,11 @@ def generate_accruals_for_staff(
             counters["created"] += 1
             return
         if accrual.status != PayrollAccrual.Status.DRAFT:
+            counters["existing_locked"] += 1
+            return
+        if accrual.sheet_lines.exclude(
+            payroll_sheet__status=PayrollSheet.Status.CANCELLED
+        ).exists():
             counters["existing_locked"] += 1
             return
         for field, value in defaults.items():
@@ -379,6 +385,15 @@ def approve_payroll_sheet(sheet: PayrollSheet, *, actor: Any = None) -> PayrollS
         accrual.status != PayrollAccrual.Status.DRAFT for accrual in accruals
     ):
         raise ValueError("В расчетном листе есть начисления, которые уже нельзя утвердить.")
+    accruals_by_id = {accrual.pk: accrual for accrual in accruals}
+    if any(
+        line.amount != accruals_by_id[line.payroll_accrual_id].amount
+        for line in lines
+    ):
+        raise ValueError(
+            "Сумма строки расчетного листа не совпадает с начислением. "
+            "Пересоздайте черновик перед утверждением."
+        )
 
     now = timezone.now()
     total = sum((line.amount for line in lines), Decimal("0"))

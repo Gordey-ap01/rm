@@ -73,6 +73,7 @@ from operations.services import (
     financial_integrity_checks as financial_integrity_checks_svc,
     financial_integrity_events as financial_integrity_events_svc,
     financial_integrity_triage as financial_integrity_triage_svc,
+    grant_plans as grant_plans_svc,
     import_preview as import_preview_svc,
     notifications as notif_svc,
     payroll as payroll_svc,
@@ -3593,6 +3594,40 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
             )
         return appointment
 
+    def _create_versioned_grant_allocation(
+        self,
+        *,
+        rate: Decimal = Decimal("520"),
+    ) -> tuple[User, FundingStaffAllocation]:
+        director = User.objects.create_superuser(
+            f"grant-payroll-director-{User.objects.count()}",
+            password="x",
+        )
+        quota = grant_plans_svc.create_service_quota(
+            funding_source=self.funding,
+            service=self.service_log,
+            planned_sessions=10,
+            starts_on=self.day,
+            ends_on=self.day,
+            note="План для проверки payroll",
+            actor=director,
+            reason="Утвержден план для payroll.",
+        )
+        allocation = grant_plans_svc.create_staff_allocation(
+            service_quota=quota,
+            funding_source=None,
+            service=None,
+            staff_member=self.staff_a,
+            allocated_sessions=10,
+            session_pay_amount=rate,
+            starts_on=self.day,
+            ends_on=self.day,
+            note="Ставка для проверки payroll",
+            actor=director,
+            reason="Утверждена ставка специалиста.",
+        )
+        return director, allocation
+
     def test_tomorrow_overview_returns_summary(self):
         tomorrow = self.day + timedelta(days=1)
         appt_svc.create_appointment(
@@ -4938,6 +4973,151 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(accrual.pay_units_snapshot, 1)
         self.assertIn("списано участников: 2", accrual.note)
 
+    def test_payroll_generation_tracks_grant_revision_and_updates_unattached_draft(self):
+        director, allocation = self._create_versioned_grant_allocation()
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        billing_svc.apply_decision(
+            appointment,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=self.account,
+            actor=self.user,
+        )
+
+        first = payroll_svc.generate_accruals_for_staff(
+            self.staff_a,
+            date_from=self.day,
+            date_to=self.day,
+            actor=self.user,
+        )
+        accrual = PayrollAccrual.objects.get(staff_member=self.staff_a)
+        first_revision_id = accrual.grant_allocation_revision_id
+        self.assertEqual(first.created, 1)
+        self.assertEqual(first_revision_id, allocation.current_revision_id)
+
+        allocation = grant_plans_svc.revise_staff_allocation(
+            allocation,
+            allocated_sessions=10,
+            session_pay_amount=Decimal("610"),
+            starts_on=self.day,
+            ends_on=self.day,
+            note="Новая ставка",
+            actor=director,
+            reason="Ставка повышена руководителем.",
+            expected_revision_id=allocation.current_revision_id,
+        )
+        second = payroll_svc.generate_accruals_for_staff(
+            self.staff_a,
+            date_from=self.day,
+            date_to=self.day,
+            actor=self.user,
+        )
+
+        accrual.refresh_from_db()
+        self.assertEqual(second.updated, 1)
+        self.assertNotEqual(accrual.grant_allocation_revision_id, first_revision_id)
+        self.assertEqual(accrual.grant_allocation_revision_id, allocation.current_revision_id)
+        self.assertEqual(accrual.amount, Decimal("610"))
+
+    def test_payroll_generation_does_not_reprice_accrual_inside_active_sheet(self):
+        director, allocation = self._create_versioned_grant_allocation()
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        billing_svc.apply_decision(
+            appointment,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=self.account,
+            actor=self.user,
+        )
+        sheet = payroll_svc.create_payroll_sheet_for_staff(
+            self.staff_a,
+            date_from=self.day,
+            date_to=self.day,
+            actor=self.user,
+        )
+        accrual = PayrollAccrual.objects.get(staff_member=self.staff_a)
+        original_revision_id = accrual.grant_allocation_revision_id
+
+        grant_plans_svc.revise_staff_allocation(
+            allocation,
+            allocated_sessions=10,
+            session_pay_amount=Decimal("610"),
+            starts_on=self.day,
+            ends_on=self.day,
+            note="Новая ставка",
+            actor=director,
+            reason="Ставка повышена после подготовки листа.",
+            expected_revision_id=allocation.current_revision_id,
+        )
+        result = payroll_svc.generate_accruals_for_staff(
+            self.staff_a,
+            date_from=self.day,
+            date_to=self.day,
+            actor=self.user,
+        )
+
+        accrual.refresh_from_db()
+        sheet.refresh_from_db()
+        self.assertEqual(result.existing_locked, 1)
+        self.assertEqual(accrual.amount, Decimal("520"))
+        self.assertEqual(accrual.grant_allocation_revision_id, original_revision_id)
+        self.assertEqual(sheet.lines.get().amount, Decimal("520"))
+
+    def test_payroll_generation_stops_on_ambiguous_grant_rate(self):
+        for rate in (Decimal("500"), Decimal("600")):
+            FundingStaffAllocation.objects.create(
+                funding_source=self.funding,
+                service=self.service_log,
+                staff_member=self.staff_a,
+                allocated_sessions=10,
+                session_pay_amount=rate,
+                starts_on=self.day,
+                ends_on=self.day,
+            )
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        billing_svc.apply_decision(
+            appointment,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=self.account,
+            actor=self.user,
+        )
+
+        with self.assertRaisesMessage(ValidationError, "несколько грантовых распределений"):
+            payroll_svc.generate_accruals_for_staff(
+                self.staff_a,
+                date_from=self.day,
+                date_to=self.day,
+                actor=self.user,
+            )
+
+        self.assertFalse(PayrollAccrual.objects.exists())
+
+    def test_grant_allocation_cannot_be_reduced_below_charged_fact(self):
+        director, allocation = self._create_versioned_grant_allocation()
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        billing_svc.apply_decision(
+            appointment,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=self.account,
+            actor=self.user,
+        )
+
+        with self.assertRaises(ValidationError) as caught:
+            grant_plans_svc.revise_staff_allocation(
+                allocation,
+                allocated_sessions=0,
+                session_pay_amount=Decimal("520"),
+                starts_on=self.day,
+                ends_on=self.day,
+                note="Недопустимое уменьшение",
+                actor=director,
+                reason="Проверка сохранения списанного факта.",
+                expected_revision_id=allocation.current_revision_id,
+            )
+
+        self.assertIn("allocated_sessions", caught.exception.message_dict)
+        allocation.refresh_from_db()
+        self.assertEqual(allocation.allocated_sessions, 10)
+        self.assertEqual(allocation.revisions.count(), 1)
+
     def test_payroll_generation_uses_generic_rule_for_mixed_group_funding(self):
         generic_rule = StaffCompensationRule.objects.create(
             staff_member=self.staff_a,
@@ -5102,6 +5282,37 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(sheet.lines.count(), 1)
         self.assertEqual(sheet.status, PayrollSheet.Status.APPROVED)
         self.assertEqual(accrual.status, PayrollAccrual.Status.APPROVED)
+
+    def test_payroll_approval_rejects_line_accrual_amount_mismatch(self):
+        StaffCompensationRule.objects.create(
+            staff_member=self.staff_a,
+            service=self.service_log,
+            rate_type=StaffCompensationRule.RateType.HOURLY,
+            amount=Decimal("600"),
+        )
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        billing_svc.apply_decision(
+            appointment,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=self.account,
+            actor=self.user,
+        )
+        sheet = payroll_svc.create_payroll_sheet_for_staff(
+            self.staff_a,
+            date_from=self.day,
+            date_to=self.day,
+            actor=self.user,
+        )
+        PayrollAccrual.objects.filter(staff_member=self.staff_a).update(
+            amount=Decimal("999")
+        )
+        director = User.objects.create_superuser("payroll-mismatch-director", password="x")
+
+        with self.assertRaisesMessage(ValueError, "не совпадает с начислением"):
+            payroll_svc.approve_payroll_sheet(sheet, actor=director)
+
+        sheet.refresh_from_db()
+        self.assertEqual(sheet.status, PayrollSheet.Status.DRAFT)
 
     def test_grant_report_separates_period_closing_from_current_balance(self):
         billing_svc.top_up_account(

@@ -412,6 +412,11 @@ urlpatterns = [
         name="funding_service_quota_delete",
     ),
     path(
+        "grants/quotas/<int:pk>/history/",
+        views.funding_service_quota_history,
+        name="funding_service_quota_history",
+    ),
+    path(
         "grants/allocations/new/",
         views.funding_staff_allocation_create,
         name="funding_staff_allocation_create",
@@ -425,6 +430,11 @@ urlpatterns = [
         "grants/allocations/<int:pk>/delete/",
         views.funding_staff_allocation_delete,
         name="funding_staff_allocation_delete",
+    ),
+    path(
+        "grants/allocations/<int:pk>/history/",
+        views.funding_staff_allocation_history,
+        name="funding_staff_allocation_history",
     ),
     path(
         "grants/recipient-allocations/new/",

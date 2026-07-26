@@ -35,8 +35,10 @@ from .models import (
     FinancialIntegrityFinding,
     FinancialIntegrityFindingEvent,
     FundingServiceQuota,
+    FundingServiceQuotaRevision,
     FundingSource,
     FundingStaffAllocation,
+    FundingStaffAllocationRevision,
     GrantRecipientAllocation,
     ImportBatch,
     ImportBatchRow,
@@ -823,45 +825,81 @@ class ImportBatchRowAdmin(admin.ModelAdmin):
         return False
 
 
-class FundingStaffAllocationInline(admin.TabularInline):
-    model = FundingStaffAllocation
-    extra = 0
-    fields = (
-        "funding_source",
-        "service",
-        "staff_member",
-        "allocated_sessions",
-        "session_pay_amount",
-        "starts_on",
-        "ends_on",
-        "note",
-    )
-    autocomplete_fields = ("funding_source", "service", "staff_member")
+class GrantPlanReadOnlyAdmin(admin.ModelAdmin):
+    def get_readonly_fields(self, request, obj=None):
+        return tuple(field.name for field in self.model._meta.fields)
+
+    def has_add_permission(self, request) -> bool:
+        return False
+
+    def has_change_permission(self, request, obj=None) -> bool:
+        return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        return False
 
 
 @admin.register(FundingServiceQuota)
-class FundingServiceQuotaAdmin(admin.ModelAdmin):
-    list_display = ("funding_source", "service", "planned_sessions", "starts_on", "ends_on")
+class FundingServiceQuotaAdmin(GrantPlanReadOnlyAdmin):
+    list_display = (
+        "funding_source",
+        "service",
+        "planned_sessions",
+        "lifecycle_status",
+        "starts_on",
+        "ends_on",
+    )
     search_fields = ("funding_source__name", "service__name", "note")
-    list_filter = ("funding_source", "service")
-    autocomplete_fields = ("funding_source", "service")
-    inlines = (FundingStaffAllocationInline,)
+    list_filter = ("lifecycle_status", "funding_source", "service")
 
 
 @admin.register(FundingStaffAllocation)
-class FundingStaffAllocationAdmin(admin.ModelAdmin):
+class FundingStaffAllocationAdmin(GrantPlanReadOnlyAdmin):
     list_display = (
         "funding_source",
         "service",
         "staff_member",
         "allocated_sessions",
         "session_pay_amount",
+        "lifecycle_status",
         "starts_on",
         "ends_on",
     )
     search_fields = ("funding_source__name", "service__name", "staff_member__full_name", "note")
-    list_filter = ("funding_source", "service", "staff_member")
-    autocomplete_fields = ("service_quota", "funding_source", "service", "staff_member")
+    list_filter = ("lifecycle_status", "funding_source", "service", "staff_member")
+
+
+@admin.register(FundingServiceQuotaRevision)
+class FundingServiceQuotaRevisionAdmin(GrantPlanReadOnlyAdmin):
+    list_display = (
+        "service_quota",
+        "revision_number",
+        "event_type",
+        "lifecycle_status",
+        "actor",
+        "decided_at",
+    )
+    search_fields = ("service_quota__funding_source__name", "service_quota__service__name", "reason")
+    list_filter = ("event_type", "lifecycle_status", "actor_role_snapshot")
+
+
+@admin.register(FundingStaffAllocationRevision)
+class FundingStaffAllocationRevisionAdmin(GrantPlanReadOnlyAdmin):
+    list_display = (
+        "staff_allocation",
+        "revision_number",
+        "event_type",
+        "lifecycle_status",
+        "actor",
+        "decided_at",
+    )
+    search_fields = (
+        "staff_allocation__funding_source__name",
+        "staff_allocation__service__name",
+        "staff_allocation__staff_member__full_name",
+        "reason",
+    )
+    list_filter = ("event_type", "lifecycle_status", "actor_role_snapshot")
 
 
 @admin.register(GrantRecipientAllocation)

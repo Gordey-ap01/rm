@@ -148,7 +148,7 @@
             <td data-label="Услуга / специалист">
               <div class="grant-report-service-line">
                 <span>{{ quota_row.service.name }}</span>
-                {% if quota_row.quota and can_manage_grants %}
+                {% if quota_row.quota and can_manage_grants and quota_row.quota.lifecycle_status == "active" %}
                   <a class="btn btn-sm btn-outline-primary" href="{% url 'funding_staff_allocation_create' %}?quota={{ quota_row.quota.pk }}">Добавить специалиста</a>
                 {% elif not quota_row.quota and can_manage_grants %}
                   <a class="btn btn-sm btn-outline-primary" href="{% url 'funding_staff_allocation_create' %}?funding={{ report.funding.pk }}&service={{ quota_row.service.pk }}">Добавить специалиста</a>
@@ -156,6 +156,8 @@
               </div>
               {% if not quota_row.quota %}
                 <div class="small text-secondary">Прямое распределение без квоты</div>
+              {% elif quota_row.quota.lifecycle_status == "closed" %}
+                <div><span class="badge text-bg-secondary">Закрыта</span></div>
               {% endif %}
             </td>
             <td class="text-end" data-label="План">{{ quota_row.planned_sessions }}</td>
@@ -164,16 +166,14 @@
             <td class="text-end" data-label="Остаток">{{ quota_row.remaining_sessions }}</td>
             <td class="text-end" data-label="Стоимость специалисту">—</td>
             <td class="text-end text-nowrap grant-report-actions" data-label="Действия">
-              {% if quota_row.quota and can_manage_grants %}
-                <a class="btn btn-sm btn-outline-secondary" href="{% url 'funding_service_quota_edit' quota_row.quota.pk %}">Править</a>
-                <button class="btn btn-sm btn-outline-danger"
-                        x-data
-                        @click="if(confirm('Удалить квоту по услуге «{{ quota_row.service.name }}»?')) { $el.closest('td').querySelector('form').submit() }">
-                  Удалить
-                </button>
-                <form method="post" action="{% url 'funding_service_quota_delete' quota_row.quota.pk %}" class="d-none">
-                  {% csrf_token %}
-                </form>
+              {% if quota_row.quota %}
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'funding_service_quota_history' quota_row.quota.pk %}">История</a>
+                {% if can_manage_grants %}
+                  <a class="btn btn-sm btn-outline-secondary" href="{% url 'funding_service_quota_edit' quota_row.quota.pk %}">Редакция</a>
+                  {% if quota_row.quota.lifecycle_status == "active" %}
+                    <a class="btn btn-sm btn-outline-danger" href="{% url 'funding_service_quota_delete' quota_row.quota.pk %}">Закрыть</a>
+                  {% endif %}
+                {% endif %}
               {% else %}
                 —
               {% endif %}
@@ -181,25 +181,24 @@
           </tr>
           {% for staff_row in quota_row.staff_rows %}
             <tr>
-              <td class="ps-4" data-label="Услуга / специалист">{{ staff_row.staff_member.full_name }}</td>
+              <td class="ps-4" data-label="Услуга / специалист">
+                {{ staff_row.staff_member.full_name }}
+                {% if staff_row.allocation.lifecycle_status == "closed" %}
+                  <span class="badge text-bg-secondary ms-1">Закрыто</span>
+                {% endif %}
+              </td>
               <td class="text-end" data-label="План">—</td>
               <td class="text-end" data-label="Распределено">{{ staff_row.allocated_sessions }}</td>
               <td class="text-end" data-label="Факт списано">{{ staff_row.charged_sessions }}</td>
               <td class="text-end" data-label="Остаток">{{ staff_row.remaining_sessions }}</td>
               <td class="text-end" data-label="Стоимость специалисту">{% if staff_row.session_pay_amount %}{{ staff_row.session_pay_amount }}{% else %}—{% endif %}</td>
               <td class="text-end text-nowrap grant-report-actions" data-label="Действия">
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'funding_staff_allocation_history' staff_row.allocation.pk %}">История</a>
                 {% if can_manage_grants %}
-                  <a class="btn btn-sm btn-outline-secondary" href="{% url 'funding_staff_allocation_edit' staff_row.allocation.pk %}">Править</a>
-                  <button class="btn btn-sm btn-outline-danger"
-                          x-data
-                          @click="if(confirm('Удалить распределение для «{{ staff_row.staff_member.full_name }}»?')) { $el.closest('td').querySelector('form').submit() }">
-                    Удалить
-                  </button>
-                  <form method="post" action="{% url 'funding_staff_allocation_delete' staff_row.allocation.pk %}" class="d-none">
-                    {% csrf_token %}
-                  </form>
-                {% else %}
-                  —
+                  <a class="btn btn-sm btn-outline-secondary" href="{% url 'funding_staff_allocation_edit' staff_row.allocation.pk %}">Редакция</a>
+                  {% if staff_row.allocation.lifecycle_status == "active" %}
+                    <a class="btn btn-sm btn-outline-danger" href="{% url 'funding_staff_allocation_delete' staff_row.allocation.pk %}">Закрыть</a>
+                  {% endif %}
                 {% endif %}
               </td>
             </tr>

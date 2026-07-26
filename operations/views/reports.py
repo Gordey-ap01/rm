@@ -19,6 +19,7 @@ from django.utils import timezone
 from operations.forms import (
     FundingServiceQuotaQuickForm,
     FundingStaffAllocationQuickForm,
+    GrantPlanCloseForm,
     GrantRecipientAllocationQuickForm,
     GrantReportFilterForm,
     PayrollPayoutRecordForm,
@@ -28,14 +29,17 @@ from operations.forms import (
 from operations.models import (
     Appointment,
     FundingServiceQuota,
+    FundingServiceQuotaRevision,
     FundingSource,
     FundingStaffAllocation,
+    FundingStaffAllocationRevision,
     GrantRecipientAllocation,
     PayrollAccrual,
     PayrollSheet,
     StaffMember,
 )
 from operations.services import (
+    grant_plans as grant_plans_svc,
     payroll as payroll_svc,
     reports as reports_svc,
     rescheduling_plans as plan_svc,
@@ -68,6 +72,25 @@ def _require_active_grant_source(funding: FundingSource) -> None:
             "Архивный источник доступен только для чтения. "
             "Для изменения сначала восстановите источник финансирования."
         )
+
+
+def _add_grant_plan_form_errors(form, exc: ValidationError) -> None:
+    if hasattr(exc, "message_dict"):
+        for field_name, field_messages in exc.message_dict.items():
+            target = field_name if field_name in form.fields else None
+            for message in field_messages:
+                form.add_error(target, message)
+        return
+    for message in exc.messages:
+        form.add_error(None, message)
+
+
+def _grant_plan_default_close_on(
+    starts_on: date | None,
+    ends_on: date | None,
+) -> date:
+    close_on = min(ends_on, timezone.localdate()) if ends_on else timezone.localdate()
+    return max(starts_on, close_on) if starts_on else close_on
 
 
 def _csv_text(value: object) -> str:
@@ -1036,12 +1059,25 @@ def funding_service_quota_create(request):
     if request.method == "POST":
         form = FundingServiceQuotaQuickForm(request.POST)
         if form.is_valid():
-            quota = form.save()
-            messages.success(
-                request,
-                "Квота по услуге сохранена. Теперь распределите занятия между специалистами.",
-            )
-            return redirect(f"{reverse('funding_staff_allocation_create')}?quota={quota.pk}")
+            try:
+                quota = grant_plans_svc.create_service_quota(
+                    funding_source=form.cleaned_data["funding_source"],
+                    service=form.cleaned_data["service"],
+                    planned_sessions=form.cleaned_data["planned_sessions"],
+                    starts_on=form.cleaned_data["starts_on"],
+                    ends_on=form.cleaned_data["ends_on"],
+                    note=form.cleaned_data["note"],
+                    actor=request.user,
+                    reason=form.cleaned_data["reason"],
+                )
+            except ValidationError as exc:
+                _add_grant_plan_form_errors(form, exc)
+            else:
+                messages.success(
+                    request,
+                    "Квота создана. Теперь распределите занятия между специалистами.",
+                )
+                return redirect(f"{reverse('funding_staff_allocation_create')}?quota={quota.pk}")
     else:
         form = FundingServiceQuotaQuickForm(initial=initial)
 
@@ -1077,15 +1113,28 @@ def funding_service_quota_edit(request, pk: int):
     if request.method == "POST":
         form = FundingServiceQuotaQuickForm(request.POST, instance=quota)
         if form.is_valid():
-            quota = form.save()
-            messages.success(request, "Квота по услуге обновлена.")
-            return redirect(
-                _grant_report_url(
-                    quota.funding_source_id,
-                    date_from=quota.starts_on,
-                    date_to=quota.ends_on,
+            try:
+                quota = grant_plans_svc.revise_service_quota(
+                    quota,
+                    planned_sessions=form.cleaned_data["planned_sessions"],
+                    starts_on=form.cleaned_data["starts_on"],
+                    ends_on=form.cleaned_data["ends_on"],
+                    note=form.cleaned_data["note"],
+                    actor=request.user,
+                    reason=form.cleaned_data["reason"],
+                    expected_revision_id=form.cleaned_data["expected_revision_id"],
                 )
-            )
+            except ValidationError as exc:
+                _add_grant_plan_form_errors(form, exc)
+            else:
+                messages.success(request, "Создана новая редакция квоты по услуге.")
+                return redirect(
+                    _grant_report_url(
+                        quota.funding_source_id,
+                        date_from=quota.starts_on,
+                        date_to=quota.ends_on,
+                    )
+                )
     else:
         form = FundingServiceQuotaQuickForm(instance=quota)
 
@@ -1093,12 +1142,12 @@ def funding_service_quota_edit(request, pk: int):
         request,
         "operations/object_form.html",
         {
-            "title": "Редактировать квоту по услуге",
+            "title": "Создать редакцию квоты",
             "subtitle": str(quota),
             "form_panel_title": "Параметры квоты",
             "form_intro": (
-                "Изменение плана влияет на контроль распределений по специалистам, "
-                "но не меняет уже списанные занятия."
+                "Предыдущая редакция останется в истории. Уже списанные занятия "
+                "нельзя исключить новым периодом или количеством."
             ),
             "form": form,
             "control_title": "Контроль квоты услуги",
@@ -1124,18 +1173,72 @@ def funding_service_quota_delete(request, pk: int):
         date_from=quota.starts_on,
         date_to=quota.ends_on,
     )
-    if request.method != "POST":
-        return redirect(redirect_url)
-    allocations_count = quota.staff_allocations.count()
-    if allocations_count:
-        messages.error(
-            request,
-            f"Нельзя удалить квоту: к ней привязано распределений по специалистам: {allocations_count}.",
-        )
+    initial = {
+        "close_on": _grant_plan_default_close_on(quota.starts_on, quota.ends_on),
+        "expected_revision_id": quota.current_revision_id,
+    }
+    if request.method == "POST":
+        form = GrantPlanCloseForm(request.POST)
+        if form.is_valid():
+            try:
+                grant_plans_svc.close_service_quota(
+                    quota,
+                    close_on=form.cleaned_data["close_on"],
+                    actor=request.user,
+                    reason=form.cleaned_data["reason"],
+                    expected_revision_id=form.cleaned_data["expected_revision_id"],
+                )
+            except ValidationError as exc:
+                _add_grant_plan_form_errors(form, exc)
+            else:
+                messages.success(request, "Квота закрыта без удаления истории.")
+                return redirect(redirect_url)
     else:
-        quota.delete()
-        messages.success(request, "Квота по услуге удалена.")
-    return redirect(redirect_url)
+        form = GrantPlanCloseForm(initial=initial)
+    return render(
+        request,
+        "operations/object_form.html",
+        {
+            "title": "Закрыть квоту по услуге",
+            "subtitle": str(quota),
+            "form_panel_title": "Дата и основание закрытия",
+            "form_intro": (
+                "Физического удаления не будет. Сначала закройте связанные активные "
+                "распределения специалистам."
+            ),
+            "form": form,
+            "cancel_url": redirect_url,
+        },
+    )
+
+
+@admin_required
+def funding_service_quota_history(request, pk: int):
+    quota = get_object_or_404(
+        FundingServiceQuota.objects.select_related("funding_source", "service"),
+        pk=pk,
+    )
+    revisions = list(
+        FundingServiceQuotaRevision.objects.filter(service_quota=quota)
+        .select_related("actor")
+        .order_by("-revision_number")
+    )
+    return render(
+        request,
+        "operations/grant_plan_history.html",
+        {
+            "title": "История квоты по услуге",
+            "subtitle": str(quota),
+            "history_kind": "quota",
+            "revisions": revisions,
+            "current_revision_id": quota.current_revision_id,
+            "back_url": _grant_report_url(
+                quota.funding_source_id,
+                date_from=quota.starts_on,
+                date_to=quota.ends_on,
+            ),
+        },
+    )
 
 
 @director_required
@@ -1150,15 +1253,31 @@ def funding_staff_allocation_create(request):
     if request.method == "POST":
         form = FundingStaffAllocationQuickForm(request.POST)
         if form.is_valid():
-            allocation = form.save()
-            messages.success(request, "Распределение грантовой квоты сохранено.")
-            return redirect(
-                _grant_report_url(
-                    allocation.funding_source_id,
-                    date_from=allocation.starts_on,
-                    date_to=allocation.ends_on,
+            try:
+                allocation = grant_plans_svc.create_staff_allocation(
+                    service_quota=form.cleaned_data["service_quota"],
+                    funding_source=form.cleaned_data["funding_source"],
+                    service=form.cleaned_data["service"],
+                    staff_member=form.cleaned_data["staff_member"],
+                    allocated_sessions=form.cleaned_data["allocated_sessions"],
+                    session_pay_amount=form.cleaned_data["session_pay_amount"],
+                    starts_on=form.cleaned_data["starts_on"],
+                    ends_on=form.cleaned_data["ends_on"],
+                    note=form.cleaned_data["note"],
+                    actor=request.user,
+                    reason=form.cleaned_data["reason"],
                 )
-            )
+            except ValidationError as exc:
+                _add_grant_plan_form_errors(form, exc)
+            else:
+                messages.success(request, "Распределение грантовой квоты создано.")
+                return redirect(
+                    _grant_report_url(
+                        allocation.funding_source_id,
+                        date_from=allocation.starts_on,
+                        date_to=allocation.ends_on,
+                    )
+                )
     else:
         form = FundingStaffAllocationQuickForm(initial=initial)
 
@@ -1196,15 +1315,29 @@ def funding_staff_allocation_edit(request, pk: int):
     if request.method == "POST":
         form = FundingStaffAllocationQuickForm(request.POST, instance=allocation)
         if form.is_valid():
-            allocation = form.save()
-            messages.success(request, "Распределение грантовой квоты обновлено.")
-            return redirect(
-                _grant_report_url(
-                    allocation.funding_source_id,
-                    date_from=allocation.starts_on,
-                    date_to=allocation.ends_on,
+            try:
+                allocation = grant_plans_svc.revise_staff_allocation(
+                    allocation,
+                    allocated_sessions=form.cleaned_data["allocated_sessions"],
+                    session_pay_amount=form.cleaned_data["session_pay_amount"],
+                    starts_on=form.cleaned_data["starts_on"],
+                    ends_on=form.cleaned_data["ends_on"],
+                    note=form.cleaned_data["note"],
+                    actor=request.user,
+                    reason=form.cleaned_data["reason"],
+                    expected_revision_id=form.cleaned_data["expected_revision_id"],
                 )
-            )
+            except ValidationError as exc:
+                _add_grant_plan_form_errors(form, exc)
+            else:
+                messages.success(request, "Создана новая редакция распределения.")
+                return redirect(
+                    _grant_report_url(
+                        allocation.funding_source_id,
+                        date_from=allocation.starts_on,
+                        date_to=allocation.ends_on,
+                    )
+                )
     else:
         form = FundingStaffAllocationQuickForm(instance=allocation)
 
@@ -1212,12 +1345,12 @@ def funding_staff_allocation_edit(request, pk: int):
         request,
         "operations/object_form.html",
         {
-            "title": "Редактировать распределение квоты",
+            "title": "Создать редакцию распределения",
             "subtitle": str(allocation),
             "form_panel_title": "Параметры распределения",
             "form_intro": (
-                "Изменяйте количество, период или ставку специалиста с учетом уже выполненных "
-                "занятий по гранту."
+                "Предыдущие значения останутся в истории. Фактически списанные занятия "
+                "нельзя исключить или распределить повторно."
             ),
             "form": form,
             "control_title": "Контроль распределения специалисту",
@@ -1243,11 +1376,80 @@ def funding_staff_allocation_delete(request, pk: int):
         date_from=allocation.starts_on,
         date_to=allocation.ends_on,
     )
-    if request.method != "POST":
-        return redirect(redirect_url)
-    allocation.delete()
-    messages.success(request, "Распределение квоты удалено.")
-    return redirect(redirect_url)
+    initial = {
+        "close_on": _grant_plan_default_close_on(
+            allocation.starts_on,
+            allocation.ends_on,
+        ),
+        "expected_revision_id": allocation.current_revision_id,
+    }
+    if request.method == "POST":
+        form = GrantPlanCloseForm(request.POST)
+        if form.is_valid():
+            try:
+                grant_plans_svc.close_staff_allocation(
+                    allocation,
+                    close_on=form.cleaned_data["close_on"],
+                    actor=request.user,
+                    reason=form.cleaned_data["reason"],
+                    expected_revision_id=form.cleaned_data["expected_revision_id"],
+                )
+            except ValidationError as exc:
+                _add_grant_plan_form_errors(form, exc)
+            else:
+                messages.success(request, "Распределение закрыто без удаления истории.")
+                return redirect(redirect_url)
+    else:
+        form = GrantPlanCloseForm(initial=initial)
+    return render(
+        request,
+        "operations/object_form.html",
+        {
+            "title": "Закрыть распределение специалисту",
+            "subtitle": str(allocation),
+            "form_panel_title": "Дата и основание закрытия",
+            "form_intro": (
+                "Количество и ставка сохранятся в истории. Для передачи остатка "
+                "сначала создайте редакцию количества, затем новую позицию специалиста."
+            ),
+            "form": form,
+            "cancel_url": redirect_url,
+        },
+    )
+
+
+@admin_required
+def funding_staff_allocation_history(request, pk: int):
+    allocation = get_object_or_404(
+        FundingStaffAllocation.objects.select_related(
+            "service_quota",
+            "funding_source",
+            "service",
+            "staff_member",
+        ),
+        pk=pk,
+    )
+    revisions = list(
+        FundingStaffAllocationRevision.objects.filter(staff_allocation=allocation)
+        .select_related("actor")
+        .order_by("-revision_number")
+    )
+    return render(
+        request,
+        "operations/grant_plan_history.html",
+        {
+            "title": "История распределения специалисту",
+            "subtitle": str(allocation),
+            "history_kind": "staff",
+            "revisions": revisions,
+            "current_revision_id": allocation.current_revision_id,
+            "back_url": _grant_report_url(
+                allocation.funding_source_id,
+                date_from=allocation.starts_on,
+                date_to=allocation.ends_on,
+            ),
+        },
+    )
 
 
 @director_required

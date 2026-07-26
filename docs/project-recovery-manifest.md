@@ -60,7 +60,7 @@
 | `docs/55-browser-role-acceptance-contract.md` | Реализованный срез: browser-приемка администратора, руководителя и mobile-кабинета специалиста. |
 | `docs/56-persisted-balance-transfer-conversion-contract.md` | Реализованный срез: immutable transfer, `money -> sessions`, PostgreSQL-сериализация и browser-приемка. |
 | `docs/57-grant-management-report-acceptance-contract.md` | Реализованный отчетный срез: роли, периодные ledger-балансы, раздельные единицы, квоты, архив и безопасный CSV; также границы будущих опасных миграций грантов. |
-| `docs/58-grant-plan-versioning-contract.md` | Активный опасный срез: типизированные редакции квот и распределений, director-only write-path, legacy backfill и payroll provenance. |
+| `docs/58-grant-plan-versioning-contract.md` | Реализованный срез: типизированные редакции квот и распределений, director-only write-path, legacy backfill и payroll provenance. |
 | `docs/decisions/ADR-001-*.md` | Django/PostgreSQL/local-first. |
 | `docs/decisions/ADR-002-*.md` | Балансовые счета и ledger. |
 | `docs/decisions/ADR-003-*.md` | Полномочия и ручные решения. |

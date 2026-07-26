@@ -75,6 +75,7 @@ from operations.services import (
     billing as billing_svc,
     certificates as certificate_svc,
     financial_integrity_checks as financial_integrity_checks_svc,
+    grant_plans as grant_plans_svc,
     rescheduling_plans as plan_svc,
 )
 
@@ -1809,6 +1810,42 @@ class PayrollDirectorAuthorityTests(NewViewsTestBase):
 
 
 class GrantReportViewTests(NewViewsTestBase):
+    def _create_versioned_quota(
+        self,
+        *,
+        planned_sessions: int = 20,
+    ) -> FundingServiceQuota:
+        return grant_plans_svc.create_service_quota(
+            funding_source=self.funding_grant,
+            service=self.service2,
+            planned_sessions=planned_sessions,
+            starts_on=date(2026, 1, 1),
+            ends_on=date(2026, 12, 31),
+            note="",
+            actor=self.admin,
+            reason="Тестовое решение руководителя.",
+        )
+
+    def _create_versioned_allocation(
+        self,
+        *,
+        quota: FundingServiceQuota | None = None,
+        allocated_sessions: int = 5,
+    ) -> FundingStaffAllocation:
+        return grant_plans_svc.create_staff_allocation(
+            service_quota=quota,
+            funding_source=None if quota else self.funding_grant,
+            service=None if quota else self.service2,
+            staff_member=self.staff,
+            allocated_sessions=allocated_sessions,
+            session_pay_amount=Decimal("500.00"),
+            starts_on=date(2026, 1, 1),
+            ends_on=date(2026, 12, 31),
+            note="",
+            actor=self.admin,
+            reason="Тестовое распределение руководителя.",
+        )
+
     def test_grant_report_renders(self):
         response = self.client.get(reverse("grant_report"))
         self.assertEqual(response.status_code, 200)
@@ -1868,6 +1905,14 @@ class GrantReportViewTests(NewViewsTestBase):
             report_response,
             reverse("grant_recipient_allocation_edit", args=[recipient_allocation.pk]),
         )
+        self.assertContains(
+            report_response,
+            reverse("funding_service_quota_history", args=[quota.pk]),
+        )
+        self.assertContains(
+            report_response,
+            reverse("funding_staff_allocation_history", args=[staff_allocation.pk]),
+        )
 
         management_urls = [
             reverse("funding_service_quota_create"),
@@ -1883,6 +1928,57 @@ class GrantReportViewTests(NewViewsTestBase):
         for url in management_urls:
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 403)
+
+    def test_administrator_reads_version_history_and_specialist_is_denied(self):
+        quota = self._create_versioned_quota()
+        allocation = self._create_versioned_allocation(quota=quota)
+        operator = User.objects.create_user(
+            "grant-history-operator",
+            password="x",
+            is_staff=True,
+        )
+        self.client.force_login(operator)
+
+        for url in (
+            reverse("funding_service_quota_history", args=[quota.pk]),
+            reverse("funding_staff_allocation_history", args=[allocation.pk]),
+        ):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, "№1")
+                self.assertContains(response, "Тестов")
+
+        self.client.force_login(self.staff_user)
+        self.assertEqual(
+            self.client.get(
+                reverse("funding_service_quota_history", args=[quota.pk])
+            ).status_code,
+            403,
+        )
+
+    def test_future_quota_close_form_starts_at_quota_period(self):
+        quota = grant_plans_svc.create_service_quota(
+            funding_source=self.funding_grant,
+            service=self.service2,
+            planned_sessions=10,
+            starts_on=date(2027, 1, 10),
+            ends_on=date(2027, 12, 31),
+            note="",
+            actor=self.admin,
+            reason="Утвержден будущий грантовый период.",
+        )
+
+        response = self.client.get(
+            reverse("funding_service_quota_delete", args=[quota.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context["form"].initial["close_on"],
+            date(2027, 1, 10),
+        )
+        self.assertNotContains(response, "Expected revision id")
 
     def test_specialist_cannot_read_grant_report(self):
         self.client.force_login(self.staff_user)
@@ -2052,6 +2148,7 @@ class GrantReportViewTests(NewViewsTestBase):
                 "starts_on": "2026-01-01",
                 "ends_on": "2026-12-31",
                 "note": "План на год",
+                "reason": "Утвержден план на год.",
             },
         )
 
@@ -2065,13 +2162,7 @@ class GrantReportViewTests(NewViewsTestBase):
         )
 
     def test_funding_service_quota_edit_updates_plan(self):
-        quota = FundingServiceQuota.objects.create(
-            funding_source=self.funding_grant,
-            service=self.service2,
-            planned_sessions=20,
-            starts_on="2026-01-01",
-            ends_on="2026-12-31",
-        )
+        quota = self._create_versioned_quota(planned_sessions=20)
 
         response = self.client.post(
             reverse("funding_service_quota_edit", args=[quota.pk]),
@@ -2082,6 +2173,8 @@ class GrantReportViewTests(NewViewsTestBase):
                 "starts_on": "2026-01-01",
                 "ends_on": "2026-12-31",
                 "note": "Уточненный план",
+                "reason": "Уточнено количество занятий.",
+                "expected_revision_id": quota.current_revision_id,
             },
         )
 
@@ -2095,32 +2188,22 @@ class GrantReportViewTests(NewViewsTestBase):
             ),
         )
 
-    def test_funding_service_quota_delete_blocks_existing_allocations(self):
-        quota = FundingServiceQuota.objects.create(
-            funding_source=self.funding_grant,
-            service=self.service2,
-            planned_sessions=20,
-            starts_on="2026-01-01",
-            ends_on="2026-12-31",
-        )
-        FundingStaffAllocation.objects.create(
-            service_quota=quota,
-            funding_source=self.funding_grant,
-            service=self.service2,
-            staff_member=self.staff,
-            allocated_sessions=5,
-        )
+    def test_funding_service_quota_close_blocks_existing_allocations(self):
+        quota = self._create_versioned_quota(planned_sessions=20)
+        self._create_versioned_allocation(quota=quota)
 
-        response = self.client.post(reverse("funding_service_quota_delete", args=[quota.pk]))
+        response = self.client.post(
+            reverse("funding_service_quota_delete", args=[quota.pk]),
+            {
+                "close_on": "2026-12-31",
+                "reason": "Попытка закрыть квоту.",
+                "expected_revision_id": quota.current_revision_id,
+            },
+        )
 
         self.assertTrue(FundingServiceQuota.objects.filter(pk=quota.pk).exists())
-        self.assertRedirects(
-            response,
-            (
-                f"{reverse('grant_report')}?funding={self.funding_grant.pk}"
-                "&date_from=2026-01-01&date_to=2026-12-31"
-            ),
-        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Сначала закройте активные распределения")
 
     def test_funding_staff_allocation_create_direct(self):
         response = self.client.post(
@@ -2134,6 +2217,7 @@ class GrantReportViewTests(NewViewsTestBase):
                 "starts_on": "2026-01-01",
                 "ends_on": "2026-12-31",
                 "note": "Распределение руководителем",
+                "reason": "Назначено прямое распределение.",
             },
         )
 
@@ -2153,13 +2237,7 @@ class GrantReportViewTests(NewViewsTestBase):
         )
 
     def test_funding_staff_allocation_create_from_service_quota(self):
-        quota = FundingServiceQuota.objects.create(
-            funding_source=self.funding_grant,
-            service=self.service2,
-            planned_sessions=30,
-            starts_on="2026-01-01",
-            ends_on="2026-12-31",
-        )
+        quota = self._create_versioned_quota(planned_sessions=30)
 
         response = self.client.post(
             reverse("funding_staff_allocation_create"),
@@ -2171,6 +2249,7 @@ class GrantReportViewTests(NewViewsTestBase):
                 "starts_on": "2026-02-01",
                 "ends_on": "2026-05-31",
                 "note": "",
+                "reason": "Назначен специалист по квоте.",
             },
         )
 
@@ -2213,6 +2292,7 @@ class GrantReportViewTests(NewViewsTestBase):
                 "starts_on": "",
                 "ends_on": "",
                 "note": "",
+                "reason": "Попытка превысить квоту.",
             },
         )
 
@@ -2225,21 +2305,10 @@ class GrantReportViewTests(NewViewsTestBase):
         )
 
     def test_funding_staff_allocation_edit_excludes_self_from_quota_limit(self):
-        quota = FundingServiceQuota.objects.create(
-            funding_source=self.funding_grant,
-            service=self.service2,
-            planned_sessions=10,
-            starts_on="2026-01-01",
-            ends_on="2026-12-31",
-        )
-        allocation = FundingStaffAllocation.objects.create(
-            service_quota=quota,
-            funding_source=self.funding_grant,
-            service=self.service2,
-            staff_member=self.staff,
+        quota = self._create_versioned_quota(planned_sessions=10)
+        allocation = self._create_versioned_allocation(
+            quota=quota,
             allocated_sessions=8,
-            starts_on="2026-01-01",
-            ends_on="2026-12-31",
         )
 
         response = self.client.post(
@@ -2254,6 +2323,8 @@ class GrantReportViewTests(NewViewsTestBase):
                 "starts_on": "2026-01-01",
                 "ends_on": "2026-12-31",
                 "note": "На весь план",
+                "reason": "Распределен весь план.",
+                "expected_revision_id": allocation.current_revision_id,
             },
         )
 
@@ -2268,21 +2339,24 @@ class GrantReportViewTests(NewViewsTestBase):
             ),
         )
 
-    def test_funding_staff_allocation_delete_removes_row(self):
-        allocation = FundingStaffAllocation.objects.create(
-            funding_source=self.funding_grant,
-            service=self.service2,
-            staff_member=self.staff,
-            allocated_sessions=5,
-            starts_on="2026-01-01",
-            ends_on="2026-12-31",
-        )
+    def test_funding_staff_allocation_close_preserves_row(self):
+        allocation = self._create_versioned_allocation()
 
         response = self.client.post(
-            reverse("funding_staff_allocation_delete", args=[allocation.pk])
+            reverse("funding_staff_allocation_delete", args=[allocation.pk]),
+            {
+                "close_on": "2026-06-30",
+                "reason": "Работа специалиста завершена.",
+                "expected_revision_id": allocation.current_revision_id,
+            },
         )
 
-        self.assertFalse(FundingStaffAllocation.objects.filter(pk=allocation.pk).exists())
+        allocation.refresh_from_db()
+        self.assertEqual(
+            allocation.lifecycle_status,
+            FundingStaffAllocation.LifecycleStatus.CLOSED,
+        )
+        self.assertTrue(FundingStaffAllocation.objects.filter(pk=allocation.pk).exists())
         self.assertRedirects(
             response,
             (

@@ -587,22 +587,40 @@ class StaffCompensationRule(TimeStampedModel):
 
 
 class FundingServiceQuota(TimeStampedModel):
+    class LifecycleStatus(models.TextChoices):
+        ACTIVE = "active", "Активна"
+        CLOSED = "closed", "Закрыта"
+
     funding_source = models.ForeignKey(
         FundingSource,
         verbose_name="источник финансирования",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="service_quotas",
     )
     service = models.ForeignKey(
         Service,
         verbose_name="услуга",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="funding_quotas",
     )
     planned_sessions = models.PositiveIntegerField("план занятий", default=0)
     starts_on = models.DateField("действует с", null=True, blank=True)
     ends_on = models.DateField("действует по", null=True, blank=True)
     note = models.TextField("примечание", blank=True)
+    lifecycle_status = models.CharField(
+        "статус плановой позиции",
+        max_length=20,
+        choices=LifecycleStatus.choices,
+        default=LifecycleStatus.ACTIVE,
+    )
+    current_revision = models.OneToOneField(
+        "FundingServiceQuotaRevision",
+        verbose_name="текущая редакция",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="current_for_service_quota",
+    )
 
     class Meta:
         verbose_name = "квота финансирования по услуге"
@@ -615,20 +633,53 @@ class FundingServiceQuota(TimeStampedModel):
                 | Q(ends_on__gte=models.F("starts_on")),
                 name="funding_service_quota_dates_order",
             ),
+            models.CheckConstraint(
+                condition=Q(lifecycle_status="active") | Q(ends_on__isnull=False),
+                name="funding_service_quota_closed_has_end",
+            ),
         ]
         indexes = [
             models.Index(fields=["funding_source", "service", "starts_on", "ends_on"]),
         ]
+
+    versioned_fields = (
+        "funding_source_id",
+        "service_id",
+        "planned_sessions",
+        "starts_on",
+        "ends_on",
+        "note",
+        "lifecycle_status",
+        "current_revision_id",
+    )
+
+    def _ensure_service_write(self) -> None:
+        if not self.pk:
+            return
+        current = type(self).objects.get(pk=self.pk)
+        if any(getattr(self, field) != getattr(current, field) for field in self.versioned_fields):
+            raise ValidationError(
+                "Квоту нельзя изменять напрямую. Создайте редакцию через грантовый сервис."
+            )
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.full_clean()
+        self._ensure_service_write()
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.funding_source} / {self.service}: {self.planned_sessions}"
 
 
 class FundingStaffAllocation(TimeStampedModel):
+    class LifecycleStatus(models.TextChoices):
+        ACTIVE = "active", "Активно"
+        CLOSED = "closed", "Закрыто"
+
     service_quota = models.ForeignKey(
         FundingServiceQuota,
         verbose_name="квота услуги",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="staff_allocations",
@@ -637,19 +688,19 @@ class FundingStaffAllocation(TimeStampedModel):
     funding_source = models.ForeignKey(
         FundingSource,
         verbose_name="источник финансирования",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="staff_allocations",
     )
     service = models.ForeignKey(
         Service,
         verbose_name="услуга",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="staff_funding_allocations",
     )
     staff_member = models.ForeignKey(
         StaffMember,
         verbose_name="специалист",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="funding_allocations",
     )
     allocated_sessions = models.PositiveIntegerField("выделено занятий", default=0)
@@ -663,6 +714,20 @@ class FundingStaffAllocation(TimeStampedModel):
     starts_on = models.DateField("действует с", null=True, blank=True)
     ends_on = models.DateField("действует по", null=True, blank=True)
     note = models.TextField("примечание", blank=True)
+    lifecycle_status = models.CharField(
+        "статус плановой позиции",
+        max_length=20,
+        choices=LifecycleStatus.choices,
+        default=LifecycleStatus.ACTIVE,
+    )
+    current_revision = models.OneToOneField(
+        "FundingStaffAllocationRevision",
+        verbose_name="текущая редакция",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="current_for_staff_allocation",
+    )
 
     class Meta:
         verbose_name = "распределение квоты по специалисту"
@@ -679,11 +744,29 @@ class FundingStaffAllocation(TimeStampedModel):
                 | Q(ends_on__gte=models.F("starts_on")),
                 name="funding_staff_alloc_dates_order",
             ),
+            models.CheckConstraint(
+                condition=Q(lifecycle_status="active") | Q(ends_on__isnull=False),
+                name="funding_staff_alloc_closed_has_end",
+            ),
         ]
         indexes = [
             models.Index(fields=["funding_source", "service", "staff_member"]),
             models.Index(fields=["service_quota", "staff_member"]),
         ]
+
+    versioned_fields = (
+        "service_quota_id",
+        "funding_source_id",
+        "service_id",
+        "staff_member_id",
+        "allocated_sessions",
+        "session_pay_amount",
+        "starts_on",
+        "ends_on",
+        "note",
+        "lifecycle_status",
+        "current_revision_id",
+    )
 
     def clean(self) -> None:
         if self.service_quota_id:
@@ -694,15 +777,330 @@ class FundingStaffAllocation(TimeStampedModel):
             if self.service_quota.service_id != self.service_id:
                 raise ValidationError({"service": "Услуга должна совпадать с квотой услуги."})
 
+    def _ensure_service_write(self) -> None:
+        if not self.pk:
+            return
+        current = type(self).objects.get(pk=self.pk)
+        if any(getattr(self, field) != getattr(current, field) for field in self.versioned_fields):
+            raise ValidationError(
+                "Распределение нельзя изменять напрямую. Создайте редакцию через грантовый сервис."
+            )
+
     def save(self, *args: object, **kwargs: object) -> None:
         if self.service_quota_id:
             self.funding_source_id = self.service_quota.funding_source_id
             self.service_id = self.service_quota.service_id
         self.full_clean()
+        self._ensure_service_write()
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.funding_source} / {self.service} / {self.staff_member}: {self.allocated_sessions}"
+
+
+class FundingServiceQuotaRevision(TimeStampedModel):
+    class EventType(models.TextChoices):
+        CREATED = "created", "Создана"
+        REVISED = "revised", "Изменена"
+        CLOSED = "closed", "Закрыта"
+        LEGACY_IMPORT = "legacy_import", "Перенесена из прежней модели"
+
+    class ActorRole(models.TextChoices):
+        DIRECTOR = "director", "Руководитель"
+        LEGACY = "legacy", "Автор неизвестен"
+
+    service_quota = models.ForeignKey(
+        FundingServiceQuota,
+        verbose_name="квота услуги",
+        on_delete=models.PROTECT,
+        related_name="revisions",
+    )
+    revision_number = models.PositiveIntegerField("номер редакции")
+    event_type = models.CharField("действие", max_length=20, choices=EventType.choices)
+    planned_sessions = models.PositiveIntegerField("план занятий", default=0)
+    starts_on = models.DateField("действует с", null=True, blank=True)
+    ends_on = models.DateField("действует по", null=True, blank=True)
+    note = models.TextField("примечание", blank=True)
+    lifecycle_status = models.CharField(
+        "статус плановой позиции",
+        max_length=20,
+        choices=FundingServiceQuota.LifecycleStatus.choices,
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="решение зафиксировал",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="funding_service_quota_revisions",
+    )
+    actor_role_snapshot = models.CharField(
+        "роль на момент решения",
+        max_length=20,
+        choices=ActorRole.choices,
+    )
+    reason = models.TextField("основание")
+    supersedes = models.ForeignKey(
+        "self",
+        verbose_name="предыдущая редакция",
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name="superseded_by",
+    )
+    decided_at = models.DateTimeField("время решения", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "редакция квоты финансирования"
+        verbose_name_plural = "редакции квот финансирования"
+        ordering = ["service_quota_id", "-revision_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["service_quota", "revision_number"],
+                name="unique_funding_quota_revision_number",
+            ),
+            models.UniqueConstraint(
+                fields=["supersedes"],
+                condition=Q(supersedes__isnull=False),
+                name="unique_funding_quota_revision_successor",
+            ),
+            models.CheckConstraint(
+                condition=Q(revision_number__gte=1),
+                name="funding_quota_revision_number_positive",
+            ),
+            models.CheckConstraint(
+                condition=Q(starts_on__isnull=True)
+                | Q(ends_on__isnull=True)
+                | Q(ends_on__gte=models.F("starts_on")),
+                name="funding_quota_revision_dates_order",
+            ),
+            models.CheckConstraint(
+                condition=Q(lifecycle_status="active") | Q(ends_on__isnull=False),
+                name="funding_quota_revision_closed_has_end",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type="legacy_import",
+                        actor__isnull=True,
+                        actor_role_snapshot="legacy",
+                        decided_at__isnull=True,
+                    )
+                    | (
+                        ~Q(event_type="legacy_import")
+                        & Q(
+                            actor__isnull=False,
+                            actor_role_snapshot="director",
+                            decided_at__isnull=False,
+                        )
+                        & ~Q(reason="")
+                    )
+                ),
+                name="funding_quota_revision_actor_matches_event",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type__in=["created", "legacy_import"],
+                        supersedes__isnull=True,
+                    )
+                    | Q(
+                        event_type__in=["revised", "closed"],
+                        supersedes__isnull=False,
+                    )
+                ),
+                name="funding_quota_revision_chain_matches_event",
+            ),
+            models.CheckConstraint(
+                condition=~Q(event_type="closed") | Q(lifecycle_status="closed"),
+                name="funding_quota_closed_event_has_closed_status",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["service_quota", "-revision_number"]),
+            models.Index(fields=["actor", "-created_at"]),
+        ]
+
+    def clean(self) -> None:
+        if self.reason is not None:
+            self.reason = self.reason.strip()
+        if self.event_type != self.EventType.LEGACY_IMPORT and len(self.reason) < 5:
+            raise ValidationError({"reason": "Укажите содержательное основание (минимум 5 символов)."})
+        if self.supersedes_id and self.supersedes.service_quota_id != self.service_quota_id:
+            raise ValidationError({"supersedes": "Предыдущая редакция должна относиться к той же квоте."})
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError(
+                "Редакцию квоты нельзя изменять. Создайте следующую редакцию."
+            )
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Редакцию квоты нельзя удалить.")
+
+    def __str__(self) -> str:
+        return f"{self.service_quota} / редакция {self.revision_number}"
+
+
+class FundingStaffAllocationRevision(TimeStampedModel):
+    class EventType(models.TextChoices):
+        CREATED = "created", "Создано"
+        REVISED = "revised", "Изменено"
+        CLOSED = "closed", "Закрыто"
+        LEGACY_IMPORT = "legacy_import", "Перенесено из прежней модели"
+
+    class ActorRole(models.TextChoices):
+        DIRECTOR = "director", "Руководитель"
+        LEGACY = "legacy", "Автор неизвестен"
+
+    staff_allocation = models.ForeignKey(
+        FundingStaffAllocation,
+        verbose_name="распределение специалисту",
+        on_delete=models.PROTECT,
+        related_name="revisions",
+    )
+    revision_number = models.PositiveIntegerField("номер редакции")
+    event_type = models.CharField("действие", max_length=20, choices=EventType.choices)
+    allocated_sessions = models.PositiveIntegerField("выделено занятий", default=0)
+    session_pay_amount = models.DecimalField(
+        "стоимость занятия специалисту",
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    starts_on = models.DateField("действует с", null=True, blank=True)
+    ends_on = models.DateField("действует по", null=True, blank=True)
+    note = models.TextField("примечание", blank=True)
+    lifecycle_status = models.CharField(
+        "статус плановой позиции",
+        max_length=20,
+        choices=FundingStaffAllocation.LifecycleStatus.choices,
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="решение зафиксировал",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="funding_staff_allocation_revisions",
+    )
+    actor_role_snapshot = models.CharField(
+        "роль на момент решения",
+        max_length=20,
+        choices=ActorRole.choices,
+    )
+    reason = models.TextField("основание")
+    supersedes = models.ForeignKey(
+        "self",
+        verbose_name="предыдущая редакция",
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name="superseded_by",
+    )
+    decided_at = models.DateTimeField("время решения", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "редакция распределения грантовой квоты"
+        verbose_name_plural = "редакции распределений грантовых квот"
+        ordering = ["staff_allocation_id", "-revision_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["staff_allocation", "revision_number"],
+                name="unique_funding_staff_revision_number",
+            ),
+            models.UniqueConstraint(
+                fields=["supersedes"],
+                condition=Q(supersedes__isnull=False),
+                name="unique_funding_staff_revision_successor",
+            ),
+            models.CheckConstraint(
+                condition=Q(revision_number__gte=1),
+                name="funding_staff_revision_number_positive",
+            ),
+            models.CheckConstraint(
+                condition=Q(session_pay_amount__isnull=True) | Q(session_pay_amount__gte=0),
+                name="funding_staff_revision_pay_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=Q(starts_on__isnull=True)
+                | Q(ends_on__isnull=True)
+                | Q(ends_on__gte=models.F("starts_on")),
+                name="funding_staff_revision_dates_order",
+            ),
+            models.CheckConstraint(
+                condition=Q(lifecycle_status="active") | Q(ends_on__isnull=False),
+                name="funding_staff_revision_closed_has_end",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type="legacy_import",
+                        actor__isnull=True,
+                        actor_role_snapshot="legacy",
+                        decided_at__isnull=True,
+                    )
+                    | (
+                        ~Q(event_type="legacy_import")
+                        & Q(
+                            actor__isnull=False,
+                            actor_role_snapshot="director",
+                            decided_at__isnull=False,
+                        )
+                        & ~Q(reason="")
+                    )
+                ),
+                name="funding_staff_revision_actor_matches_event",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type__in=["created", "legacy_import"],
+                        supersedes__isnull=True,
+                    )
+                    | Q(
+                        event_type__in=["revised", "closed"],
+                        supersedes__isnull=False,
+                    )
+                ),
+                name="funding_staff_revision_chain_matches_event",
+            ),
+            models.CheckConstraint(
+                condition=~Q(event_type="closed") | Q(lifecycle_status="closed"),
+                name="funding_staff_closed_event_has_closed_status",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["staff_allocation", "-revision_number"]),
+            models.Index(fields=["actor", "-created_at"]),
+        ]
+
+    def clean(self) -> None:
+        if self.reason is not None:
+            self.reason = self.reason.strip()
+        if self.event_type != self.EventType.LEGACY_IMPORT and len(self.reason) < 5:
+            raise ValidationError({"reason": "Укажите содержательное основание (минимум 5 символов)."})
+        if self.supersedes_id and self.supersedes.staff_allocation_id != self.staff_allocation_id:
+            raise ValidationError(
+                {"supersedes": "Предыдущая редакция должна относиться к тому же распределению."}
+            )
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError(
+                "Редакцию распределения нельзя изменять. Создайте следующую редакцию."
+            )
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Редакцию распределения нельзя удалить.")
+
+    def __str__(self) -> str:
+        return f"{self.staff_allocation} / редакция {self.revision_number}"
 
 
 class BalanceAccount(TimeStampedModel, SoftDeleteMixin):
@@ -2821,6 +3219,14 @@ class PayrollAccrual(TimeStampedModel):
         StaffCompensationRule,
         verbose_name="правило начисления",
         on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payroll_accruals",
+    )
+    grant_allocation_revision = models.ForeignKey(
+        FundingStaffAllocationRevision,
+        verbose_name="редакция грантовой ставки",
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="payroll_accruals",

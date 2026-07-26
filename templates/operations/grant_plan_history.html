@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>{{ title }}</h1>
+    <p>{{ subtitle }}</p>
+  </div>
+  <a class="button-link secondary" href="{{ back_url }}">
+    <i class="bi bi-arrow-left" aria-hidden="true"></i>
+    Назад
+  </a>
+</section>
+
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Редакция</th>
+          <th>Решение</th>
+          <th>Период</th>
+          <th class="text-end">Занятия</th>
+          {% if history_kind == "staff" %}
+            <th class="text-end">Ставка</th>
+          {% endif %}
+          <th>Автор</th>
+          <th>Основание</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for revision in revisions %}
+          <tr>
+            <td data-label="Редакция">
+              <strong>№{{ revision.revision_number }}</strong>
+              {% if revision.pk == current_revision_id %}
+                <span class="badge text-bg-primary ms-1">Текущая</span>
+              {% endif %}
+              <div class="small text-secondary">{{ revision.get_lifecycle_status_display }}</div>
+            </td>
+            <td data-label="Решение">
+              {{ revision.get_event_type_display }}
+              <div class="small text-secondary">
+                {% if revision.decided_at %}
+                  {{ revision.decided_at|date:"d.m.Y H:i" }}
+                {% else %}
+                  Legacy-перенос {{ revision.created_at|date:"d.m.Y H:i" }}
+                {% endif %}
+              </div>
+            </td>
+            <td data-label="Период">
+              {{ revision.starts_on|date:"d.m.Y"|default:"—" }}
+              –
+              {{ revision.ends_on|date:"d.m.Y"|default:"—" }}
+            </td>
+            <td class="text-end" data-label="Занятия">
+              {% if history_kind == "staff" %}
+                {{ revision.allocated_sessions }}
+              {% else %}
+                {{ revision.planned_sessions }}
+              {% endif %}
+            </td>
+            {% if history_kind == "staff" %}
+              <td class="text-end" data-label="Ставка">
+                {% if revision.session_pay_amount %}
+                  {{ revision.session_pay_amount }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            {% endif %}
+            <td data-label="Автор">
+              {% if revision.actor %}
+                {{ revision.actor.get_full_name|default:revision.actor.username }}
+              {% else %}
+                Автор неизвестен
+              {% endif %}
+              <div class="small text-secondary">{{ revision.get_actor_role_snapshot_display }}</div>
+            </td>
+            <td data-label="Основание">
+              {{ revision.reason }}
+              {% if revision.note %}
+                <div class="small text-secondary mt-1">{{ revision.note }}</div>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="{% if history_kind == 'staff' %}7{% else %}6{% endif %}">
+              История отсутствует.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

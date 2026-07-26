@@ -6,12 +6,14 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 
 from operations.models import (
     Appointment,
     FundingSource,
     FundingStaffAllocation,
+    FundingStaffAllocationRevision,
     StaffCompensationRule,
     StaffMember,
 )
@@ -24,6 +26,7 @@ class StaffCompensationCalculation:
     has_rate: bool
     rule: StaffCompensationRule | None
     allocation: FundingStaffAllocation | None
+    allocation_revision: FundingStaffAllocationRevision | None
     funding_source: FundingSource | None
     rate_type: str
     rate_amount: Decimal
@@ -95,7 +98,7 @@ def matching_grant_allocation(
 ) -> FundingStaffAllocation | None:
     if not funding_source_id:
         return None
-    return (
+    matches = list(
         FundingStaffAllocation.objects.filter(
             staff_member=staff,
             service_id=service_id,
@@ -104,10 +107,22 @@ def matching_grant_allocation(
         )
         .filter(Q(starts_on__isnull=True) | Q(starts_on__lte=work_date))
         .filter(Q(ends_on__isnull=True) | Q(ends_on__gte=work_date))
-        .select_related("service_quota", "funding_source", "service", "staff_member")
+        .select_related(
+            "service_quota",
+            "funding_source",
+            "service",
+            "staff_member",
+            "current_revision",
+        )
         .order_by("-starts_on", "-service_quota_id", "-pk")
-        .first()
+        [:2]
     )
+    if len(matches) > 1:
+        raise ValidationError(
+            "Для специалиста найдено несколько грантовых распределений на дату занятия. "
+            "Payroll остановлен до исправления периодов."
+        )
+    return matches[0] if matches else None
 
 
 def calculate_staff_compensation(
@@ -125,6 +140,7 @@ def calculate_staff_compensation(
         has_rate=False,
         rule=None,
         allocation=None,
+        allocation_revision=None,
         funding_source=charge_fact.funding_source,
         rate_type=StaffCompensationRule.RateType.PER_SESSION,
         rate_amount=Decimal("0"),
@@ -152,6 +168,7 @@ def calculate_staff_compensation(
             has_rate=True,
             rule=None,
             allocation=allocation,
+            allocation_revision=allocation.current_revision,
             funding_source=charge_fact.funding_source,
             rate_type=StaffCompensationRule.RateType.PER_SESSION,
             rate_amount=rate_amount,
@@ -199,6 +216,7 @@ def calculate_staff_compensation(
         has_rate=True,
         rule=rule,
         allocation=None,
+        allocation_revision=None,
         funding_source=charge_fact.funding_source,
         rate_type=rate_type,
         rate_amount=rate_amount,
