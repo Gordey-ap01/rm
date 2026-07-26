@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from urllib.parse import urlencode
@@ -27,6 +28,7 @@ from operations.forms import (
 from operations.models import (
     Appointment,
     FundingServiceQuota,
+    FundingSource,
     FundingStaffAllocation,
     GrantRecipientAllocation,
     PayrollAccrual,
@@ -40,7 +42,7 @@ from operations.services import (
     scheduling as sched_svc,
 )
 
-from ._common import is_admin_user, is_director
+from ._common import admin_required, director_required, is_admin_user, is_director
 
 
 def _grant_report_url(
@@ -58,6 +60,22 @@ def _grant_report_url(
         }
     )
     return f"{reverse('grant_report')}?{query}"
+
+
+def _require_active_grant_source(funding: FundingSource) -> None:
+    if funding.archived_at is not None:
+        raise PermissionDenied(
+            "Архивный источник доступен только для чтения. "
+            "Для изменения сначала восстановите источник финансирования."
+        )
+
+
+def _csv_text(value: object) -> str:
+    text = "" if value is None else str(value)
+    stripped = text.lstrip()
+    if stripped.startswith(("=", "+", "-", "@", "\t", "\r")):
+        return f"'{text}"
+    return text
 
 
 def _timesheet_date_label(value: date | None) -> str:
@@ -397,24 +415,39 @@ def _grant_report_summary_items(
             },
         ]
 
-    quota_planned = sum(row.planned_sessions for row in report.quota_rows)
-    quota_allocated = sum(row.allocated_sessions for row in report.quota_rows)
-    quota_charged = sum(row.charged_sessions for row in report.quota_rows)
-    quota_remaining = sum(row.remaining_sessions for row in report.quota_rows)
-    return [
+    formal_quota_service_ids = {
+        row.service.pk for row in report.quota_rows if row.quota is not None
+    }
+    summary_quota_rows = [
+        row
+        for row in report.quota_rows
+        if row.quota is not None or row.service.pk not in formal_quota_service_ids
+    ]
+    quota_planned = sum(row.planned_sessions for row in summary_quota_rows)
+    quota_allocated = sum(row.allocated_sessions for row in summary_quota_rows)
+    quota_charged = sum(row.charged_sessions for row in summary_quota_rows)
+    quota_remaining = sum(row.remaining_sessions for row in summary_quota_rows)
+    items = [
         {
             "label": "Источник",
             "value": report.funding.name,
             "hint": f"{_timesheet_period_label(report.date_from, report.date_to)}.",
         },
-        {
-            "label": "Текущий остаток",
-            "value": str(report.totals.current_balance),
-            "hint": (
-                f"Начальный: {report.totals.initial_amount}; "
-                f"пополнения: {report.totals.topups}; списания: {report.totals.charges}."
-            ),
-        },
+    ]
+    for unit_total in report.unit_totals:
+        items.append(
+            {
+                "label": f"Остаток на конец: {unit_total.unit_label.lower()}",
+                "value": str(unit_total.closing_balance),
+                "hint": (
+                    f"На начало: {unit_total.opening_balance}; "
+                    f"поступления: {unit_total.inflows}; расход: {unit_total.outflows}. "
+                    f"На сегодня: {unit_total.current_balance}."
+                ),
+            }
+        )
+    items.extend(
+        [
         {
             "label": "Занятия",
             "value": f"{report.totals.completed_count}/{report.totals.planned_count}",
@@ -435,7 +468,9 @@ def _grant_report_summary_items(
             "value": f"{len(report.certificates)} / {len(report.discounts)}",
             "hint": "Сертификаты / активные скидки в выбранном источнике.",
         },
-    ]
+        ]
+    )
+    return items
 
 
 def _grant_report_attention_items(
@@ -451,7 +486,7 @@ def _grant_report_attention_items(
         ]
 
     items: list[dict[str, str]] = []
-    negative_accounts = sum(1 for row in report.rows if row.current_balance < 0)
+    negative_accounts = sum(1 for row in report.rows if row.closing_balance < 0)
     unallocated_sessions = sum(
         max(row.planned_sessions - row.allocated_sessions, 0)
         for row in report.quota_rows
@@ -467,10 +502,26 @@ def _grant_report_attention_items(
         for row in report.quota_rows
         if row.planned_sessions > 0 and row.remaining_sessions == 0
     )
+    overrun_sessions = sum(
+        abs(row.remaining_sessions)
+        for row in report.quota_rows
+        if row.remaining_sessions < 0
+    )
     overdrawn_recipients = sum(
         1 for row in report.recipient_allocation_rows if row.remaining_sessions < 0
     )
 
+    if report.quota_missing_debit_count:
+        items.append(
+            {
+                "tone": "danger",
+                "title": "Есть списания без проводки",
+                "detail": (
+                    "Решение «Списать» не подтверждено ledger-проводкой для "
+                    f"{report.quota_missing_debit_count} занятий. В факт квоты они не включены."
+                ),
+            }
+        )
     if negative_accounts:
         items.append(
             {
@@ -501,6 +552,14 @@ def _grant_report_attention_items(
                 "tone": "danger",
                 "title": "Получатели ушли в минус",
                 "detail": f"Выделений с отрицательным остатком: {overdrawn_recipients}.",
+            }
+        )
+    if overrun_sessions:
+        items.append(
+            {
+                "tone": "danger",
+                "title": "Факт превышает квоту",
+                "detail": f"Сверх плана списано: {overrun_sessions} занятий.",
             }
         )
     if not report.quota_rows:
@@ -830,12 +889,29 @@ def payroll_sheet_detail(request, pk: int):
     )
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@admin_required
 def grant_report(request, pk: int | None = None):
-    form = GrantReportFilterForm(request.GET or None)
+    filter_data = request.GET.copy()
+    selected_funding = None
+    if pk is not None:
+        funding = get_object_or_404(FundingSource.all_objects, pk=pk)
+        selected_funding = funding
+        today = timezone.localdate()
+        filter_data["funding"] = str(funding.pk)
+        filter_data.setdefault(
+            "date_from",
+            (funding.starts_on or today.replace(month=1, day=1)).isoformat(),
+        )
+        filter_data.setdefault(
+            "date_to",
+            (funding.ends_on or today.replace(month=12, day=31)).isoformat(),
+        )
+    form = GrantReportFilterForm(filter_data or None)
     report = None
-    if form.is_valid():
+    form_is_valid = form.is_valid()
+    if selected_funding is None and form.is_bound:
+        selected_funding = form.cleaned_data.get("funding")
+    if form_is_valid:
         try:
             report = reports_svc.grant_report(
                 form.cleaned_data["funding"],
@@ -849,33 +925,87 @@ def grant_report(request, pk: int | None = None):
         response = HttpResponse(content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = f'attachment; filename="grant_{report.funding.pk}.csv"'
         response.write("\ufeff")
-        response.write("Счёт;Начальный;Пополнения;Списания;Текущий;Занятий\n")
+        writer = csv.writer(response, delimiter=";", lineterminator="\n")
+        writer.writerow(
+            [
+                "Счёт",
+                "Единица",
+                "На начало",
+                "Поступления",
+                "Расход",
+                "На конец периода",
+                "На сегодня",
+                "Занятий",
+            ]
+        )
         for row in report.rows:
-            response.write(
-                f"{row.account};{row.initial_amount};{row.topups};{row.charges};"
-                f"{row.current_balance};{row.appointments_count}\n"
+            writer.writerow(
+                [
+                    _csv_text(row.account),
+                    row.account.get_unit_display(),
+                    row.opening_balance,
+                    row.inflows,
+                    row.outflows,
+                    row.closing_balance,
+                    row.current_balance,
+                    row.appointments_count,
+                ]
+            )
+        for total in report.unit_totals:
+            writer.writerow(
+                [
+                    "Итого",
+                    total.unit_label,
+                    total.opening_balance,
+                    total.inflows,
+                    total.outflows,
+                    total.closing_balance,
+                    total.current_balance,
+                    total.appointments_count,
+                ]
             )
         if report.quota_rows:
-            response.write("\nКвоты по услугам\n")
-            response.write("Услуга;План;Распределено;Факт списано;Остаток\n")
+            writer.writerow([])
+            writer.writerow(["Квоты по услугам"])
+            writer.writerow(["Услуга", "План", "Распределено", "Факт списано", "Остаток"])
             for row in report.quota_rows:
-                response.write(
-                    f"{row.service};{row.planned_sessions};{row.allocated_sessions};"
-                    f"{row.charged_sessions};{row.remaining_sessions}\n"
+                writer.writerow(
+                    [
+                        _csv_text(row.service),
+                        row.planned_sessions,
+                        row.allocated_sessions,
+                        row.charged_sessions,
+                        row.remaining_sessions,
+                    ]
                 )
                 for staff_row in row.staff_rows:
-                    response.write(
-                        f"  {staff_row.staff_member};{staff_row.allocated_sessions};"
-                        f"{staff_row.charged_sessions};{staff_row.remaining_sessions};"
-                        f"{staff_row.session_pay_amount or ''}\n"
+                    writer.writerow(
+                        [
+                            _csv_text(f"  {staff_row.staff_member}"),
+                            staff_row.allocated_sessions,
+                            staff_row.charged_sessions,
+                            staff_row.remaining_sessions,
+                            (
+                                staff_row.session_pay_amount
+                                if staff_row.session_pay_amount is not None
+                                else ""
+                            ),
+                        ]
                     )
         if report.recipient_allocation_rows:
-            response.write("\nВыделения получателям\n")
-            response.write("Получатель;Услуга;Выделено;Списано;Остаток;Счет\n")
+            writer.writerow([])
+            writer.writerow(["Выделения получателям"])
+            writer.writerow(["Получатель", "Услуга", "Выделено", "Списано", "Остаток", "Счет"])
             for row in report.recipient_allocation_rows:
-                response.write(
-                    f"{row.child};{row.service};{row.allocated_sessions};"
-                    f"{row.charged_sessions};{row.remaining_sessions};{row.balance_account}\n"
+                writer.writerow(
+                    [
+                        _csv_text(row.child),
+                        _csv_text(row.service),
+                        row.allocated_sessions,
+                        row.charged_sessions,
+                        row.remaining_sessions,
+                        _csv_text(row.balance_account),
+                    ]
                 )
         return response
 
@@ -888,12 +1018,15 @@ def grant_report(request, pk: int | None = None):
             "funding_id": pk,
             "grant_summary_items": _grant_report_summary_items(report),
             "grant_attention_items": _grant_report_attention_items(report),
+            "can_manage_grants": bool(
+                is_director(request.user)
+                and (selected_funding is None or selected_funding.archived_at is None)
+            ),
         },
     )
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@director_required
 def funding_service_quota_create(request):
     initial = {
         "funding_source": request.GET.get("funding") or None,
@@ -934,13 +1067,13 @@ def funding_service_quota_create(request):
     )
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@director_required
 def funding_service_quota_edit(request, pk: int):
     quota = get_object_or_404(
         FundingServiceQuota.objects.select_related("funding_source", "service"),
         pk=pk,
     )
+    _require_active_grant_source(quota.funding_source)
     if request.method == "POST":
         form = FundingServiceQuotaQuickForm(request.POST, instance=quota)
         if form.is_valid():
@@ -979,13 +1112,13 @@ def funding_service_quota_edit(request, pk: int):
     )
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@director_required
 def funding_service_quota_delete(request, pk: int):
     quota = get_object_or_404(
         FundingServiceQuota.objects.select_related("funding_source", "service"),
         pk=pk,
     )
+    _require_active_grant_source(quota.funding_source)
     redirect_url = _grant_report_url(
         quota.funding_source_id,
         date_from=quota.starts_on,
@@ -1005,8 +1138,7 @@ def funding_service_quota_delete(request, pk: int):
     return redirect(redirect_url)
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@director_required
 def funding_staff_allocation_create(request):
     initial = {
         "service_quota": request.GET.get("quota") or None,
@@ -1052,8 +1184,7 @@ def funding_staff_allocation_create(request):
     )
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@director_required
 def funding_staff_allocation_edit(request, pk: int):
     allocation = get_object_or_404(
         FundingStaffAllocation.objects.select_related(
@@ -1061,6 +1192,7 @@ def funding_staff_allocation_edit(request, pk: int):
         ),
         pk=pk,
     )
+    _require_active_grant_source(allocation.funding_source)
     if request.method == "POST":
         form = FundingStaffAllocationQuickForm(request.POST, instance=allocation)
         if form.is_valid():
@@ -1099,13 +1231,13 @@ def funding_staff_allocation_edit(request, pk: int):
     )
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@director_required
 def funding_staff_allocation_delete(request, pk: int):
     allocation = get_object_or_404(
         FundingStaffAllocation.objects.select_related("funding_source", "service", "staff_member"),
         pk=pk,
     )
+    _require_active_grant_source(allocation.funding_source)
     redirect_url = _grant_report_url(
         allocation.funding_source_id,
         date_from=allocation.starts_on,
@@ -1118,8 +1250,7 @@ def funding_staff_allocation_delete(request, pk: int):
     return redirect(redirect_url)
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@director_required
 def grant_recipient_allocation_create(request):
     initial = {
         "funding_source": request.GET.get("funding") or None,
@@ -1164,8 +1295,7 @@ def grant_recipient_allocation_create(request):
     )
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@director_required
 def grant_recipient_allocation_edit(request, pk: int):
     allocation = get_object_or_404(
         GrantRecipientAllocation.objects.select_related(
@@ -1173,6 +1303,7 @@ def grant_recipient_allocation_edit(request, pk: int):
         ),
         pk=pk,
     )
+    _require_active_grant_source(allocation.funding_source)
     if request.method == "POST":
         form = GrantRecipientAllocationQuickForm(request.POST, instance=allocation)
         if form.is_valid():
@@ -1211,13 +1342,13 @@ def grant_recipient_allocation_edit(request, pk: int):
     )
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@director_required
 def grant_recipient_allocation_delete(request, pk: int):
     allocation = get_object_or_404(
         GrantRecipientAllocation.objects.select_related("funding_source"),
         pk=pk,
     )
+    _require_active_grant_source(allocation.funding_source)
     redirect_url = _grant_report_url(
         allocation.funding_source_id,
         date_from=allocation.valid_from,

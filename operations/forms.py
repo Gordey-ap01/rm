@@ -3693,7 +3693,7 @@ class PayrollPayoutRecordForm(forms.Form):
 class GrantReportFilterForm(forms.Form):
     funding: Any = forms.ModelChoiceField(
         label="Источник финансирования",
-        queryset=FundingSource.objects.filter(archived_at__isnull=True).order_by("name"),
+        queryset=FundingSource.all_objects.order_by("name"),
     )
     date_from = forms.DateField(label="Дата начала", widget=DATE_INPUT)
     date_to = forms.DateField(label="Дата окончания", widget=DATE_INPUT)
@@ -3788,9 +3788,11 @@ class FundingStaffAllocationQuickForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["service_quota"].queryset = FundingServiceQuota.objects.select_related(
-            "funding_source", "service"
-        ).order_by("funding_source__name", "service__name", "starts_on")
+        self.fields["service_quota"].queryset = (
+            FundingServiceQuota.objects.filter(funding_source__archived_at__isnull=True)
+            .select_related("funding_source", "service")
+            .order_by("funding_source__name", "service__name", "starts_on")
+        )
         self.fields["service_quota"].required = False
         self.fields["funding_source"].queryset = FundingSource.objects.filter(
             archived_at__isnull=True

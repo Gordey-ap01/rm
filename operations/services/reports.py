@@ -8,7 +8,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
 
-from django.db.models import Count, Q, Sum
+from django.db.models import Case, Count, DateTimeField, F, Prefetch, Q, Sum, When
 from django.utils import timezone
 
 from operations.models import (
@@ -419,15 +419,41 @@ def timesheet(staff: StaffMember, date_from: date, date_to: date) -> Timesheet:
 @dataclass
 class GrantReportRow:
     account: BalanceAccount
-    initial_amount: Decimal
-    topups: Decimal
-    charges: Decimal
+    opening_balance: Decimal
+    inflows: Decimal
+    outflows: Decimal
+    closing_balance: Decimal
     current_balance: Decimal
     appointments_count: int
     planned_count: int = 0
     completed_count: int = 0
     discount_count: int = 0
     certificate_count: int = 0
+
+
+@dataclass
+class GrantReportUnitTotals:
+    unit: str
+    unit_label: str
+    opening_balance: Decimal
+    inflows: Decimal
+    outflows: Decimal
+    closing_balance: Decimal
+    current_balance: Decimal
+    appointments_count: int
+    planned_count: int
+    completed_count: int
+    discount_count: int
+    certificate_count: int
+
+
+@dataclass
+class GrantReportTotals:
+    appointments_count: int
+    planned_count: int
+    completed_count: int
+    discount_count: int
+    certificate_count: int
 
 
 @dataclass
@@ -468,11 +494,13 @@ class GrantReport:
     date_from: date
     date_to: date
     rows: list[GrantReportRow]
-    totals: GrantReportRow
+    totals: GrantReportTotals
+    unit_totals: list[GrantReportUnitTotals]
     certificates: list[Certificate] = field(default_factory=list)
     discounts: list[Discount] = field(default_factory=list)
     quota_rows: list[GrantQuotaRow] = field(default_factory=list)
     recipient_allocation_rows: list[GrantRecipientAllocationRow] = field(default_factory=list)
+    quota_missing_debit_count: int = 0
 
 
 GRANT_REPORT_PLANNED_STATUSES = {
@@ -480,6 +508,8 @@ GRANT_REPORT_PLANNED_STATUSES = {
     Appointment.Status.PROPOSED,
     Appointment.Status.DRAFT,
     Appointment.Status.RESERVED,
+    Appointment.Status.COMPLETED,
+    Appointment.Status.NO_SHOW,
 }
 
 
@@ -518,6 +548,73 @@ def _work_date_matches(
     if starts_on and work_date < starts_on:
         return False
     return not (ends_on and work_date > ends_on)
+
+
+def _ledger_effective_at_expression() -> Case:
+    return Case(
+        When(
+            entry_type=LedgerEntry.EntryType.DEBIT,
+            appointment_participant__isnull=False,
+            then=F("appointment_participant__starts_at_snapshot"),
+        ),
+        When(
+            entry_type=LedgerEntry.EntryType.DEBIT,
+            appointment__isnull=False,
+            then=F("appointment__starts_at"),
+        ),
+        default=F("created_at"),
+        output_field=DateTimeField(),
+    )
+
+
+def _account_period_balance_deltas(
+    funding: FundingSource,
+    *,
+    start_dt: datetime,
+    end_dt: datetime,
+) -> dict[int, dict[str, Decimal | None]]:
+    rows = (
+        LedgerEntry.objects.filter(account__funding_source=funding)
+        .alias(grant_effective_at=_ledger_effective_at_expression())
+        .values("account_id")
+        .annotate(
+            current_delta=Sum("amount"),
+            opening_delta=Sum(
+                "amount",
+                filter=Q(grant_effective_at__lt=start_dt),
+            ),
+            inflows=Sum(
+                "amount",
+                filter=Q(
+                    grant_effective_at__gte=start_dt,
+                    grant_effective_at__lte=end_dt,
+                    amount__gt=0,
+                ),
+            ),
+            outflow_delta=Sum(
+                "amount",
+                filter=Q(
+                    grant_effective_at__gte=start_dt,
+                    grant_effective_at__lte=end_dt,
+                    amount__lt=0,
+                ),
+            ),
+        )
+    )
+    return {row["account_id"]: row for row in rows}
+
+
+def _account_period_balances(
+    account: BalanceAccount,
+    balance_deltas: dict[int, dict[str, Decimal | None]],
+) -> tuple[Decimal, Decimal, Decimal, Decimal, Decimal]:
+    deltas = balance_deltas.get(account.pk, {})
+    opening = account.initial_amount + (deltas.get("opening_delta") or Decimal("0"))
+    inflows = deltas.get("inflows") or Decimal("0")
+    outflows = abs(deltas.get("outflow_delta") or Decimal("0"))
+    current = account.initial_amount + (deltas.get("current_delta") or Decimal("0"))
+    closing = opening + inflows - outflows
+    return opening, inflows, outflows, closing, current
 
 
 def _charged_appointment_ids_for_quota(
@@ -560,7 +657,7 @@ def _grant_quota_rows(
     date_to: date,
     start_dt: datetime,
     end_dt: datetime,
-) -> list[GrantQuotaRow]:
+) -> tuple[list[GrantQuotaRow], int]:
     quotas = list(
         FundingServiceQuota.objects.filter(funding_source=funding)
         .filter(Q(starts_on__isnull=True) | Q(starts_on__lte=date_to))
@@ -579,7 +676,11 @@ def _grant_quota_rows(
     service_ids = {quota.service_id for quota in quotas}
     service_ids.update(allocation.service_id for allocation in direct_allocations)
     if not service_ids:
-        return []
+        return [], 0
+
+    participant_qs = AppointmentParticipant.objects.select_related(
+        "billing_account__funding_source"
+    )
 
     assignments = list(
         AppointmentStaffAssignment.objects.filter(
@@ -588,10 +689,24 @@ def _grant_quota_rows(
             appointment__service_id__in=service_ids,
         )
         .select_related("appointment", "appointment__service", "staff_member")
-        .prefetch_related("appointment__participants__billing_account__funding_source")
+        .prefetch_related(
+            Prefetch(
+                "appointment__participants",
+                queryset=participant_qs,
+            )
+        )
         .order_by("starts_at_snapshot", "appointment_id")
     )
+    appointment_ids = {assignment.appointment_id for assignment in assignments}
+    debited_appointment_ids = set(
+        LedgerEntry.objects.filter(
+            account__funding_source=funding,
+            appointment_id__in=appointment_ids,
+            entry_type=LedgerEntry.EntryType.DEBIT,
+        ).values_list("appointment_id", flat=True)
+    )
     charged_assignments: list[AppointmentStaffAssignment] = []
+    decision_charged_appointment_ids: set[int] = set()
     for assignment in assignments:
         appointment = assignment.appointment
         if (
@@ -601,6 +716,9 @@ def _grant_quota_rows(
                 include_ledger=False,
             ).funding_source_ids
         ):
+            continue
+        decision_charged_appointment_ids.add(appointment.pk)
+        if appointment.pk not in debited_appointment_ids:
             continue
         charged_assignments.append(assignment)
 
@@ -620,7 +738,7 @@ def _grant_quota_rows(
                     staff_member=allocation.staff_member,
                     allocated_sessions=allocation.allocated_sessions,
                     charged_sessions=charged_sessions,
-                    remaining_sessions=max(allocation.allocated_sessions - charged_sessions, 0),
+                    remaining_sessions=allocation.allocated_sessions - charged_sessions,
                     session_pay_amount=allocation.session_pay_amount,
                 )
             )
@@ -633,7 +751,7 @@ def _grant_quota_rows(
                 planned_sessions=quota.planned_sessions,
                 allocated_sessions=allocated_sessions,
                 charged_sessions=charged_sessions,
-                remaining_sessions=max(quota.planned_sessions - charged_sessions, 0),
+                remaining_sessions=quota.planned_sessions - charged_sessions,
                 staff_rows=staff_rows,
             )
         )
@@ -641,10 +759,7 @@ def _grant_quota_rows(
     direct_by_service: dict[int, list[FundingStaffAllocation]] = defaultdict(list)
     for allocation in direct_allocations:
         direct_by_service[allocation.service_id].append(allocation)
-    quota_service_ids = {quota.service_id for quota in quotas}
-    for service_id, allocations in direct_by_service.items():
-        if service_id in quota_service_ids:
-            continue
+    for _service_id, allocations in direct_by_service.items():
         service = allocations[0].service
         staff_rows = []
         for allocation in allocations:
@@ -655,7 +770,7 @@ def _grant_quota_rows(
                     staff_member=allocation.staff_member,
                     allocated_sessions=allocation.allocated_sessions,
                     charged_sessions=charged_sessions,
-                    remaining_sessions=max(allocation.allocated_sessions - charged_sessions, 0),
+                    remaining_sessions=allocation.allocated_sessions - charged_sessions,
                     session_pay_amount=allocation.session_pay_amount,
                 )
             )
@@ -670,12 +785,12 @@ def _grant_quota_rows(
                 planned_sessions=allocated_sessions,
                 allocated_sessions=allocated_sessions,
                 charged_sessions=charged_sessions,
-                remaining_sessions=max(allocated_sessions - charged_sessions, 0),
+                remaining_sessions=allocated_sessions - charged_sessions,
                 staff_rows=staff_rows,
             )
         )
 
-    return rows
+    return rows, len(decision_charged_appointment_ids - debited_appointment_ids)
 
 
 def _grant_recipient_allocation_rows(
@@ -685,6 +800,7 @@ def _grant_recipient_allocation_rows(
     date_to: date,
     start_dt: datetime,
     end_dt: datetime,
+    closing_balances: dict[int, Decimal],
 ) -> list[GrantRecipientAllocationRow]:
     allocations = list(
         GrantRecipientAllocation.objects.filter(funding_source=funding)
@@ -693,6 +809,31 @@ def _grant_recipient_allocation_rows(
         .select_related("child", "service", "balance_account")
         .order_by("service__name", "child__last_name", "child__first_name", "pk")
     )
+    account_ids = {allocation.balance_account_id for allocation in allocations}
+    service_ids = {allocation.service_id for allocation in allocations}
+    period_debits: dict[tuple[int, int], list[tuple[datetime, Decimal]]] = defaultdict(list)
+    if account_ids and service_ids:
+        debit_rows = (
+            LedgerEntry.objects.filter(
+                account_id__in=account_ids,
+                appointment__service_id__in=service_ids,
+                entry_type=LedgerEntry.EntryType.DEBIT,
+            )
+            .annotate(grant_effective_at=_ledger_effective_at_expression())
+            .filter(
+                grant_effective_at__gte=start_dt,
+                grant_effective_at__lte=end_dt,
+            )
+            .values_list(
+                "account_id",
+                "appointment__service_id",
+                "grant_effective_at",
+                "amount",
+            )
+        )
+        for account_id, service_id, effective_at, amount in debit_rows:
+            period_debits[(account_id, service_id)].append((effective_at, amount))
+
     rows: list[GrantRecipientAllocationRow] = []
     for allocation in allocations:
         charge_start = start_dt
@@ -707,15 +848,17 @@ def _grant_recipient_allocation_rows(
                 charge_end,
                 timezone.make_aware(datetime.combine(allocation.valid_until, time.max)),
             )
-        ledger_qs = allocation.balance_account.ledger_entries.none()
-        if charge_start <= charge_end:
-            ledger_qs = allocation.balance_account.ledger_entries.filter(
-                created_at__gte=charge_start,
-                created_at__lte=charge_end,
-                entry_type=LedgerEntry.EntryType.DEBIT,
-                appointment__service=allocation.service,
-            )
-        charged = ledger_qs.aggregate(total=Sum("amount"))["total"] or Decimal("0")
+        charged = sum(
+            (
+                amount
+                for effective_at, amount in period_debits.get(
+                    (allocation.balance_account_id, allocation.service_id),
+                    [],
+                )
+                if charge_start <= effective_at <= charge_end
+            ),
+            Decimal("0"),
+        )
         rows.append(
             GrantRecipientAllocationRow(
                 allocation=allocation,
@@ -724,72 +867,100 @@ def _grant_recipient_allocation_rows(
                 balance_account=allocation.balance_account,
                 allocated_sessions=allocation.allocated_sessions,
                 charged_sessions=abs(charged),
-                remaining_sessions=allocation.balance_account.current_balance,
+                remaining_sessions=closing_balances.get(
+                    allocation.balance_account_id,
+                    allocation.balance_account.initial_amount,
+                ),
             )
         )
     return rows
 
 
-def _account_appointment_statuses(
-    account: BalanceAccount,
+def _appointment_statuses_by_account(
+    account_ids: set[int],
     *,
     start_dt: datetime,
     end_dt: datetime,
-) -> dict[int, str]:
-    statuses_by_appointment = dict(
-        account.appointments.filter(
-            starts_at__gte=start_dt,
-            starts_at__lte=end_dt,
-        ).values_list("id", "status")
-    )
+) -> dict[int, dict[int, str]]:
+    statuses_by_account: dict[int, dict[int, str]] = defaultdict(dict)
+    appointment_rows = Appointment.objects.filter(
+        billing_account_id__in=account_ids,
+        starts_at__gte=start_dt,
+        starts_at__lte=end_dt,
+    ).values_list("billing_account_id", "id", "status")
+    for account_id, appointment_id, status in appointment_rows:
+        statuses_by_account[account_id][appointment_id] = status
+
     participant_rows = AppointmentParticipant.objects.filter(
-        billing_account=account,
+        billing_account_id__in=account_ids,
         starts_at_snapshot__gte=start_dt,
         starts_at_snapshot__lte=end_dt,
-    ).values_list("appointment_id", "appointment_status")
-    for appointment_id, status in participant_rows:
-        statuses_by_appointment[appointment_id] = status
-    return statuses_by_appointment
+    ).values_list("billing_account_id", "appointment_id", "appointment_status")
+    for account_id, appointment_id, status in participant_rows:
+        statuses_by_account[account_id][appointment_id] = status
+    return statuses_by_account
 
 
 def grant_report(funding: FundingSource, date_from: date, date_to: date) -> GrantReport:
-    """Грант-отчёт: по каждому счёту источника — начальный остаток, пополнения, списания, текущий.
-
-    Добавлены план vs факт (запланировано / проведено), скидки и сертификаты.
-    """
+    """Build period balances, quota utilization and recipient grant allocations."""
     tz = timezone.get_current_timezone()
     start_dt = timezone.make_aware(datetime.combine(date_from, time.min), tz)
     end_dt = timezone.make_aware(datetime.combine(date_to, time.max), tz)
 
     accounts = list(
-        BalanceAccount.objects.filter(funding_source=funding).select_related("child", "service")
+        BalanceAccount.all_objects.filter(funding_source=funding).select_related(
+            "child", "service"
+        )
     )
+    account_ids = {account.pk for account in accounts}
+    child_ids = {account.child_id for account in accounts}
+    balance_deltas = _account_period_balance_deltas(
+        funding,
+        start_dt=start_dt,
+        end_dt=end_dt,
+    )
+    appointment_statuses_by_account = _appointment_statuses_by_account(
+        account_ids,
+        start_dt=start_dt,
+        end_dt=end_dt,
+    )
+    certificates = list(Certificate.objects.filter(child_id__in=child_ids))
+    discounts = list(Discount.objects.filter(child_id__in=child_ids, is_active=True))
+    certificate_ids_by_child: dict[int, set[int]] = defaultdict(set)
+    discount_ids_by_child: dict[int, set[int]] = defaultdict(set)
+    for certificate in certificates:
+        certificate_ids_by_child[certificate.child_id].add(certificate.pk)
+    for discount in discounts:
+        discount_ids_by_child[discount.child_id].add(discount.pk)
+
     rows: list[GrantReportRow] = []
-    totals: dict[str, Any] = {
-        "initial": Decimal("0"),
-        "topups": Decimal("0"),
-        "charges": Decimal("0"),
-        "current": Decimal("0"),
+    closing_balances: dict[int, Decimal] = {}
+    totals: dict[str, int] = {
         "appointments": 0,
         "planned": 0,
         "completed": 0,
-        "discounts": 0,
-        "certificates": 0,
     }
+    unit_totals: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {
+            "opening": Decimal("0"),
+            "inflows": Decimal("0"),
+            "outflows": Decimal("0"),
+            "closing": Decimal("0"),
+            "current": Decimal("0"),
+            "appointments": 0,
+            "planned": 0,
+            "completed": 0,
+            "discount_ids": set(),
+            "certificate_ids": set(),
+        }
+    )
     for account in accounts:
-        credits = account.ledger_entries.filter(
-            created_at__gte=start_dt,
-            created_at__lte=end_dt,
-            entry_type=LedgerEntry.EntryType.CREDIT,
-        ).aggregate(s=Sum("amount"))["s"] or Decimal("0")
-        debits = account.ledger_entries.filter(
-            created_at__gte=start_dt, created_at__lte=end_dt, entry_type=LedgerEntry.EntryType.DEBIT
-        ).aggregate(s=Sum("amount"))["s"] or Decimal("0")
-        appointment_statuses = _account_appointment_statuses(
+        opening, inflows, outflows, closing, current = _account_period_balances(
             account,
-            start_dt=start_dt,
-            end_dt=end_dt,
+            balance_deltas,
         )
+        closing_balances[account.pk] = closing
+        appointment_statuses = appointment_statuses_by_account.get(account.pk, {})
         appointments_count = len(appointment_statuses)
         planned_count = sum(
             1 for status in appointment_statuses.values() if status in GRANT_REPORT_PLANNED_STATUSES
@@ -797,17 +968,17 @@ def grant_report(funding: FundingSource, date_from: date, date_to: date) -> Gran
         completed_count = sum(
             1 for status in appointment_statuses.values() if status == Appointment.Status.COMPLETED
         )
-        current = account.current_balance
-
-        child = account.child
-        discount_count = Discount.objects.filter(child=child, is_active=True).count()
-        certificate_count = Certificate.objects.filter(child=child).count()
+        discount_ids = discount_ids_by_child[account.child_id]
+        certificate_ids = certificate_ids_by_child[account.child_id]
+        discount_count = len(discount_ids)
+        certificate_count = len(certificate_ids)
 
         row = GrantReportRow(
             account=account,
-            initial_amount=account.initial_amount,
-            topups=credits,
-            charges=abs(debits),
+            opening_balance=opening,
+            inflows=inflows,
+            outflows=outflows,
+            closing_balance=closing,
             current_balance=current,
             appointments_count=appointments_count,
             planned_count=planned_count,
@@ -816,25 +987,22 @@ def grant_report(funding: FundingSource, date_from: date, date_to: date) -> Gran
             certificate_count=certificate_count,
         )
         rows.append(row)
-        totals["initial"] += account.initial_amount
-        totals["topups"] += credits
-        totals["charges"] += abs(debits)
-        totals["current"] += current
+        unit_total = unit_totals[account.unit]
+        unit_total["opening"] += opening
+        unit_total["inflows"] += inflows
+        unit_total["outflows"] += outflows
+        unit_total["closing"] += closing
+        unit_total["current"] += current
+        unit_total["appointments"] += appointments_count
+        unit_total["planned"] += planned_count
+        unit_total["completed"] += completed_count
+        unit_total["discount_ids"].update(discount_ids)
+        unit_total["certificate_ids"].update(certificate_ids)
         totals["appointments"] += appointments_count
         totals["planned"] += planned_count
         totals["completed"] += completed_count
-        totals["discounts"] += discount_count
-        totals["certificates"] += certificate_count
 
-    certificates = list(
-        Certificate.objects.filter(child__balance_accounts__funding_source=funding).distinct()
-    )
-    discounts = list(
-        Discount.objects.filter(
-            child__balance_accounts__funding_source=funding, is_active=True
-        ).distinct()
-    )
-    quota_rows = _grant_quota_rows(
+    quota_rows, quota_missing_debit_count = _grant_quota_rows(
         funding,
         date_from=date_from,
         date_to=date_to,
@@ -847,6 +1015,7 @@ def grant_report(funding: FundingSource, date_from: date, date_to: date) -> Gran
         date_to=date_to,
         start_dt=start_dt,
         end_dt=end_dt,
+        closing_balances=closing_balances,
     )
 
     return GrantReport(
@@ -854,20 +1023,36 @@ def grant_report(funding: FundingSource, date_from: date, date_to: date) -> Gran
         date_from=date_from,
         date_to=date_to,
         rows=rows,
-        totals=GrantReportRow(
-            account=None,  # type: ignore[arg-type]
-            initial_amount=totals["initial"],
-            topups=totals["topups"],
-            charges=totals["charges"],
-            current_balance=totals["current"],
+        totals=GrantReportTotals(
             appointments_count=totals["appointments"],
             planned_count=totals["planned"],
             completed_count=totals["completed"],
-            discount_count=totals["discounts"],
-            certificate_count=totals["certificates"],
+            discount_count=len(discounts),
+            certificate_count=len(certificates),
         ),
+        unit_totals=[
+            GrantReportUnitTotals(
+                unit=unit,
+                unit_label=BalanceAccount.Unit(unit).label,
+                opening_balance=values["opening"],
+                inflows=values["inflows"],
+                outflows=values["outflows"],
+                closing_balance=values["closing"],
+                current_balance=values["current"],
+                appointments_count=values["appointments"],
+                planned_count=values["planned"],
+                completed_count=values["completed"],
+                discount_count=len(values["discount_ids"]),
+                certificate_count=len(values["certificate_ids"]),
+            )
+            for unit, values in sorted(
+                unit_totals.items(),
+                key=lambda item: list(BalanceAccount.Unit.values).index(item[0]),
+            )
+        ],
         certificates=certificates,
         discounts=discounts,
         quota_rows=quota_rows,
         recipient_allocation_rows=recipient_allocation_rows,
+        quota_missing_debit_count=quota_missing_debit_count,
     )

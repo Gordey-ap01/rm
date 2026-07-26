@@ -7,11 +7,13 @@
     <h1>Грант-отчёт</h1>
     <p>Остатки, списания, квоты по услугам, распределение между специалистами и выделения получателям.</p>
   </div>
-  <div class="header-actions">
-    <a class="button-link" href="{% url 'funding_service_quota_create' %}{% if request.GET.funding %}?funding={{ request.GET.funding }}{% endif %}">Задать квоту</a>
-    <a class="button-link secondary-button" href="{% url 'funding_staff_allocation_create' %}{% if request.GET.funding %}?funding={{ request.GET.funding }}{% endif %}">Распределить квоту</a>
-    <a class="button-link secondary-button" href="{% url 'grant_recipient_allocation_create' %}{% if request.GET.funding %}?funding={{ request.GET.funding }}{% endif %}">Выделить получателю</a>
-  </div>
+  {% if can_manage_grants %}
+    <div class="header-actions">
+      <a class="button-link" href="{% url 'funding_service_quota_create' %}{% if report %}?funding={{ report.funding.pk }}{% elif request.GET.funding %}?funding={{ request.GET.funding }}{% endif %}">Задать квоту</a>
+      <a class="button-link secondary-button" href="{% url 'funding_staff_allocation_create' %}{% if report %}?funding={{ report.funding.pk }}{% elif request.GET.funding %}?funding={{ request.GET.funding }}{% endif %}">Распределить квоту</a>
+      <a class="button-link secondary-button" href="{% url 'grant_recipient_allocation_create' %}{% if report %}?funding={{ report.funding.pk }}{% elif request.GET.funding %}?funding={{ request.GET.funding }}{% endif %}">Выделить получателю</a>
+    </div>
+  {% endif %}
 </section>
 
 <section class="panel grant-filter-panel">
@@ -71,10 +73,12 @@
       <thead class="table-light">
         <tr>
           <th>Счёт</th>
-          <th class="text-end">Начальный</th>
-          <th class="text-end">Пополнения</th>
-          <th class="text-end">Списания</th>
-          <th class="text-end">Текущий</th>
+          <th>Единица</th>
+          <th class="text-end">На начало</th>
+          <th class="text-end">Поступления</th>
+          <th class="text-end">Расход</th>
+          <th class="text-end">На конец периода</th>
+          <th class="text-end">На сегодня</th>
           <th class="text-end">Занятий</th>
           <th class="text-end">План</th>
           <th class="text-end">Факт</th>
@@ -86,10 +90,12 @@
         {% for row in report.rows %}
           <tr>
             <td data-label="Счёт">{{ row.account }}</td>
-            <td class="text-end" data-label="Начальный">{{ row.initial_amount }}</td>
-            <td class="text-end" data-label="Пополнения">{{ row.topups }}</td>
-            <td class="text-end" data-label="Списания">{{ row.charges }}</td>
-            <td class="text-end fw-semibold" data-label="Текущий">{{ row.current_balance }}</td>
+            <td data-label="Единица">{{ row.account.get_unit_display }}</td>
+            <td class="text-end" data-label="На начало">{{ row.opening_balance }}</td>
+            <td class="text-end" data-label="Поступления">{{ row.inflows }}</td>
+            <td class="text-end" data-label="Расход">{{ row.outflows }}</td>
+            <td class="text-end fw-semibold" data-label="На конец периода">{{ row.closing_balance }}</td>
+            <td class="text-end" data-label="На сегодня">{{ row.current_balance }}</td>
             <td class="text-end" data-label="Занятий">{{ row.appointments_count }}</td>
             <td class="text-end" data-label="План">{{ row.planned_count }}</td>
             <td class="text-end" data-label="Факт">{{ row.completed_count }}</td>
@@ -99,18 +105,22 @@
         {% endfor %}
       </tbody>
       <tfoot class="table-light fw-bold">
-        <tr>
-          <th data-label="Итого">Итого</th>
-          <th class="text-end" data-label="Начальный">{{ report.totals.initial_amount }}</th>
-          <th class="text-end" data-label="Пополнения">{{ report.totals.topups }}</th>
-          <th class="text-end" data-label="Списания">{{ report.totals.charges }}</th>
-          <th class="text-end" data-label="Текущий">{{ report.totals.current_balance }}</th>
-          <th class="text-end" data-label="Занятий">{{ report.totals.appointments_count }}</th>
-          <th class="text-end" data-label="План">{{ report.totals.planned_count }}</th>
-          <th class="text-end" data-label="Факт">{{ report.totals.completed_count }}</th>
-          <th class="text-end" data-label="Скидок">{{ report.totals.discount_count }}</th>
-          <th class="text-end" data-label="Сертификатов">{{ report.totals.certificate_count }}</th>
-        </tr>
+        {% for total in report.unit_totals %}
+          <tr>
+            <th data-label="Итого">Итого</th>
+            <th data-label="Единица">{{ total.unit_label }}</th>
+            <th class="text-end" data-label="На начало">{{ total.opening_balance }}</th>
+            <th class="text-end" data-label="Поступления">{{ total.inflows }}</th>
+            <th class="text-end" data-label="Расход">{{ total.outflows }}</th>
+            <th class="text-end" data-label="На конец периода">{{ total.closing_balance }}</th>
+            <th class="text-end" data-label="На сегодня">{{ total.current_balance }}</th>
+            <th class="text-end" data-label="Занятий">{{ total.appointments_count }}</th>
+            <th class="text-end" data-label="План">{{ total.planned_count }}</th>
+            <th class="text-end" data-label="Факт">{{ total.completed_count }}</th>
+            <th class="text-end" data-label="Скидок">{{ total.discount_count }}</th>
+            <th class="text-end" data-label="Сертификатов">{{ total.certificate_count }}</th>
+          </tr>
+        {% endfor %}
       </tfoot>
     </table>
   </div>
@@ -138,12 +148,15 @@
             <td data-label="Услуга / специалист">
               <div class="grant-report-service-line">
                 <span>{{ quota_row.service.name }}</span>
-                {% if quota_row.quota %}
+                {% if quota_row.quota and can_manage_grants %}
                   <a class="btn btn-sm btn-outline-primary" href="{% url 'funding_staff_allocation_create' %}?quota={{ quota_row.quota.pk }}">Добавить специалиста</a>
-                {% else %}
+                {% elif not quota_row.quota and can_manage_grants %}
                   <a class="btn btn-sm btn-outline-primary" href="{% url 'funding_staff_allocation_create' %}?funding={{ report.funding.pk }}&service={{ quota_row.service.pk }}">Добавить специалиста</a>
                 {% endif %}
               </div>
+              {% if not quota_row.quota %}
+                <div class="small text-secondary">Прямое распределение без квоты</div>
+              {% endif %}
             </td>
             <td class="text-end" data-label="План">{{ quota_row.planned_sessions }}</td>
             <td class="text-end" data-label="Распределено">{{ quota_row.allocated_sessions }}</td>
@@ -151,7 +164,7 @@
             <td class="text-end" data-label="Остаток">{{ quota_row.remaining_sessions }}</td>
             <td class="text-end" data-label="Стоимость специалисту">—</td>
             <td class="text-end text-nowrap grant-report-actions" data-label="Действия">
-              {% if quota_row.quota %}
+              {% if quota_row.quota and can_manage_grants %}
                 <a class="btn btn-sm btn-outline-secondary" href="{% url 'funding_service_quota_edit' quota_row.quota.pk %}">Править</a>
                 <button class="btn btn-sm btn-outline-danger"
                         x-data
@@ -175,15 +188,19 @@
               <td class="text-end" data-label="Остаток">{{ staff_row.remaining_sessions }}</td>
               <td class="text-end" data-label="Стоимость специалисту">{% if staff_row.session_pay_amount %}{{ staff_row.session_pay_amount }}{% else %}—{% endif %}</td>
               <td class="text-end text-nowrap grant-report-actions" data-label="Действия">
-                <a class="btn btn-sm btn-outline-secondary" href="{% url 'funding_staff_allocation_edit' staff_row.allocation.pk %}">Править</a>
-                <button class="btn btn-sm btn-outline-danger"
-                        x-data
-                        @click="if(confirm('Удалить распределение для «{{ staff_row.staff_member.full_name }}»?')) { $el.closest('td').querySelector('form').submit() }">
-                  Удалить
-                </button>
-                <form method="post" action="{% url 'funding_staff_allocation_delete' staff_row.allocation.pk %}" class="d-none">
-                  {% csrf_token %}
-                </form>
+                {% if can_manage_grants %}
+                  <a class="btn btn-sm btn-outline-secondary" href="{% url 'funding_staff_allocation_edit' staff_row.allocation.pk %}">Править</a>
+                  <button class="btn btn-sm btn-outline-danger"
+                          x-data
+                          @click="if(confirm('Удалить распределение для «{{ staff_row.staff_member.full_name }}»?')) { $el.closest('td').querySelector('form').submit() }">
+                    Удалить
+                  </button>
+                  <form method="post" action="{% url 'funding_staff_allocation_delete' staff_row.allocation.pk %}" class="d-none">
+                    {% csrf_token %}
+                  </form>
+                {% else %}
+                  —
+                {% endif %}
               </td>
             </tr>
           {% empty %}
@@ -232,15 +249,19 @@
             </td>
             <td data-label="Счет">{{ row.balance_account }}</td>
             <td class="text-end text-nowrap grant-report-actions" data-label="Действия">
-              <a class="btn btn-sm btn-outline-secondary" href="{% url 'grant_recipient_allocation_edit' row.allocation.pk %}">Править</a>
-              <button class="btn btn-sm btn-outline-danger"
-                      x-data
-                      @click="if(confirm('Удалить выделение для «{{ row.child.full_name }}»?')) { $el.closest('td').querySelector('form').submit() }">
-                Удалить
-              </button>
-              <form method="post" action="{% url 'grant_recipient_allocation_delete' row.allocation.pk %}" class="d-none">
-                {% csrf_token %}
-              </form>
+              {% if can_manage_grants %}
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'grant_recipient_allocation_edit' row.allocation.pk %}">Править</a>
+                <button class="btn btn-sm btn-outline-danger"
+                        x-data
+                        @click="if(confirm('Удалить выделение для «{{ row.child.full_name }}»?')) { $el.closest('td').querySelector('form').submit() }">
+                  Удалить
+                </button>
+                <form method="post" action="{% url 'grant_recipient_allocation_delete' row.allocation.pk %}" class="d-none">
+                  {% csrf_token %}
+                </form>
+              {% else %}
+                —
+              {% endif %}
             </td>
           </tr>
         {% endfor %}

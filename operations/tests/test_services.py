@@ -14,7 +14,9 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db import connection
 from django.test import TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from operations import schedule_validation as schedule_rules
@@ -35,6 +37,7 @@ from operations.models import (
     Child,
     ContractTemplate,
     Counterparty,
+    Discount,
     DonationContract,
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
@@ -5100,7 +5103,7 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(sheet.status, PayrollSheet.Status.APPROVED)
         self.assertEqual(accrual.status, PayrollAccrual.Status.APPROVED)
 
-    def test_grant_report_sums_initial_topups_charges(self):
+    def test_grant_report_separates_period_closing_from_current_balance(self):
         billing_svc.top_up_account(
             self.account,
             amount=Decimal("5"),
@@ -5122,10 +5125,104 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         )
         self.assertEqual(len(report.rows), 1)
         row = report.rows[0]
-        self.assertEqual(row.initial_amount, Decimal("10"))
-        self.assertEqual(row.topups, Decimal("5"))
-        self.assertEqual(row.charges, Decimal("1"))
+        self.assertEqual(row.opening_balance, Decimal("10"))
+        self.assertEqual(row.inflows, Decimal("5"))
+        self.assertEqual(row.outflows, Decimal("0"))
+        self.assertEqual(row.closing_balance, Decimal("15"))
         self.assertEqual(row.current_balance, Decimal("14"))
+
+        service_period_report = reports_svc.grant_report(self.funding, self.day, self.day)
+        service_period_row = service_period_report.rows[0]
+        self.assertEqual(service_period_row.opening_balance, Decimal("15"))
+        self.assertEqual(service_period_row.inflows, Decimal("0"))
+        self.assertEqual(service_period_row.outflows, Decimal("1"))
+        self.assertEqual(service_period_row.closing_balance, Decimal("14"))
+
+    def test_grant_report_includes_signed_corrections_and_transfers(self):
+        correction = LedgerEntry.objects.create(
+            account=self.account,
+            entry_type=LedgerEntry.EntryType.CORRECTION,
+            amount=Decimal("2"),
+            reason="Корректировка гранта",
+            created_by=self.user,
+        )
+        transfer = LedgerEntry.objects.create(
+            account=self.account,
+            entry_type=LedgerEntry.EntryType.TRANSFER,
+            amount=Decimal("-3"),
+            reason="Перенос грантового остатка",
+            created_by=self.user,
+        )
+        effective_at = _local(self.day, time(12, 0))
+        LedgerEntry.objects.filter(pk__in=[correction.pk, transfer.pk]).update(
+            created_at=effective_at
+        )
+
+        report = reports_svc.grant_report(self.funding, self.day, self.day)
+
+        row = report.rows[0]
+        self.assertEqual(row.opening_balance, Decimal("10"))
+        self.assertEqual(row.inflows, Decimal("2"))
+        self.assertEqual(row.outflows, Decimal("3"))
+        self.assertEqual(row.closing_balance, Decimal("9"))
+        self.assertEqual(row.current_balance, Decimal("9"))
+
+    def test_grant_report_never_adds_rubles_to_sessions(self):
+        BalanceAccount.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            unit=BalanceAccount.Unit.MONEY,
+            service_scope=BalanceAccount.ServiceScope.ANY,
+            initial_amount=Decimal("150000"),
+        )
+
+        report = reports_svc.grant_report(self.funding, self.day, self.day)
+
+        totals_by_unit = {row.unit: row for row in report.unit_totals}
+        self.assertEqual(
+            totals_by_unit[BalanceAccount.Unit.SESSIONS].closing_balance,
+            Decimal("10"),
+        )
+        self.assertEqual(
+            totals_by_unit[BalanceAccount.Unit.MONEY].closing_balance,
+            Decimal("150000"),
+        )
+
+    def test_grant_report_keeps_archived_account_in_historical_report(self):
+        self.account.archive()
+
+        report = reports_svc.grant_report(self.funding, self.day, self.day)
+
+        self.assertEqual([row.account.pk for row in report.rows], [self.account.pk])
+
+    def test_grant_report_deduplicates_recipient_benefits_across_accounts(self):
+        BalanceAccount.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            unit=BalanceAccount.Unit.SESSIONS,
+            service_scope=BalanceAccount.ServiceScope.SPECIFIC_SERVICE,
+            service=self.service_log,
+            initial_amount=Decimal("3"),
+        )
+        Discount.objects.create(
+            child=self.child,
+            service=self.service_log,
+            percentage=Decimal("10"),
+        )
+        Certificate.objects.create(
+            child=self.child,
+            funding_source=self.funding,
+            certificate_type=Certificate.CertificateType.OTHER,
+            total_amount=Decimal("1000"),
+            remaining_amount=Decimal("1000"),
+        )
+
+        report = reports_svc.grant_report(self.funding, self.day, self.day)
+
+        self.assertEqual(report.totals.discount_count, 1)
+        self.assertEqual(report.totals.certificate_count, 1)
+        self.assertEqual(report.unit_totals[0].discount_count, 1)
+        self.assertEqual(report.unit_totals[0].certificate_count, 1)
 
     def test_grant_report_counts_group_participant_account_appointments(self):
         second_parent = ParentGuardian.objects.create(
@@ -5169,8 +5266,10 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
 
         row = next(item for item in report.rows if item.account == second_account)
         self.assertEqual(row.appointments_count, 1)
+        self.assertEqual(row.planned_count, 1)
         self.assertEqual(row.completed_count, 1)
-        self.assertEqual(row.charges, Decimal("1"))
+        self.assertEqual(row.outflows, Decimal("1"))
+        self.assertEqual(row.closing_balance, Decimal("4"))
         self.assertEqual(row.current_balance, Decimal("4"))
 
     def test_grant_report_includes_recipient_allocations(self):
@@ -5194,8 +5293,8 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
 
         report = reports_svc.grant_report(
             self.funding,
-            timezone.localdate() - timedelta(days=1),
-            timezone.localdate() + timedelta(days=1),
+            self.day,
+            self.day,
         )
 
         row = report.recipient_allocation_rows[0]
@@ -5301,6 +5400,124 @@ class ReportsServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(staff_row.charged_sessions, 1)
         self.assertEqual(staff_row.remaining_sessions, 9)
         self.assertEqual(staff_row.session_pay_amount, Decimal("500"))
+
+    def test_grant_report_keeps_direct_allocation_next_to_service_quota(self):
+        FundingServiceQuota.objects.create(
+            funding_source=self.funding,
+            service=self.service_log,
+            planned_sessions=300,
+        )
+        direct_allocation = FundingStaffAllocation.objects.create(
+            funding_source=self.funding,
+            service=self.service_log,
+            staff_member=self.staff_a,
+            allocated_sessions=12,
+            session_pay_amount=Decimal("500"),
+        )
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        billing_svc.apply_decision(
+            appointment,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=self.account,
+            amount=Decimal("-1"),
+            actor=self.user,
+        )
+
+        report = reports_svc.grant_report(self.funding, self.day, self.day)
+
+        direct_row = next(row for row in report.quota_rows if row.quota is None)
+        self.assertEqual(direct_row.staff_rows[0].allocation, direct_allocation)
+        self.assertEqual(direct_row.allocated_sessions, 12)
+        self.assertEqual(direct_row.charged_sessions, 1)
+
+    def test_grant_report_excludes_charge_decision_without_debit_from_quota_fact(self):
+        quota = FundingServiceQuota.objects.create(
+            funding_source=self.funding,
+            service=self.service_log,
+            planned_sessions=300,
+        )
+        FundingStaffAllocation.objects.create(
+            service_quota=quota,
+            funding_source=self.funding,
+            service=self.service_log,
+            staff_member=self.staff_a,
+            allocated_sessions=12,
+        )
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        participant = appointment.participants.get(child=self.child)
+        participant.billing_decision = Appointment.BillingDecision.CHARGE
+        participant.billing_account = self.account
+        participant.save(
+            update_fields=["billing_decision", "billing_account", "updated_at"]
+        )
+
+        report = reports_svc.grant_report(self.funding, self.day, self.day)
+
+        self.assertEqual(report.quota_rows[0].charged_sessions, 0)
+        self.assertEqual(report.quota_rows[0].staff_rows[0].charged_sessions, 0)
+        self.assertEqual(report.quota_missing_debit_count, 1)
+
+    def test_grant_report_query_count_does_not_grow_per_account_or_allocation(self):
+        GrantRecipientAllocation.objects.create(
+            funding_source=self.funding,
+            child=self.child,
+            service=self.service_log,
+            allocated_sessions=10,
+            balance_account=self.account,
+        )
+        with CaptureQueriesContext(connection) as baseline_queries:
+            reports_svc.grant_report(self.funding, self.day, self.day)
+
+        for index in range(5):
+            parent = ParentGuardian.objects.create(
+                last_name=f"Родитель {index}",
+                first_name="Тест",
+                phone=f"+7 900 000-20-{index:02d}",
+            )
+            child = Child.objects.create(
+                last_name=f"Получатель {index}",
+                first_name="Тест",
+                primary_parent=parent,
+            )
+            account = BalanceAccount.objects.create(
+                child=child,
+                funding_source=self.funding,
+                unit=BalanceAccount.Unit.SESSIONS,
+                service_scope=BalanceAccount.ServiceScope.ANY,
+                initial_amount=Decimal("5"),
+            )
+            GrantRecipientAllocation.objects.create(
+                funding_source=self.funding,
+                child=child,
+                service=self.service_log,
+                allocated_sessions=5,
+                balance_account=account,
+            )
+
+        with CaptureQueriesContext(connection) as expanded_queries:
+            reports_svc.grant_report(self.funding, self.day, self.day)
+
+        self.assertEqual(len(expanded_queries), len(baseline_queries))
+
+    def test_grant_report_keeps_negative_quota_remainder_on_overrun(self):
+        FundingServiceQuota.objects.create(
+            funding_source=self.funding,
+            service=self.service_log,
+            planned_sessions=0,
+        )
+        appointment = Appointment.objects.get(staff_member=self.staff_a)
+        billing_svc.apply_decision(
+            appointment,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=self.account,
+            amount=Decimal("-1"),
+            actor=self.user,
+        )
+
+        report = reports_svc.grant_report(self.funding, self.day, self.day)
+
+        self.assertEqual(report.quota_rows[0].charged_sessions, 1)
+        self.assertEqual(report.quota_rows[0].remaining_sessions, -1)
 
     def test_grant_report_quota_ignores_legacy_charge_when_participants_exist(self):
         quota = FundingServiceQuota.objects.create(

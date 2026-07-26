@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, time, timedelta
+import csv
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from io import BytesIO
+from io import BytesIO, StringIO
 from uuid import uuid4
 
 from django.contrib.auth.models import User
@@ -1820,6 +1821,76 @@ class GrantReportViewTests(NewViewsTestBase):
         self.assertContains(response, reverse("funding_staff_allocation_create"))
         self.assertContains(response, reverse("grant_recipient_allocation_create"))
 
+    def test_administrator_can_read_report_but_cannot_manage_grants(self):
+        operator = User.objects.create_user(
+            "grant-operator",
+            password="x",
+            is_staff=True,
+        )
+        quota = FundingServiceQuota.objects.create(
+            funding_source=self.funding_grant,
+            service=self.service2,
+            planned_sessions=20,
+        )
+        staff_allocation = FundingStaffAllocation.objects.create(
+            service_quota=quota,
+            funding_source=self.funding_grant,
+            service=self.service2,
+            staff_member=self.staff,
+            allocated_sessions=5,
+        )
+        recipient_allocation = GrantRecipientAllocation.objects.create(
+            funding_source=self.funding_grant,
+            child=self.child,
+            service=self.service2,
+            allocated_sessions=7,
+            balance_account=self.account_grant,
+        )
+        self.client.force_login(operator)
+
+        report_response = self.client.get(
+            reverse("grant_report"),
+            {
+                "funding": self.funding_grant.pk,
+                "date_from": "2026-01-01",
+                "date_to": "2026-12-31",
+            },
+        )
+
+        self.assertEqual(report_response.status_code, 200)
+        self.assertFalse(report_response.context["can_manage_grants"])
+        self.assertNotContains(report_response, reverse("funding_service_quota_create"))
+        self.assertNotContains(
+            report_response,
+            reverse("funding_staff_allocation_edit", args=[staff_allocation.pk]),
+        )
+        self.assertNotContains(
+            report_response,
+            reverse("grant_recipient_allocation_edit", args=[recipient_allocation.pk]),
+        )
+
+        management_urls = [
+            reverse("funding_service_quota_create"),
+            reverse("funding_service_quota_edit", args=[quota.pk]),
+            reverse("funding_service_quota_delete", args=[quota.pk]),
+            reverse("funding_staff_allocation_create"),
+            reverse("funding_staff_allocation_edit", args=[staff_allocation.pk]),
+            reverse("funding_staff_allocation_delete", args=[staff_allocation.pk]),
+            reverse("grant_recipient_allocation_create"),
+            reverse("grant_recipient_allocation_edit", args=[recipient_allocation.pk]),
+            reverse("grant_recipient_allocation_delete", args=[recipient_allocation.pk]),
+        ]
+        for url in management_urls:
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 403)
+
+    def test_specialist_cannot_read_grant_report(self):
+        self.client.force_login(self.staff_user)
+
+        response = self.client.get(reverse("grant_report"))
+
+        self.assertEqual(response.status_code, 403)
+
     def test_grant_quota_forms_show_operator_control(self):
         quota = FundingServiceQuota.objects.create(
             funding_source=self.funding_grant,
@@ -2232,7 +2303,7 @@ class GrantReportViewTests(NewViewsTestBase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("report", response.context)
         self.assertIsNotNone(response.context["report"])
-        self.assertContains(response, "Текущий остаток")
+        self.assertContains(response, "Остаток на конец:")
         self.assertContains(response, "Квоты не заданы")
 
     def test_grant_report_warns_about_unallocated_quota(self):
@@ -2253,6 +2324,66 @@ class GrantReportViewTests(NewViewsTestBase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Нераспределенная квота")
+
+    def test_grant_report_summary_does_not_double_count_direct_plan_with_quota(self):
+        FundingServiceQuota.objects.create(
+            funding_source=self.funding_grant,
+            service=self.service2,
+            planned_sessions=20,
+        )
+        FundingStaffAllocation.objects.create(
+            funding_source=self.funding_grant,
+            service=self.service2,
+            staff_member=self.staff,
+            allocated_sessions=5,
+        )
+
+        response = self.client.get(
+            reverse("grant_report"),
+            {
+                "funding": self.funding_grant.pk,
+                "date_from": "2026-01-01",
+                "date_to": "2026-12-31",
+            },
+        )
+
+        quota_summary = next(
+            item for item in response.context["grant_summary_items"] if item["label"] == "Квоты"
+        )
+        self.assertEqual(quota_summary["value"], "0/20")
+        self.assertContains(response, "Прямое распределение без квоты")
+
+    def test_grant_report_warns_when_charge_decision_has_no_debit(self):
+        target_day = date(2026, 6, 15)
+        FundingServiceQuota.objects.create(
+            funding_source=self.funding_grant,
+            service=self.service2,
+            planned_sessions=20,
+        )
+        Appointment.objects.create(
+            child=self.child,
+            staff_member=self.staff,
+            service=self.service2,
+            room=self.room,
+            starts_at=_local_dt(target_day, time(10, 0)),
+            ends_at=_local_dt(target_day, time(10, 45)),
+            status=Appointment.Status.COMPLETED,
+            billing_decision=Appointment.BillingDecision.CHARGE,
+            billing_account=self.account_grant,
+        )
+
+        response = self.client.get(
+            reverse("grant_report"),
+            {
+                "funding": self.funding_grant.pk,
+                "date_from": target_day.isoformat(),
+                "date_to": target_day.isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Есть списания без проводки")
+        self.assertContains(response, "В факт квоты они не включены")
         self.assertContains(response, "20 занятий")
 
     def test_grant_report_links_existing_quota_to_allocation(self):
@@ -2328,7 +2459,8 @@ class GrantReportViewTests(NewViewsTestBase):
         self.assertContains(response, "grant-recipient-allocation-table")
         self.assertContains(response, "grant-certificates-table")
         self.assertContains(response, "grant-discounts-table")
-        self.assertContains(response, 'data-label="Текущий"')
+        self.assertContains(response, 'data-label="На конец периода"')
+        self.assertContains(response, 'data-label="На сегодня"')
         self.assertContains(response, 'data-label="Стоимость специалисту"')
         self.assertContains(response, 'data-label="Остаток счета"')
         self.assertContains(response, 'data-label="Полная сумма"')
@@ -2367,18 +2499,95 @@ class GrantReportViewTests(NewViewsTestBase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("text/csv", response["Content-Type"])
         body = response.content.decode("utf-8")
-        self.assertIn("Счёт;Начальный", body)
+        self.assertIn(
+            "Счёт;Единица;На начало;Поступления;Расход;На конец периода;На сегодня",
+            body,
+        )
         self.assertIn("Квоты по услугам", body)
         self.assertIn("Дефектолог;20;5;0;20", body)
         self.assertIn("Выделения получателям", body)
         self.assertIn("Иванов Ваня;Дефектолог;7", body)
 
+    def test_grant_report_csv_quotes_fields_and_blocks_spreadsheet_formulas(self):
+        unsafe_service_name = '=1+1; "строка"\nвторая'
+        self.service2.name = unsafe_service_name
+        self.service2.save(update_fields=["name", "updated_at"])
+        FundingServiceQuota.objects.create(
+            funding_source=self.funding_grant,
+            service=self.service2,
+            planned_sessions=20,
+        )
+
+        response = self.client.get(
+            reverse("grant_report"),
+            {
+                "funding": self.funding_grant.pk,
+                "date_from": "2020-01-01",
+                "date_to": "2099-01-01",
+                "csv": "1",
+            },
+        )
+
+        rows = list(
+            csv.reader(
+                StringIO(response.content.decode("utf-8").lstrip("\ufeff")),
+                delimiter=";",
+            )
+        )
+        quota_row = next(row for row in rows if row and row[0].startswith("'=1+1"))
+        self.assertEqual(quota_row[0], f"'{unsafe_service_name}")
+        self.assertEqual(len(quota_row), 5)
+
     def test_grant_report_with_funding_pk(self):
+        self.funding_grant.starts_on = date(2026, 2, 1)
+        self.funding_grant.ends_on = date(2026, 11, 30)
+        self.funding_grant.save(update_fields=["starts_on", "ends_on", "updated_at"])
+        quota = FundingServiceQuota.objects.create(
+            funding_source=self.funding_grant,
+            service=self.service2,
+            planned_sessions=20,
+        )
+        self.funding_grant.archive()
+
         response = self.client.get(
             reverse("grant_report_funding", args=[self.funding_grant.pk]),
+            {"funding": self.funding.pk},
         )
+
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["funding_id"], self.funding_grant.pk)
+        self.assertIsNotNone(response.context["report"])
+        self.assertEqual(response.context["report"].funding.pk, self.funding_grant.pk)
+        self.assertEqual(response.context["report"].date_from, date(2026, 2, 1))
+        self.assertEqual(response.context["report"].date_to, date(2026, 11, 30))
+        self.assertFalse(response.context["can_manage_grants"])
+        self.assertNotContains(response, reverse("funding_service_quota_edit", args=[quota.pk]))
+        self.assertEqual(
+            self.client.get(reverse("funding_service_quota_delete", args=[quota.pk])).status_code,
+            403,
+        )
+
+    def test_archived_grant_stays_read_only_when_direct_report_filter_is_invalid(self):
+        quota = FundingServiceQuota.objects.create(
+            funding_source=self.funding_grant,
+            service=self.service2,
+            planned_sessions=20,
+        )
+        self.funding_grant.archive()
+
+        response = self.client.get(
+            reverse("grant_report_funding", args=[self.funding_grant.pk]),
+            {"date_from": "invalid-date"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["report"])
+        self.assertFalse(response.context["can_manage_grants"])
+        self.assertNotContains(response, reverse("funding_service_quota_create"))
+        self.assertNotContains(
+            response,
+            reverse("funding_service_quota_edit", args=[quota.pk]),
+        )
 
 
 class StaffMassRescheduleViewTests(NewViewsTestBase):
