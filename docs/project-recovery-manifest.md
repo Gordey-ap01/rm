@@ -60,11 +60,13 @@
 | `docs/55-browser-role-acceptance-contract.md` | Реализованный срез: browser-приемка администратора, руководителя и mobile-кабинета специалиста. |
 | `docs/56-persisted-balance-transfer-conversion-contract.md` | Реализованный срез: immutable transfer, `money -> sessions`, PostgreSQL-сериализация и browser-приемка. |
 | `docs/57-grant-management-report-acceptance-contract.md` | Реализованный отчетный срез: роли, периодные ledger-балансы, раздельные единицы, квоты, архив и безопасный CSV; также границы будущих опасных миграций грантов. |
+| `docs/58-grant-plan-versioning-contract.md` | Активный опасный срез: типизированные редакции квот и распределений, director-only write-path, legacy backfill и payroll provenance. |
 | `docs/decisions/ADR-001-*.md` | Django/PostgreSQL/local-first. |
 | `docs/decisions/ADR-002-*.md` | Балансовые счета и ledger. |
 | `docs/decisions/ADR-003-*.md` | Полномочия и ручные решения. |
 | `docs/decisions/ADR-004-*.md` | Типизированные журналы вместо generic workflow. |
 | `docs/decisions/ADR-005-*.md` | Блокировка строки кабинета для настраиваемой вместимости. |
+| `docs/decisions/ADR-006-*.md` | Типизированные редакции грантового плана с устойчивой текущей проекцией. |
 | `docs/interviews/*.md` | Первичные интервью; читать при спорном требовании. |
 | `docs/PRODUCTION_DEPLOYMENT.md` | Развертывание и эксплуатация production. |
 | `docs/current-state.md` | Компактная текущая контрольная точка. |
