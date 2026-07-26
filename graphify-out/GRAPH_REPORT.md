@@ -1,16 +1,16 @@
 # Graph Report - RMcodex  (2026-07-26)
 
 ## Corpus Check
-- 257 files · ~372,290 words
+- 258 files · ~375,089 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 5919 nodes · 25848 edges · 341 communities (230 shown, 111 thin omitted)
-- Extraction: 45% EXTRACTED · 55% INFERRED · 0% AMBIGUOUS · INFERRED: 14201 edges (avg confidence: 0.51)
+- 5953 nodes · 26024 edges · 331 communities (222 shown, 109 thin omitted)
+- Extraction: 45% EXTRACTED · 55% INFERRED · 0% AMBIGUOUS · INFERRED: 14308 edges (avg confidence: 0.51)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7061119d`
+- Built from commit: `4ad76c0e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -83,7 +83,6 @@
 - [[_COMMUNITY_CRITICAL STACK UX REVIEW 2026-06-10 md|CRITICAL STACK UX REVIEW 2026-06-10 md]]
 - [[_COMMUNITY_Migration Report|Migration Report]]
 - [[_COMMUNITY_Bootstrap Vendor 15|Bootstrap Vendor 15]]
-- [[_COMMUNITY_UX Implementation Plan|UX Implementation Plan]]
 - [[_COMMUNITY_FullCalendar Vendor 26|FullCalendar Vendor 26]]
 - [[_COMMUNITY_FullCalendar Vendor 27|FullCalendar Vendor 27]]
 - [[_COMMUNITY_FullCalendar Vendor 28|FullCalendar Vendor 28]]
@@ -111,7 +110,6 @@
 - [[_COMMUNITY_bundle postgresql|bundle postgresql]]
 - [[_COMMUNITY_Alpine Vendor 11|Alpine Vendor 11]]
 - [[_COMMUNITY_FullCalendar Vendor 35|FullCalendar Vendor 35]]
-- [[_COMMUNITY_Database Migrations 1|Database Migrations 1]]
 - [[_COMMUNITY_backup prod sh script|backup prod sh script]]
 - [[_COMMUNITY_start demo sh script|start demo sh script]]
 - [[_COMMUNITY_start worker sh script|start worker sh script]]
@@ -126,14 +124,12 @@
 - [[_COMMUNITY_hold confirm js|hold confirm js]]
 - [[_COMMUNITY_Domain Models 10|Domain Models 10]]
 - [[_COMMUNITY_asgi py|asgi py]]
-- [[_COMMUNITY_settings py|settings py]]
 - [[_COMMUNITY_init py 2|init py 2]]
 - [[_COMMUNITY_FullCalendar Vendor 36|FullCalendar Vendor 36]]
 - [[_COMMUNITY_init py 3|init py 3]]
 - [[_COMMUNITY_Database Migrations 10|Database Migrations 10]]
 - [[_COMMUNITY_Brand Logo 1|Brand Logo 1]]
 - [[_COMMUNITY_rehab-center|rehab-center]]
-- [[_COMMUNITY_init py 4|init py 4]]
 - [[_COMMUNITY_settings viewer py|settings viewer py]]
 - [[_COMMUNITY_Brand Logo 2|Brand Logo 2]]
 - [[_COMMUNITY_build viewer ps1|build viewer ps1]]
@@ -155,7 +151,6 @@
 - [[_COMMUNITY_Community 139|Community 139]]
 - [[_COMMUNITY_Community 140|Community 140]]
 - [[_COMMUNITY_Community 141|Community 141]]
-- [[_COMMUNITY_Community 142|Community 142]]
 - [[_COMMUNITY_Community 143|Community 143]]
 - [[_COMMUNITY_Community 144|Community 144]]
 - [[_COMMUNITY_Community 145|Community 145]]
@@ -174,7 +169,6 @@
 - [[_COMMUNITY_Community 158|Community 158]]
 - [[_COMMUNITY_Community 159|Community 159]]
 - [[_COMMUNITY_Community 160|Community 160]]
-- [[_COMMUNITY_Community 161|Community 161]]
 - [[_COMMUNITY_Community 162|Community 162]]
 - [[_COMMUNITY_Community 163|Community 163]]
 - [[_COMMUNITY_Community 164|Community 164]]
@@ -230,9 +224,7 @@
 - [[_COMMUNITY_Community 218|Community 218]]
 - [[_COMMUNITY_Community 219|Community 219]]
 - [[_COMMUNITY_Community 220|Community 220]]
-- [[_COMMUNITY_Community 221|Community 221]]
 - [[_COMMUNITY_Community 222|Community 222]]
-- [[_COMMUNITY_Community 223|Community 223]]
 - [[_COMMUNITY_Community 224|Community 224]]
 - [[_COMMUNITY_Community 225|Community 225]]
 - [[_COMMUNITY_Community 226|Community 226]]
@@ -249,12 +241,12 @@
 - [[_COMMUNITY_Community 237|Community 237]]
 - [[_COMMUNITY_Community 239|Community 239]]
 - [[_COMMUNITY_Community 240|Community 240]]
-- [[_COMMUNITY_Community 242|Community 242]]
 - [[_COMMUNITY_Community 243|Community 243]]
 - [[_COMMUNITY_Community 244|Community 244]]
 - [[_COMMUNITY_Community 245|Community 245]]
 - [[_COMMUNITY_Community 246|Community 246]]
 - [[_COMMUNITY_Community 247|Community 247]]
+- [[_COMMUNITY_Community 249|Community 249]]
 - [[_COMMUNITY_Community 250|Community 250]]
 - [[_COMMUNITY_Community 251|Community 251]]
 - [[_COMMUNITY_Community 253|Community 253]]
@@ -262,8 +254,6 @@
 - [[_COMMUNITY_Community 255|Community 255]]
 - [[_COMMUNITY_Community 256|Community 256]]
 - [[_COMMUNITY_Community 257|Community 257]]
-- [[_COMMUNITY_Community 258|Community 258]]
-- [[_COMMUNITY_Community 259|Community 259]]
 - [[_COMMUNITY_Community 260|Community 260]]
 - [[_COMMUNITY_Community 262|Community 262]]
 - [[_COMMUNITY_Community 264|Community 264]]
@@ -321,18 +311,20 @@
 - [[_COMMUNITY_Community 327|Community 327]]
 - [[_COMMUNITY_Community 328|Community 328]]
 - [[_COMMUNITY_Community 335|Community 335]]
+- [[_COMMUNITY_Community 341|Community 341]]
+- [[_COMMUNITY_Community 342|Community 342]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `Appointment` - 438 edges
-2. `StaffMember` - 377 edges
-3. `FundingSource` - 334 edges
-4. `AppointmentParticipant` - 333 edges
-5. `BalanceAccount` - 331 edges
-6. `LedgerEntry` - 329 edges
+1. `Appointment` - 443 edges
+2. `StaffMember` - 382 edges
+3. `FundingSource` - 349 edges
+4. `AppointmentParticipant` - 337 edges
+5. `BalanceAccount` - 335 edges
+6. `LedgerEntry` - 333 edges
 7. `Child` - 319 edges
-8. `AppointmentStaffAssignment` - 315 edges
+8. `AppointmentStaffAssignment` - 319 edges
 9. `_()` - 307 edges
-10. `Service` - 295 edges
+10. `TimeOffRequest` - 296 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Rooms and Capacity Constraints` --implements--> `RoomType`  [INFERRED]
@@ -368,35 +360,31 @@
 - 1-file cycle: `operations/services/__init__.py -> operations/services/__init__.py`
 - 3-file cycle: `operations/models.py -> operations/schedule_writes.py -> operations/schedule_validation.py -> operations/models.py`
 
-## Communities (341 total, 111 thin omitted)
+## Communities (331 total, 109 thin omitted)
 
 ### Community 0 - "FullCalendar Vendor 1"
-Cohesion: 0.14
-Nodes (124): AppConfig, AppointmentAdmin, AppointmentConfirmationAdmin, AppointmentConfirmationDecisionAdmin, AppointmentParticipantAdmin, AppointmentParticipantInline, AppointmentRescheduleChainAdmin, AppointmentReschedulePlanAdmin (+116 more)
+Cohesion: 0.05
+Nodes (400): AppConfig, BaseInlineFormSet, Case, GeneratedContractFile, GrantRecipientAllocation, GrantReport, AppointmentAdmin, AppointmentConfirmationAdmin (+392 more)
 
 ### Community 1 - "Domain Models 1"
-Cohesion: 0.09
-Nodes (120): BaseInlineFormSet, GeneratedContractFile, GrantRecipientAllocation, GrantReport, AppointmentCancelForm, AppointmentParticipantProgramForm, balance_account_choice_label(), BalanceAccountForm (+112 more)
+Cohesion: 0.25
+Nodes (15): CenterExpense, date, Decimal, build_expense_report(), _decorate_expense(), _expense_queryset(), ExpenseReport, ExpenseReportCategoryRow (+7 more)
 
 ### Community 2 - "FullCalendar Vendor 2"
-Cohesion: 0.05
-Nodes (74): AppointmentConfirmationSendForm, BillingDecisionForm, BalanceAccount, Certificate, Discount, FundingServiceQuota, FundingSource, FundingStaffAllocation (+66 more)
+Cohesion: 0.22
+Nodes (10): Command, FinancialIntegrityCheckRun, FinancialIntegrityIssue, financial_integrity_candidate_queryset(), _finding_values(), Persisted financial integrity check runs and findings., _resolve_unseen_findings(), run_financial_integrity_check() (+2 more)
 
 ### Community 3 - "Domain Models 2"
 Cohesion: 0.01
 Nodes (155): Production и доступ, Update 2026-07-18: center-legal-profile-foundation, Update 2026-07-18: document-target-foundation, Update 2026-07-18: organization-service-contract, Update 2026-07-18: template-placeholder-expansion-v2, Update 2026-07-19: act-signed-file-archive, Update 2026-07-19: certificate-account-labels, Update 2026-07-19: certificate-balance-backfill-command (+147 more)
 
-### Community 4 - "FullCalendar Vendor 3"
-Cohesion: 0.05
-Nodes (81): AppointmentEventOut, AppointmentMoveIn, ErrorOut, Appointment, RoomOut, StaffOut, UnavailableSlotOut, AppointmentMoveForm (+73 more)
-
 ### Community 5 - "Domain Models 3"
 Cohesion: 0.02
-Nodes (89): _(), ai(), Ao(), at(), b(), be(), Br(), bt() (+81 more)
+Nodes (85): _(), ai(), Ao(), at(), b(), be(), Br(), bt() (+77 more)
 
 ### Community 6 - "FullCalendar Vendor 4"
 Cohesion: 0.07
-Nodes (123): ContractLegalSnapshot, Consent, ConsentSignedFile, ContractAct, ContractActSignedFile, ContractSignedFile, Decimal, Document (+115 more)
+Nodes (121): ContractLegalSnapshot, Consent, ContractAct, ContractSignedFile, Decimal, Document, DonationContract, OrganizationServiceContract (+113 more)
 
 ### Community 7 - "Domain Models 4"
 Cohesion: 0.07
@@ -407,16 +395,16 @@ Cohesion: 0.04
 Nodes (3): Decimal, BillingServiceTests, ReportsServiceTests
 
 ### Community 9 - "Bootstrap Vendor 1"
-Cohesion: 0.05
-Nodes (6): _local_datetime(), AppointmentDetailAndMoveTests, _local_dt(), time, Возвращает список вариантов переноса занятия с учётом конфликтов и графика., suggested_transfer_slots()
+Cohesion: 0.04
+Nodes (7): _local_datetime(), _local(), AppointmentDetailAndMoveTests, _local_dt(), time, Возвращает список вариантов переноса занятия с учётом конфликтов и графика., suggested_transfer_slots()
 
 ### Community 10 - "Alpine Vendor 1"
 Cohesion: 0.04
 Nodes (30): _i(), A(), Bn, Bs(), cl(), dl, fc(), fe() (+22 more)
 
 ### Community 12 - "Forms Validation 1"
-Cohesion: 0.05
-Nodes (50): ExpenseReport, CenterExpense, date, Decimal, CenterExpense, Decimal, CenterExpense, CenterExpense (+42 more)
+Cohesion: 0.20
+Nodes (23): ExpenseReport, CenterExpense, date, Decimal, center_expense_create(), center_expense_edit(), center_expense_list(), center_expense_report() (+15 more)
 
 ### Community 13 - "Bootstrap Vendor 2"
 Cohesion: 0.03
@@ -424,11 +412,11 @@ Nodes (63): Migration, Migration, Migration, Migration, Migration, ActionType, A
 
 ### Community 14 - "Bootstrap Vendor 3"
 Cohesion: 0.07
-Nodes (25): ac(), arrayToMarker(), dr(), eventRangeToSegs(), expand(), fl, fr, getMarkerDay() (+17 more)
+Nodes (26): ac(), arrayToMarker(), dr(), en, eventRangeToSegs(), expand(), fl, fr (+18 more)
 
 ### Community 15 - "FullCalendar Vendor 6"
-Cohesion: 0.06
-Nodes (15): ar(), Bi(), ga(), ja, ji(), ns(), os, ps() (+7 more)
+Cohesion: 0.05
+Nodes (16): ar(), Bi(), constructor(), ga(), ja, ji(), ns(), os (+8 more)
 
 ### Community 16 - "FullCalendar Vendor 7"
 Cohesion: 0.05
@@ -436,7 +424,7 @@ Nodes (14): ei, er, ft(), gr(), gt(), hr(), jt(), ni() (+6 more)
 
 ### Community 17 - "UX UI Direction"
 Cohesion: 0.08
-Nodes (55): ImportBatchRow, ImportPreview, ImportBatch, apply_certificate_import_batch(), _build_header_mapping(), _cell_text(), _certificate_from_import_values(), _certificate_type_for_apply() (+47 more)
+Nodes (54): ImportBatchRow, ImportPreview, ImportBatch, apply_certificate_import_batch(), _build_header_mapping(), _cell_text(), _certificate_from_import_values(), _certificate_type_for_apply() (+46 more)
 
 ### Community 18 - "FullCalendar Vendor 8"
 Cohesion: 0.09
@@ -444,19 +432,15 @@ Nodes (55): BalanceAccount, date, datetime, Decimal, ProgramBlock, Room, StaffMe
 
 ### Community 19 - "FullCalendar Vendor 9"
 Cohesion: 0.07
-Nodes (8): aa(), events(), kr(), nt(), oa, pi(), setClassNames(), wn()
+Nodes (9): aa(), events(), kr(), nt(), oa, pi(), setClassNames(), ti() (+1 more)
 
 ### Community 20 - "Program Wizard"
 Cohesion: 0.09
 Nodes (56): CertificateBalancePreflightReport, default_charge_amount(), FinancialIntegrityFinding, Q, attendance_summary_label(), certificate_backfill_attention_count(), certificate_backfill_issue_count(), certificate_backfill_readiness_context() (+48 more)
 
 ### Community 21 - "Domain Models 6"
-Cohesion: 0.05
-Nodes (9): constructor(), destroy(), fa(), ka(), Ln, rc, ti(), ts() (+1 more)
-
-### Community 22 - "Bootstrap Vendor 4"
 Cohesion: 0.06
-Nodes (3): _local(), ProgramWizardServiceTests, SchedulingServiceTests
+Nodes (7): ba(), destroy(), fa(), Ge(), ka(), ts(), za
 
 ### Community 23 - "FullCalendar Vendor 10"
 Cohesion: 0.06
@@ -467,8 +451,8 @@ Cohesion: 0.06
 Nodes (47): 1\. Введение: Операционный контекст и стратегические императивы, 1.1. Анализ критических ограничений и требований, 2.1. Компонентная база (The Triad), 2.2. Топология развертывания Docker Compose на Windows, 2.3. Интеграция Python-воркера, 3.1. Блок «Субъекты» (Registries), 3.2. Блок «Клиническая деятельность и Логистика», --- (+39 more)
 
 ### Community 25 - "FullCalendar Vendor 12"
-Cohesion: 0.11
-Nodes (47): FileResponse, consent_signed_file_download(), consent_word(), _act_queryset(), _active_act_signed_files_prefetch(), _active_signed_files_prefetch(), _attach_act_signed_file_ui(), _attach_signed_file_ui() (+39 more)
+Cohesion: 0.10
+Nodes (50): FileResponse, ContractAct, consent_signed_file_download(), consent_word(), _act_queryset(), _active_act_signed_files_prefetch(), _active_signed_files_prefetch(), _attach_act_signed_file_ui() (+42 more)
 
 ### Community 26 - "Recipient Views"
 Cohesion: 0.13
@@ -504,7 +488,7 @@ Nodes (42): Browser QA, Graphify, Latest Recovery Note 2026-07-18: center-legal-
 
 ### Community 35 - "Operations Tests 2"
 Cohesion: 0.16
-Nodes (40): AppointmentReschedulePlan, AppointmentRescheduleStep, Any, Appointment, date, StaffMember, _active_staff_appointments(), apply_chain() (+32 more)
+Nodes (39): AppointmentReschedulePlan, AppointmentRescheduleStep, Any, Appointment, date, StaffMember, _active_staff_appointments(), apply_chain() (+31 more)
 
 ### Community 36 - "Bootstrap Vendor 6"
 Cohesion: 0.09
@@ -519,20 +503,20 @@ Cohesion: 0.10
 Nodes (4): on(), Q, remove(), trigger()
 
 ### Community 39 - "FullCalendar Vendor 16"
-Cohesion: 0.07
-Nodes (10): batchRendering(), ca, co, ea(), ha, mn(), pauseRendering(), Qt() (+2 more)
+Cohesion: 0.05
+Nodes (12): batchRendering(), ca, co, ea(), ha, Ln, mn(), pauseRendering() (+4 more)
 
 ### Community 40 - "FullCalendar Vendor 17"
 Cohesion: 0.12
-Nodes (36): date, PayrollSheet, is_director(), funding_service_quota_create(), funding_service_quota_delete(), funding_service_quota_edit(), funding_staff_allocation_create(), funding_staff_allocation_delete() (+28 more)
+Nodes (37): date, is_director(), _csv_text(), funding_service_quota_create(), funding_service_quota_delete(), funding_service_quota_edit(), funding_staff_allocation_create(), funding_staff_allocation_delete() (+29 more)
 
 ### Community 41 - "FullCalendar Vendor 18"
 Cohesion: 0.13
 Nodes (23): ADR-001: Django + PostgreSQL, локальный first deployment, Alternatives Considered, Consequences, Context, Date, Decision, Directus + PostgreSQL, Next.js / Node / Prisma (+15 more)
 
 ### Community 42 - "Confirmation Views"
-Cohesion: 0.15
-Nodes (35): BalanceTransfer, Any, Appointment, AppointmentParticipant, BalanceAccount, Decimal, LedgerEntry, ProgramBlock (+27 more)
+Cohesion: 0.05
+Nodes (81): BalanceTransfer, Migration, Migration, Any, Appointment, datetime, StaffMember, Any (+73 more)
 
 ### Community 44 - "Bootstrap Vendor 7"
 Cohesion: 0.09
@@ -551,8 +535,8 @@ Cohesion: 0.08
 Nodes (10): ec(), fetch(), ii(), jl, kl, wi(), xl, Xo() (+2 more)
 
 ### Community 49 - "Alpine Vendor 3"
-Cohesion: 0.15
-Nodes (23): authority_flags(), Template flags derived from the central authority policy., QuerySet, TimeOffRequest, authority_role(), AuthorityRole, _has_group(), is_center_operator() (+15 more)
+Cohesion: 0.16
+Nodes (21): authority_flags(), Template flags derived from the central authority policy., QuerySet, TimeOffRequest, authority_role(), AuthorityRole, _has_group(), is_center_operator() (+13 more)
 
 ### Community 50 - "FullCalendar Vendor 21"
 Cohesion: 0.07
@@ -562,37 +546,37 @@ Nodes (29): Агент A. Владелец БД и доменной логики
 Cohesion: 0.08
 Nodes (6): cs, eo(), Oe(), pa(), querySegEl(), xa
 
+### Community 52 - "Bootstrap Vendor 9"
+Cohesion: 0.06
+Nodes (3): AppointmentForm, SchedulingBusinessRulesTests, QueryDict
+
 ### Community 53 - "Bootstrap Vendor 10"
 Cohesion: 0.11
 Nodes (15): Варианты удаленной демонстрации, Внутри одной локальной сети, Почему флешка не является надежным вариантом, Публичная временная ссылка через Cloudflare Tunnel, Развернуть на VPS, Рекомендация, Самый надежный вариант на сегодня, Удаленный доступ к вашему ноутбуку (+7 more)
 
 ### Community 54 - "FullCalendar Vendor 22"
-Cohesion: 0.09
-Nodes (9): an(), bc(), bo, da(), gi(), hc, ho(), Ut() (+1 more)
+Cohesion: 0.07
+Nodes (13): an(), bc(), bo, da(), gi(), hc, ho(), ll (+5 more)
 
 ### Community 56 - "Bootstrap Vendor 11"
 Cohesion: 0.10
 Nodes (27): 1.1 Общая архитектура, 1.2 Ключевые архитектурные решения, 1.3 Схема связей модулей, 1.4 Паттерны, 1. Архитектурный паспорт, 2.1 Production-зависимости (pyproject.toml), 2.2 Dev-зависимости, 2.3 Системные зависимости (+19 more)
 
 ### Community 57 - "FullCalendar Vendor 23"
-Cohesion: 0.11
-Nodes (9): QueryDict, Queue, BalanceTransferPostgreSQLConcurrencyTests, Regression and PostgreSQL concurrency tests for persisted balance transfers., BillingDecisionPostgreSQLConcurrencyTests, ConfirmationDecisionPostgreSQLConcurrencyTests, RoomCapacityPostgreSQLConcurrencyTests, TimeOffDecisionPostgreSQLConcurrencyTests (+1 more)
-
-### Community 58 - "FullCalendar Vendor 24"
-Cohesion: 0.14
-Nodes (26): Any, Appointment, datetime, StaffMember, bulk_unlink_ledger(), cancel(), _copy_rescheduled_participants(), _copy_rescheduled_staff_assignments() (+18 more)
+Cohesion: 0.17
+Nodes (5): Queue, BalanceTransferPostgreSQLConcurrencyTests, ConfirmationDecisionPostgreSQLConcurrencyTests, TimeOffDecisionPostgreSQLConcurrencyTests, TransactionTestCase
 
 ### Community 59 - "Bootstrap Vendor 12"
-Cohesion: 0.15
-Nodes (24): Any, Appointment, date, datetime, StaffMember, appointment_children_for_reschedule(), ConflictReport, filter_staff_by_category() (+16 more)
+Cohesion: 0.14
+Nodes (25): Any, Appointment, date, datetime, QuerySet, StaffMember, appointment_children_for_reschedule(), ConflictReport (+17 more)
 
 ### Community 60 - "FullCalendar Vendor 25"
-Cohesion: 0.10
-Nodes (20): CenterLegalProfile, Document, center_legal_profile_control_items(), center_legal_profile_edit(), Юридический профиль центра для договоров и документов., admin_required(), csrf_failure(), director_required() (+12 more)
+Cohesion: 0.09
+Nodes (24): CenterLegalProfile, BalanceAccount, PaymentForm, center_legal_profile_control_items(), center_legal_profile_edit(), Юридический профиль центра для договоров и документов., admin_required(), csrf_failure() (+16 more)
 
 ### Community 61 - "Domain Models 9"
-Cohesion: 0.13
-Nodes (25): Q, Child, _certificate_form_control_items(), Получатели и их представители., recipient_certificate_balance_account_create(), recipient_certificate_create(), recipient_certificate_edit(), recipient_contract_pdf() (+17 more)
+Cohesion: 0.14
+Nodes (24): Q, Child, _certificate_form_control_items(), Получатели и их представители., recipient_certificate_balance_account_create(), recipient_certificate_create(), recipient_certificate_edit(), recipient_create() (+16 more)
 
 ### Community 62 - "Bootstrap Vendor 13"
 Cohesion: 0.08
@@ -607,8 +591,8 @@ Cohesion: 0.15
 Nodes (16): 1. Демо двойным кликом (Windows), 2. Ручной запуск (любая ОС), 3. Тестовые логины, Аудит, Быстрый старт, Бэкап демо-данных, Документы, Команды (+8 more)
 
 ### Community 67 - "Migration Report"
-Cohesion: 0.08
-Nodes (5): single_participant_or_none(), sync_appointment_billing_summary(), sync_ledger_to_target(), sync_participant_ledger_to_target(), Decimal
+Cohesion: 0.40
+Nodes (4): single_participant_or_none(), sync_appointment_billing_summary(), sync_ledger_to_target(), sync_participant_ledger_to_target()
 
 ### Community 70 - "FullCalendar Vendor 26"
 Cohesion: 0.12
@@ -616,15 +600,11 @@ Nodes (4): M(), qi, removeDataAttribute(), setDataAttribute()
 
 ### Community 71 - "FullCalendar Vendor 27"
 Cohesion: 0.16
-Nodes (14): appointment_conflicts(), appointment_group_conflicts(), build_local_datetime(), conflict_messages(), Shared schedule validation helpers for forms, views, and services., staff_unavailability_reason(), Appointment, StaffMember (+6 more)
+Nodes (12): build_local_datetime(), conflict_messages(), staff_unavailability_reason(), Appointment, StaffMember, _slot_times(), _all_staff_available(), _appointment_children() (+4 more)
 
 ### Community 74 - "FullCalendar Vendor 29"
 Cohesion: 0.09
 Nodes (22): Audit trail choice, Finding detail, Open questions before code, Parallel agents, Runner controls, Slice 1: audit/admin visibility, Slice 2: triage service, Slice 3: work queue triage actions (+14 more)
-
-### Community 75 - "FullCalendar Vendor 30"
-Cohesion: 0.09
-Nodes (3): ApiAccessTests, TestCase, HealthcheckViewTests
 
 ### Community 76 - "FullCalendar Vendor 31"
 Cohesion: 0.16
@@ -663,8 +643,8 @@ Cohesion: 0.14
 Nodes (14): WSGI config for rehab_center project., RuntimeError, _ensure_pg_stopped(), _find_free_port(), _find_pg_ctl(), _init_logging(), main(), Path (+6 more)
 
 ### Community 86 - "BaseCommand"
-Cohesion: 0.21
-Nodes (18): admin_api_forbidden(), list_appointments(), list_certificates(), list_discounts(), list_rooms(), list_services(), list_staff(), list_unavailability() (+10 more)
+Cohesion: 0.12
+Nodes (29): admin_api_forbidden(), list_appointments(), list_certificates(), list_discounts(), list_rooms(), list_services(), list_staff(), list_unavailability() (+21 more)
 
 ### Community 87 - "PDF Services"
 Cohesion: 0.19
@@ -691,16 +671,12 @@ Cohesion: 0.29
 Nodes (17): Appointment, AppointmentParticipant, LedgerEntry, _audit_appointment(), audit_appointments(), _fact_account(), financial_integrity_issue_key(), FinancialIntegrityIssue (+9 more)
 
 ### Community 96 - "Alpine Vendor 11"
-Cohesion: 0.28
-Nodes (17): Any, BytesIO, Child, DonationContract, OrganizationServiceContract, ServiceContract, _build_contract_story(), _build_donation_contract_story() (+9 more)
+Cohesion: 0.26
+Nodes (18): Any, BytesIO, Child, DonationContract, OrganizationServiceContract, ServiceContract, _build_contract_story(), _build_donation_contract_story() (+10 more)
 
 ### Community 97 - "FullCalendar Vendor 35"
-Cohesion: 0.20
-Nodes (14): certificate_balance_backfill_candidate_queryset(), certificate_balance_preflight_issue_querysets(), certificate_balance_preflight_report(), certificate_balance_zero_balance_without_account_queryset(), _certificate_queryset(), CertificateBalancePreflightReport, _normalized_certificate_ids(), Business actions for recipient certificates. (+6 more)
-
-### Community 98 - "Database Migrations 1"
-Cohesion: 0.17
-Nodes (4): SimpleUploadedFile, ImportPreviewServiceTests, _minimal_xlsx(), DocumentViewTests
+Cohesion: 0.13
+Nodes (22): Any, _actor_or_none(), backfill_certificate_balance_accounts(), certificate_balance_backfill_candidate_queryset(), certificate_balance_preflight_issue_querysets(), certificate_balance_preflight_report(), certificate_balance_zero_balance_without_account_queryset(), _certificate_queryset() (+14 more)
 
 ### Community 99 - "backup prod sh script"
 Cohesion: 0.12
@@ -719,8 +695,8 @@ Cohesion: 0.12
 Nodes (15): Acceptance criteria for first vertical slice, Account creation service, Appointment billing integration, Certificate.balance_account, Certificate Balance Ledger Contract, Effective remaining amount, Financial boundaries, Implementation 2026-07-19 (+7 more)
 
 ### Community 103 - "Database Migrations 3"
-Cohesion: 0.29
-Nodes (15): date, datetime, _account_appointment_statuses(), _charged_appointment_ids_for_allocations(), _charged_appointment_ids_for_quota(), _charged_sessions_for_allocation(), _date_range_matches(), _grant_quota_rows() (+7 more)
+Cohesion: 0.25
+Nodes (20): date, datetime, Decimal, FundingSource, _account_period_balance_deltas(), _account_period_balances(), _appointment_statuses_by_account(), _charged_appointment_ids_for_allocations() (+12 more)
 
 ### Community 104 - "Database Migrations 4"
 Cohesion: 0.20
@@ -746,10 +722,6 @@ Nodes (14): `PayrollPayout`, `PayrollSheetLifecycleEvent`, UI и аудит, Г�
 Cohesion: 0.15
 Nodes (14): A(), br(), dt(), E(), er(), gr(), he(), J() (+6 more)
 
-### Community 113 - "settings py"
-Cohesion: 0.18
-Nodes (9): Command, Any, _actor_or_none(), backfill_certificate_balance_accounts(), CertificateBalanceBackfillResult, ensure_certificate_balance_account(), Dry-run or create linked balance accounts for safe certificate candidates., Create and link the spendable money account for a certificate.      The certific (+1 more)
-
 ### Community 114 - "init py 2"
 Cohesion: 0.15
 Nodes (13): Главная боль, Главный вывод, Гранты и перераспределение, Документы и ПДн, Доменные правила, уточнение от 2026-05-14, Дополнительные решения от 2026-05-14, Ключевой рабочий процесс, Найденные материалы (+5 more)
@@ -774,13 +746,9 @@ Nodes (13): Acceptance criteria, `BalanceTransfer`, UI и полномочия, 
 Cohesion: 0.19
 Nodes (13): Бэкапы, Восстановление, Домен, Обновление системы, Подготовка сервера, Почему не туннели, Продакшен-размещение, Развёртывание (+5 more)
 
-### Community 120 - "init py 4"
-Cohesion: 0.21
-Nodes (10): ensure_room_capacity(), lock_schedule_write(), Any, Room, Transactional guards for schedule write paths.  Room capacity is configured per, Rows locked for one schedule write transaction., Lock an existing appointment and all affected rooms in stable order.      `selec, Re-check room capacity after `lock_schedule_write()` acquired the lock. (+2 more)
-
 ### Community 121 - "settings viewer py"
-Cohesion: 0.26
-Nodes (9): Command, FinancialIntegrityCheckRun, FinancialIntegrityIssue, financial_integrity_candidate_queryset(), _finding_values(), Persisted financial integrity check runs and findings., _resolve_unseen_findings(), run_financial_integrity_check() (+1 more)
+Cohesion: 0.40
+Nodes (12): Any, Decimal, PayrollSheet, approve_payroll_sheet(), create_payroll_sheet_for_staff(), generate_accruals_for_staff(), _lock_sheet_lines_and_accruals(), Начисления специалистам и расчетные листы. (+4 more)
 
 ### Community 122 - "Brand Logo 2"
 Cohesion: 0.15
@@ -850,10 +818,6 @@ Nodes (10): Acceptance criteria, Вне среза, Интерфейсы, Каб
 Cohesion: 0.33
 Nodes (10): Appointment, AppointmentParticipant, LedgerEntry, appointment_billing_decision_label(), appointment_charge_fact(), _debit_ledger_entries(), _has_missing_participant_debit(), Read-only financial facts derived from appointments. (+2 more)
 
-### Community 142 - "Community 142"
-Cohesion: 0.40
-Nodes (10): FinancialIntegrityFinding, acknowledge_finding(), FinancialIntegrityTriageError, ignore_finding(), _normalize_note(), Triage transitions for persisted financial integrity findings., Raised when a requested finding triage transition is not allowed., reopen_finding() (+2 more)
-
 ### Community 143 - "Community 143"
 Cohesion: 0.29
 Nodes (10): FundingSource, funding_source_archive(), funding_source_create(), funding_source_edit(), funding_source_form_control_items(), funding_source_list(), funding_source_next_action(), funding_source_restore() (+2 more)
@@ -883,8 +847,8 @@ Cohesion: 0.47
 Nodes (9): AppointmentConfirmationDecision, AppointmentConfirmation, _decision_value(), _external_source(), Append-only decisions for appointment confirmations., _record_decision(), record_external_response(), resolve_manually() (+1 more)
 
 ### Community 150 - "Community 150"
-Cohesion: 0.20
-Nodes (4): BaseCommand, Command, Command, Пакетное выполнение всех задач из очереди django-tasks.  Удобно для тестов и одн
+Cohesion: 0.14
+Nodes (5): BaseCommand, Command, Command, Command, Пакетное выполнение всех задач из очереди django-tasks.  Удобно для тестов и одн
 
 ### Community 152 - "Community 152"
 Cohesion: 0.29
@@ -931,8 +895,8 @@ Cohesion: 0.22
 Nodes (4): Мягкое удаление: выставляет ``archived_at`` без физического DELETE., Default manager: возвращает только незаархивированные записи., SoftDeleteManager, SoftDeleteQuerySet
 
 ### Community 165 - "Community 165"
-Cohesion: 0.33
-Nodes (8): FinancialIntegrityCheckRun, FinancialIntegrityFinding, FinancialIntegrityFindingEvent, financial_integrity_event_key(), financial_integrity_source_snapshot(), Typed event history for persisted financial integrity findings., record_finding_event(), Сервисный слой приложения ``operations``.  Чистые функции, без HTTP-логики. Испо
+Cohesion: 0.38
+Nodes (8): CenterExpense, Decimal, calculate_expense_funding_split_total(), expense_status_requires_balanced_funding(), ExpenseFundingValidation, ExpenseValidationError, Raised when a center expense is not valid for the requested state., validate_expense_funding_splits()
 
 ### Community 168 - "Community 168"
 Cohesion: 0.36
@@ -1026,10 +990,6 @@ Nodes (7): Активный этап, Глобальная готовность,
 Cohesion: 0.25
 Nodes (7): 1. Порядок восстановления, 2. Приоритет источников, 3. Индекс документации, 4. Архитектурные владельцы, 5. Skills и инструменты, 6. Контрольная точка, Манифест восстановления проекта
 
-### Community 221 - "Community 221"
-Cohesion: 0.50
-Nodes (7): BalanceAccount, PaymentForm, payment_create(), _payment_form_account(), _payment_next_action(), _payment_summary_items(), Пополнение счёта через форму + сервисный слой.
-
 ### Community 222 - "Community 222"
 Cohesion: 0.25
 Nodes (8): UX/UI, Базовые справочники и роли, Документы, рекомендации и отчеты, Программы, каскады и серии, Расписание, Согласования и рассылки, Финансы и балансы, Что уже реализовано
@@ -1086,13 +1046,13 @@ Nodes (6): Acceptance Criteria, Workflow, Границы, Контракт: CI P
 Cohesion: 0.57
 Nodes (6): _copy(), main(), Path, Сборка переносимого demo-каталога ``dist/RMcodex-demo/``.  Создаёт структуру::, _should_skip(), _write_readme()
 
+### Community 239 - "Community 239"
+Cohesion: 0.20
+Nodes (9): 1. Цель, 2. Источники истины, 3. Инвентаризация и gap analysis, 4. Полномочия, 5. Формулы отчета, 6. Границы текущего среза, 7. Отдельные опасные срезы, 8. Acceptance criteria (+1 more)
+
 ### Community 240 - "Community 240"
 Cohesion: 0.33
 Nodes (6): ei(), me(), Ot(), qn(), xe(), ze()
-
-### Community 242 - "Community 242"
-Cohesion: 0.53
-Nodes (5): Экран «Завтра» для администраторов., tomorrow(), _tomorrow_control_items(), _tomorrow_next_action(), _tomorrow_summary_items()
 
 ### Community 243 - "Community 243"
 Cohesion: 0.40
@@ -1113,6 +1073,10 @@ Nodes (5): `CenterExpense`, `CenterExpenseCategory`, `EquipmentAsset`, `ExpenseF
 ### Community 247 - "Community 247"
 Cohesion: 0.40
 Nodes (5): `PayrollAccrual`, `PayrollSheet`, `PayrollSheetLine`, `StaffCompensationRule`, Зарплата и расчетные листы
+
+### Community 249 - "Community 249"
+Cohesion: 0.42
+Nodes (8): Document, _document_control_items(), document_create(), _document_create_url(), document_list(), _document_next_action(), _document_summary_items(), Документы получателей (загрузка файлов, срок действия).
 
 ### Community 250 - "Community 250"
 Cohesion: 0.40
@@ -1150,25 +1114,29 @@ Nodes (3): `BalanceTransfer`, `LedgerEntry`, Балансы и списания
 Cohesion: 0.67
 Nodes (3): `Room`, `ServiceRoomRule`, Кабинеты и вместимость
 
+### Community 341 - "Community 341"
+Cohesion: 0.27
+Nodes (3): lock_schedule_write(), Lock an existing appointment and all affected rooms in stable order.      `selec, RoomCapacityPostgreSQLConcurrencyTests
+
 ## Knowledge Gaps
-- **1190 isolated node(s):** `Migration`, `Migration`, `Migration`, `Migration`, `Migration` (+1185 more)
+- **1198 isolated node(s):** `Migration`, `Migration`, `Migration`, `Migration`, `Migration` (+1193 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **111 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **109 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `_()` connect `Domain Models 3` to `Community 258`, `Domain Models 4`, `Alpine Vendor 1`, `Bootstrap Vendor 3`, `FullCalendar Vendor 6`, `FullCalendar Vendor 7`, `FullCalendar Vendor 9`, `Domain Models 6`, `FullCalendar Vendor 10`, `Production Deployment`, `Community 159`, `Community 160`, `Community 161`, `Community 162`, `FullCalendar Vendor 16`, `Forms Validation 2`, `Alpine Vendor 2`, `init py 1`, `FullCalendar Vendor 22`, `Community 202`?**
-  _High betweenness centrality (0.033) - this node is a cross-community bridge._
-- **Why does `Appointment` connect `FullCalendar Vendor 3` to `FullCalendar Vendor 1`, `Domain Models 1`, `FullCalendar Vendor 2`, `FullCalendar Vendor 5`, `Community 137`, `Bootstrap Vendor 1`, `Domain Models 5`, `Bootstrap Vendor 2`, `Community 141`, `FullCalendar Vendor 8`, `Program Wizard`, `Community 149`, `Bootstrap Vendor 4`, `Recipient Views`, `FullCalendar Vendor 13`, `Balance Ledger Domain`, `Operations Tests 2`, `FullCalendar Vendor 17`, `Confirmation Views`, `FullCalendar Vendor 19`, `Bootstrap Vendor 8`, `Bootstrap Vendor 9`, `Domain Models 8`, `FullCalendar Vendor 23`, `FullCalendar Vendor 24`, `Bootstrap Vendor 12`, `Community 317`, `Community 318`, `Community 319`, `Domain Models 9`, `Bootstrap Vendor 15`, `UX Implementation Plan`, `FullCalendar Vendor 27`, `FullCalendar Vendor 28`, `FullCalendar Vendor 30`, `Community 205`, `Community 206`, `FullCalendar Vendor 33`, `Forms Validation 4`, `build demo py`, `BaseCommand`, `PDF Services`, `Community 220`, `bundle postgresql`, `Community 223`, `Database Migrations 1`, `Database Migrations 3`, `Database Migrations 4`, `Community 239`, `init py 4`, `settings viewer py`?**
+- **Why does `_()` connect `Domain Models 3` to `Community 160`, `Community 162`, `FullCalendar Vendor 16`, `Domain Models 4`, `Alpine Vendor 1`, `Community 202`, `Bootstrap Vendor 3`, `FullCalendar Vendor 6`, `Forms Validation 2`, `Alpine Vendor 2`, `FullCalendar Vendor 7`, `FullCalendar Vendor 9`, `init py 1`, `Domain Models 6`, `FullCalendar Vendor 22`, `FullCalendar Vendor 10`, `Production Deployment`, `Community 159`?**
+  _High betweenness centrality (0.034) - this node is a cross-community bridge._
+- **Why does `Appointment` connect `FullCalendar Vendor 1` to `FullCalendar Vendor 2`, `FullCalendar Vendor 5`, `Community 137`, `Bootstrap Vendor 1`, `Domain Models 5`, `Bootstrap Vendor 2`, `Community 141`, `FullCalendar Vendor 8`, `Program Wizard`, `Community 149`, `Bootstrap Vendor 4`, `Recipient Views`, `FullCalendar Vendor 13`, `Balance Ledger Domain`, `Operations Tests 2`, `FullCalendar Vendor 17`, `Confirmation Views`, `FullCalendar Vendor 19`, `Bootstrap Vendor 8`, `Bootstrap Vendor 9`, `Domain Models 8`, `FullCalendar Vendor 23`, `Bootstrap Vendor 12`, `Community 317`, `Community 318`, `Community 319`, `Domain Models 9`, `Bootstrap Vendor 15`, `FullCalendar Vendor 27`, `FullCalendar Vendor 28`, `FullCalendar Vendor 30`, `Community 205`, `Community 206`, `FullCalendar Vendor 33`, `Forms Validation 4`, `Community 341`, `BaseCommand`, `PDF Services`, `build demo py`, `Community 220`, `bundle postgresql`, `Database Migrations 3`, `Database Migrations 4`, `settings viewer py`?**
   _High betweenness centrality (0.024) - this node is a cross-community bridge._
-- **Why does `LedgerEntry` connect `FullCalendar Vendor 2` to `FullCalendar Vendor 1`, `Domain Models 1`, `FullCalendar Vendor 3`, `FullCalendar Vendor 5`, `Community 137`, `Bootstrap Vendor 1`, `Domain Models 5`, `Forms Validation 1`, `Bootstrap Vendor 2`, `Community 141`, `Program Wizard`, `Bootstrap Vendor 4`, `Recipient Views`, `FullCalendar Vendor 13`, `Balance Ledger Domain`, `Community 169`, `Confirmation Views`, `FullCalendar Vendor 19`, `Bootstrap Vendor 8`, `Bootstrap Vendor 9`, `Domain Models 8`, `FullCalendar Vendor 23`, `FullCalendar Vendor 24`, `Domain Models 9`, `Bootstrap Vendor 14`, `UX Implementation Plan`, `FullCalendar Vendor 28`, `FullCalendar Vendor 30`, `Community 206`, `Forms Validation 4`, `build demo py`, `bundle postgresql`, `Community 223`, `FullCalendar Vendor 35`, `Database Migrations 1`, `Database Migrations 3`, `Community 239`, `settings py`, `settings viewer py`?**
-  _High betweenness centrality (0.019) - this node is a cross-community bridge._
-- **Are the 387 inferred relationships involving `Appointment` (e.g. with `AppointmentCancelForm` and `AppointmentChargeFact`) actually correct?**
-  _`Appointment` has 387 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 346 inferred relationships involving `StaffMember` (e.g. with `AppointmentChargeFact` and `AppointmentReschedulePlan`) actually correct?**
-  _`StaffMember` has 346 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 307 inferred relationships involving `FundingSource` (e.g. with `AppointmentChargeFact` and `BalanceTransfer`) actually correct?**
-  _`FundingSource` has 307 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 310 inferred relationships involving `AppointmentParticipant` (e.g. with `AppointmentReschedulePlan` and `AppointmentRescheduleStep`) actually correct?**
-  _`AppointmentParticipant` has 310 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `StaffMember` connect `FullCalendar Vendor 1` to `FullCalendar Vendor 5`, `Community 137`, `Bootstrap Vendor 1`, `Domain Models 5`, `Bootstrap Vendor 2`, `Community 145`, `FullCalendar Vendor 8`, `Bootstrap Vendor 4`, `Recipient Views`, `Balance Ledger Domain`, `Operations Tests 2`, `FullCalendar Vendor 17`, `Confirmation Views`, `FullCalendar Vendor 19`, `Community 171`, `Bootstrap Vendor 8`, `Alpine Vendor 3`, `Bootstrap Vendor 9`, `Domain Models 8`, `FullCalendar Vendor 23`, `Bootstrap Vendor 12`, `FullCalendar Vendor 27`, `FullCalendar Vendor 28`, `FullCalendar Vendor 30`, `FullCalendar Vendor 31`, `FullCalendar Vendor 33`, `Forms Validation 4`, `Community 341`, `BaseCommand`, `PDF Services`, `build demo py`, `Database Migrations 3`, `settings viewer py`?**
+  _High betweenness centrality (0.022) - this node is a cross-community bridge._
+- **Are the 392 inferred relationships involving `Appointment` (e.g. with `AppointmentCancelForm` and `AppointmentChargeFact`) actually correct?**
+  _`Appointment` has 392 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 351 inferred relationships involving `StaffMember` (e.g. with `AppointmentChargeFact` and `AppointmentReschedulePlan`) actually correct?**
+  _`StaffMember` has 351 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 321 inferred relationships involving `FundingSource` (e.g. with `AppointmentChargeFact` and `BalanceTransfer`) actually correct?**
+  _`FundingSource` has 321 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 314 inferred relationships involving `AppointmentParticipant` (e.g. with `AppointmentReschedulePlan` and `AppointmentRescheduleStep`) actually correct?**
+  _`AppointmentParticipant` has 314 INFERRED edges - model-reasoned connections that need verification._
