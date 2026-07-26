@@ -7,9 +7,9 @@
 Этап: приемка полномочий и финансового контура. PostgreSQL-устойчивость
 записей расписания и списаний, два доказательных среза полномочий, оба
 подэтапа A+B, payroll до факта выплаты и сквозная service-приемка завершены.
-Production preflight, health, проверяемый backup/restore и цельная
-browser-приемка рабочих ролей завершены. Следующий этап — persisted
-transfer/conversion, приемка грантовых/управленческих отчетов и выбор внешних
+Production preflight, health, проверяемый backup/restore, цельная
+browser-приемка рабочих ролей и persisted transfer/conversion завершены.
+Следующий этап — приемка грантовых/управленческих отчетов и выбор внешних
 эксплуатационных поставщиков.
 
 Цель этапа: ожидающие согласования и финансовые решения разделены по ролям,
@@ -22,6 +22,7 @@ transfer/conversion, приемка грантовых/управленческ�
 - `docs/decisions/ADR-003-approval-authority-and-manual-resolution.md`;
 - `docs/07-updated-domain-model-after-interview.md`.
 - `docs/53-operational-e2e-acceptance-contract.md`.
+- `docs/56-persisted-balance-transfer-conversion-contract.md`.
 
 ## Что сделано в текущем срезе
 
@@ -105,6 +106,14 @@ transfer/conversion, приемка грантовых/управленческ�
   обезличенной БД. Администратор не видит payroll-команды руководителя,
   руководитель проходит `approved -> sent -> paid` через UI, mobile-кабинет
   специалиста на `390px` не имеет horizontal overflow.
+- Добавлены `BalanceTransfer`, migration `operations.0047` и связанная пара
+  immutable ledger-проводок. Прямой перенос и конвертация `money -> sessions`
+  сохраняют источник, основание, исторический курс и idempotency-key; прошлые
+  unlinked transfer-проводки не переписаны.
+- Сервис переноса сериализует остатки на PostgreSQL 17. Конвертация не меняет
+  лечебный план `planned_sessions`, а увеличивает только доступное по оплате
+  количество занятий каскада. Локальная browser-приемка прошла direct,
+  конвертацию, 390px и запрет специалисту (`403`).
 
 ## Проверки
 
@@ -117,9 +126,13 @@ transfer/conversion, приемка грантовых/управленческ�
 - Ruff: пройден.
 - Django system check: пройден.
 - `makemigrations --check --dry-run`: изменений не обнаружено.
-- PostgreSQL 17: миграции `0001-0046` с пустой базы и полный suite `715 passed`
+- PostgreSQL 17: миграции `0001-0047` с пустой базы и полный suite `730 passed`
   в disposable-контейнере; ручные решения, две гонки вместимости, гонка
   списания, гонка выплаты, nullable locking-path и сквозные сценарии проходят.
+- Persisted transfer/conversion: migration `0047` применена к чистой локальной
+  PostgreSQL 17 базе; focused PostgreSQL tests `10 passed`, SQLite form/view/service
+  tests `13 passed, 2 skipped`, полный SQLite regression `721 passed, 9 skipped`,
+  browser acceptance выполнена на отдельной обезличенной SQLite-базе.
 - GitHub Actions run `30154850160` для commit `81611d9` успешно прошел
   PostgreSQL 17 migrations, Django check, Ruff и полный pytest за `5m16s`.
 - GitHub Actions run `30156267128` для commit `4c2e09e` успешно прошел чистую
@@ -149,8 +162,8 @@ transfer/conversion, приемка грантовых/управленческ�
   БД: все экраны ответили `200`, browser console/page errors и HTTP `4xx`/`5xx`
   отсутствовали, desktop и mobile screenshots проверены визуально. Временные
   данные, settings и процесс удалены после запуска.
-- Graphify code index обновлен локально без LLM/API key: `5904` nodes,
-  `26423` edges. Семантическое обновление документов не применено: внешний
+- Graphify code index обновлен локально без LLM/API key: `5919` nodes,
+  `25848` edges. Семантическое обновление документов не применено: внешний
   Gemini backend недоступен по региону/лимиту, но это не блокирует кодовый граф.
 
 ## Следующая работа
@@ -158,8 +171,8 @@ transfer/conversion, приемка грантовых/управленческ�
 1. Выбрать владельца и поставщиков для offsite backup, monitoring/alerting и
    реального SMTP; хранить секреты только вне Git. Включить branch protection
    после согласования репозитория.
-2. Продолжить persisted transfer/conversion и приемку grant/report контуров по
-   readiness matrix `docs/01-prd.md`.
+2. Принять grant/report контуры по readiness matrix `docs/01-prd.md`; отдельно
+   согласовать policy возвратов и обратной конвертации до их реализации.
 3. Перед пилотом проверить mobile-кабинет на физическом телефоне и провести
    обезличенные рабочие сценарии центра.
 
@@ -171,7 +184,7 @@ transfer/conversion, приемка грантовых/управленческ�
 - индивидуальные и групповые занятия;
 - несколько специалистов и кабинетные ограничения;
 - переносы и цепочки плотного расписания;
-- participant-level billing, ledger и financial-integrity;
+- participant-level billing, ledger, financial-integrity и persisted transfer/conversion;
 - базовые гранты, табели и payroll;
 - расходы, договоры, шаблоны, акты и согласия;
 - импорт сертификатов, связь с балансом и безопасный preflight.
@@ -179,11 +192,11 @@ transfer/conversion, приемка грантовых/управленческ�
 Критические зоны до рабочего production-контура:
 
 - завершенная матрица ролей во всех управленческих действиях;
-- PostgreSQL concurrency и idempotency tests;
+- приемка грантовых и управленческих отчетов, а также policy возвратов и обратной конвертации;
 - offsite backup, monitoring/alerting и реальный SMTP;
 - регулярный targeted browser smoke и приемка на физическом телефоне;
 - приемка на реальных обезличенных сценариях центра;
-- доработка грантовых квот, переводов/конвертации и отчетов руководителя по
+- доработка грантовых квот и отчетов руководителя по
   readiness matrix из `docs/01-prd.md`.
 
 ## Риски и запреты

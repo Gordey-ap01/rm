@@ -13,6 +13,7 @@ from .models import (
     AppointmentSeries,
     AppointmentStaffAssignment,
     BalanceAccount,
+    BalanceTransfer,
     CenterExpense,
     CenterExpenseCategory,
     CenterLegalProfile,
@@ -1435,11 +1436,14 @@ class LedgerEntryAdmin(admin.ModelAdmin):
         "appointment",
         "appointment_participant",
         "price_snapshot",
+        "balance_transfer",
+        "transfer_side",
         "created_by",
     )
     search_fields = ("account__child__last_name", "account__funding_source__name", "reason")
     list_filter = ("entry_type", "account__unit")
     autocomplete_fields = ("account", "appointment", "appointment_participant", "created_by")
+    readonly_fields = ("balance_transfer", "transfer_side")
 
 
 @admin.register(FinancialIntegrityCheckRun)
@@ -1725,6 +1729,45 @@ class PayrollSheetLifecycleEventAdmin(PayrollFinancialAuditAdmin):
         "updated_at",
     )
     date_hierarchy = "occurred_at"
+
+
+@admin.register(BalanceTransfer)
+class BalanceTransferAdmin(PayrollFinancialAuditAdmin):
+    list_display = (
+        "created_at",
+        "operation_kind",
+        "from_account",
+        "amount_from",
+        "to_account",
+        "amount_to",
+        "conversion_rate",
+        "program_block",
+        "created_by",
+    )
+    search_fields = (
+        "from_account__child__last_name",
+        "to_account__child__last_name",
+        "from_account__funding_source__name",
+        "reason",
+    )
+    list_filter = ("operation_kind", "from_unit_snapshot", "to_unit_snapshot")
+    autocomplete_fields = ("from_account", "to_account", "program_block", "created_by")
+    readonly_fields = (
+        "from_account",
+        "to_account",
+        "program_block",
+        "operation_kind",
+        "amount_from",
+        "amount_to",
+        "from_unit_snapshot",
+        "to_unit_snapshot",
+        "conversion_rate",
+        "reason",
+        "idempotency_key",
+        "created_by",
+        "created_at",
+        "updated_at",
+    )
 
 
 @admin.register(Note)

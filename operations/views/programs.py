@@ -17,7 +17,7 @@ from operations.forms import (
 from operations.models import BalanceAccount, Child, ProgramBlock, TreatmentProgram
 from operations.services import billing as billing_svc, program_wizard
 
-from ._common import is_admin_user
+from ._common import admin_required, is_admin_user
 
 
 def _form_value(form, field_name: str):
@@ -178,8 +178,12 @@ def _transfer_form_account(form, field_name: str, fallback=None):
     return queryset.filter(pk=value).first() or fallback
 
 
-def _transfer_amount_value(form) -> Decimal | None:
-    value = _form_value(form, "amount")
+def _transfer_operation_kind(form) -> str:
+    return _form_value(form, "operation_kind") or "direct"
+
+
+def _transfer_decimal_value(form, field_name: str) -> Decimal | None:
+    value = _form_value(form, field_name)
     if value is None:
         return None
     try:
@@ -187,6 +191,21 @@ def _transfer_amount_value(form) -> Decimal | None:
     except (InvalidOperation, ValueError):
         return None
     return amount if amount > 0 else None
+
+
+def _transfer_amount_value(block: ProgramBlock, form) -> Decimal | None:
+    if _transfer_operation_kind(form) == "money_to_sessions":
+        sessions = _transfer_decimal_value(form, "sessions")
+        price = block.service.default_price
+        if sessions is None or not price or price <= 0:
+            return None
+        return sessions * price
+    return _transfer_decimal_value(form, "amount")
+
+
+def _transfer_credit_value(form) -> Decimal | None:
+    field_name = "sessions" if _transfer_operation_kind(form) == "money_to_sessions" else "amount"
+    return _transfer_decimal_value(form, field_name)
 
 
 def _transfer_balance_label(account: BalanceAccount | None) -> str:
@@ -213,11 +232,13 @@ def _transfer_estimated_sessions(
 def program_block_transfer_summary_items(block: ProgramBlock, form) -> list[dict[str, str]]:
     source_account = _transfer_form_account(form, "from_account")
     target_account = _transfer_form_account(form, "to_account", block.balance_account)
-    amount = _transfer_amount_value(form)
-    estimated = _transfer_estimated_sessions(block, target_account, amount)
+    operation_kind = _transfer_operation_kind(form)
+    amount_from = _transfer_amount_value(block, form)
+    amount_to = _transfer_credit_value(form)
+    estimated = _transfer_estimated_sessions(block, target_account, amount_to)
 
-    source_after = source_account.current_balance - amount if source_account and amount else None
-    target_after = target_account.current_balance + amount if target_account and amount else None
+    source_after = source_account.current_balance - amount_from if source_account and amount_from else None
+    target_after = target_account.current_balance + amount_to if target_account and amount_to else None
     estimated_hint = (
         f"примерно занятий после переноса: {estimated}"
         if estimated is not None
@@ -258,9 +279,24 @@ def program_block_transfer_summary_items(block: ProgramBlock, form) -> list[dict
             ),
         },
         {
-            "label": "Объем переноса",
-            "value": str(amount) if amount is not None else "не указан",
-            "hint": estimated_hint,
+            "label": "Вид операции",
+            "value": "Рубли в занятия" if operation_kind == "money_to_sessions" else "Прямой перенос",
+            "hint": (
+                f"курс: {block.service.default_price} руб. за занятие"
+                if operation_kind == "money_to_sessions" and block.service.default_price
+                else "единицы исходного и целевого счета совпадают"
+            ),
+        },
+        {
+            "label": "Объем операции",
+            "value": (
+                f"списать: {amount_from}" if amount_from is not None else "не указан"
+            ),
+            "hint": (
+                f"зачислить: {amount_to}; {estimated_hint}"
+                if amount_to is not None
+                else estimated_hint
+            ),
         },
     ]
 
@@ -268,7 +304,8 @@ def program_block_transfer_summary_items(block: ProgramBlock, form) -> list[dict
 def program_block_transfer_control_items(block: ProgramBlock, form) -> list[dict[str, str]]:
     source_account = _transfer_form_account(form, "from_account")
     target_account = _transfer_form_account(form, "to_account", block.balance_account)
-    amount = _transfer_amount_value(form)
+    operation_kind = _transfer_operation_kind(form)
+    amount = _transfer_amount_value(block, form)
     items = [
         {
             "tone": "info",
@@ -281,7 +318,7 @@ def program_block_transfer_control_items(block: ProgramBlock, form) -> list[dict
             {
                 "tone": "danger",
                 "title": "Есть ошибки формы",
-                "text": "Проверьте исходный счет, целевой счет, сумму и основание переноса.",
+                "text": "Проверьте вид операции, счета, объем и основание переноса.",
             }
         )
     if not block.balance_account_id:
@@ -297,15 +334,20 @@ def program_block_transfer_control_items(block: ProgramBlock, form) -> list[dict
             {
                 "tone": "warning",
                 "title": "Нет доступного исходного счета",
-                "text": "Для переноса нужен другой активный счет этого получателя с теми же единицами.",
+                "text": "Для переноса нужен другой активный счет получателя из того же источника.",
             }
         )
-    if source_account and target_account and source_account.unit != target_account.unit:
+    if (
+        operation_kind == "direct"
+        and source_account
+        and target_account
+        and source_account.unit != target_account.unit
+    ):
         items.append(
             {
                 "tone": "danger",
                 "title": "Разные единицы счетов",
-                "text": "Перенос возможен только между счетами в занятиях или только между счетами в рублях.",
+                "text": "Выберите конвертацию, если нужно перевести рубли в занятия.",
             }
         )
     if source_account and amount and amount > source_account.current_balance:
@@ -316,12 +358,12 @@ def program_block_transfer_control_items(block: ProgramBlock, form) -> list[dict
                 "text": "Уменьшите сумму или сначала пополните исходный счет.",
             }
         )
-    if target_account and target_account.unit == BalanceAccount.Unit.MONEY:
+    if operation_kind == "money_to_sessions":
         items.append(
             {
                 "tone": "info",
-                "title": "Рубли пересчитываются в занятия",
-                "text": "Оценка количества занятий строится от текущей цены услуги каскада.",
+                "title": "Курс будет сохранен",
+                "text": "Система сама рассчитает рубли по цене услуги и сохранит курс в истории операции.",
             }
         )
     return items
@@ -330,7 +372,8 @@ def program_block_transfer_control_items(block: ProgramBlock, form) -> list[dict
 def program_block_transfer_next_action(block: ProgramBlock, form) -> dict[str, str]:
     source_account = _transfer_form_account(form, "from_account")
     target_account = _transfer_form_account(form, "to_account", block.balance_account)
-    amount = _transfer_amount_value(form)
+    operation_kind = _transfer_operation_kind(form)
+    amount = _transfer_amount_value(block, form)
     if form.errors:
         return {
             "tone": "danger",
@@ -359,8 +402,12 @@ def program_block_transfer_next_action(block: ProgramBlock, form) -> dict[str, s
         return {
             "tone": "info",
             "label": "Следующий шаг",
-            "title": "Указать объем переноса",
-            "detail": "Введите количество занятий или сумму в единицах выбранных счетов.",
+            "title": "Указать объем операции",
+            "detail": (
+                "Введите целое число занятий для конвертации."
+                if operation_kind == "money_to_sessions"
+                else "Введите сумму или количество в единицах выбранных счетов."
+            ),
             "href": "#transfer-form",
         }
     if amount > source_account.current_balance:
@@ -383,11 +430,13 @@ def program_block_transfer_next_action(block: ProgramBlock, form) -> dict[str, s
 def program_block_transfer_context(block: ProgramBlock, form, cancel_url: str) -> dict:
     return {
         "block": block,
+        "program_block": block,
         "form": form,
         "cancel_url": cancel_url,
         "transfer_summary_items": program_block_transfer_summary_items(block, form),
         "transfer_control_items": program_block_transfer_control_items(block, form),
         "transfer_next_action": program_block_transfer_next_action(block, form),
+        "transfer_operation_kind": _transfer_operation_kind(form),
     }
 
 
@@ -607,8 +656,7 @@ def program_block_schedule_wizard(request, block_id: int):
     )
 
 
-@login_required
-@user_passes_test(is_admin_user)
+@admin_required
 def program_block_transfer_funds(request, block_id: int):
     block = _program_block_or_404(block_id)
 
@@ -616,22 +664,40 @@ def program_block_transfer_funds(request, block_id: int):
         form = ProgramFundsTransferForm(request.POST, block=block)
         if form.is_valid():
             try:
-                debit, credit = billing_svc.transfer_between_accounts(
-                    from_account=form.cleaned_data["from_account"],
-                    to_account=form.cleaned_data["to_account"],
-                    amount=form.cleaned_data["amount"],
-                    reason=form.cleaned_data["reason"],
-                    actor=request.user,
-                )
+                if form.cleaned_data["operation_kind"] == "money_to_sessions":
+                    transfer = billing_svc.convert_money_to_sessions(
+                        from_account=form.cleaned_data["from_account"],
+                        to_account=form.cleaned_data["to_account"],
+                        program_block=block,
+                        sessions=form.cleaned_data["sessions"],
+                        reason=form.cleaned_data["reason"],
+                        actor=request.user,
+                        idempotency_key=form.cleaned_data["idempotency_key"],
+                    )
+                else:
+                    transfer = billing_svc.record_balance_transfer(
+                        from_account=form.cleaned_data["from_account"],
+                        to_account=form.cleaned_data["to_account"],
+                        amount=form.cleaned_data["amount"],
+                        reason=form.cleaned_data["reason"],
+                        actor=request.user,
+                        program_block=block,
+                        idempotency_key=form.cleaned_data["idempotency_key"],
+                    )
             except ValueError as exc:
                 form.add_error(None, str(exc))
             else:
-                if not block.balance_account_id:
-                    block.balance_account = form.cleaned_data["to_account"]
-                    block.save(update_fields=["balance_account", "updated_at"])
-                estimated = form.estimated_sessions_after_transfer()
-                suffix = f" Это примерно {estimated} зан." if estimated is not None else ""
-                messages.success(request, f"Средства перенесены: {abs(debit.amount)}.{suffix}")
+                block.refresh_from_db()
+                funded_remaining = program_wizard.funded_sessions_remaining(block)
+                funded_suffix = (
+                    f" Доступно по оплате для каскада: {funded_remaining} зан."
+                    if funded_remaining is not None
+                    else ""
+                )
+                messages.success(
+                    request,
+                    f"Операция переноса #{transfer.pk} зафиксирована.{funded_suffix}",
+                )
                 return redirect("recipient_detail", pk=block.program.child_id)
     else:
         form = ProgramFundsTransferForm(block=block)

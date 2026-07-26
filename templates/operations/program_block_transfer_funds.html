@@ -6,7 +6,7 @@
 <section class="page-header">
   <div>
     <h1>Миграция средств</h1>
-    <p>{{ block.program.child }} · {{ block.number }}. {{ block.title }}</p>
+    <p>{{ program_block.program.child }} · {{ program_block.number }}. {{ program_block.title }}</p>
   </div>
   <a class="button-link secondary" href="{{ cancel_url }}">Назад</a>
 </section>
@@ -43,9 +43,21 @@
       {% endif %}
       {% for field in form %}
         {% if field.is_hidden %}
+        {% elif field.name == 'operation_kind' %}
+        <fieldset class="field form-wide">
+          <legend>{{ field.label }}</legend>
           {{ field }}
+          {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+          {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+        </fieldset>
         {% else %}
-        <label class="field {% if field.name == 'reason' %}form-wide{% endif %}">
+        <label
+          class="field {% if field.name == 'reason' %}form-wide{% endif %}"
+          {% if field.name == 'amount' %}data-transfer-mode="direct"{% endif %}
+          {% if field.name == 'sessions' %}data-transfer-mode="money_to_sessions"{% endif %}
+          {% if field.name == 'sessions' and transfer_operation_kind != 'money_to_sessions' %}hidden{% endif %}
+          {% if field.name == 'amount' and transfer_operation_kind == 'money_to_sessions' %}hidden{% endif %}
+        >
           <span>{{ field.label }}</span>
           {{ field }}
           {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
@@ -76,12 +88,27 @@
     <article class="panel transfer-control-panel">
       <h2>Каскад</h2>
       <dl class="facts">
-        <div><dt>Получатель</dt><dd>{{ block.program.child }}</dd></div>
-        <div><dt>Услуга</dt><dd>{{ block.service }}</dd></div>
-        <div><dt>План</dt><dd>{{ block.scheduled_count }} / {{ block.planned_sessions }}</dd></div>
-        <div><dt>Счет</dt><dd>{% if block.balance_account %}{{ block.balance_account }}{% else %}не выбран{% endif %}</dd></div>
+        <div><dt>Получатель</dt><dd>{{ program_block.program.child }}</dd></div>
+        <div><dt>Услуга</dt><dd>{{ program_block.service }}</dd></div>
+        <div><dt>План</dt><dd>{{ program_block.scheduled_count }} / {{ program_block.planned_sessions }}</dd></div>
+        <div><dt>Счет</dt><dd>{% if program_block.balance_account %}{{ program_block.balance_account }}{% else %}не выбран{% endif %}</dd></div>
       </dl>
     </article>
   </aside>
 </section>
+<script>
+  (() => {
+    const modeInputs = document.querySelectorAll('input[name="operation_kind"]');
+    const modeFields = document.querySelectorAll('[data-transfer-mode]');
+    const updateMode = () => {
+      const selected = document.querySelector('input[name="operation_kind"]:checked');
+      const mode = selected ? selected.value : 'direct';
+      modeFields.forEach((field) => {
+        field.hidden = field.dataset.transferMode !== mode;
+      });
+    };
+    modeInputs.forEach((input) => input.addEventListener('change', updateMode));
+    updateMode();
+  })();
+</script>
 {% endblock %}

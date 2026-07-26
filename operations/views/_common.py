@@ -23,6 +23,20 @@ def is_director(user) -> bool:
     return is_director_user(user)
 
 
+def admin_required(view_func):
+    """Require an operator without redirecting an authenticated specialist through login."""
+
+    @wraps(view_func)
+    def wrapped(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+        if not is_admin_user(request.user):
+            raise PermissionDenied("This action is available only to an administrator or director.")
+        return view_func(request, *args, **kwargs)
+
+    return wrapped
+
+
 def director_required(view_func):
     """Require a director without redirecting authenticated operators through login."""
 

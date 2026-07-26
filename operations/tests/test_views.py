@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 from io import BytesIO
+from uuid import uuid4
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -23,6 +24,7 @@ from operations.models import (
     AppointmentRoomOverride,
     AppointmentStaffAssignment,
     BalanceAccount,
+    BalanceTransfer,
     CenterExpense,
     CenterExpenseCategory,
     CenterLegalProfile,
@@ -7403,6 +7405,10 @@ class ProgramBlockWizardViewTests(NewViewsTestBase):
         self.assertContains(response, "Следующий шаг")
         self.assertContains(response, "Контроль переноса средств")
         self.assertContains(response, 'id="transfer-form"')
+        self.assertContains(response, "Конвертировать рубли в занятия")
+        self.assertContains(response, str(self.child))
+        self.assertContains(response, str(self.service))
+        self.assertContains(response, "0 / 3")
 
     def test_transfer_funds_between_block_accounts(self):
         movable_source = FundingSource.objects.create(
@@ -7432,10 +7438,12 @@ class ProgramBlockWizardViewTests(NewViewsTestBase):
         response = self.client.post(
             reverse("program_block_transfer_funds", args=[self.block.pk]),
             {
+                "operation_kind": "direct",
                 "from_account": source.pk,
                 "to_account": target.pk,
                 "amount": "2",
                 "reason": "Перенос тест",
+                "idempotency_key": str(uuid4()),
             },
         )
 
@@ -7444,6 +7452,66 @@ class ProgramBlockWizardViewTests(NewViewsTestBase):
         target.refresh_from_db()
         self.assertEqual(source.current_balance, Decimal("3"))
         self.assertEqual(target.current_balance, Decimal("2"))
+        transfer = BalanceTransfer.objects.get()
+        self.assertEqual(transfer.program_block_id, self.block.pk)
+        self.assertEqual(transfer.ledger_entries.count(), 2)
+
+    def test_transfer_funds_converts_money_to_sessions_and_keeps_plan(self):
+        movable_source = FundingSource.objects.create(
+            name="Рублевый грант для конвертации",
+            source_type=FundingSource.SourceType.GRANT,
+            transfer_policy=FundingSource.TransferPolicy.WITHIN_CHILD,
+        )
+        source = BalanceAccount.objects.create(
+            child=self.child,
+            funding_source=movable_source,
+            unit=BalanceAccount.Unit.MONEY,
+            service_scope=BalanceAccount.ServiceScope.ANY,
+            initial_amount=Decimal("4500"),
+        )
+        target = BalanceAccount.objects.create(
+            child=self.child,
+            funding_source=movable_source,
+            unit=BalanceAccount.Unit.SESSIONS,
+            service_scope=BalanceAccount.ServiceScope.SPECIFIC_SERVICE,
+            service=self.service,
+            initial_amount=Decimal("0"),
+        )
+        self.block.balance_account = target
+        self.block.save(update_fields=["balance_account"])
+
+        response = self.client.post(
+            reverse("program_block_transfer_funds", args=[self.block.pk]),
+            {
+                "operation_kind": "money_to_sessions",
+                "from_account": source.pk,
+                "to_account": target.pk,
+                "sessions": "2",
+                "reason": "Конвертация для каскада",
+                "idempotency_key": str(uuid4()),
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        source.refresh_from_db()
+        target.refresh_from_db()
+        self.block.refresh_from_db()
+        self.assertEqual(source.current_balance, Decimal("1500"))
+        self.assertEqual(target.current_balance, Decimal("2"))
+        self.assertEqual(self.block.planned_sessions, 3)
+        transfer = BalanceTransfer.objects.get()
+        self.assertEqual(transfer.operation_kind, BalanceTransfer.OperationKind.MONEY_TO_SESSIONS)
+        self.assertEqual(transfer.conversion_rate, Decimal("1500"))
+        self.assertContains(response, "Доступно по оплате для каскада: 2 зан.")
+
+    def test_transfer_funds_rejects_specialist(self):
+        self.client.logout()
+        self.client.force_login(self.staff_user)
+
+        response = self.client.get(reverse("program_block_transfer_funds", args=[self.block.pk]))
+
+        self.assertEqual(response.status_code, 403)
 
 
 class AppointmentDetailAndMoveTests(NewViewsTestBase):

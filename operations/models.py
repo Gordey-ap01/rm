@@ -7,7 +7,7 @@ from typing import Any
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
-from django.db.models import Q, QuerySet, Sum
+from django.db.models import F, Q, QuerySet, Sum
 from django.utils import timezone
 from django.utils.text import get_valid_filename
 from django.utils.translation import gettext_lazy as _
@@ -2205,6 +2205,10 @@ class LedgerEntry(TimeStampedModel):
         CORRECTION = "correction", "Корректировка"
         TRANSFER = "transfer", "Перенос"
 
+    class TransferSide(models.TextChoices):
+        DEBIT = "debit", "Списание"
+        CREDIT = "credit", "Пополнение"
+
     account = models.ForeignKey(
         BalanceAccount,
         verbose_name="счет",
@@ -2236,6 +2240,21 @@ class LedgerEntry(TimeStampedModel):
         null=True,
         blank=True,
     )
+    balance_transfer = models.ForeignKey(
+        "BalanceTransfer",
+        verbose_name="операция переноса",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="ledger_entries",
+    )
+    transfer_side = models.CharField(
+        "сторона переноса",
+        max_length=10,
+        choices=TransferSide.choices,
+        null=True,
+        blank=True,
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="создал",
@@ -2249,38 +2268,245 @@ class LedgerEntry(TimeStampedModel):
         verbose_name = "операция по балансу"
         verbose_name_plural = "операции по балансам"
         ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(balance_transfer__isnull=True, transfer_side__isnull=True)
+                    | Q(
+                        balance_transfer__isnull=False,
+                        transfer_side="debit",
+                        entry_type="transfer",
+                        amount__lt=0,
+                    )
+                    | Q(
+                        balance_transfer__isnull=False,
+                        transfer_side="credit",
+                        entry_type="transfer",
+                        amount__gt=0,
+                    )
+                ),
+                name="ledger_transfer_link_matches_entry",
+            ),
+            models.UniqueConstraint(
+                fields=["balance_transfer", "transfer_side"],
+                condition=Q(balance_transfer__isnull=False),
+                name="unique_balance_transfer_ledger_side",
+            ),
+        ]
+        indexes = [models.Index(fields=["balance_transfer", "transfer_side"])]
 
     def __str__(self) -> str:
         return f"{self.get_entry_type_display()} {self.amount} ({self.account})"
 
     def clean(self) -> None:
+        errors = {}
         if self.entry_type == self.EntryType.CREDIT and self.amount < 0:
-            raise ValidationError({"amount": "Пополнение должно быть положительным."})
+            errors["amount"] = "Пополнение должно быть положительным."
         if self.entry_type == self.EntryType.DEBIT and self.amount > 0:
-            raise ValidationError({"amount": "Списание должно быть отрицательным."})
+            errors["amount"] = "Списание должно быть отрицательным."
+        if self.balance_transfer_id:
+            if self.entry_type != self.EntryType.TRANSFER:
+                errors["balance_transfer"] = "Операция переноса допустима только для ledger-переноса."
+            if self.transfer_side not in {self.TransferSide.DEBIT, self.TransferSide.CREDIT}:
+                errors["transfer_side"] = "Для операции переноса нужно указать сторону."
+            elif self.transfer_side == self.TransferSide.DEBIT and self.amount >= 0:
+                errors["amount"] = "Debit переноса должен быть отрицательным."
+            elif self.transfer_side == self.TransferSide.CREDIT and self.amount <= 0:
+                errors["amount"] = "Credit переноса должен быть положительным."
+        elif self.transfer_side:
+            errors["transfer_side"] = "Сторона переноса требует связанную операцию переноса."
         if (
             self.appointment_id
             and not self.appointment_participant_id
             and self.appointment.child_id != self.account.child_id
         ):
-            raise ValidationError({"appointment": "Занятие должно относиться к получателю счета."})
+            errors["appointment"] = "Занятие должно относиться к получателю счета."
         if (
             self.appointment_participant_id
             and self.appointment_participant.child_id != self.account.child_id
         ):
-            raise ValidationError(
-                {
-                    "appointment_participant": "Участник занятия должен относиться к получателю счета."
-                }
-            )
+            errors["appointment_participant"] = "Участник занятия должен относиться к получателю счета."
         if (
             self.appointment_id
             and self.appointment_participant_id
             and self.appointment_participant.appointment_id != self.appointment_id
         ):
+            errors["appointment_participant"] = "Участник должен относиться к выбранному занятию."
+        if errors:
+            raise ValidationError(errors)
+
+
+class BalanceTransfer(TimeStampedModel):
+    """Immutable business fact that connects both sides of a balance transfer."""
+
+    class OperationKind(models.TextChoices):
+        DIRECT = "direct", "Перенос в одинаковых единицах"
+        MONEY_TO_SESSIONS = "money_to_sessions", "Конвертация рублей в занятия"
+
+    from_account = models.ForeignKey(
+        BalanceAccount,
+        verbose_name="исходный счет",
+        on_delete=models.PROTECT,
+        related_name="outgoing_balance_transfers",
+    )
+    to_account = models.ForeignKey(
+        BalanceAccount,
+        verbose_name="целевой счет",
+        on_delete=models.PROTECT,
+        related_name="incoming_balance_transfers",
+    )
+    program_block = models.ForeignKey(
+        ProgramBlock,
+        verbose_name="каскад программы",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="balance_transfers",
+    )
+    operation_kind = models.CharField(
+        "вид операции", max_length=30, choices=OperationKind.choices
+    )
+    amount_from = models.DecimalField("списано", max_digits=12, decimal_places=2)
+    amount_to = models.DecimalField("зачислено", max_digits=12, decimal_places=2)
+    from_unit_snapshot = models.CharField(
+        "единица исходного счета на момент операции",
+        max_length=20,
+        choices=BalanceAccount.Unit.choices,
+    )
+    to_unit_snapshot = models.CharField(
+        "единица целевого счета на момент операции",
+        max_length=20,
+        choices=BalanceAccount.Unit.choices,
+    )
+    conversion_rate = models.DecimalField(
+        "курс конвертации",
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    reason = models.TextField("основание")
+    idempotency_key = models.UUIDField("ключ идемпотентности", default=uuid.uuid4, unique=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="операцию создал",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="created_balance_transfers",
+    )
+
+    class Meta:
+        verbose_name = "операция переноса баланса"
+        verbose_name_plural = "операции переноса балансов"
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=~Q(from_account=F("to_account")),
+                name="balance_transfer_accounts_differ",
+            ),
+            models.CheckConstraint(
+                condition=Q(amount_from__gt=0, amount_to__gt=0),
+                name="balance_transfer_amounts_positive",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        operation_kind="direct",
+                        conversion_rate__isnull=True,
+                        from_unit_snapshot=F("to_unit_snapshot"),
+                        amount_from=F("amount_to"),
+                    )
+                    | Q(
+                        operation_kind="money_to_sessions",
+                        conversion_rate__gt=0,
+                        from_unit_snapshot=BalanceAccount.Unit.MONEY,
+                        to_unit_snapshot=BalanceAccount.Unit.SESSIONS,
+                    )
+                ),
+                name="balance_transfer_kind_snapshot_rules",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["from_account", "-created_at"]),
+            models.Index(fields=["to_account", "-created_at"]),
+            models.Index(fields=["program_block", "-created_at"]),
+        ]
+
+    immutable_fields = (
+        "from_account_id",
+        "to_account_id",
+        "program_block_id",
+        "operation_kind",
+        "amount_from",
+        "amount_to",
+        "from_unit_snapshot",
+        "to_unit_snapshot",
+        "conversion_rate",
+        "reason",
+        "idempotency_key",
+        "created_by_id",
+    )
+
+    def clean(self) -> None:
+        errors = {}
+        if self.from_account_id and self.from_account_id == self.to_account_id:
+            errors["to_account"] = "Нельзя переносить в тот же счет."
+        if self.amount_from is None or self.amount_from <= 0:
+            errors["amount_from"] = "Списываемая сумма должна быть положительной."
+        if self.amount_to is None or self.amount_to <= 0:
+            errors["amount_to"] = "Зачисляемая сумма должна быть положительной."
+        if not self.reason or not self.reason.strip():
+            errors["reason"] = "Укажите основание финансовой операции."
+        if self.operation_kind == self.OperationKind.DIRECT:
+            if self.from_unit_snapshot != self.to_unit_snapshot:
+                errors["to_unit_snapshot"] = "Прямой перенос требует одинаковые единицы учета."
+            if self.amount_from is not None and self.amount_to is not None and self.amount_from != self.amount_to:
+                errors["amount_to"] = "Прямой перенос должен сохранить одинаковую величину."
+            if self.conversion_rate is not None:
+                errors["conversion_rate"] = "Для прямого переноса курс не указывается."
+        elif self.operation_kind == self.OperationKind.MONEY_TO_SESSIONS:
+            if self.from_unit_snapshot != BalanceAccount.Unit.MONEY:
+                errors["from_unit_snapshot"] = "Конвертация начинается со счета в рублях."
+            if self.to_unit_snapshot != BalanceAccount.Unit.SESSIONS:
+                errors["to_unit_snapshot"] = "Конвертация зачисляет занятия."
+            if self.conversion_rate is None or self.conversion_rate <= 0:
+                errors["conversion_rate"] = "Для конвертации нужен положительный курс."
+            elif (
+                self.amount_from is not None
+                and self.amount_to is not None
+                and self.amount_from != self.amount_to * self.conversion_rate
+            ):
+                errors["amount_from"] = "Списанная сумма должна соответствовать курсу и количеству занятий."
+        if self.program_block_id and self.to_account_id:
+            if self.program_block.program.child_id != self.to_account.child_id:
+                errors["program_block"] = "Каскад и целевой счет должны относиться к одному получателю."
+            elif (
+                self.program_block.balance_account_id
+                and self.program_block.balance_account_id != self.to_account_id
+            ):
+                errors["to_account"] = "Целевой счет должен совпадать со счетом выбранного каскада."
+            elif not self.to_account.can_pay_for(self.program_block.service):
+                errors["to_account"] = "Целевой счет не подходит для услуги каскада."
+        if errors:
+            raise ValidationError(errors)
+
+    def _ensure_immutable_fields(self) -> None:
+        if not self.pk:
+            return
+        current = type(self).objects.get(pk=self.pk)
+        if any(getattr(self, field) != getattr(current, field) for field in self.immutable_fields):
             raise ValidationError(
-                {"appointment_participant": "Участник должен относиться к выбранному занятию."}
+                "Зафиксированный перенос нельзя изменять. Для исправления нужна новая операция."
             )
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.full_clean()
+        self._ensure_immutable_fields()
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.get_operation_kind_display()} #{self.pk}"
 
 
 class FinancialIntegrityCheckRun(TimeStampedModel):

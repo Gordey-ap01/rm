@@ -58,6 +58,7 @@
 | `docs/53-operational-e2e-acceptance-contract.md` | Реализованный срез: сквозная service-приемка записи, списания, payroll, выплаты и приоритета руководителя по отпуску. |
 | `docs/54-production-preflight-contract.md` | Реализованный срез: health, проверяемые backup/restore, CI restore-drill и границы внешнего monitoring/SMTP. |
 | `docs/55-browser-role-acceptance-contract.md` | Реализованный срез: browser-приемка администратора, руководителя и mobile-кабинета специалиста. |
+| `docs/56-persisted-balance-transfer-conversion-contract.md` | Реализованный срез: immutable transfer, `money -> sessions`, PostgreSQL-сериализация и browser-приемка. |
 | `docs/decisions/ADR-001-*.md` | Django/PostgreSQL/local-first. |
 | `docs/decisions/ADR-002-*.md` | Балансовые счета и ledger. |
 | `docs/decisions/ADR-003-*.md` | Полномочия и ручные решения. |

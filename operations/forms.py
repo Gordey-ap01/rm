@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import datetime, time, timedelta
 from decimal import ROUND_FLOOR, Decimal
 from typing import Any
+from uuid import uuid4
 
 from django import forms
 from django.contrib.auth import get_user_model
@@ -2007,6 +2008,15 @@ class ProgramBlockScheduleWizardForm(forms.Form):
 
 
 class ProgramFundsTransferForm(forms.Form):
+    operation_kind = forms.ChoiceField(
+        label="Вид операции",
+        choices=(
+            ("direct", "Перенести в тех же единицах"),
+            ("money_to_sessions", "Конвертировать рубли в занятия"),
+        ),
+        initial="direct",
+        widget=forms.RadioSelect,
+    )
     from_account = forms.ModelChoiceField(
         label="Откуда переносим", queryset=BalanceAccount.objects.none()
     )
@@ -2017,13 +2027,27 @@ class ProgramFundsTransferForm(forms.Form):
         help_text="Если у каскада уже выбран счёт, он будет подставлен автоматически.",
     )
     amount = forms.DecimalField(
-        label="Сумма / количество", min_value=Decimal("0.01"), max_digits=12, decimal_places=2
+        label="Сумма / количество для прямого переноса",
+        min_value=Decimal("0.01"),
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        help_text="Заполняется только для переноса в одинаковых единицах.",
+    )
+    sessions = forms.DecimalField(
+        label="Количество занятий для конвертации",
+        min_value=Decimal("1"),
+        max_digits=12,
+        decimal_places=0,
+        required=False,
+        help_text="Для конвертации система спишет рубли по текущей цене услуги каскада.",
     )
     reason = forms.CharField(
         label="Основание переноса",
         widget=forms.Textarea(attrs={"rows": 3}),
         initial="Миграция средств между каскадами занятий.",
     )
+    idempotency_key = forms.UUIDField(widget=forms.HiddenInput, initial=uuid4)
 
     def __init__(self, *args, block: ProgramBlock, **kwargs):
         self.block = block
@@ -2049,7 +2073,9 @@ class ProgramFundsTransferForm(forms.Form):
         cleaned = super().clean()
         from_account = cleaned.get("from_account")
         to_account = cleaned.get("to_account") or self.block.balance_account
+        operation_kind = cleaned.get("operation_kind")
         amount = cleaned.get("amount")
+        sessions = cleaned.get("sessions")
 
         if not to_account:
             self.add_error("to_account", "Укажите счёт каскада, куда переносим средства.")
@@ -2058,20 +2084,42 @@ class ProgramFundsTransferForm(forms.Form):
 
         if from_account and from_account.pk == to_account.pk:
             self.add_error("from_account", "Нельзя переносить в тот же счёт.")
-        if from_account and from_account.unit != to_account.unit:
+        if from_account and from_account.funding_source_id != to_account.funding_source_id:
             self.add_error(
-                "to_account", "Счета должны быть в одинаковых единицах: занятия или рубли."
+                "to_account", "Счета должны относиться к одному источнику финансирования."
             )
         if to_account and not to_account.can_pay_for(self.block.service):
             self.add_error("to_account", "Целевой счёт не подходит для услуги этого каскада.")
-        if from_account and amount and amount > from_account.current_balance:
-            self.add_error("amount", "На исходном счёте недостаточно средств.")
+        if operation_kind == "direct":
+            if amount is None:
+                self.add_error("amount", "Укажите сумму или количество для прямого переноса.")
+            if from_account and from_account.unit != to_account.unit:
+                self.add_error("to_account", "Прямой перенос требует одинаковые единицы учета.")
+            if from_account and amount and amount > from_account.current_balance:
+                self.add_error("amount", "На исходном счёте недостаточно средств.")
+        elif operation_kind == "money_to_sessions":
+            if sessions is None:
+                self.add_error("sessions", "Укажите целое количество занятий для конвертации.")
+            elif sessions != sessions.to_integral_value():
+                self.add_error("sessions", "Количество занятий должно быть целым.")
+            if from_account and from_account.unit != BalanceAccount.Unit.MONEY:
+                self.add_error("from_account", "Для конвертации нужен исходный счёт в рублях.")
+            if to_account and to_account.unit != BalanceAccount.Unit.SESSIONS:
+                self.add_error("to_account", "Для конвертации нужен целевой счёт в занятиях.")
+            price = self.block.service.default_price
+            if not price or price <= 0:
+                self.add_error("sessions", "Для услуги каскада нужна положительная цена.")
+            elif from_account and sessions and sessions * price > from_account.current_balance:
+                self.add_error("sessions", "На исходном счёте недостаточно рублей для выбранного числа занятий.")
         return cleaned
 
     def estimated_sessions_after_transfer(self) -> int | None:
         if not self.is_valid():
             return None
         to_account = self.cleaned_data["to_account"]
+        operation_kind = self.cleaned_data["operation_kind"]
+        if operation_kind == "money_to_sessions":
+            return int(self.cleaned_data["sessions"])
         amount = self.cleaned_data["amount"]
         if to_account.unit == BalanceAccount.Unit.SESSIONS:
             return int(amount.to_integral_value(rounding=ROUND_FLOOR))

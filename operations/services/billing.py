@@ -6,18 +6,21 @@ from collections import defaultdict
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
+from uuid import UUID, uuid4
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 
 from operations.models import (
     Appointment,
     AppointmentParticipant,
     BalanceAccount,
+    BalanceTransfer,
     Child,
     FundingSource,
     LedgerEntry,
     Payment,
+    ProgramBlock,
 )
 
 
@@ -312,27 +315,46 @@ def top_up_account(
     return payment
 
 
-@transaction.atomic
-def transfer_between_accounts(
-    *,
+def _as_idempotency_key(value: UUID | str | None) -> UUID:
+    if value is None:
+        return uuid4()
+    if isinstance(value, UUID):
+        return value
+    try:
+        return UUID(str(value))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Ключ идемпотентности имеет неверный формат.") from exc
+
+
+def _locked_transfer_accounts(
     from_account: BalanceAccount,
     to_account: BalanceAccount,
-    amount: Decimal,
-    reason: str,
-    actor: Any = None,
-) -> tuple[LedgerEntry, LedgerEntry]:
-    """Переводит между счетами одного ребёнка или между детьми (если политика источника разрешает).
-
-    Создаёт пару ``LedgerEntry``: списание с ``from_account`` и пополнение ``to_account``.
-    """
-    if amount is None or amount <= 0:
-        raise ValueError("Сумма перевода должна быть положительной.")
+) -> tuple[BalanceAccount, BalanceAccount]:
     if from_account.pk == to_account.pk:
         raise ValueError("Нельзя переводить в тот же счёт.")
-    if from_account.unit != to_account.unit:
-        raise ValueError("Нельзя переводить между счетами с разными единицами учета.")
-    if amount > from_account.current_balance:
-        raise ValueError("Недостаточно средств на исходном счете.")
+    account_ids = sorted((from_account.pk, to_account.pk))
+    locked = {
+        account.pk: account
+        for account in BalanceAccount.objects.select_for_update(of=("self",))
+        .select_related("funding_source", "service")
+        .filter(pk__in=account_ids)
+        .order_by("pk")
+    }
+    if len(locked) != 2:
+        raise ValueError("Один из счетов больше не существует.")
+    return locked[from_account.pk], locked[to_account.pk]
+
+
+def _validate_transfer_accounts(
+    from_account: BalanceAccount,
+    to_account: BalanceAccount,
+) -> None:
+    if from_account.status != BalanceAccount.Status.ACTIVE:
+        raise ValueError("Исходный счёт должен быть активен.")
+    if to_account.status != BalanceAccount.Status.ACTIVE:
+        raise ValueError("Целевой счёт должен быть активен.")
+    if from_account.funding_source_id != to_account.funding_source_id:
+        raise ValueError("Перенос возможен только внутри одного источника финансирования.")
 
     source = from_account.funding_source
     if source.transfer_policy == FundingSource.TransferPolicy.NOT_TRANSFERABLE:
@@ -343,21 +365,248 @@ def transfer_between_accounts(
     ):
         raise ValueError("Этот источник можно передавать только в пределах одного получателя.")
 
-    debit = LedgerEntry.objects.create(
-        account=from_account,
-        entry_type=LedgerEntry.EntryType.TRANSFER,
-        amount=-amount,
-        reason=reason,
-        created_by=actor,
+
+def _ensure_matching_idempotent_transfer(
+    transfer: BalanceTransfer,
+    *,
+    from_account: BalanceAccount,
+    to_account: BalanceAccount,
+    program_block: ProgramBlock | None,
+    operation_kind: str,
+    amount_from: Decimal,
+    amount_to: Decimal,
+    conversion_rate: Decimal | None,
+    reason: str,
+    actor: Any,
+) -> BalanceTransfer:
+    has_different_intent = (
+        transfer.from_account_id != from_account.pk
+        or transfer.to_account_id != to_account.pk
+        or transfer.program_block_id != (program_block.pk if program_block else None)
+        or transfer.operation_kind != operation_kind
+        or transfer.amount_to != amount_to
+        or transfer.reason != reason
+        or transfer.created_by_id != (actor.pk if actor else None)
     )
-    credit = LedgerEntry.objects.create(
-        account=to_account,
-        entry_type=LedgerEntry.EntryType.TRANSFER,
+    has_same_financial_values = (
+        operation_kind == BalanceTransfer.OperationKind.MONEY_TO_SESSIONS
+        or (
+            transfer.amount_from == amount_from
+            and transfer.conversion_rate == conversion_rate
+        )
+    )
+    if has_different_intent or not has_same_financial_values:
+        raise ValueError("Этот ключ идемпотентности уже использован другой операцией.")
+    return transfer
+
+
+def _record_balance_transfer(
+    *,
+    from_account: BalanceAccount,
+    to_account: BalanceAccount,
+    operation_kind: str,
+    amount_from: Decimal,
+    amount_to: Decimal,
+    conversion_rate: Decimal | None,
+    reason: str,
+    actor: Any = None,
+    program_block: ProgramBlock | None = None,
+    idempotency_key: UUID | str | None = None,
+) -> BalanceTransfer:
+    if amount_from is None or amount_from <= 0 or amount_to is None or amount_to <= 0:
+        raise ValueError("Сумма и количество переноса должны быть положительными.")
+    normalized_reason = reason.strip() if reason else ""
+    if not normalized_reason:
+        raise ValueError("Укажите основание финансовой операции.")
+    key = _as_idempotency_key(idempotency_key)
+
+    with transaction.atomic():
+        locked_from, locked_to = _locked_transfer_accounts(from_account, to_account)
+        existing = BalanceTransfer.objects.select_related(
+            "from_account", "to_account", "program_block"
+        ).filter(idempotency_key=key).first()
+        if existing is not None:
+            return _ensure_matching_idempotent_transfer(
+                existing,
+                from_account=locked_from,
+                to_account=locked_to,
+                program_block=program_block,
+                operation_kind=operation_kind,
+                amount_from=amount_from,
+                amount_to=amount_to,
+                conversion_rate=conversion_rate,
+                reason=normalized_reason,
+                actor=actor,
+            )
+
+        _validate_transfer_accounts(locked_from, locked_to)
+        if amount_from > locked_from.current_balance:
+            raise ValueError("Недостаточно средств на исходном счете.")
+
+        if program_block is not None:
+            program_block = (
+                ProgramBlock.objects.select_related("program", "service")
+                .select_for_update()
+                .get(pk=program_block.pk)
+            )
+            if program_block.program.child_id != locked_to.child_id:
+                raise ValueError("Каскад и целевой счёт должны относиться к одному получателю.")
+            if (
+                program_block.balance_account_id
+                and program_block.balance_account_id != locked_to.pk
+            ):
+                raise ValueError("Целевой счёт должен совпадать со счётом выбранного каскада.")
+            if not locked_to.can_pay_for(program_block.service):
+                raise ValueError("Целевой счёт не подходит для услуги каскада.")
+
+        try:
+            with transaction.atomic():
+                transfer = BalanceTransfer.objects.create(
+                    from_account=locked_from,
+                    to_account=locked_to,
+                    program_block=program_block,
+                    operation_kind=operation_kind,
+                    amount_from=amount_from,
+                    amount_to=amount_to,
+                    from_unit_snapshot=locked_from.unit,
+                    to_unit_snapshot=locked_to.unit,
+                    conversion_rate=conversion_rate,
+                    reason=normalized_reason,
+                    idempotency_key=key,
+                    created_by=actor,
+                )
+        except IntegrityError:
+            existing = BalanceTransfer.objects.select_related(
+                "from_account", "to_account", "program_block"
+            ).get(idempotency_key=key)
+            return _ensure_matching_idempotent_transfer(
+                existing,
+                from_account=locked_from,
+                to_account=locked_to,
+                program_block=program_block,
+                operation_kind=operation_kind,
+                amount_from=amount_from,
+                amount_to=amount_to,
+                conversion_rate=conversion_rate,
+                reason=normalized_reason,
+                actor=actor,
+            )
+
+        LedgerEntry.objects.create(
+            account=locked_from,
+            entry_type=LedgerEntry.EntryType.TRANSFER,
+            amount=-amount_from,
+            balance_transfer=transfer,
+            transfer_side=LedgerEntry.TransferSide.DEBIT,
+            reason=normalized_reason,
+            created_by=actor,
+        )
+        LedgerEntry.objects.create(
+            account=locked_to,
+            entry_type=LedgerEntry.EntryType.TRANSFER,
+            amount=amount_to,
+            balance_transfer=transfer,
+            transfer_side=LedgerEntry.TransferSide.CREDIT,
+            reason=normalized_reason,
+            created_by=actor,
+        )
+        if program_block is not None and not program_block.balance_account_id:
+            program_block.balance_account = locked_to
+            program_block.save(update_fields=["balance_account", "updated_at"])
+        return transfer
+
+
+def record_balance_transfer(
+    *,
+    from_account: BalanceAccount,
+    to_account: BalanceAccount,
+    amount: Decimal,
+    reason: str,
+    actor: Any = None,
+    program_block: ProgramBlock | None = None,
+    idempotency_key: UUID | str | None = None,
+) -> BalanceTransfer:
+    """Persist one direct same-unit transfer and its linked pair of ledger entries."""
+    if from_account.unit != to_account.unit:
+        raise ValueError("Для разных единиц используйте конвертацию рублей в занятия.")
+    return _record_balance_transfer(
+        from_account=from_account,
+        to_account=to_account,
+        program_block=program_block,
+        operation_kind=BalanceTransfer.OperationKind.DIRECT,
+        amount_from=amount,
+        amount_to=amount,
+        conversion_rate=None,
+        reason=reason,
+        actor=actor,
+        idempotency_key=idempotency_key,
+    )
+
+
+def convert_money_to_sessions(
+    *,
+    from_account: BalanceAccount,
+    to_account: BalanceAccount,
+    program_block: ProgramBlock,
+    sessions: Decimal,
+    reason: str,
+    actor: Any = None,
+    idempotency_key: UUID | str | None = None,
+) -> BalanceTransfer:
+    """Convert a whole number of rubles-backed sessions using the block service price snapshot."""
+    if sessions is None or sessions <= 0 or sessions != sessions.to_integral_value():
+        raise ValueError("Для конвертации укажите целое положительное количество занятий.")
+    with transaction.atomic():
+        # All transfer paths lock accounts first, then the optional cascade.
+        # This prevents a direct transfer and a conversion from deadlocking.
+        locked_from, locked_to = _locked_transfer_accounts(from_account, to_account)
+        locked_block = (
+            ProgramBlock.objects.select_related("program", "service")
+            .select_for_update()
+            .get(pk=program_block.pk)
+        )
+        rate = locked_block.service.default_price
+        if rate is None or rate <= 0:
+            raise ValueError("Для конвертации у услуги каскада должна быть положительная цена.")
+        if locked_from.unit != BalanceAccount.Unit.MONEY:
+            raise ValueError("Исходный счёт конвертации должен быть в рублях.")
+        if locked_to.unit != BalanceAccount.Unit.SESSIONS:
+            raise ValueError("Целевой счёт конвертации должен быть в занятиях.")
+        return _record_balance_transfer(
+            from_account=locked_from,
+            to_account=locked_to,
+            program_block=locked_block,
+            operation_kind=BalanceTransfer.OperationKind.MONEY_TO_SESSIONS,
+            amount_from=sessions * rate,
+            amount_to=sessions,
+            conversion_rate=rate,
+            reason=reason,
+            actor=actor,
+            idempotency_key=idempotency_key,
+        )
+
+
+def transfer_between_accounts(
+    *,
+    from_account: BalanceAccount,
+    to_account: BalanceAccount,
+    amount: Decimal,
+    reason: str,
+    actor: Any = None,
+) -> tuple[LedgerEntry, LedgerEntry]:
+    """Backward-compatible direct transfer wrapper for existing callers."""
+    transfer = record_balance_transfer(
+        from_account=from_account,
+        to_account=to_account,
         amount=amount,
         reason=reason,
-        created_by=actor,
+        actor=actor,
     )
-    return debit, credit
+    entries = {
+        entry.transfer_side: entry
+        for entry in transfer.ledger_entries.select_related("account").all()
+    }
+    return entries[LedgerEntry.TransferSide.DEBIT], entries[LedgerEntry.TransferSide.CREDIT]
 
 
 def summarize_ledger_by_account(child: Child) -> dict[int, Decimal]:
