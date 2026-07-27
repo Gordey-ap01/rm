@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>{{ title }}</h1>
+    {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
+  </div>
+  {% if cancel_url %}
+    <a class="button-link secondary" href="{{ cancel_url }}">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      Назад
+    </a>
+  {% endif %}
+</section>
+
+<form method="post" class="object-form-layout" novalidate>
+  {% csrf_token %}
+  <section class="panel form-panel object-form-main">
+    <div class="object-form-head">
+      <div>
+        <h2>{{ form_panel_title|default:"Параметры решения" }}</h2>
+        {% if form_intro %}<p>{{ form_intro }}</p>{% endif %}
+      </div>
+    </div>
+    <div class="form-grid">
+      {% for hidden in form.hidden_fields %}
+        {{ hidden }}
+        {% if hidden.errors %}<div class="form-error form-wide" role="alert">{{ hidden.errors }}</div>{% endif %}
+      {% endfor %}
+      {% if form.non_field_errors %}
+        <div class="form-error form-wide" role="alert">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% for field in form.visible_fields %}
+        <label
+          class="field {% if field.name == 'note' or field.name == 'reason' %}form-wide{% endif %}"
+          data-grant-field="{{ field.name }}"
+        >
+          <span>{{ field.label }}</span>
+          {{ field }}
+          {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+          {% if field.errors %}<span class="form-error" role="alert">{{ field.errors }}</span>{% endif %}
+        </label>
+      {% endfor %}
+    </div>
+  </section>
+
+  <aside class="object-form-sidebar" aria-label="Контроль решения">
+    <section class="panel object-form-control">
+      <h2>{{ control_title|default:"Контроль решения" }}</h2>
+      <ul class="object-form-check-list">
+        {% for item in object_form_control_items %}
+          <li{% if item.tone %} class="is-{{ item.tone }}"{% endif %}>
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.detail }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="form-actions object-form-actions">
+        <button type="submit"{% if submit_tone == "danger" %} class="btn btn-danger"{% endif %}>
+          {{ submit_label|default:"Сохранить" }}
+        </button>
+        {% if cancel_url %}<a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>{% endif %}
+      </div>
+    </section>
+  </aside>
+</form>
+
+{% if scope_controls %}
+  <script>
+    (() => {
+      const scope = document.getElementById("id_compensation_scope");
+      const serviceField = document.querySelector('[data-grant-field="service"]');
+      const roleField = document.querySelector('[data-grant-field="assignment_label"]');
+      if (!scope || !serviceField || !roleField) return;
+
+      const syncScopeFields = () => {
+        const isService = scope.value === "service_delivery";
+        serviceField.hidden = !isService;
+        roleField.hidden = isService;
+      };
+
+      scope.addEventListener("change", syncScopeFields);
+      syncScopeFields();
+    })();
+  </script>
+{% endif %}
+{% endblock %}

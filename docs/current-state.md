@@ -1,6 +1,6 @@
 # Текущее состояние проекта
 
-Дата контрольной точки: 2026-07-26
+Дата контрольной точки: 2026-07-27
 
 ## Активный этап
 
@@ -11,13 +11,13 @@ Production preflight, health, проверяемый backup/restore, цельн�
 browser-приемка рабочих ролей, persisted transfer/conversion и приемка
 грантового отчета завершены. Безопасный жизненный цикл грантового плана по
 `docs/58-grant-plan-versioning-contract.md` реализован и локально принят.
-Активный следующий доменный этап описан принятым
-`docs/59-grant-fixed-compensation-and-donor-report-snapshot-contract.md`:
-сначала payroll-бюджет и фиксированная оплата проекта, затем снимок закрытого
-донорского отчета. Независимые schema/product review закрыли XOR payroll,
-provenance бюджета, fixed/per-session исключительность, MVCC-снимок и privacy
-границы. Следующий шаг — 59A-1/`0049` одним DB owner; параллельно нужны решения
-по внешней эксплуатации.
+Активный доменный этап описан принятым
+`docs/59-grant-fixed-compensation-and-donor-report-snapshot-contract.md`.
+59A-1/`0049` реализован одним DB owner: payroll-бюджет и фиксированный план
+проекта прошли SQLite regression, browser-приемку ролей и PostgreSQL 17
+migration/trigger/concurrency gate; срез принят. 59A-2 не начат: следующим
+отдельным срезом следуют общее начисление fixed-позиций, затем снимок закрытого
+донорского отчета; параллельно нужны решения по внешней эксплуатации.
 
 Цель этапа: ожидающие согласования и финансовые решения разделены по ролям,
 а руководитель имеет окончательный приоритет в управленческих областях без
@@ -158,6 +158,15 @@ provenance бюджета, fixed/per-session исключительность, M
 - Legacy backfill намеренно необратим и проверяется повторяемым
   `scripts/verify_grant_plan_migration.py`; для production требуется окно
   запрета грантовых записей и совместимый rollback без `migrate 0047`.
+- Для 59A-1 добавлены versioned `FundingPayrollBudget` и
+  `GrantFixedCompensation`, append-only редакции, stale-token защита,
+  director-only write-path и read-only история администратора.
+- Migration `0049` добавляет PostgreSQL exclusion/guard/constraint triggers:
+  пересечения, fixed/per-session XOR, неизменяемость истории, канонический
+  ключ проектной роли и согласованную терминальную текущую проекцию.
+- Грантовый отчет показывает бюджеты и фиксированные позиции. Руководитель
+  создает, редактирует и закрывает их; администратор видит данные и историю
+  без финансовых команд.
 
 ## Проверки
 
@@ -224,19 +233,33 @@ provenance бюджета, fixed/per-session исключительность, M
   БД: все экраны ответили `200`, browser console/page errors и HTTP `4xx`/`5xx`
   отсутствовали, desktop и mobile screenshots проверены визуально. Временные
   данные, settings и процесс удалены после запуска.
-- Graphify code index обновлен локально без LLM-вызова: `6102` nodes,
-  `27116` edges. Семантическое обновление документов не применено: внешний
-  Gemini backend недоступен по региону/лимиту, но это не блокирует кодовый граф.
+- Graphify code index сохранен локально без LLM-вызова: `6102` nodes,
+  `27116` edges, built from commit `4aeb5962`. Он не содержит последующие
+  изменения, включая 59A-1; обновление остается отдельным chore после фиксации
+  среза. Семантическое обновление документов не применено: внешний Gemini
+  backend недоступен по региону/лимиту, но это не блокирует кодовый граф.
+- 59A-1 focused SQLite: `152 passed, 15 skipped`; полный SQLite regression:
+  `787 passed, 24 skipped`. Пропуски относятся к PostgreSQL-only проверкам.
+  Ruff, Django system check, migration dry-run и `git diff --check` прошли.
+  SQLite migration chain `0048 -> 0049 -> 0048` также прошла. После
+  PostgreSQL gate полный regression повторно подтвердил тот же результат;
+  финальный secret scan измененных/новых файлов не нашел совпадений.
+- 59A-1 PostgreSQL 17 gate: чистая migration chain до `0049`, отдельный
+  upgrade `0048 -> 0049` и round-trip `0049 -> 0048 -> 0049` прошли.
+  Trigger/constraint/concurrency набор: `43 passed` без пропусков; связанный
+  grant plan/payroll/report набор: `169 passed` без пропусков.
+- Browser-приемка 59A-1 выполнена на временной обезличенной БД: руководитель
+  видит write-команды, администратор — только данные и историю; desktop/mobile
+  overflow и console errors отсутствуют. Временная БД и сервер удалены.
 
 ## Следующая работа
 
 1. Выбрать владельца и поставщиков для offsite backup, monitoring/alerting и
    реального SMTP; хранить секреты только вне Git. Включить branch protection
    после согласования репозитория.
-2. Одним DB owner реализовать 59A-1/`0049`: versioned payroll-бюджет и
-   fixed-позиции, межтабличное исключение fixed/per-session, director-only UI,
-   PostgreSQL concurrency и triggers. Общий payroll меняется только в 59A-2;
-   ledger-backed выделение получателю остается отдельным срезом.
+2. Следующим отдельным срезом выполнить 59A-2: общее fixed-начисление и
+   смешанный расчетный лист без фиктивного занятия. Ledger-backed выделение
+   получателю остается отдельным срезом.
 3. Перед production migration `0048` выполнить backup, `--strict` preflight,
    временно закрыть грантовые записи и подготовить совместимый rollback-релиз.
 4. Отдельно согласовать policy возвратов и обратной конвертации до реализации.
@@ -259,7 +282,7 @@ provenance бюджета, fixed/per-session исключительность, M
 Критические зоны до рабочего production-контура:
 
 - завершенная матрица ролей во всех управленческих действиях;
-- закрытый донорский отчет и фиксированная оплата грантового проекта;
+- общее fixed-начисление 59A-2 и закрытый донорский отчет;
 - policy возвратов и обратной конвертации;
 - offsite backup, monitoring/alerting и реальный SMTP;
 - регулярный targeted browser smoke и приемка на физическом телефоне;

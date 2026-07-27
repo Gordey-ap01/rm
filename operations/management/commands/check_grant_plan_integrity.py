@@ -4,11 +4,17 @@ from collections import Counter
 
 from django.core.management import BaseCommand, CommandError
 
+from operations.services.grant_compensation import (
+    grant_compensation_integrity_findings,
+)
 from operations.services.grant_plans import grant_plan_integrity_findings
 
 
 class Command(BaseCommand):
-    help = "Read-only integrity check for grant plan roots, revisions, periods, and payroll."
+    help = (
+        "Read-only integrity check for grant plan, payroll-budget, fixed-compensation "
+        "roots, revisions, periods, and payroll."
+    )
 
     def add_arguments(self, parser) -> None:
         parser.add_argument(
@@ -24,7 +30,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options) -> None:
-        findings = grant_plan_integrity_findings()
+        findings = [
+            *grant_plan_integrity_findings(),
+            *grant_compensation_integrity_findings(),
+        ]
         counts = Counter(finding.code for finding in findings)
         self.stdout.write("Grant plan integrity check")
         self.stdout.write(f"Findings: {len(findings)}")

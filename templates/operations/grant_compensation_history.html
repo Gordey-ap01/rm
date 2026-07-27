@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>{{ title }}</h1>
+    <p>{{ subtitle }}</p>
+  </div>
+  <a class="button-link secondary" href="{{ back_url }}">
+    <i class="bi bi-arrow-left" aria-hidden="true"></i>
+    Назад
+  </a>
+</section>
+
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <div class="table-responsive grant-report-table-wrap">
+    <table class="table table-hover align-middle mb-0 grant-report-table">
+      <thead class="table-light">
+        <tr>
+          <th>Редакция</th>
+          <th>Решение</th>
+          <th>Период</th>
+          {% if history_kind == "payroll_budget" %}
+            <th class="text-end">Бюджет</th>
+            <th>Контроль</th>
+          {% else %}
+            <th>Предмет оплаты</th>
+            <th>Начислить</th>
+            <th class="text-end">Сумма</th>
+            <th>Бюджет</th>
+          {% endif %}
+          <th>Автор</th>
+          <th>Основание</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for revision in revisions %}
+          <tr>
+            <td data-label="Редакция">
+              <strong>№{{ revision.revision_number }}</strong>
+              {% if revision.pk == current_revision_id %}
+                <span class="badge text-bg-primary ms-1">Текущая</span>
+              {% endif %}
+              <div class="small text-secondary">{{ revision.get_lifecycle_status_display }}</div>
+            </td>
+            <td data-label="Решение">
+              {{ revision.get_event_type_display }}
+              <div class="small text-secondary">
+                {% if revision.decided_at %}
+                  {{ revision.decided_at|date:"d.m.Y H:i" }}
+                {% else %}
+                  Перенос {{ revision.created_at|date:"d.m.Y H:i" }}
+                {% endif %}
+              </div>
+            </td>
+            <td data-label="Период">
+              {% if history_kind == "payroll_budget" %}
+                {{ revision.starts_on|date:"d.m.Y" }}–{{ revision.ends_on|date:"d.m.Y" }}
+              {% else %}
+                {{ revision.period_from|date:"d.m.Y" }}–{{ revision.period_to|date:"d.m.Y" }}
+              {% endif %}
+            </td>
+            {% if history_kind == "payroll_budget" %}
+              <td class="text-end text-nowrap" data-label="Бюджет">
+                {{ revision.planned_amount|floatformat:2 }} ₽
+              </td>
+              <td data-label="Контроль">{{ revision.get_enforcement_mode_display }}</td>
+            {% else %}
+              <td data-label="Предмет оплаты">
+                <strong>{{ revision.get_compensation_scope_display }}</strong>
+                <div class="small text-secondary">
+                  {% if revision.service %}{{ revision.service.name }}{% else %}{{ revision.assignment_label }}{% endif %}
+                </div>
+              </td>
+              <td data-label="Начислить">{{ revision.accrual_on|date:"d.m.Y" }}</td>
+              <td class="text-end text-nowrap" data-label="Сумма">
+                {{ revision.amount|floatformat:2 }} ₽
+              </td>
+              <td data-label="Бюджет">
+                Редакция №{{ revision.budget_revision_at_decision.revision_number }}
+              </td>
+            {% endif %}
+            <td data-label="Автор">
+              {% if revision.actor %}
+                {{ revision.actor.get_full_name|default:revision.actor.username }}
+              {% else %}
+                Автор неизвестен
+              {% endif %}
+              <div class="small text-secondary">{{ revision.get_actor_role_snapshot_display }}</div>
+            </td>
+            <td data-label="Основание">
+              {{ revision.reason }}
+              {% if revision.note %}
+                <div class="small text-secondary mt-1">{{ revision.note }}</div>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="{% if history_kind == 'payroll_budget' %}7{% else %}9{% endif %}">
+              История отсутствует.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

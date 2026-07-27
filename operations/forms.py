@@ -36,9 +36,11 @@ from .models import (
     DonationContract,
     EquipmentAsset,
     ExpenseFundingSplit,
+    FundingPayrollBudget,
     FundingServiceQuota,
     FundingSource,
     FundingStaffAllocation,
+    GrantFixedCompensation,
     GrantRecipientAllocation,
     LedgerEntry,
     OrganizationServiceContract,
@@ -3914,6 +3916,227 @@ class GrantPlanCloseForm(forms.Form):
     )
     expected_revision_id = forms.IntegerField(widget=forms.HiddenInput())
 
+
+class FundingPayrollBudgetForm(forms.ModelForm):
+    reason = forms.CharField(
+        label="Основание решения",
+        min_length=5,
+        strip=True,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+    expected_revision_id = forms.IntegerField(required=False, widget=forms.HiddenInput())
+
+    class Meta:
+        model = FundingPayrollBudget
+        fields = (
+            "funding_source",
+            "starts_on",
+            "ends_on",
+            "planned_amount",
+            "enforcement_mode",
+            "note",
+        )
+        labels = {
+            "funding_source": "Источник финансирования",
+            "starts_on": "Действует с",
+            "ends_on": "Действует по",
+            "planned_amount": "Плановый бюджет, ₽",
+            "enforcement_mode": "Контроль лимита",
+            "note": "Примечание",
+        }
+        help_texts = {
+            "enforcement_mode": (
+                "Жесткий лимит нельзя превысить. Предупреждающий лимит потребует "
+                "отдельного решения руководителя на этапе утверждения начислений."
+            ),
+        }
+        widgets = {
+            "starts_on": DATE_INPUT,
+            "ends_on": DATE_INPUT,
+            "note": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        source_filter = Q(archived_at__isnull=True)
+        if self.instance.pk:
+            source_filter |= Q(pk=self.instance.funding_source_id)
+            self.fields["funding_source"].disabled = True
+            self.fields["expected_revision_id"].required = True
+            self.initial["expected_revision_id"] = self.instance.current_revision_id
+        self.fields["funding_source"].queryset = FundingSource.all_objects.filter(
+            source_filter
+        ).order_by("name")
+        self.order_fields(
+            [
+                "funding_source",
+                "starts_on",
+                "ends_on",
+                "planned_amount",
+                "enforcement_mode",
+                "note",
+                "reason",
+                "expected_revision_id",
+            ]
+        )
+
+    def clean(self):
+        cleaned = super().clean()
+        starts_on = cleaned.get("starts_on")
+        ends_on = cleaned.get("ends_on")
+        if starts_on and ends_on and ends_on < starts_on:
+            raise forms.ValidationError("Дата окончания не может быть раньше даты начала.")
+        return cleaned
+
+
+class GrantFixedCompensationForm(forms.ModelForm):
+    reason = forms.CharField(
+        label="Основание решения",
+        min_length=5,
+        strip=True,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+    expected_revision_id = forms.IntegerField(required=False, widget=forms.HiddenInput())
+
+    class Meta:
+        model = GrantFixedCompensation
+        fields = (
+            "payroll_budget",
+            "staff_member",
+            "compensation_scope",
+            "service",
+            "assignment_label",
+            "period_from",
+            "period_to",
+            "accrual_on",
+            "amount",
+            "note",
+        )
+        labels = {
+            "payroll_budget": "Бюджет оплаты труда",
+            "staff_member": "Сотрудник",
+            "compensation_scope": "Вид фиксированной оплаты",
+            "service": "Услуга",
+            "assignment_label": "Проектная роль",
+            "period_from": "Период с",
+            "period_to": "Период по",
+            "accrual_on": "Дата начисления",
+            "amount": "Фиксированная сумма, ₽",
+            "note": "Примечание",
+        }
+        help_texts = {
+            "compensation_scope": (
+                "Оплата услуги заменяет сдельную ставку на том же периоде. "
+                "Проектная роль начисляется дополнительно."
+            ),
+            "service": "Обязательна только для фиксированной оплаты услуги.",
+            "assignment_label": "Обязательна только для дополнительной проектной роли.",
+            "accrual_on": "Дата должна входить в период позиции и выбранного бюджета.",
+        }
+        widgets = {
+            "period_from": DATE_INPUT,
+            "period_to": DATE_INPUT,
+            "accrual_on": DATE_INPUT,
+            "note": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, funding_source_id: int | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        budget_filter = Q(
+            lifecycle_status=FundingPayrollBudget.LifecycleStatus.ACTIVE,
+            funding_source__archived_at__isnull=True,
+        )
+        if funding_source_id:
+            budget_filter &= Q(funding_source_id=funding_source_id)
+        if self.instance.pk:
+            budget_filter |= Q(pk=self.instance.payroll_budget_id)
+        self.fields["payroll_budget"].queryset = (
+            FundingPayrollBudget.objects.filter(budget_filter)
+            .select_related("funding_source")
+            .order_by("funding_source__name", "starts_on", "pk")
+        )
+
+        staff_filter = Q(status=StaffMember.Status.ACTIVE)
+        if self.instance.pk:
+            staff_filter |= Q(pk=self.instance.staff_member_id)
+        self.fields["staff_member"].queryset = StaffMember.objects.filter(staff_filter).order_by(
+            "full_name"
+        )
+
+        service_filter = Q(is_active=True)
+        if self.instance.pk and self.instance.service_id:
+            service_filter |= Q(pk=self.instance.service_id)
+        self.fields["service"].queryset = Service.all_objects.filter(service_filter).order_by(
+            "name"
+        )
+        self.fields["service"].required = False
+        self.fields["assignment_label"].required = False
+
+        if self.instance.pk:
+            for field_name in (
+                "payroll_budget",
+                "staff_member",
+                "compensation_scope",
+                "service",
+                "assignment_label",
+            ):
+                self.fields[field_name].disabled = True
+            self.fields["expected_revision_id"].required = True
+            self.initial["expected_revision_id"] = self.instance.current_revision_id
+        self.order_fields(
+            [
+                "payroll_budget",
+                "staff_member",
+                "compensation_scope",
+                "service",
+                "assignment_label",
+                "period_from",
+                "period_to",
+                "accrual_on",
+                "amount",
+                "note",
+                "reason",
+                "expected_revision_id",
+            ]
+        )
+
+    def clean(self):
+        cleaned = super().clean()
+        scope = cleaned.get("compensation_scope")
+        service = cleaned.get("service")
+        assignment_label = (cleaned.get("assignment_label") or "").strip()
+        period_from = cleaned.get("period_from")
+        period_to = cleaned.get("period_to")
+        accrual_on = cleaned.get("accrual_on")
+
+        if scope == GrantFixedCompensation.CompensationScope.SERVICE_DELIVERY:
+            cleaned["assignment_label"] = ""
+            if not service:
+                self.add_error("service", "Выберите услугу для фиксированной оплаты.")
+        elif scope == GrantFixedCompensation.CompensationScope.PROJECT_ROLE:
+            cleaned["service"] = None
+            if not assignment_label:
+                self.add_error("assignment_label", "Укажите название проектной роли.")
+        if period_from and period_to and period_to < period_from:
+            self.add_error("period_to", "Дата окончания не может быть раньше даты начала.")
+        if (
+            period_from
+            and period_to
+            and accrual_on
+            and not (period_from <= accrual_on <= period_to)
+        ):
+            self.add_error("accrual_on", "Дата начисления должна входить в период позиции.")
+        return cleaned
+
+
+class GrantCompensationCloseForm(forms.Form):
+    reason = forms.CharField(
+        label="Основание закрытия",
+        min_length=5,
+        strip=True,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+    expected_revision_id = forms.IntegerField(widget=forms.HiddenInput())
 
 class GrantRecipientAllocationQuickForm(forms.ModelForm):
     class Meta:

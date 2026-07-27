@@ -9,6 +9,7 @@
   </div>
   {% if can_manage_grants %}
     <div class="header-actions">
+      <a class="button-link" href="{% url 'funding_payroll_budget_create' %}{% if report %}?funding={{ report.funding.pk }}{% elif request.GET.funding %}?funding={{ request.GET.funding }}{% endif %}">Бюджет оплаты труда</a>
       <a class="button-link" href="{% url 'funding_service_quota_create' %}{% if report %}?funding={{ report.funding.pk }}{% elif request.GET.funding %}?funding={{ request.GET.funding }}{% endif %}">Задать квоту</a>
       <a class="button-link secondary-button" href="{% url 'funding_staff_allocation_create' %}{% if report %}?funding={{ report.funding.pk }}{% elif request.GET.funding %}?funding={{ request.GET.funding }}{% endif %}">Распределить квоту</a>
       <a class="button-link secondary-button" href="{% url 'grant_recipient_allocation_create' %}{% if report %}?funding={{ report.funding.pk }}{% elif request.GET.funding %}?funding={{ request.GET.funding }}{% endif %}">Выделить получателю</a>
@@ -18,6 +19,9 @@
 
 <section class="panel grant-filter-panel">
   <form method="get" class="grant-filter-form">
+    {% if form.non_field_errors %}
+      <div class="field-error grant-filter-error">{{ form.non_field_errors }}</div>
+    {% endif %}
     {% for field in form %}
       <div>
         <label>{{ field.label }}</label>
@@ -122,6 +126,118 @@
           </tr>
         {% endfor %}
       </tfoot>
+    </table>
+  </div>
+</section>
+
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+    <div>
+      <h2 class="h5 mb-1">Оплата труда проекта</h2>
+      <p class="text-secondary mb-0">
+        Бюджеты и фиксированные позиции, пересекающие выбранный отчетный период.
+      </p>
+    </div>
+    {% if can_manage_grants %}
+      <a class="btn btn-sm btn-primary" href="{% url 'funding_payroll_budget_create' %}?funding={{ report.funding.pk }}">
+        Создать бюджет
+      </a>
+    {% endif %}
+  </div>
+  <div class="table-responsive grant-report-table-wrap">
+    <table class="table table-hover align-middle mb-0 grant-report-table grant-payroll-plan-table">
+      <thead class="table-light">
+        <tr>
+          <th>Бюджет / позиция</th>
+          <th>Период</th>
+          <th>Дата начисления</th>
+          <th class="text-end">Сумма</th>
+          <th>Контроль / статус</th>
+          <th class="text-end">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for budget in payroll_budgets %}
+          <tr class="table-light fw-semibold">
+            <td data-label="Бюджет / позиция">
+              Бюджет оплаты труда
+              <div class="small text-secondary">Редакция №{{ budget.current_revision.revision_number }}</div>
+            </td>
+            <td data-label="Период">
+              {{ budget.starts_on|date:"d.m.Y" }}–{{ budget.ends_on|date:"d.m.Y" }}
+            </td>
+            <td data-label="Дата начисления">—</td>
+            <td class="text-end text-nowrap" data-label="Сумма">
+              {{ budget.planned_amount|floatformat:2 }} ₽
+            </td>
+            <td data-label="Контроль / статус">
+              <div>{{ budget.get_enforcement_mode_display }}</div>
+              {% if budget.lifecycle_status == "active" %}
+                <span class="badge text-bg-success">Активен</span>
+              {% else %}
+                <span class="badge text-bg-secondary">Закрыт</span>
+              {% endif %}
+            </td>
+            <td class="text-end text-nowrap grant-report-actions" data-label="Действия">
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'funding_payroll_budget_history' budget.pk %}">История</a>
+              {% if can_manage_grants and budget.lifecycle_status == "active" %}
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'grant_fixed_compensation_create' %}?funding={{ report.funding.pk }}&budget={{ budget.pk }}">Добавить позицию</a>
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'funding_payroll_budget_edit' budget.pk %}">Редакция</a>
+                <a class="btn btn-sm btn-outline-danger" href="{% url 'funding_payroll_budget_close' budget.pk %}">Закрыть</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% for fixed in budget.report_fixed_compensations %}
+            <tr>
+              <td class="ps-4" data-label="Бюджет / позиция">
+                <strong>{{ fixed.staff_member.full_name }}</strong>
+                <div class="small text-secondary">
+                  {{ fixed.get_compensation_scope_display }}:
+                  {% if fixed.service %}{{ fixed.service.name }}{% else %}{{ fixed.assignment_label }}{% endif %}
+                </div>
+              </td>
+              <td data-label="Период">
+                {{ fixed.period_from|date:"d.m.Y" }}–{{ fixed.period_to|date:"d.m.Y" }}
+              </td>
+              <td data-label="Дата начисления">{{ fixed.accrual_on|date:"d.m.Y" }}</td>
+              <td class="text-end text-nowrap" data-label="Сумма">
+                {{ fixed.amount|floatformat:2 }} ₽
+              </td>
+              <td data-label="Контроль / статус">
+                {% if fixed.lifecycle_status == "active" %}
+                  <span class="badge text-bg-success">Активна</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">Закрыта</span>
+                {% endif %}
+              </td>
+              <td class="text-end text-nowrap grant-report-actions" data-label="Действия">
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'grant_fixed_compensation_history' fixed.pk %}">История</a>
+                {% if can_manage_grants and fixed.lifecycle_status == "active" %}
+                  <a class="btn btn-sm btn-outline-secondary" href="{% url 'grant_fixed_compensation_edit' fixed.pk %}">Редакция</a>
+                  <a class="btn btn-sm btn-outline-danger" href="{% url 'grant_fixed_compensation_close' fixed.pk %}">Закрыть</a>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td class="ps-4 text-secondary" colspan="6" data-label="Позиции">
+                Фиксированные позиции в выбранном периоде не заданы.
+              </td>
+            </tr>
+          {% endfor %}
+        {% empty %}
+          <tr>
+            <td colspan="6">
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <span class="text-secondary">Бюджеты оплаты труда в выбранном периоде не заданы.</span>
+                {% if can_manage_grants %}
+                  <a class="btn btn-sm btn-primary" href="{% url 'funding_payroll_budget_create' %}?funding={{ report.funding.pk }}">Создать бюджет</a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
     </table>
   </div>
 </section>

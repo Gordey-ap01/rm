@@ -29,6 +29,9 @@ from operations.models import (
 )
 from operations.services.authority import is_director_user
 from operations.services.financial_facts import appointment_charge_fact
+from operations.services.grant_compensation import (
+    validate_no_fixed_service_delivery_overlap,
+)
 
 
 @dataclass(frozen=True)
@@ -558,6 +561,13 @@ def create_staff_allocation(
         starts_on=starts_on,
         ends_on=ends_on,
     )
+    validate_no_fixed_service_delivery_overlap(
+        funding_source_id=funding_source.pk,
+        service_id=service.pk,
+        staff_member_id=staff_member.pk,
+        starts_on=starts_on,
+        ends_on=ends_on,
+    )
     work_dates = _charged_work_dates(
         funding_source_id=funding_source.pk,
         service_id=service.pk,
@@ -673,6 +683,13 @@ def revise_staff_allocation(
         starts_on=starts_on,
         ends_on=ends_on,
         exclude_id=locked.pk,
+    )
+    validate_no_fixed_service_delivery_overlap(
+        funding_source_id=locked.funding_source_id,
+        service_id=locked.service_id,
+        staff_member_id=locked.staff_member_id,
+        starts_on=starts_on,
+        ends_on=ends_on,
     )
     work_dates = _charged_work_dates(
         funding_source_id=locked.funding_source_id,

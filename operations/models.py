@@ -1103,6 +1103,692 @@ class FundingStaffAllocationRevision(TimeStampedModel):
         return f"{self.staff_allocation} / редакция {self.revision_number}"
 
 
+class FundingPayrollBudget(TimeStampedModel):
+    class EnforcementMode(models.TextChoices):
+        WARNING = "warning", "Предупреждать о превышении"
+        HARD = "hard", "Запрещать превышение"
+
+    class LifecycleStatus(models.TextChoices):
+        ACTIVE = "active", "Активен"
+        CLOSED = "closed", "Закрыт"
+
+    funding_source = models.ForeignKey(
+        FundingSource,
+        verbose_name="источник финансирования",
+        on_delete=models.PROTECT,
+        related_name="payroll_budgets",
+    )
+    starts_on = models.DateField("действует с")
+    ends_on = models.DateField("действует по")
+    planned_amount = models.DecimalField(
+        "бюджет оплаты труда",
+        max_digits=14,
+        decimal_places=2,
+    )
+    enforcement_mode = models.CharField(
+        "контроль лимита",
+        max_length=20,
+        choices=EnforcementMode.choices,
+        default=EnforcementMode.HARD,
+    )
+    lifecycle_status = models.CharField(
+        "статус бюджета",
+        max_length=20,
+        choices=LifecycleStatus.choices,
+        default=LifecycleStatus.ACTIVE,
+    )
+    note = models.TextField("примечание", blank=True)
+    current_revision = models.OneToOneField(
+        "FundingPayrollBudgetRevision",
+        verbose_name="текущая редакция",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="current_for_payroll_budget",
+    )
+
+    class Meta:
+        verbose_name = "бюджет оплаты труда по источнику"
+        verbose_name_plural = "бюджеты оплаты труда по источникам"
+        ordering = ["funding_source__name", "starts_on", "pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(ends_on__gte=models.F("starts_on")),
+                name="payroll_budget_dates_order",
+            ),
+            models.CheckConstraint(
+                condition=Q(planned_amount__gt=0),
+                name="payroll_budget_amount_positive",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["funding_source", "starts_on", "ends_on"]),
+            models.Index(fields=["lifecycle_status", "starts_on", "ends_on"]),
+        ]
+
+    versioned_fields = (
+        "funding_source_id",
+        "starts_on",
+        "ends_on",
+        "planned_amount",
+        "enforcement_mode",
+        "lifecycle_status",
+        "note",
+        "current_revision_id",
+    )
+
+    def _ensure_service_write(self) -> None:
+        if not self.pk:
+            return
+        current = type(self).objects.get(pk=self.pk)
+        if any(getattr(self, field) != getattr(current, field) for field in self.versioned_fields):
+            raise ValidationError(
+                "Бюджет оплаты труда нельзя изменять напрямую. "
+                "Создайте редакцию через грантовый сервис."
+            )
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.full_clean()
+        self._ensure_service_write()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Бюджет оплаты труда нельзя удалить. Закройте его редакцией.")
+
+    def __str__(self) -> str:
+        return (
+            f"{self.funding_source}: {self.starts_on:%d.%m.%Y}-"
+            f"{self.ends_on:%d.%m.%Y} / {self.planned_amount}"
+        )
+
+
+class GrantFixedCompensation(TimeStampedModel):
+    class CompensationScope(models.TextChoices):
+        SERVICE_DELIVERY = "service_delivery", "Фиксировано за оказание услуги"
+        PROJECT_ROLE = "project_role", "Дополнительная проектная роль"
+
+    class LifecycleStatus(models.TextChoices):
+        ACTIVE = "active", "Активна"
+        CLOSED = "closed", "Закрыта"
+
+    payroll_budget = models.ForeignKey(
+        FundingPayrollBudget,
+        verbose_name="бюджет оплаты труда",
+        on_delete=models.PROTECT,
+        related_name="fixed_compensations",
+    )
+    staff_member = models.ForeignKey(
+        StaffMember,
+        verbose_name="сотрудник",
+        on_delete=models.PROTECT,
+        related_name="grant_fixed_compensations",
+    )
+    compensation_scope = models.CharField(
+        "вид фиксированной оплаты",
+        max_length=30,
+        choices=CompensationScope.choices,
+    )
+    service = models.ForeignKey(
+        Service,
+        verbose_name="услуга",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="grant_fixed_compensations",
+    )
+    assignment_label = models.CharField("проектная роль", max_length=200, blank=True)
+    assignment_key = models.CharField(
+        "ключ проектной роли",
+        max_length=200,
+        null=True,
+        blank=True,
+        editable=False,
+    )
+    period_from = models.DateField("период с")
+    period_to = models.DateField("период по")
+    accrual_on = models.DateField("дата начисления")
+    amount = models.DecimalField("фиксированная сумма", max_digits=14, decimal_places=2)
+    lifecycle_status = models.CharField(
+        "статус позиции",
+        max_length=20,
+        choices=LifecycleStatus.choices,
+        default=LifecycleStatus.ACTIVE,
+    )
+    note = models.TextField("примечание", blank=True)
+    current_revision = models.OneToOneField(
+        "GrantFixedCompensationRevision",
+        verbose_name="текущая редакция",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="current_for_fixed_compensation",
+    )
+
+    class Meta:
+        verbose_name = "фиксированная оплата грантового проекта"
+        verbose_name_plural = "фиксированные оплаты грантовых проектов"
+        ordering = [
+            "payroll_budget__funding_source__name",
+            "staff_member__full_name",
+            "period_from",
+            "pk",
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(period_to__gte=models.F("period_from")),
+                name="grant_fixed_comp_dates_order",
+            ),
+            models.CheckConstraint(
+                condition=Q(accrual_on__gte=models.F("period_from"))
+                & Q(accrual_on__lte=models.F("period_to")),
+                name="grant_fixed_comp_accrual_in_period",
+            ),
+            models.CheckConstraint(
+                condition=Q(amount__gt=0),
+                name="grant_fixed_comp_amount_positive",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        compensation_scope="service_delivery",
+                        service__isnull=False,
+                        assignment_label="",
+                        assignment_key__isnull=True,
+                    )
+                    | (
+                        Q(
+                            compensation_scope="project_role",
+                            service__isnull=True,
+                            assignment_key__isnull=False,
+                        )
+                        & ~Q(assignment_label="")
+                        & ~Q(assignment_key="")
+                    )
+                ),
+                name="grant_fixed_comp_scope_fields",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=[
+                    "payroll_budget",
+                    "staff_member",
+                    "compensation_scope",
+                    "period_from",
+                    "period_to",
+                ]
+            ),
+            models.Index(fields=["service", "staff_member", "period_from", "period_to"]),
+            models.Index(fields=["assignment_key", "staff_member", "period_from", "period_to"]),
+        ]
+
+    versioned_fields = (
+        "payroll_budget_id",
+        "staff_member_id",
+        "compensation_scope",
+        "service_id",
+        "assignment_label",
+        "assignment_key",
+        "period_from",
+        "period_to",
+        "accrual_on",
+        "amount",
+        "lifecycle_status",
+        "note",
+        "current_revision_id",
+    )
+
+    @staticmethod
+    def normalize_assignment_key(value: str) -> str:
+        return " ".join((value or "").split()).lower()
+
+    def _normalize_scope_fields(self) -> None:
+        self.assignment_label = (self.assignment_label or "").strip()
+        if self.compensation_scope == self.CompensationScope.SERVICE_DELIVERY:
+            self.assignment_label = ""
+            self.assignment_key = None
+        else:
+            self.assignment_key = self.normalize_assignment_key(self.assignment_label) or None
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        self._normalize_scope_fields()
+        if self.compensation_scope == self.CompensationScope.SERVICE_DELIVERY:
+            if not self.service_id:
+                errors["service"] = "Для фиксированной оплаты услуги выберите услугу."
+        elif self.compensation_scope == self.CompensationScope.PROJECT_ROLE:
+            if self.service_id:
+                errors["service"] = "Для проектной роли услуга должна быть пустой."
+            if not self.assignment_label:
+                errors["assignment_label"] = "Укажите название проектной роли."
+        if self.period_to and self.period_from and self.period_to < self.period_from:
+            errors["period_to"] = "Дата окончания не может быть раньше даты начала."
+        if (
+            self.accrual_on
+            and self.period_from
+            and self.period_to
+            and not (self.period_from <= self.accrual_on <= self.period_to)
+        ):
+            errors["accrual_on"] = "Дата начисления должна входить в период позиции."
+        if (
+            self.payroll_budget_id
+            and self.period_from
+            and self.period_to
+            and self.accrual_on
+        ):
+            if (
+                not self.pk
+                and self.payroll_budget.lifecycle_status
+                != FundingPayrollBudget.LifecycleStatus.ACTIVE
+            ):
+                errors["payroll_budget"] = (
+                    "Новую фиксированную позицию можно добавить только в активный бюджет."
+                )
+            if (
+                self.period_from < self.payroll_budget.starts_on
+                or self.period_to > self.payroll_budget.ends_on
+            ):
+                errors["period_to"] = "Период позиции должен входить в выбранный бюджет."
+            if not (
+                self.payroll_budget.starts_on
+                <= self.accrual_on
+                <= self.payroll_budget.ends_on
+            ):
+                errors["accrual_on"] = "Дата начисления должна входить в период бюджета."
+        if errors:
+            raise ValidationError(errors)
+
+    def _ensure_service_write(self) -> None:
+        if not self.pk:
+            return
+        current = type(self).objects.get(pk=self.pk)
+        if any(getattr(self, field) != getattr(current, field) for field in self.versioned_fields):
+            raise ValidationError(
+                "Фиксированную оплату нельзя изменять напрямую. "
+                "Создайте редакцию через грантовый сервис."
+            )
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self._normalize_scope_fields()
+        self.full_clean()
+        self._ensure_service_write()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Фиксированную оплату нельзя удалить. Закройте ее редакцией.")
+
+    def __str__(self) -> str:
+        subject = self.service if self.service_id else self.assignment_label
+        return (
+            f"{self.payroll_budget.funding_source} / {self.staff_member} / {subject}: "
+            f"{self.amount}"
+        )
+
+
+class FundingPayrollBudgetRevision(TimeStampedModel):
+    class EventType(models.TextChoices):
+        CREATED = "created", "Создан"
+        REVISED = "revised", "Изменен"
+        CLOSED = "closed", "Закрыт"
+        LEGACY_IMPORT = "legacy_import", "Перенесен из прежней модели"
+
+    class ActorRole(models.TextChoices):
+        DIRECTOR = "director", "Руководитель"
+        LEGACY = "legacy", "Автор неизвестен"
+
+    payroll_budget = models.ForeignKey(
+        FundingPayrollBudget,
+        verbose_name="бюджет оплаты труда",
+        on_delete=models.PROTECT,
+        related_name="revisions",
+    )
+    revision_number = models.PositiveIntegerField("номер редакции")
+    event_type = models.CharField("действие", max_length=20, choices=EventType.choices)
+    starts_on = models.DateField("действует с")
+    ends_on = models.DateField("действует по")
+    planned_amount = models.DecimalField(
+        "бюджет оплаты труда",
+        max_digits=14,
+        decimal_places=2,
+    )
+    enforcement_mode = models.CharField(
+        "контроль лимита",
+        max_length=20,
+        choices=FundingPayrollBudget.EnforcementMode.choices,
+    )
+    lifecycle_status = models.CharField(
+        "статус бюджета",
+        max_length=20,
+        choices=FundingPayrollBudget.LifecycleStatus.choices,
+    )
+    note = models.TextField("примечание", blank=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="решение зафиксировал",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="funding_payroll_budget_revisions",
+    )
+    actor_role_snapshot = models.CharField(
+        "роль на момент решения",
+        max_length=20,
+        choices=ActorRole.choices,
+    )
+    reason = models.TextField("основание")
+    supersedes = models.ForeignKey(
+        "self",
+        verbose_name="предыдущая редакция",
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name="superseded_by",
+    )
+    decided_at = models.DateTimeField("время решения", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "редакция бюджета оплаты труда"
+        verbose_name_plural = "редакции бюджетов оплаты труда"
+        ordering = ["payroll_budget_id", "-revision_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["payroll_budget", "revision_number"],
+                name="unique_payroll_budget_revision_number",
+            ),
+            models.UniqueConstraint(
+                fields=["supersedes"],
+                condition=Q(supersedes__isnull=False),
+                name="unique_payroll_budget_revision_successor",
+            ),
+            models.CheckConstraint(
+                condition=Q(revision_number__gte=1),
+                name="payroll_budget_revision_number_positive",
+            ),
+            models.CheckConstraint(
+                condition=Q(ends_on__gte=models.F("starts_on")),
+                name="payroll_budget_revision_dates_order",
+            ),
+            models.CheckConstraint(
+                condition=Q(planned_amount__gt=0),
+                name="payroll_budget_revision_amount_positive",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type="legacy_import",
+                        actor__isnull=True,
+                        actor_role_snapshot="legacy",
+                        decided_at__isnull=True,
+                    )
+                    | (
+                        ~Q(event_type="legacy_import")
+                        & Q(
+                            actor__isnull=False,
+                            actor_role_snapshot="director",
+                            decided_at__isnull=False,
+                        )
+                        & ~Q(reason="")
+                    )
+                ),
+                name="payroll_budget_revision_actor_event",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type__in=["created", "legacy_import"],
+                        supersedes__isnull=True,
+                    )
+                    | Q(
+                        event_type__in=["revised", "closed"],
+                        supersedes__isnull=False,
+                    )
+                ),
+                name="payroll_budget_revision_chain_event",
+            ),
+            models.CheckConstraint(
+                condition=~Q(event_type="closed") | Q(lifecycle_status="closed"),
+                name="payroll_budget_closed_event_status",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["payroll_budget", "-revision_number"]),
+            models.Index(fields=["actor", "-created_at"]),
+        ]
+
+    def clean(self) -> None:
+        self.reason = (self.reason or "").strip()
+        if self.event_type != self.EventType.LEGACY_IMPORT and len(self.reason) < 5:
+            raise ValidationError({"reason": "Укажите содержательное основание (минимум 5 символов)."})
+        if self.supersedes_id and self.supersedes.payroll_budget_id != self.payroll_budget_id:
+            raise ValidationError(
+                {"supersedes": "Предыдущая редакция должна относиться к тому же бюджету."}
+            )
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError(
+                "Редакцию бюджета нельзя изменять. Создайте следующую редакцию."
+            )
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Редакцию бюджета нельзя удалить.")
+
+    def __str__(self) -> str:
+        return f"{self.payroll_budget} / редакция {self.revision_number}"
+
+
+class GrantFixedCompensationRevision(TimeStampedModel):
+    class EventType(models.TextChoices):
+        CREATED = "created", "Создана"
+        REVISED = "revised", "Изменена"
+        CLOSED = "closed", "Закрыта"
+        LEGACY_IMPORT = "legacy_import", "Перенесена из прежней модели"
+
+    class ActorRole(models.TextChoices):
+        DIRECTOR = "director", "Руководитель"
+        LEGACY = "legacy", "Автор неизвестен"
+
+    fixed_compensation = models.ForeignKey(
+        GrantFixedCompensation,
+        verbose_name="фиксированная оплата",
+        on_delete=models.PROTECT,
+        related_name="revisions",
+    )
+    revision_number = models.PositiveIntegerField("номер редакции")
+    event_type = models.CharField("действие", max_length=20, choices=EventType.choices)
+    budget_revision_at_decision = models.ForeignKey(
+        FundingPayrollBudgetRevision,
+        verbose_name="редакция бюджета на момент решения",
+        on_delete=models.PROTECT,
+        related_name="fixed_compensation_revisions",
+    )
+    compensation_scope = models.CharField(
+        "вид фиксированной оплаты",
+        max_length=30,
+        choices=GrantFixedCompensation.CompensationScope.choices,
+    )
+    service = models.ForeignKey(
+        Service,
+        verbose_name="услуга",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="grant_fixed_compensation_revisions",
+    )
+    assignment_label = models.CharField("проектная роль", max_length=200, blank=True)
+    assignment_key = models.CharField(
+        "ключ проектной роли",
+        max_length=200,
+        null=True,
+        blank=True,
+    )
+    period_from = models.DateField("период с")
+    period_to = models.DateField("период по")
+    accrual_on = models.DateField("дата начисления")
+    amount = models.DecimalField("фиксированная сумма", max_digits=14, decimal_places=2)
+    lifecycle_status = models.CharField(
+        "статус позиции",
+        max_length=20,
+        choices=GrantFixedCompensation.LifecycleStatus.choices,
+    )
+    note = models.TextField("примечание", blank=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="решение зафиксировал",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="grant_fixed_compensation_revisions",
+    )
+    actor_role_snapshot = models.CharField(
+        "роль на момент решения",
+        max_length=20,
+        choices=ActorRole.choices,
+    )
+    reason = models.TextField("основание")
+    supersedes = models.ForeignKey(
+        "self",
+        verbose_name="предыдущая редакция",
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name="superseded_by",
+    )
+    decided_at = models.DateTimeField("время решения", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "редакция фиксированной оплаты грантового проекта"
+        verbose_name_plural = "редакции фиксированных оплат грантовых проектов"
+        ordering = ["fixed_compensation_id", "-revision_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["fixed_compensation", "revision_number"],
+                name="unique_grant_fixed_revision_number",
+            ),
+            models.UniqueConstraint(
+                fields=["supersedes"],
+                condition=Q(supersedes__isnull=False),
+                name="unique_grant_fixed_revision_successor",
+            ),
+            models.CheckConstraint(
+                condition=Q(revision_number__gte=1),
+                name="grant_fixed_revision_number_positive",
+            ),
+            models.CheckConstraint(
+                condition=Q(period_to__gte=models.F("period_from")),
+                name="grant_fixed_revision_dates_order",
+            ),
+            models.CheckConstraint(
+                condition=Q(accrual_on__gte=models.F("period_from"))
+                & Q(accrual_on__lte=models.F("period_to")),
+                name="grant_fixed_revision_accrual_period",
+            ),
+            models.CheckConstraint(
+                condition=Q(amount__gt=0),
+                name="grant_fixed_revision_amount_positive",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        compensation_scope="service_delivery",
+                        service__isnull=False,
+                        assignment_label="",
+                        assignment_key__isnull=True,
+                    )
+                    | (
+                        Q(
+                            compensation_scope="project_role",
+                            service__isnull=True,
+                            assignment_key__isnull=False,
+                        )
+                        & ~Q(assignment_label="")
+                        & ~Q(assignment_key="")
+                    )
+                ),
+                name="grant_fixed_revision_scope_fields",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type="legacy_import",
+                        actor__isnull=True,
+                        actor_role_snapshot="legacy",
+                        decided_at__isnull=True,
+                    )
+                    | (
+                        ~Q(event_type="legacy_import")
+                        & Q(
+                            actor__isnull=False,
+                            actor_role_snapshot="director",
+                            decided_at__isnull=False,
+                        )
+                        & ~Q(reason="")
+                    )
+                ),
+                name="grant_fixed_revision_actor_event",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type__in=["created", "legacy_import"],
+                        supersedes__isnull=True,
+                    )
+                    | Q(
+                        event_type__in=["revised", "closed"],
+                        supersedes__isnull=False,
+                    )
+                ),
+                name="grant_fixed_revision_chain_event",
+            ),
+            models.CheckConstraint(
+                condition=~Q(event_type="closed") | Q(lifecycle_status="closed"),
+                name="grant_fixed_closed_event_status",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["fixed_compensation", "-revision_number"]),
+            models.Index(fields=["actor", "-created_at"]),
+        ]
+
+    def clean(self) -> None:
+        self.reason = (self.reason or "").strip()
+        if self.event_type != self.EventType.LEGACY_IMPORT and len(self.reason) < 5:
+            raise ValidationError({"reason": "Укажите содержательное основание (минимум 5 символов)."})
+        if (
+            self.supersedes_id
+            and self.supersedes.fixed_compensation_id != self.fixed_compensation_id
+        ):
+            raise ValidationError(
+                {"supersedes": "Предыдущая редакция должна относиться к той же позиции."}
+            )
+        if (
+            self.budget_revision_at_decision_id
+            and self.fixed_compensation_id
+            and self.budget_revision_at_decision.payroll_budget_id
+            != self.fixed_compensation.payroll_budget_id
+        ):
+            raise ValidationError(
+                {"budget_revision_at_decision": "Редакция должна относиться к бюджету позиции."}
+            )
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError(
+                "Редакцию фиксированной оплаты нельзя изменять. "
+                "Создайте следующую редакцию."
+            )
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Редакцию фиксированной оплаты нельзя удалить.")
+
+    def __str__(self) -> str:
+        return f"{self.fixed_compensation} / редакция {self.revision_number}"
+
+
 class BalanceAccount(TimeStampedModel, SoftDeleteMixin):
     class Unit(models.TextChoices):
         SESSIONS = "sessions", "Занятия"

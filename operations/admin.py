@@ -34,11 +34,15 @@ from .models import (
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
     FinancialIntegrityFindingEvent,
+    FundingPayrollBudget,
+    FundingPayrollBudgetRevision,
     FundingServiceQuota,
     FundingServiceQuotaRevision,
     FundingSource,
     FundingStaffAllocation,
     FundingStaffAllocationRevision,
+    GrantFixedCompensation,
+    GrantFixedCompensationRevision,
     GrantRecipientAllocation,
     ImportBatch,
     ImportBatchRow,
@@ -900,6 +904,90 @@ class FundingStaffAllocationRevisionAdmin(GrantPlanReadOnlyAdmin):
         "reason",
     )
     list_filter = ("event_type", "lifecycle_status", "actor_role_snapshot")
+
+
+@admin.register(FundingPayrollBudget)
+class FundingPayrollBudgetAdmin(GrantPlanReadOnlyAdmin):
+    list_display = (
+        "funding_source",
+        "planned_amount",
+        "enforcement_mode",
+        "lifecycle_status",
+        "starts_on",
+        "ends_on",
+    )
+    search_fields = ("funding_source__name", "note")
+    list_filter = ("enforcement_mode", "lifecycle_status", "funding_source")
+
+
+@admin.register(GrantFixedCompensation)
+class GrantFixedCompensationAdmin(GrantPlanReadOnlyAdmin):
+    list_display = (
+        "payroll_budget",
+        "staff_member",
+        "compensation_scope",
+        "service",
+        "assignment_label",
+        "amount",
+        "lifecycle_status",
+        "period_from",
+        "period_to",
+    )
+    search_fields = (
+        "payroll_budget__funding_source__name",
+        "staff_member__full_name",
+        "service__name",
+        "assignment_label",
+        "note",
+    )
+    list_filter = (
+        "compensation_scope",
+        "lifecycle_status",
+        "payroll_budget__funding_source",
+        "staff_member",
+    )
+
+
+@admin.register(FundingPayrollBudgetRevision)
+class FundingPayrollBudgetRevisionAdmin(GrantPlanReadOnlyAdmin):
+    list_display = (
+        "payroll_budget",
+        "revision_number",
+        "event_type",
+        "planned_amount",
+        "lifecycle_status",
+        "actor",
+        "decided_at",
+    )
+    search_fields = ("payroll_budget__funding_source__name", "reason", "note")
+    list_filter = ("event_type", "enforcement_mode", "lifecycle_status", "actor_role_snapshot")
+
+
+@admin.register(GrantFixedCompensationRevision)
+class GrantFixedCompensationRevisionAdmin(GrantPlanReadOnlyAdmin):
+    list_display = (
+        "fixed_compensation",
+        "revision_number",
+        "event_type",
+        "amount",
+        "lifecycle_status",
+        "actor",
+        "decided_at",
+    )
+    search_fields = (
+        "fixed_compensation__payroll_budget__funding_source__name",
+        "fixed_compensation__staff_member__full_name",
+        "service__name",
+        "assignment_label",
+        "reason",
+        "note",
+    )
+    list_filter = (
+        "event_type",
+        "compensation_scope",
+        "lifecycle_status",
+        "actor_role_snapshot",
+    )
 
 
 @admin.register(GrantRecipientAllocation)

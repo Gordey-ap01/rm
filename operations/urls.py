@@ -397,6 +397,46 @@ urlpatterns = [
     path("grants/", views.grant_report, name="grant_report"),
     path("grants/<int:pk>/", views.grant_report, name="grant_report_funding"),
     path(
+        "grants/payroll-budgets/new/",
+        views.funding_payroll_budget_create,
+        name="funding_payroll_budget_create",
+    ),
+    path(
+        "grants/payroll-budgets/<int:pk>/edit/",
+        views.funding_payroll_budget_edit,
+        name="funding_payroll_budget_edit",
+    ),
+    path(
+        "grants/payroll-budgets/<int:pk>/close/",
+        views.funding_payroll_budget_close,
+        name="funding_payroll_budget_close",
+    ),
+    path(
+        "grants/payroll-budgets/<int:pk>/history/",
+        views.funding_payroll_budget_history,
+        name="funding_payroll_budget_history",
+    ),
+    path(
+        "grants/fixed-compensations/new/",
+        views.grant_fixed_compensation_create,
+        name="grant_fixed_compensation_create",
+    ),
+    path(
+        "grants/fixed-compensations/<int:pk>/edit/",
+        views.grant_fixed_compensation_edit,
+        name="grant_fixed_compensation_edit",
+    ),
+    path(
+        "grants/fixed-compensations/<int:pk>/close/",
+        views.grant_fixed_compensation_close,
+        name="grant_fixed_compensation_close",
+    ),
+    path(
+        "grants/fixed-compensations/<int:pk>/history/",
+        views.grant_fixed_compensation_history,
+        name="grant_fixed_compensation_history",
+    ),
+    path(
         "grants/quotas/new/",
         views.funding_service_quota_create,
         name="funding_service_quota_create",

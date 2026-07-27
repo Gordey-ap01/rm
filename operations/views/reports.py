@@ -10,15 +10,18 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
 from operations.forms import (
+    FundingPayrollBudgetForm,
     FundingServiceQuotaQuickForm,
     FundingStaffAllocationQuickForm,
+    GrantCompensationCloseForm,
+    GrantFixedCompensationForm,
     GrantPlanCloseForm,
     GrantRecipientAllocationQuickForm,
     GrantReportFilterForm,
@@ -28,17 +31,22 @@ from operations.forms import (
 )
 from operations.models import (
     Appointment,
+    FundingPayrollBudget,
+    FundingPayrollBudgetRevision,
     FundingServiceQuota,
     FundingServiceQuotaRevision,
     FundingSource,
     FundingStaffAllocation,
     FundingStaffAllocationRevision,
+    GrantFixedCompensation,
+    GrantFixedCompensationRevision,
     GrantRecipientAllocation,
     PayrollAccrual,
     PayrollSheet,
     StaffMember,
 )
 from operations.services import (
+    grant_compensation as grant_compensation_svc,
     grant_plans as grant_plans_svc,
     payroll as payroll_svc,
     reports as reports_svc,
@@ -65,6 +73,13 @@ def _grant_report_url(
     )
     return f"{reverse('grant_report')}?{query}"
 
+
+def _parse_model_pk(raw_value: object) -> int | None:
+    text = str(raw_value or "").strip()
+    if not text or len(text) > 19 or not text.isascii() or not text.isdigit():
+        return None
+    value = int(text)
+    return value if 0 < value <= 9_223_372_036_854_775_807 else None
 
 def _require_active_grant_source(funding: FundingSource) -> None:
     if funding.archived_at is not None:
@@ -242,8 +257,7 @@ def _timesheet_attention_items(
                 "tone": "info",
                 "title": "Расчетный лист уже создан",
                 "detail": (
-                    f"Последний лист: {latest.get_status_display()}, "
-                    f"{latest.total_amount} руб."
+                    f"Последний лист: {latest.get_status_display()}, " f"{latest.total_amount} руб."
                 ),
             }
         )
@@ -315,9 +329,7 @@ def _payroll_sheet_summary_items(payroll_sheet: PayrollSheet) -> list[dict[str, 
     ]
 
 
-def _payroll_sheet_next_action(
-    payroll_sheet: PayrollSheet, *, can_approve: bool
-) -> dict[str, str]:
+def _payroll_sheet_next_action(payroll_sheet: PayrollSheet, *, can_approve: bool) -> dict[str, str]:
     line_count = len(_payroll_sheet_lines(payroll_sheet))
     if payroll_sheet.status == PayrollSheet.Status.DRAFT:
         if line_count:
@@ -471,26 +483,26 @@ def _grant_report_summary_items(
         )
     items.extend(
         [
-        {
-            "label": "Занятия",
-            "value": f"{report.totals.completed_count}/{report.totals.planned_count}",
-            "hint": f"Факт/план по счетам; всего привязанных занятий: {report.totals.appointments_count}.",
-        },
-        {
-            "label": "Квоты",
-            "value": f"{quota_charged}/{quota_planned}",
-            "hint": f"Распределено: {quota_allocated}; остаток по квотам: {quota_remaining}.",
-        },
-        {
-            "label": "Получатели",
-            "value": str(len(report.recipient_allocation_rows)),
-            "hint": "Выделения грантовых занятий конкретным детям.",
-        },
-        {
-            "label": "Льготы",
-            "value": f"{len(report.certificates)} / {len(report.discounts)}",
-            "hint": "Сертификаты / активные скидки в выбранном источнике.",
-        },
+            {
+                "label": "Занятия",
+                "value": f"{report.totals.completed_count}/{report.totals.planned_count}",
+                "hint": f"Факт/план по счетам; всего привязанных занятий: {report.totals.appointments_count}.",
+            },
+            {
+                "label": "Квоты",
+                "value": f"{quota_charged}/{quota_planned}",
+                "hint": f"Распределено: {quota_allocated}; остаток по квотам: {quota_remaining}.",
+            },
+            {
+                "label": "Получатели",
+                "value": str(len(report.recipient_allocation_rows)),
+                "hint": "Выделения грантовых занятий конкретным детям.",
+            },
+            {
+                "label": "Льготы",
+                "value": f"{len(report.certificates)} / {len(report.discounts)}",
+                "hint": "Сертификаты / активные скидки в выбранном источнике.",
+            },
         ]
     )
     return items
@@ -521,14 +533,10 @@ def _grant_report_attention_items(
         if row.quota is not None
     )
     exhausted_quotas = sum(
-        1
-        for row in report.quota_rows
-        if row.planned_sessions > 0 and row.remaining_sessions == 0
+        1 for row in report.quota_rows if row.planned_sessions > 0 and row.remaining_sessions == 0
     )
     overrun_sessions = sum(
-        abs(row.remaining_sessions)
-        for row in report.quota_rows
-        if row.remaining_sessions < 0
+        abs(row.remaining_sessions) for row in report.quota_rows if row.remaining_sessions < 0
     )
     overdrawn_recipients = sum(
         1 for row in report.recipient_allocation_rows if row.remaining_sessions < 0
@@ -676,6 +684,75 @@ def _grant_staff_allocation_control_items(
             {
                 "title": "Связь с квотой",
                 "detail": "Источник и услуга берутся из выбранной квоты услуги.",
+            },
+        )
+    return items
+
+
+def _payroll_budget_control_items(
+    budget: FundingPayrollBudget | None = None,
+) -> list[dict[str, str]]:
+    items = [
+        {
+            "title": "Период бюджета",
+            "detail": "Для одного источника периоды бюджетов оплаты труда не пересекаются.",
+        },
+        {
+            "title": "Жесткий лимит",
+            "detail": "Режим «запрещать превышение» нельзя обойти даже решением руководителя.",
+        },
+        {
+            "title": "История решений",
+            "detail": "Каждое изменение создает новую редакцию с автором и основанием.",
+        },
+    ]
+    if budget:
+        active_positions = budget.fixed_compensations.filter(
+            lifecycle_status=GrantFixedCompensation.LifecycleStatus.ACTIVE
+        ).count()
+        items.insert(
+            1,
+            {
+                "title": "Активные позиции",
+                "detail": (
+                    f"В бюджете активных фиксированных позиций: {active_positions}. "
+                    "Перед закрытием бюджета их нужно закрыть."
+                ),
+            },
+        )
+    return items
+
+
+def _fixed_compensation_control_items(
+    fixed: GrantFixedCompensation | None = None,
+) -> list[dict[str, str]]:
+    items = [
+        {
+            "title": "Фиксированная оплата услуги",
+            "detail": "На том же периоде она несовместима со сдельной ставкой сотрудника по услуге.",
+        },
+        {
+            "title": "Проектная роль",
+            "detail": "Дополнительная проектная роль не заменяет оплату за проведенные занятия.",
+        },
+        {
+            "title": "Дата начисления",
+            "detail": "Дата начисления должна входить и в период позиции, и в период бюджета.",
+        },
+        {
+            "title": "История решений",
+            "detail": "Сотрудник, вид оплаты и предмет позиции после создания не меняются.",
+        },
+    ]
+    if fixed:
+        items.insert(
+            0,
+            {
+                "title": "Редакция позиции",
+                "detail": (
+                    "Можно изменить период, дату начисления, сумму и примечание. "
+                    "Идентичность позиции сохранится."
+                ),
             },
         )
     return items
@@ -854,10 +931,14 @@ def payroll_sheet_detail(request, pk: int):
                 messages.success(request, "Расчетный лист утвержден.")
             elif action == "send":
                 if not is_director(request.user):
-                    raise PermissionDenied("Передать расчетный лист в выплату может только руководитель.")
+                    raise PermissionDenied(
+                        "Передать расчетный лист в выплату может только руководитель."
+                    )
                 send_form = PayrollSheetSendForm(request.POST)
                 if not send_form.is_valid():
-                    messages.error(request, "Укажите основание передачи в выплату не короче 5 символов.")
+                    messages.error(
+                        request, "Укажите основание передачи в выплату не короче 5 символов."
+                    )
                 else:
                     payroll_svc.send_payroll_sheet(
                         payroll_sheet,
@@ -931,18 +1012,46 @@ def grant_report(request, pk: int | None = None):
         )
     form = GrantReportFilterForm(filter_data or None)
     report = None
+    payroll_budgets: list[FundingPayrollBudget] = []
     form_is_valid = form.is_valid()
     if selected_funding is None and form.is_bound:
         selected_funding = form.cleaned_data.get("funding")
     if form_is_valid:
+        selected_funding = form.cleaned_data["funding"]
+        period_from = form.cleaned_data["date_from"]
+        period_to = form.cleaned_data["date_to"]
         try:
             report = reports_svc.grant_report(
-                form.cleaned_data["funding"],
-                form.cleaned_data["date_from"],
-                form.cleaned_data["date_to"],
+                selected_funding,
+                period_from,
+                period_to,
             )
         except ValueError as exc:
             messages.error(request, str(exc))
+        fixed_positions = (
+            GrantFixedCompensation.objects.filter(
+                period_from__lte=period_to,
+                period_to__gte=period_from,
+            )
+            .select_related("staff_member", "service", "current_revision")
+            .order_by("staff_member__full_name", "period_from", "pk")
+        )
+        payroll_budgets = list(
+            FundingPayrollBudget.objects.filter(
+                funding_source=selected_funding,
+                starts_on__lte=period_to,
+                ends_on__gte=period_from,
+            )
+            .select_related("funding_source", "current_revision")
+            .prefetch_related(
+                Prefetch(
+                    "fixed_compensations",
+                    queryset=fixed_positions,
+                    to_attr="report_fixed_compensations",
+                )
+            )
+            .order_by("starts_on", "pk")
+        )
 
     if "csv" in request.GET and report is not None:
         response = HttpResponse(content_type="text/csv; charset=utf-8")
@@ -1032,6 +1141,10 @@ def grant_report(request, pk: int | None = None):
                 )
         return response
 
+    can_manage_grants = bool(
+        is_director(request.user)
+        and (selected_funding is None or selected_funding.archived_at is None)
+    )
     return render(
         request,
         "operations/grant_report.html",
@@ -1041,10 +1154,8 @@ def grant_report(request, pk: int | None = None):
             "funding_id": pk,
             "grant_summary_items": _grant_report_summary_items(report),
             "grant_attention_items": _grant_report_attention_items(report),
-            "can_manage_grants": bool(
-                is_director(request.user)
-                and (selected_funding is None or selected_funding.archived_at is None)
-            ),
+            "payroll_budgets": payroll_budgets,
+            "can_manage_grants": can_manage_grants,
         },
     )
 
@@ -1447,6 +1558,440 @@ def funding_staff_allocation_history(request, pk: int):
                 allocation.funding_source_id,
                 date_from=allocation.starts_on,
                 date_to=allocation.ends_on,
+            ),
+        },
+    )
+
+
+@director_required
+def funding_payroll_budget_create(request):
+    initial = {"funding_source": request.GET.get("funding") or None}
+    if request.method == "POST":
+        form = FundingPayrollBudgetForm(request.POST)
+        if form.is_valid():
+            try:
+                budget = grant_compensation_svc.create_payroll_budget(
+                    funding_source=form.cleaned_data["funding_source"],
+                    starts_on=form.cleaned_data["starts_on"],
+                    ends_on=form.cleaned_data["ends_on"],
+                    planned_amount=form.cleaned_data["planned_amount"],
+                    enforcement_mode=form.cleaned_data["enforcement_mode"],
+                    note=form.cleaned_data["note"],
+                    actor=request.user,
+                    reason=form.cleaned_data["reason"],
+                )
+            except ValidationError as exc:
+                _add_grant_plan_form_errors(form, exc)
+            else:
+                messages.success(request, "Бюджет оплаты труда создан.")
+                return redirect(
+                    _grant_report_url(
+                        budget.funding_source_id,
+                        date_from=budget.starts_on,
+                        date_to=budget.ends_on,
+                    )
+                )
+    else:
+        form = FundingPayrollBudgetForm(initial=initial)
+    return render(
+        request,
+        "operations/grant_compensation_form.html",
+        {
+            "title": "Создать бюджет оплаты труда",
+            "subtitle": "Утвердите лимит оплаты труда по источнику и точному периоду.",
+            "form_panel_title": "Параметры бюджета",
+            "form_intro": (
+                "Период не должен пересекаться с другим бюджетом этого источника. "
+                "Решение будет зафиксировано как первая редакция."
+            ),
+            "form": form,
+            "control_title": "Контроль бюджета",
+            "object_form_control_items": _payroll_budget_control_items(),
+            "submit_label": "Создать бюджет",
+            "cancel_url": reverse("grant_report"),
+        },
+    )
+
+
+@director_required
+def funding_payroll_budget_edit(request, pk: int):
+    budget = get_object_or_404(
+        FundingPayrollBudget.objects.select_related("funding_source", "current_revision"),
+        pk=pk,
+    )
+    _require_active_grant_source(budget.funding_source)
+    if budget.lifecycle_status == FundingPayrollBudget.LifecycleStatus.CLOSED:
+        raise PermissionDenied("Закрытый бюджет доступен только для чтения.")
+    if request.method == "POST":
+        form = FundingPayrollBudgetForm(request.POST, instance=budget)
+        if form.is_valid():
+            try:
+                budget = grant_compensation_svc.revise_payroll_budget(
+                    budget,
+                    starts_on=form.cleaned_data["starts_on"],
+                    ends_on=form.cleaned_data["ends_on"],
+                    planned_amount=form.cleaned_data["planned_amount"],
+                    enforcement_mode=form.cleaned_data["enforcement_mode"],
+                    note=form.cleaned_data["note"],
+                    actor=request.user,
+                    reason=form.cleaned_data["reason"],
+                    expected_revision_id=form.cleaned_data["expected_revision_id"],
+                )
+            except ValidationError as exc:
+                _add_grant_plan_form_errors(form, exc)
+            else:
+                messages.success(request, "Создана новая редакция бюджета оплаты труда.")
+                return redirect(
+                    _grant_report_url(
+                        budget.funding_source_id,
+                        date_from=budget.starts_on,
+                        date_to=budget.ends_on,
+                    )
+                )
+    else:
+        form = FundingPayrollBudgetForm(instance=budget)
+    return render(
+        request,
+        "operations/grant_compensation_form.html",
+        {
+            "title": "Создать редакцию бюджета",
+            "subtitle": str(budget),
+            "form_panel_title": "Новые параметры бюджета",
+            "form_intro": (
+                "Источник финансирования останется неизменным. Предыдущая редакция "
+                "сохранится в истории решений."
+            ),
+            "form": form,
+            "control_title": "Контроль бюджета",
+            "object_form_control_items": _payroll_budget_control_items(budget),
+            "submit_label": "Сохранить редакцию",
+            "cancel_url": _grant_report_url(
+                budget.funding_source_id,
+                date_from=budget.starts_on,
+                date_to=budget.ends_on,
+            ),
+        },
+    )
+
+
+@director_required
+def funding_payroll_budget_close(request, pk: int):
+    budget = get_object_or_404(
+        FundingPayrollBudget.objects.select_related("funding_source", "current_revision"),
+        pk=pk,
+    )
+    _require_active_grant_source(budget.funding_source)
+    if budget.lifecycle_status == FundingPayrollBudget.LifecycleStatus.CLOSED:
+        raise PermissionDenied("Бюджет уже закрыт.")
+    redirect_url = _grant_report_url(
+        budget.funding_source_id,
+        date_from=budget.starts_on,
+        date_to=budget.ends_on,
+    )
+    initial = {"expected_revision_id": budget.current_revision_id}
+    if request.method == "POST":
+        form = GrantCompensationCloseForm(request.POST)
+        if form.is_valid():
+            try:
+                grant_compensation_svc.close_payroll_budget(
+                    budget,
+                    actor=request.user,
+                    reason=form.cleaned_data["reason"],
+                    expected_revision_id=form.cleaned_data["expected_revision_id"],
+                )
+            except ValidationError as exc:
+                _add_grant_plan_form_errors(form, exc)
+            else:
+                messages.success(request, "Бюджет закрыт без удаления истории.")
+                return redirect(redirect_url)
+    else:
+        form = GrantCompensationCloseForm(initial=initial)
+    return render(
+        request,
+        "operations/grant_compensation_form.html",
+        {
+            "title": "Закрыть бюджет оплаты труда",
+            "subtitle": str(budget),
+            "form_panel_title": "Основание закрытия",
+            "form_intro": (
+                "Период и сумма сохранятся для истории и последующего сопоставления. "
+                "Сначала закройте все активные фиксированные позиции бюджета."
+            ),
+            "form": form,
+            "control_title": "Перед закрытием",
+            "object_form_control_items": _payroll_budget_control_items(budget),
+            "submit_label": "Закрыть бюджет",
+            "submit_tone": "danger",
+            "cancel_url": redirect_url,
+        },
+    )
+
+
+@admin_required
+def funding_payroll_budget_history(request, pk: int):
+    budget = get_object_or_404(
+        FundingPayrollBudget.objects.select_related("funding_source"),
+        pk=pk,
+    )
+    revisions = list(
+        FundingPayrollBudgetRevision.objects.filter(payroll_budget=budget)
+        .select_related("actor")
+        .order_by("-revision_number")
+    )
+    return render(
+        request,
+        "operations/grant_compensation_history.html",
+        {
+            "title": "История бюджета оплаты труда",
+            "subtitle": str(budget),
+            "history_kind": "payroll_budget",
+            "revisions": revisions,
+            "current_revision_id": budget.current_revision_id,
+            "back_url": _grant_report_url(
+                budget.funding_source_id,
+                date_from=budget.starts_on,
+                date_to=budget.ends_on,
+            ),
+        },
+    )
+
+
+@director_required
+def grant_fixed_compensation_create(request):
+    raw_funding_id = request.GET.get("funding", "")
+    funding_source_id = _parse_model_pk(raw_funding_id)
+    initial = {
+        "payroll_budget": request.GET.get("budget") or None,
+        "staff_member": request.GET.get("staff") or None,
+        "service": request.GET.get("service") or None,
+    }
+    initial = {key: value for key, value in initial.items() if value}
+    if request.method == "POST":
+        raw_budget_id = _parse_model_pk(request.POST.get("payroll_budget", ""))
+        if raw_budget_id is not None:
+            posted_source_id = (
+                FundingPayrollBudget.objects.filter(pk=raw_budget_id)
+                .values_list("funding_source_id", flat=True)
+                .first()
+            )
+            funding_source_id = posted_source_id or funding_source_id
+        form = GrantFixedCompensationForm(
+            request.POST,
+            funding_source_id=funding_source_id,
+        )
+        if form.is_valid():
+            try:
+                fixed = grant_compensation_svc.create_fixed_compensation(
+                    payroll_budget=form.cleaned_data["payroll_budget"],
+                    staff_member=form.cleaned_data["staff_member"],
+                    compensation_scope=form.cleaned_data["compensation_scope"],
+                    service=form.cleaned_data["service"],
+                    assignment_label=form.cleaned_data["assignment_label"],
+                    period_from=form.cleaned_data["period_from"],
+                    period_to=form.cleaned_data["period_to"],
+                    accrual_on=form.cleaned_data["accrual_on"],
+                    amount=form.cleaned_data["amount"],
+                    note=form.cleaned_data["note"],
+                    actor=request.user,
+                    reason=form.cleaned_data["reason"],
+                )
+            except ValidationError as exc:
+                _add_grant_plan_form_errors(form, exc)
+            else:
+                messages.success(request, "Фиксированная позиция оплаты труда создана.")
+                return redirect(
+                    _grant_report_url(
+                        fixed.payroll_budget.funding_source_id,
+                        date_from=fixed.period_from,
+                        date_to=fixed.period_to,
+                    )
+                )
+    else:
+        form = GrantFixedCompensationForm(
+            initial=initial,
+            funding_source_id=funding_source_id,
+        )
+    return render(
+        request,
+        "operations/grant_compensation_form.html",
+        {
+            "title": "Создать фиксированную позицию",
+            "subtitle": "Закрепите фиксированную сумму за услугой или проектной ролью сотрудника.",
+            "form_panel_title": "Параметры позиции",
+            "form_intro": (
+                "Выберите один вид оплаты. Позиция должна целиком входить в период "
+                "утвержденного бюджета."
+            ),
+            "form": form,
+            "control_title": "Контроль позиции",
+            "object_form_control_items": _fixed_compensation_control_items(),
+            "submit_label": "Создать позицию",
+            "scope_controls": True,
+            "cancel_url": (
+                _grant_report_url(funding_source_id)
+                if funding_source_id
+                else reverse("grant_report")
+            ),
+        },
+    )
+
+
+@director_required
+def grant_fixed_compensation_edit(request, pk: int):
+    fixed = get_object_or_404(
+        GrantFixedCompensation.objects.select_related(
+            "payroll_budget",
+            "payroll_budget__funding_source",
+            "staff_member",
+            "service",
+            "current_revision",
+        ),
+        pk=pk,
+    )
+    _require_active_grant_source(fixed.payroll_budget.funding_source)
+    if fixed.lifecycle_status == GrantFixedCompensation.LifecycleStatus.CLOSED:
+        raise PermissionDenied("Закрытая фиксированная позиция доступна только для чтения.")
+    if request.method == "POST":
+        form = GrantFixedCompensationForm(request.POST, instance=fixed)
+        if form.is_valid():
+            try:
+                fixed = grant_compensation_svc.revise_fixed_compensation(
+                    fixed,
+                    period_from=form.cleaned_data["period_from"],
+                    period_to=form.cleaned_data["period_to"],
+                    accrual_on=form.cleaned_data["accrual_on"],
+                    amount=form.cleaned_data["amount"],
+                    note=form.cleaned_data["note"],
+                    actor=request.user,
+                    reason=form.cleaned_data["reason"],
+                    expected_revision_id=form.cleaned_data["expected_revision_id"],
+                )
+            except ValidationError as exc:
+                _add_grant_plan_form_errors(form, exc)
+            else:
+                messages.success(request, "Создана новая редакция фиксированной позиции.")
+                return redirect(
+                    _grant_report_url(
+                        fixed.payroll_budget.funding_source_id,
+                        date_from=fixed.period_from,
+                        date_to=fixed.period_to,
+                    )
+                )
+    else:
+        form = GrantFixedCompensationForm(instance=fixed)
+    return render(
+        request,
+        "operations/grant_compensation_form.html",
+        {
+            "title": "Создать редакцию фиксированной позиции",
+            "subtitle": str(fixed),
+            "form_panel_title": "Новые параметры позиции",
+            "form_intro": (
+                "Идентичность позиции заблокирована. Измените период, дату начисления, "
+                "сумму или примечание и зафиксируйте основание."
+            ),
+            "form": form,
+            "control_title": "Контроль позиции",
+            "object_form_control_items": _fixed_compensation_control_items(fixed),
+            "submit_label": "Сохранить редакцию",
+            "scope_controls": True,
+            "cancel_url": _grant_report_url(
+                fixed.payroll_budget.funding_source_id,
+                date_from=fixed.period_from,
+                date_to=fixed.period_to,
+            ),
+        },
+    )
+
+
+@director_required
+def grant_fixed_compensation_close(request, pk: int):
+    fixed = get_object_or_404(
+        GrantFixedCompensation.objects.select_related(
+            "payroll_budget",
+            "payroll_budget__funding_source",
+            "staff_member",
+            "service",
+            "current_revision",
+        ),
+        pk=pk,
+    )
+    _require_active_grant_source(fixed.payroll_budget.funding_source)
+    if fixed.lifecycle_status == GrantFixedCompensation.LifecycleStatus.CLOSED:
+        raise PermissionDenied("Фиксированная позиция уже закрыта.")
+    redirect_url = _grant_report_url(
+        fixed.payroll_budget.funding_source_id,
+        date_from=fixed.period_from,
+        date_to=fixed.period_to,
+    )
+    initial = {"expected_revision_id": fixed.current_revision_id}
+    if request.method == "POST":
+        form = GrantCompensationCloseForm(request.POST)
+        if form.is_valid():
+            try:
+                grant_compensation_svc.close_fixed_compensation(
+                    fixed,
+                    actor=request.user,
+                    reason=form.cleaned_data["reason"],
+                    expected_revision_id=form.cleaned_data["expected_revision_id"],
+                )
+            except ValidationError as exc:
+                _add_grant_plan_form_errors(form, exc)
+            else:
+                messages.success(request, "Фиксированная позиция закрыта без удаления истории.")
+                return redirect(redirect_url)
+    else:
+        form = GrantCompensationCloseForm(initial=initial)
+    return render(
+        request,
+        "operations/grant_compensation_form.html",
+        {
+            "title": "Закрыть фиксированную позицию",
+            "subtitle": str(fixed),
+            "form_panel_title": "Основание закрытия",
+            "form_intro": (
+                "Сумма, период и дата начисления сохранятся. Закрытие создаст новую "
+                "неизменяемую редакцию, физического удаления не будет."
+            ),
+            "form": form,
+            "control_title": "Перед закрытием",
+            "object_form_control_items": _fixed_compensation_control_items(fixed),
+            "submit_label": "Закрыть позицию",
+            "submit_tone": "danger",
+            "cancel_url": redirect_url,
+        },
+    )
+
+
+@admin_required
+def grant_fixed_compensation_history(request, pk: int):
+    fixed = get_object_or_404(
+        GrantFixedCompensation.objects.select_related(
+            "payroll_budget",
+            "payroll_budget__funding_source",
+            "staff_member",
+            "service",
+        ),
+        pk=pk,
+    )
+    revisions = list(
+        GrantFixedCompensationRevision.objects.filter(fixed_compensation=fixed)
+        .select_related("actor", "service", "budget_revision_at_decision")
+        .order_by("-revision_number")
+    )
+    return render(
+        request,
+        "operations/grant_compensation_history.html",
+        {
+            "title": "История фиксированной позиции",
+            "subtitle": str(fixed),
+            "history_kind": "fixed_compensation",
+            "revisions": revisions,
+            "current_revision_id": fixed.current_revision_id,
+            "back_url": _grant_report_url(
+                fixed.payroll_budget.funding_source_id,
+                date_from=fixed.period_from,
+                date_to=fixed.period_to,
             ),
         },
     )

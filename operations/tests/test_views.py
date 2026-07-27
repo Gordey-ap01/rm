@@ -1858,6 +1858,21 @@ class GrantReportViewTests(NewViewsTestBase):
         self.assertContains(response, reverse("funding_staff_allocation_create"))
         self.assertContains(response, reverse("grant_recipient_allocation_create"))
 
+    def test_grant_report_shows_invalid_period_error(self):
+        response = self.client.get(
+            reverse("grant_report"),
+            {
+                "funding": self.funding_grant.pk,
+                "date_from": "2026-12-31",
+                "date_to": "2026-01-01",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "Дата окончания не может быть раньше даты начала.",
+        )
     def test_administrator_can_read_report_but_cannot_manage_grants(self):
         operator = User.objects.create_user(
             "grant-operator",
