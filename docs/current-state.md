@@ -16,7 +16,7 @@ browser-приемка рабочих ролей, persisted transfer/conversion 
 59A-1/`0049` и 59A-2/`0050-0052` реализованы одним DB owner: payroll-бюджет,
 фиксированный план и общее fixed-начисление прошли SQLite regression,
 browser-приемку ролей и PostgreSQL 17 migration/trigger/concurrency gate;
-59A локально принят. 59B не начат: следующим отдельным срезом следует снимок
+59A принят. 59B не начат: следующим отдельным срезом следует снимок
 закрытого донорского отчета; параллельно нужны решения по внешней эксплуатации.
 
 Цель этапа: ожидающие согласования и финансовые решения разделены по ролям,
@@ -271,6 +271,10 @@ browser-приемку ролей и PostgreSQL 17 migration/trigger/concurrency
   migration dry-run и browser-приемка mixed-листа для руководителя и
   администратора на desktop/mobile прошли; budget report показывает
   consumed/draft/available/forecast без browser console errors.
+- GitHub Actions run `30360743429` для commit `cbb5294` успешно прошел чистую
+  PostgreSQL 17 migration chain до `0052`, Django/migration checks, Ruff,
+  dependency manifests, Compose/preflight, Linux restore-drill и полный pytest
+  (`821 passed`) за `7m42s`.
 
 ## Следующая работа
 
