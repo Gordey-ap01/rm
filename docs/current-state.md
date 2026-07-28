@@ -1,6 +1,6 @@
 # Текущее состояние проекта
 
-Дата контрольной точки: 2026-07-27
+Дата контрольной точки: 2026-07-28
 
 ## Активный этап
 
@@ -248,6 +248,10 @@ migration/trigger/concurrency gate; срез принят. 59A-2 не начат
   upgrade `0048 -> 0049` и round-trip `0049 -> 0048 -> 0049` прошли.
   Trigger/constraint/concurrency набор: `43 passed` без пропусков; связанный
   grant plan/payroll/report набор: `169 passed` без пропусков.
+- GitHub Actions run `30257679071` для commit `19c0bd6` успешно прошел чистую
+  PostgreSQL 17 migration chain до `0049`, Django/migration checks, Ruff,
+  dependency manifests, Compose/preflight, Linux restore-drill и полный pytest
+  (`811 passed`) за `7m35s`.
 - Browser-приемка 59A-1 выполнена на временной обезличенной БД: руководитель
   видит write-команды, администратор — только данные и историю; desktop/mobile
   overflow и console errors отсутствуют. Временная БД и сервер удалены.
