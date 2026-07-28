@@ -196,6 +196,7 @@ class OperationalAcceptanceTests(TestCase):
                 .values_list("event_type", flat=True)
             ),
             [
+                PayrollSheetLifecycleEvent.EventType.APPROVED,
                 PayrollSheetLifecycleEvent.EventType.SENT,
                 PayrollSheetLifecycleEvent.EventType.PAID,
             ],

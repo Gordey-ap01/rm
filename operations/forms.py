@@ -3656,6 +3656,21 @@ class TimeSheetFilterForm(forms.Form):
         return cleaned
 
 
+class PayrollSheetApprovalForm(forms.Form):
+    note = forms.CharField(
+        label="Основание превышения бюджета",
+        max_length=2000,
+        required=False,
+        help_text=(
+            "Обязательно только если предупреждающий бюджет будет превышен."
+        ),
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+
+    def clean_note(self):
+        return self.cleaned_data["note"].strip()
+
+
 class PayrollSheetSendForm(forms.Form):
     note = forms.CharField(
         label="Основание передачи в выплату",

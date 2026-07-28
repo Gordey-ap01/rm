@@ -10,6 +10,7 @@ from typing import Any
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 
 from operations.models import (
@@ -19,6 +20,9 @@ from operations.models import (
     FundingStaffAllocation,
     GrantFixedCompensation,
     GrantFixedCompensationRevision,
+    PayrollAccrual,
+    PayrollSheet,
+    PayrollSheetLine,
     Service,
     StaffMember,
 )
@@ -31,6 +35,14 @@ class GrantCompensationIntegrityFinding:
     object_kind: str
     object_id: int
     detail: str
+
+
+@dataclass(frozen=True)
+class PayrollBudgetUsage:
+    consumed: Decimal
+    draft_commitment: Decimal
+    available: Decimal
+    forecast_available: Decimal
 
 
 def _require_director(actor: Any) -> None:
@@ -390,6 +402,73 @@ def _lock_payroll_budget(
     return locked, budgets
 
 
+def _payroll_budget_consumed(budget: FundingPayrollBudget) -> Decimal:
+    return (
+        PayrollSheetLine.objects.filter(
+            payroll_budget_revision__payroll_budget=budget,
+            payroll_sheet__status__in=[
+                PayrollSheet.Status.APPROVED,
+                PayrollSheet.Status.SENT,
+                PayrollSheet.Status.PAID,
+            ],
+        ).aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+
+
+def payroll_budget_usages(
+    budgets: list[FundingPayrollBudget],
+) -> dict[int, PayrollBudgetUsage]:
+    totals_by_budget: dict[int, dict[str, Decimal]] = {
+        budget.pk: {} for budget in budgets
+    }
+    if totals_by_budget:
+        rows = (
+            PayrollSheetLine.objects.filter(
+                payroll_budget_revision__payroll_budget_id__in=totals_by_budget,
+            )
+            .exclude(payroll_sheet__status=PayrollSheet.Status.CANCELLED)
+            .values(
+                "payroll_budget_revision__payroll_budget_id",
+                "payroll_sheet__status",
+            )
+            .annotate(total=Sum("amount"))
+        )
+        for row in rows:
+            totals_by_budget[row["payroll_budget_revision__payroll_budget_id"]][
+                row["payroll_sheet__status"]
+            ] = row["total"] or Decimal("0")
+
+    result: dict[int, PayrollBudgetUsage] = {}
+    for budget in budgets:
+        totals = totals_by_budget[budget.pk]
+        consumed = sum(
+            (
+                totals.get(status, Decimal("0"))
+                for status in (
+                    PayrollSheet.Status.APPROVED,
+                    PayrollSheet.Status.SENT,
+                    PayrollSheet.Status.PAID,
+                )
+            ),
+            Decimal("0"),
+        )
+        draft_commitment = totals.get(PayrollSheet.Status.DRAFT, Decimal("0"))
+        result[budget.pk] = PayrollBudgetUsage(
+            consumed=consumed,
+            draft_commitment=draft_commitment,
+            available=budget.planned_amount - consumed,
+            forecast_available=budget.planned_amount
+            - consumed
+            - draft_commitment,
+        )
+    return result
+
+
+def payroll_budget_usage(budget: FundingPayrollBudget) -> PayrollBudgetUsage:
+    return payroll_budget_usages([budget])[budget.pk]
+
+
 @transaction.atomic
 def revise_payroll_budget(
     budget: FundingPayrollBudget,
@@ -426,6 +505,41 @@ def revise_payroll_budget(
         ends_on=ends_on,
         exclude_id=locked.pk,
     )
+    consumed = _payroll_budget_consumed(locked)
+    if planned_amount < consumed:
+        raise ValidationError(
+            {
+                "planned_amount": (
+                    "Бюджет нельзя уменьшить ниже уже утвержденной суммы "
+                    f"{consumed}."
+                )
+            }
+        )
+    if (
+        locked.enforcement_mode == FundingPayrollBudget.EnforcementMode.WARNING
+        and enforcement_mode == FundingPayrollBudget.EnforcementMode.HARD
+        and consumed > planned_amount
+    ):
+        raise ValidationError(
+            {
+                "enforcement_mode": (
+                    "Нельзя включить жесткий лимит: утвержденная сумма уже "
+                    "превышает новый бюджет."
+                )
+            }
+        )
+    approved_outside_period = PayrollSheetLine.objects.filter(
+        payroll_budget_revision__payroll_budget=locked,
+        payroll_sheet__status__in=[
+            PayrollSheet.Status.APPROVED,
+            PayrollSheet.Status.SENT,
+            PayrollSheet.Status.PAID,
+        ],
+    ).exclude(work_date__range=(starts_on, ends_on))
+    if approved_outside_period.exists():
+        raise ValidationError(
+            "Период бюджета нельзя изменить так, чтобы исключить утвержденное начисление."
+        )
     previous = _current_budget_revision(locked)
     now = timezone.now()
     revision = FundingPayrollBudgetRevision.objects.create(
@@ -649,6 +763,30 @@ def revise_fixed_compensation(
     _require_expected_revision(locked.current_revision_id, expected_revision_id)
     if locked.lifecycle_status == GrantFixedCompensation.LifecycleStatus.CLOSED:
         raise ValidationError("Закрытую фиксированную позицию нельзя изменять.")
+    fixed_accruals = list(
+        PayrollAccrual.objects.select_for_update()
+        .filter(
+            grant_fixed_compensation_revision__fixed_compensation=locked,
+        )
+        .order_by("pk")
+    )
+    if any(
+        accrual.status != PayrollAccrual.Status.DRAFT
+        for accrual in fixed_accruals
+    ):
+        raise ValidationError(
+            "Фиксированную позицию нельзя изменить после утверждения начисления."
+        )
+    if any(
+        accrual.sheet_lines.exclude(
+            payroll_sheet__status=PayrollSheet.Status.CANCELLED,
+        ).exists()
+        for accrual in fixed_accruals
+    ):
+        raise ValidationError(
+            "Фиксированную позицию нельзя изменить, пока начисление входит "
+            "в действующий расчетный лист."
+        )
     budget_revision = _current_budget_revision(budget)
     candidate = _fixed_candidate(
         payroll_budget=budget,

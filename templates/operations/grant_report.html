@@ -169,6 +169,12 @@
             <td data-label="Дата начисления">—</td>
             <td class="text-end text-nowrap" data-label="Сумма">
               {{ budget.planned_amount|floatformat:2 }} ₽
+              <div class="small text-secondary">
+                Утверждено: {{ budget.payroll_usage.consumed|floatformat:2 }} ₽<br>
+                В черновиках: {{ budget.payroll_usage.draft_commitment|floatformat:2 }} ₽<br>
+                Доступно: {{ budget.payroll_usage.available|floatformat:2 }} ₽<br>
+                Прогноз: {{ budget.payroll_usage.forecast_available|floatformat:2 }} ₽
+              </div>
             </td>
             <td data-label="Контроль / статус">
               <div>{{ budget.get_enforcement_mode_display }}</div>

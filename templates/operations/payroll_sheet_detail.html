@@ -36,7 +36,7 @@
       <div class="payroll-sheet-panel-head">
         <div>
           <h2>Строки начислений</h2>
-          <p>Проверьте дату, услугу, источник финансирования, ставку и сумму перед утверждением.</p>
+          <p>Проверьте дату, основание, источник финансирования и сумму перед утверждением.</p>
         </div>
       </div>
       <div class="table-wrap">
@@ -44,7 +44,7 @@
           <thead>
             <tr>
               <th>Дата</th>
-              <th>Услуга</th>
+              <th>Основание</th>
               <th>Источник</th>
               <th>Занятие</th>
               <th>Минут</th>
@@ -57,10 +57,17 @@
             {% for line in payroll_sheet.lines.all %}
               <tr>
                 <td data-label="Дата">{{ line.work_date|date:"d.m.Y" }}</td>
-                <td data-label="Услуга">{{ line.service.name }}</td>
+                <td data-label="Основание">
+                  {{ line.line_label }}
+                  {% if line.accrual_kind_snapshot == "grant_fixed" %}
+                    <small class="text-muted d-block">
+                      {{ line.period_from_snapshot|date:"d.m.Y" }}-{{ line.period_to_snapshot|date:"d.m.Y" }}
+                    </small>
+                  {% endif %}
+                </td>
                 <td data-label="Источник">
-                  {% if line.payroll_accrual.funding_source %}
-                    {{ line.payroll_accrual.funding_source.name }}
+                  {% if line.funding_source %}
+                    {{ line.funding_source.name }}
                   {% else %}
                     —
                   {% endif %}
@@ -72,15 +79,21 @@
                     —
                   {% endif %}
                 </td>
-                <td data-label="Минуты">{{ line.duration_minutes }}</td>
+                <td data-label="Минуты">{{ line.duration_minutes|default:"—" }}</td>
                 <td data-label="Ставка">
-                  {{ line.payroll_accrual.rate_amount_snapshot }} / {{ line.payroll_accrual.get_rate_type_snapshot_display }}
-                  {% if line.payroll_accrual.group_pay_policy_snapshot != "per_session" or line.payroll_accrual.pay_units_snapshot > 1 %}
-                    <small class="text-muted d-block">
-                      {{ line.payroll_accrual.get_group_pay_policy_snapshot_display }},
-                      единиц: {{ line.payroll_accrual.pay_units_snapshot }},
-                      списано: {{ line.payroll_accrual.charged_participants_count_snapshot }}
-                    </small>
+                  {% if line.accrual_kind_snapshot == "appointment" %}
+                    {{ line.payroll_accrual.rate_amount_snapshot }} / {{ line.payroll_accrual.get_rate_type_snapshot_display }}
+                  {% else %}
+                    фиксированная сумма
+                  {% endif %}
+                  {% if line.accrual_kind_snapshot == "appointment" %}
+                    {% if line.payroll_accrual.group_pay_policy_snapshot != "per_session" or line.payroll_accrual.pay_units_snapshot > 1 %}
+                      <small class="text-muted d-block">
+                        {{ line.payroll_accrual.get_group_pay_policy_snapshot_display }},
+                        единиц: {{ line.payroll_accrual.pay_units_snapshot }},
+                        списано: {{ line.payroll_accrual.charged_participants_count_snapshot }}
+                      </small>
+                    {% endif %}
                   {% endif %}
                 </td>
                 <td data-label="Сумма"><strong>{{ line.amount }}</strong></td>
@@ -118,7 +131,14 @@
                 <td data-label="Время">{{ event.occurred_at|date:"d.m.Y H:i" }}</td>
                 <td data-label="Событие">{{ event.get_event_type_display }}</td>
                 <td data-label="Кто выполнил">{{ event.actor }}</td>
-                <td data-label="Основание">{{ event.note|default:"—" }}</td>
+                <td data-label="Основание">
+                  {{ event.note|default:"—" }}
+                  {% if event.budget_overage_amount %}
+                    <small class="text-muted d-block">
+                      Превышение бюджета: {{ event.budget_overage_amount }} руб.
+                    </small>
+                  {% endif %}
+                </td>
               </tr>
             {% empty %}
               <tr>
@@ -179,6 +199,11 @@
       {% if payroll_sheet.status == "draft" and can_approve_payroll_sheet %}
         <form method="post" class="payroll-sheet-actions">
           {% csrf_token %}
+          <div>
+            {{ payroll_sheet_approval_form.note.label_tag }}
+            {{ payroll_sheet_approval_form.note }}
+            <small>{{ payroll_sheet_approval_form.note.help_text }}</small>
+          </div>
           <button type="submit" name="action" value="approve">Утвердить расчетный лист</button>
         </form>
       {% endif %}

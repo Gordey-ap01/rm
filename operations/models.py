@@ -3842,6 +3842,10 @@ class FinancialIntegrityFindingEvent(TimeStampedModel):
 
 
 class PayrollAccrual(TimeStampedModel):
+    class AccrualKind(models.TextChoices):
+        APPOINTMENT = "appointment", "За занятие"
+        GRANT_FIXED = "grant_fixed", "Фиксированная грантовая оплата"
+
     class Status(models.TextChoices):
         DRAFT = "draft", "Черновик"
         APPROVED = "approved", "Утверждено"
@@ -3849,6 +3853,12 @@ class PayrollAccrual(TimeStampedModel):
         CANCELLED = "cancelled", "Отменено"
 
     dedupe_key = models.CharField("ключ идемпотентности", max_length=160, unique=True)
+    accrual_kind = models.CharField(
+        "вид начисления",
+        max_length=30,
+        choices=AccrualKind.choices,
+        default=AccrualKind.APPOINTMENT,
+    )
     staff_assignment = models.ForeignKey(
         AppointmentStaffAssignment,
         verbose_name="назначение специалиста",
@@ -3891,6 +3901,8 @@ class PayrollAccrual(TimeStampedModel):
         Service,
         verbose_name="услуга",
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         related_name="payroll_accruals",
     )
     funding_source = models.ForeignKey(
@@ -3917,30 +3929,66 @@ class PayrollAccrual(TimeStampedModel):
         blank=True,
         related_name="payroll_accruals",
     )
-    work_date = models.DateField("дата занятия")
-    starts_at_snapshot = models.DateTimeField("начало")
-    ends_at_snapshot = models.DateTimeField("окончание")
-    duration_minutes = models.PositiveIntegerField("длительность, мин")
-    rate_type_snapshot = models.CharField(
-        "тип ставки", max_length=30, choices=StaffCompensationRule.RateType.choices
+    grant_fixed_compensation_revision = models.ForeignKey(
+        GrantFixedCompensationRevision,
+        verbose_name="редакция фиксированной грантовой оплаты",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="payroll_accruals",
     )
-    rate_amount_snapshot = models.DecimalField("ставка", max_digits=12, decimal_places=2)
+    payroll_budget_revision = models.ForeignKey(
+        FundingPayrollBudgetRevision,
+        verbose_name="проверенная редакция бюджета оплаты труда",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="payroll_accruals",
+    )
+    work_date = models.DateField("дата начисления")
+    period_from_snapshot = models.DateField("период начисления с", null=True, blank=True)
+    period_to_snapshot = models.DateField("период начисления по", null=True, blank=True)
+    starts_at_snapshot = models.DateTimeField("начало", null=True, blank=True)
+    ends_at_snapshot = models.DateTimeField("окончание", null=True, blank=True)
+    duration_minutes = models.PositiveIntegerField("длительность, мин", null=True, blank=True)
+    rate_type_snapshot = models.CharField(
+        "тип ставки",
+        max_length=30,
+        choices=StaffCompensationRule.RateType.choices,
+        null=True,
+        blank=True,
+    )
+    rate_amount_snapshot = models.DecimalField(
+        "ставка",
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
     session_scope_snapshot = models.CharField(
         "формат правила",
         max_length=30,
         choices=StaffCompensationRule.SessionScope.choices,
-        default=StaffCompensationRule.SessionScope.ALL,
+        null=True,
+        blank=True,
     )
     group_pay_policy_snapshot = models.CharField(
         "начисление в группе",
         max_length=40,
         choices=StaffCompensationRule.GroupPayPolicy.choices,
-        default=StaffCompensationRule.GroupPayPolicy.PER_SESSION,
+        null=True,
+        blank=True,
     )
     charged_participants_count_snapshot = models.PositiveIntegerField(
-        "списано участников", default=1
+        "списано участников",
+        null=True,
+        blank=True,
     )
-    pay_units_snapshot = models.PositiveIntegerField("единиц начисления", default=1)
+    pay_units_snapshot = models.PositiveIntegerField(
+        "единиц начисления",
+        null=True,
+        blank=True,
+    )
     amount = models.DecimalField("сумма начисления", max_digits=12, decimal_places=2)
     status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.DRAFT)
     note = models.TextField("примечание", blank=True)
@@ -3980,11 +4028,72 @@ class PayrollAccrual(TimeStampedModel):
             models.CheckConstraint(
                 condition=Q(pay_units_snapshot__gte=1), name="payroll_accrual_pay_units_positive"
             ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        accrual_kind="appointment",
+                        grant_fixed_compensation_revision__isnull=True,
+                        service__isnull=False,
+                        starts_at_snapshot__isnull=False,
+                        ends_at_snapshot__isnull=False,
+                        duration_minutes__isnull=False,
+                        rate_type_snapshot__isnull=False,
+                        rate_amount_snapshot__isnull=False,
+                        session_scope_snapshot__isnull=False,
+                        group_pay_policy_snapshot__isnull=False,
+                        charged_participants_count_snapshot__isnull=False,
+                        pay_units_snapshot__isnull=False,
+                    )
+                    | Q(
+                        accrual_kind="grant_fixed",
+                        grant_fixed_compensation_revision__isnull=False,
+                        staff_assignment__isnull=True,
+                        appointment__isnull=True,
+                        appointment_participant__isnull=True,
+                        ledger_entry__isnull=True,
+                        service__isnull=True,
+                        funding_source__isnull=False,
+                        pay_rule__isnull=True,
+                        grant_allocation_revision__isnull=True,
+                        period_from_snapshot__isnull=False,
+                        period_to_snapshot__isnull=False,
+                        starts_at_snapshot__isnull=True,
+                        ends_at_snapshot__isnull=True,
+                        duration_minutes__isnull=True,
+                        rate_type_snapshot__isnull=True,
+                        rate_amount_snapshot__isnull=True,
+                        session_scope_snapshot__isnull=True,
+                        group_pay_policy_snapshot__isnull=True,
+                        charged_participants_count_snapshot__isnull=True,
+                        pay_units_snapshot__isnull=True,
+                    )
+                ),
+                name="payroll_accrual_kind_fields",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~Q(accrual_kind="grant_fixed")
+                    | Q(period_to_snapshot__gte=models.F("period_from_snapshot"))
+                ),
+                name="payroll_accrual_fixed_period_order",
+            ),
+            models.CheckConstraint(
+                condition=~Q(accrual_kind="grant_fixed") | Q(amount__gt=0),
+                name="payroll_accrual_fixed_amount_positive",
+            ),
         ]
         indexes = [
             models.Index(fields=["staff_member", "work_date", "status"]),
             models.Index(fields=["appointment", "staff_assignment"]),
             models.Index(fields=["funding_source", "service", "work_date"]),
+            models.Index(
+                fields=["accrual_kind", "work_date", "status"],
+                name="payroll_acc_kind_date_status",
+            ),
+            models.Index(
+                fields=["payroll_budget_revision", "status"],
+                name="payroll_acc_budget_status",
+            ),
         ]
 
     def __str__(self) -> str:
@@ -4061,6 +4170,11 @@ class PayrollSheetLine(TimeStampedModel):
         on_delete=models.PROTECT,
         related_name="sheet_lines",
     )
+    accrual_kind_snapshot = models.CharField(
+        "вид начисления",
+        max_length=30,
+        choices=PayrollAccrual.AccrualKind.choices,
+    )
     appointment = models.ForeignKey(
         Appointment,
         verbose_name="занятие",
@@ -4073,17 +4187,38 @@ class PayrollSheetLine(TimeStampedModel):
         Service,
         verbose_name="услуга",
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         related_name="payroll_sheet_lines",
     )
-    work_date = models.DateField("дата занятия")
-    duration_minutes = models.PositiveIntegerField("длительность, мин")
+    funding_source = models.ForeignKey(
+        FundingSource,
+        verbose_name="источник финансирования",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="payroll_sheet_lines",
+    )
+    payroll_budget_revision = models.ForeignKey(
+        FundingPayrollBudgetRevision,
+        verbose_name="проверенная редакция бюджета оплаты труда",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="payroll_sheet_lines",
+    )
+    work_date = models.DateField("дата начисления")
+    period_from_snapshot = models.DateField("период начисления с", null=True, blank=True)
+    period_to_snapshot = models.DateField("период начисления по", null=True, blank=True)
+    line_label = models.CharField("название строки", max_length=200)
+    duration_minutes = models.PositiveIntegerField("длительность, мин", null=True, blank=True)
     amount = models.DecimalField("сумма", max_digits=12, decimal_places=2)
     note = models.TextField("примечание", blank=True)
 
     class Meta:
         verbose_name = "строка расчетного листа"
         verbose_name_plural = "строки расчетных листов"
-        ordering = ["work_date", "service__name"]
+        ordering = ["work_date", "line_label", "pk"]
         constraints = [
             models.UniqueConstraint(
                 fields=["payroll_sheet", "payroll_accrual"], name="unique_payroll_sheet_accrual"
@@ -4091,10 +4226,43 @@ class PayrollSheetLine(TimeStampedModel):
             models.CheckConstraint(
                 condition=Q(amount__gte=0), name="payroll_sheet_line_amount_non_negative"
             ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        accrual_kind_snapshot="appointment",
+                        service__isnull=False,
+                        duration_minutes__isnull=False,
+                    )
+                    | Q(
+                        accrual_kind_snapshot="grant_fixed",
+                        service__isnull=True,
+                        funding_source__isnull=False,
+                        period_from_snapshot__isnull=False,
+                        period_to_snapshot__isnull=False,
+                        duration_minutes__isnull=True,
+                    )
+                ),
+                name="payroll_sheet_line_kind_fields",
+            ),
+            models.CheckConstraint(
+                condition=~Q(line_label=""),
+                name="payroll_sheet_line_label_required",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~Q(accrual_kind_snapshot="grant_fixed")
+                    | Q(period_to_snapshot__gte=models.F("period_from_snapshot"))
+                ),
+                name="payroll_sheet_line_fixed_period_order",
+            ),
         ]
         indexes = [
             models.Index(fields=["payroll_sheet", "work_date"]),
             models.Index(fields=["payroll_accrual"]),
+            models.Index(
+                fields=["payroll_budget_revision", "payroll_sheet"],
+                name="payroll_line_budget_sheet",
+            ),
         ]
 
     def __str__(self) -> str:
@@ -4175,6 +4343,7 @@ class PayrollSheetLifecycleEvent(TimeStampedModel):
     """Append-only journal for payroll transitions with financial consequences."""
 
     class EventType(models.TextChoices):
+        APPROVED = PayrollSheet.Status.APPROVED, "Утвержден"
         SENT = PayrollSheet.Status.SENT, "Передан в выплату"
         PAID = PayrollSheet.Status.PAID, "Выплата зафиксирована"
 
@@ -4202,6 +4371,20 @@ class PayrollSheetLifecycleEvent(TimeStampedModel):
         choices=ActorRole.choices,
     )
     note = models.TextField("основание", blank=True)
+    payroll_budget_revision = models.ForeignKey(
+        FundingPayrollBudgetRevision,
+        verbose_name="проверенная редакция бюджета оплаты труда",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="payroll_sheet_lifecycle_events",
+    )
+    budget_overage_amount = models.DecimalField(
+        "превышение бюджета",
+        max_digits=14,
+        decimal_places=2,
+        default=0,
+    )
     occurred_at = models.DateTimeField("время действия", default=timezone.now, db_index=True)
 
     class Meta:
@@ -4212,6 +4395,12 @@ class PayrollSheetLifecycleEvent(TimeStampedModel):
             models.CheckConstraint(
                 condition=(
                     Q(
+                        event_type="approved",
+                        status_from="draft",
+                        status_to="approved",
+                        actor_role_snapshot="director",
+                    )
+                    | Q(
                         event_type="sent",
                         status_from="approved",
                         status_to="sent",
@@ -4227,8 +4416,37 @@ class PayrollSheetLifecycleEvent(TimeStampedModel):
                 name="payroll_lifecycle_event_valid_transition",
             ),
             models.CheckConstraint(
-                condition=Q(event_type="paid") | ~Q(note=""),
-                name="payroll_sent_event_note_required",
+                condition=~Q(event_type="sent") | ~Q(note=""),
+                name="payroll_lifecycle_sent_note_required",
+            ),
+            models.CheckConstraint(
+                condition=Q(budget_overage_amount__gte=0),
+                name="payroll_lifecycle_overage_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type="approved",
+                    )
+                    | Q(
+                        payroll_budget_revision__isnull=True,
+                        budget_overage_amount=0,
+                    )
+                ),
+                name="payroll_lifecycle_budget_fields_event",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(budget_overage_amount=0)
+                    | (
+                        Q(
+                            event_type="approved",
+                            payroll_budget_revision__isnull=False,
+                        )
+                        & ~Q(note="")
+                    )
+                ),
+                name="payroll_lifecycle_overage_reason",
             ),
         ]
         indexes = [
@@ -4244,11 +4462,14 @@ class PayrollSheetLifecycleEvent(TimeStampedModel):
         "actor_id",
         "actor_role_snapshot",
         "note",
+        "payroll_budget_revision_id",
+        "budget_overage_amount",
         "occurred_at",
     )
 
     def clean(self) -> None:
         expected_transitions = {
+            self.EventType.APPROVED: (PayrollSheet.Status.DRAFT, PayrollSheet.Status.APPROVED),
             self.EventType.SENT: (PayrollSheet.Status.APPROVED, PayrollSheet.Status.SENT),
             self.EventType.PAID: (PayrollSheet.Status.SENT, PayrollSheet.Status.PAID),
         }
@@ -4258,6 +4479,18 @@ class PayrollSheetLifecycleEvent(TimeStampedModel):
             raise ValidationError({"actor_role_snapshot": "Действие может выполнить руководитель."})
         if self.event_type == self.EventType.SENT and len(self.note.strip()) < 5:
             raise ValidationError({"note": "Укажите основание передачи в выплату."})
+        if self.event_type != self.EventType.APPROVED and (
+            self.payroll_budget_revision_id or self.budget_overage_amount
+        ):
+            raise ValidationError(
+                "Бюджетные снимки допустимы только для события утверждения."
+            )
+        if self.budget_overage_amount and (
+            not self.payroll_budget_revision_id or len(self.note.strip()) < 5
+        ):
+            raise ValidationError(
+                {"note": "Для превышения бюджета укажите содержательное основание."}
+            )
 
     def _ensure_immutable_fields(self) -> None:
         if not self.pk:
@@ -4270,6 +4503,9 @@ class PayrollSheetLifecycleEvent(TimeStampedModel):
         self.full_clean()
         self._ensure_immutable_fields()
         super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Событие расчетного листа нельзя удалить.")
 
     def __str__(self) -> str:
         return f"{self.payroll_sheet_id}: {self.get_event_type_display()}"

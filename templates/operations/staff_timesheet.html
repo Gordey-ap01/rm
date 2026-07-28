@@ -120,7 +120,7 @@
           <thead>
             <tr>
               <th>Дата</th>
-              <th>Услуга</th>
+              <th>Основание</th>
               <th>Источник</th>
               <th>Статус</th>
               <th>Сумма</th>
@@ -130,7 +130,20 @@
             {% for accrual in payroll_accruals %}
               <tr>
                 <td data-label="Дата">{{ accrual.work_date|date:"d.m.Y" }}</td>
-                <td data-label="Услуга">{{ accrual.service.name }}</td>
+                <td data-label="Основание">
+                  {% if accrual.accrual_kind == "grant_fixed" %}
+                    {% if accrual.grant_fixed_compensation_revision.service %}
+                      Фиксировано: {{ accrual.grant_fixed_compensation_revision.service.name }}
+                    {% else %}
+                      {{ accrual.grant_fixed_compensation_revision.assignment_label }}
+                    {% endif %}
+                    <small class="text-muted d-block">
+                      {{ accrual.period_from_snapshot|date:"d.m.Y" }}-{{ accrual.period_to_snapshot|date:"d.m.Y" }}
+                    </small>
+                  {% else %}
+                    {{ accrual.service.name }}
+                  {% endif %}
+                </td>
                 <td data-label="Источник">{% if accrual.funding_source %}{{ accrual.funding_source.name }}{% else %}—{% endif %}</td>
                 <td data-label="Статус">{{ accrual.get_status_display }}</td>
                 <td data-label="Сумма">{{ accrual.amount }}</td>

@@ -13,11 +13,11 @@ browser-приемка рабочих ролей, persisted transfer/conversion 
 `docs/58-grant-plan-versioning-contract.md` реализован и локально принят.
 Активный доменный этап описан принятым
 `docs/59-grant-fixed-compensation-and-donor-report-snapshot-contract.md`.
-59A-1/`0049` реализован одним DB owner: payroll-бюджет и фиксированный план
-проекта прошли SQLite regression, browser-приемку ролей и PostgreSQL 17
-migration/trigger/concurrency gate; срез принят. 59A-2 не начат: следующим
-отдельным срезом следуют общее начисление fixed-позиций, затем снимок закрытого
-донорского отчета; параллельно нужны решения по внешней эксплуатации.
+59A-1/`0049` и 59A-2/`0050-0052` реализованы одним DB owner: payroll-бюджет,
+фиксированный план и общее fixed-начисление прошли SQLite regression,
+browser-приемку ролей и PostgreSQL 17 migration/trigger/concurrency gate;
+59A локально принят. 59B не начат: следующим отдельным срезом следует снимок
+закрытого донорского отчета; параллельно нужны решения по внешней эксплуатации.
 
 Цель этапа: ожидающие согласования и финансовые решения разделены по ролям,
 а руководитель имеет окончательный приоритет в управленческих областях без
@@ -255,17 +255,34 @@ migration/trigger/concurrency gate; срез принят. 59A-2 не начат
 - Browser-приемка 59A-1 выполнена на временной обезличенной БД: руководитель
   видит write-команды, администратор — только данные и историю; desktop/mobile
   overflow и console errors отсутствуют. Временная БД и сервер удалены.
+- 59A-2 разделен на migration `0050` expand, обратимый batched legacy-backfill
+  `0051` и `0052` tighten с PostgreSQL-trigger неизменяемости approval event.
+  Чистая migration chain до `0052` и populated round-trip
+  `0049 -> 0052 -> 0049 -> 0052` прошли на PostgreSQL 17 без изменения сумм и
+  статусов старых appointment-строк.
+- Общее fixed-начисление создает одну idempotent строку без фиктивного занятия,
+  услуги или минут; mixed-лист содержит appointment и fixed-строки, а
+  `service_delivery` подавляет дублирующее сдельное начисление той же услуги.
+  Draft-лист фиксирует budget commitment, а approval использует канонический
+  порядок row locks и сохраняет budget revision/overage в неизменяемом событии.
+- 59A-2 локальная приемка: focused PostgreSQL `10 passed`, связанный
+  PostgreSQL gate `77 passed`, focused SQLite `7 passed, 3 skipped`; полный
+  SQLite regression `794 passed, 27 skipped`. Ruff, Django system check,
+  migration dry-run и browser-приемка mixed-листа для руководителя и
+  администратора на desktop/mobile прошли; budget report показывает
+  consumed/draft/available/forecast без browser console errors.
 
 ## Следующая работа
 
 1. Выбрать владельца и поставщиков для offsite backup, monitoring/alerting и
    реального SMTP; хранить секреты только вне Git. Включить branch protection
    после согласования репозитория.
-2. Следующим отдельным срезом выполнить 59A-2: общее fixed-начисление и
-   смешанный расчетный лист без фиктивного занятия. Ledger-backed выделение
-   получателю остается отдельным срезом.
-3. Перед production migration `0048` выполнить backup, `--strict` preflight,
-   временно закрыть грантовые записи и подготовить совместимый rollback-релиз.
+2. Следующим отдельным срезом выполнить 59B-1: закрытый донорский payload.
+   59B-2 с фактом сдачи файла начинать только после готовности приватного
+   storage.
+3. Перед production migration chain `0048-0052` выполнить backup, `--strict`
+   preflight, временно закрыть грантовые записи и подготовить совместимый
+   rollback-релиз.
 4. Отдельно согласовать policy возвратов и обратной конвертации до реализации.
 5. Перед пилотом проверить mobile-кабинет на физическом телефоне и провести
    обезличенные рабочие сценарии центра.
@@ -286,12 +303,12 @@ migration/trigger/concurrency gate; срез принят. 59A-2 не начат
 Критические зоны до рабочего production-контура:
 
 - завершенная матрица ролей во всех управленческих действиях;
-- общее fixed-начисление 59A-2 и закрытый донорский отчет;
+- закрытый донорский отчет 59B;
 - policy возвратов и обратной конвертации;
 - offsite backup, monitoring/alerting и реальный SMTP;
 - регулярный targeted browser smoke и приемка на физическом телефоне;
 - приемка на реальных обезличенных сценариях центра;
-- production cutover migration `0048` после backup/preflight.
+- production cutover migration chain `0048-0052` после backup/preflight.
 
 ## Риски и запреты
 

@@ -26,6 +26,7 @@ from operations.forms import (
     GrantRecipientAllocationQuickForm,
     GrantReportFilterForm,
     PayrollPayoutRecordForm,
+    PayrollSheetApprovalForm,
     PayrollSheetSendForm,
     TimeSheetFilterForm,
 )
@@ -290,16 +291,16 @@ def _payroll_sheet_summary_items(payroll_sheet: PayrollSheet) -> list[dict[str, 
     lines = _payroll_sheet_lines(payroll_sheet)
     service_ids = {line.service_id for line in lines if line.service_id}
     funding_source_ids = {
-        line.payroll_accrual.funding_source_id
+        line.funding_source_id
         for line in lines
-        if line.payroll_accrual.funding_source_id
+        if line.funding_source_id
     }
-    total_minutes = sum(line.duration_minutes for line in lines)
+    total_minutes = sum((line.duration_minutes or 0) for line in lines)
     return [
         {
             "label": "Строк",
             "value": str(len(lines)),
-            "hint": "занятий в расчетном листе",
+            "hint": "начислений в расчетном листе",
         },
         {
             "label": "Сумма",
@@ -826,7 +827,8 @@ def staff_timesheet(request, pk: int):
                         request,
                         "Начисления обновлены: "
                         f"создано {result.created}, обновлено {result.updated}, "
-                        f"без списания {result.skipped_no_charge}, без ставки {result.skipped_no_rule}.",
+                        f"без списания {result.skipped_no_charge}, без ставки {result.skipped_no_rule}, "
+                        f"покрыто фиксированной оплатой {result.skipped_fixed_service}.",
                     )
                 elif action == "create_payroll_sheet":
                     payroll_sheet = payroll_svc.create_payroll_sheet_for_staff(
@@ -851,8 +853,14 @@ def staff_timesheet(request, pk: int):
             PayrollAccrual.objects.filter(
                 staff_member=staff, work_date__gte=date_from, work_date__lte=date_to
             )
-            .select_related("service", "funding_source", "appointment")
-            .order_by("work_date", "starts_at_snapshot")
+            .select_related(
+                "service",
+                "funding_source",
+                "appointment",
+                "grant_fixed_compensation_revision",
+                "grant_fixed_compensation_revision__service",
+            )
+            .order_by("work_date", "accrual_kind", "pk")
         )
         payroll_sheets = list(
             PayrollSheet.objects.filter(
@@ -917,7 +925,10 @@ def payroll_sheet_detail(request, pk: int):
             "lines__appointment",
             "lines__payroll_accrual",
             "lines__payroll_accrual__funding_source",
+            "lines__funding_source",
+            "lines__payroll_budget_revision",
             "lifecycle_events__actor",
+            "lifecycle_events__payroll_budget_revision",
         ),
         pk=pk,
     )
@@ -927,8 +938,16 @@ def payroll_sheet_detail(request, pk: int):
             if action == "approve":
                 if not is_director(request.user):
                     raise PermissionDenied("Утвердить расчетный лист может только руководитель.")
-                payroll_svc.approve_payroll_sheet(payroll_sheet, actor=request.user)
-                messages.success(request, "Расчетный лист утвержден.")
+                approval_form = PayrollSheetApprovalForm(request.POST)
+                if not approval_form.is_valid():
+                    messages.error(request, "Проверьте основание утверждения.")
+                else:
+                    payroll_svc.approve_payroll_sheet(
+                        payroll_sheet,
+                        actor=request.user,
+                        note=approval_form.cleaned_data["note"],
+                    )
+                    messages.success(request, "Расчетный лист утвержден.")
             elif action == "send":
                 if not is_director(request.user):
                     raise PermissionDenied(
@@ -983,6 +1002,7 @@ def payroll_sheet_detail(request, pk: int):
             ),
             "payroll_sheet_timesheet_url": _payroll_sheet_timesheet_url(payroll_sheet),
             "can_approve_payroll_sheet": can_approve_payroll_sheet,
+            "payroll_sheet_approval_form": PayrollSheetApprovalForm(),
             "payroll_sheet_send_form": PayrollSheetSendForm(),
             "payroll_payout_form": PayrollPayoutRecordForm(
                 initial={"amount": payroll_sheet.total_amount}
@@ -1052,6 +1072,11 @@ def grant_report(request, pk: int | None = None):
             )
             .order_by("starts_on", "pk")
         )
+        payroll_usage_by_budget = grant_compensation_svc.payroll_budget_usages(
+            payroll_budgets
+        )
+        for budget in payroll_budgets:
+            budget.payroll_usage = payroll_usage_by_budget[budget.pk]
 
     if "csv" in request.GET and report is not None:
         response = HttpResponse(content_type="text/csv; charset=utf-8")

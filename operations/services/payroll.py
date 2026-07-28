@@ -9,11 +9,15 @@ from typing import Any
 
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 
 from operations.models import (
     Appointment,
     AppointmentStaffAssignment,
+    FundingPayrollBudget,
+    FundingSource,
+    GrantFixedCompensation,
     PayrollAccrual,
     PayrollPayout,
     PayrollSheet,
@@ -34,6 +38,7 @@ class PayrollGenerationResult:
     existing_locked: int = 0
     skipped_no_charge: int = 0
     skipped_no_rule: int = 0
+    skipped_fixed_service: int = 0
 
     @property
     def touched(self) -> int:
@@ -73,6 +78,53 @@ def generate_accruals_for_staff(
             "funding_source",
         )
     )
+    fixed_position_queryset = GrantFixedCompensation.objects.filter(
+        staff_member=staff,
+        lifecycle_status=GrantFixedCompensation.LifecycleStatus.ACTIVE,
+        period_to__gte=date_from,
+        period_from__lte=date_to,
+    )
+    fixed_source_ids = sorted(
+        set(
+            fixed_position_queryset.values_list(
+                "payroll_budget__funding_source_id",
+                flat=True,
+            )
+        )
+    )
+    if fixed_source_ids:
+        list(
+            FundingSource.all_objects.select_for_update()
+            .filter(pk__in=fixed_source_ids)
+            .order_by("pk")
+        )
+    fixed_positions = list(
+        fixed_position_queryset.select_for_update(of=("self",))
+        .select_related(
+            "service",
+            "current_revision",
+            "current_revision__service",
+            "payroll_budget",
+            "payroll_budget__funding_source",
+            "payroll_budget__current_revision",
+        )
+        .order_by("pk")
+    )
+    for fixed in fixed_positions:
+        revision = fixed.current_revision
+        budget_revision = fixed.payroll_budget.current_revision
+        if (
+            revision is None
+            or revision.fixed_compensation_id != fixed.pk
+            or revision.superseded_by.exists()
+            or budget_revision is None
+            or budget_revision.payroll_budget_id != fixed.payroll_budget_id
+            or budget_revision.superseded_by.exists()
+        ):
+            raise ValueError(
+                "Нарушена целостность фиксированной грантовой оплаты. "
+                "Запустите проверку грантового плана."
+            )
 
     result = PayrollGenerationResult()
     counters = result.__dict__.copy()
@@ -103,7 +155,26 @@ def generate_accruals_for_staff(
         if not compensation.has_rate:
             counters["skipped_no_rule"] += 1
             return
+        fixed_matches = [
+            fixed
+            for fixed in fixed_positions
+            if fixed.compensation_scope
+            == GrantFixedCompensation.CompensationScope.SERVICE_DELIVERY
+            and fixed.service_id == appointment.service_id
+            and fixed.payroll_budget.funding_source_id
+            == getattr(compensation.funding_source, "pk", None)
+            and fixed.period_from <= work_date <= fixed.period_to
+        ]
+        if len(fixed_matches) > 1:
+            raise ValueError(
+                "Для услуги найдено несколько фиксированных грантовых позиций. "
+                "Запустите проверку грантового плана."
+            )
+        if fixed_matches:
+            counters["skipped_fixed_service"] += 1
+            return
         defaults = {
+            "accrual_kind": PayrollAccrual.AccrualKind.APPOINTMENT,
             "staff_assignment": staff_assignment,
             "appointment": appointment,
             "appointment_participant": context.appointment_participant,
@@ -113,7 +184,11 @@ def generate_accruals_for_staff(
             "funding_source": compensation.funding_source,
             "pay_rule": compensation.rule,
             "grant_allocation_revision": compensation.allocation_revision,
+            "grant_fixed_compensation_revision": None,
+            "payroll_budget_revision": None,
             "work_date": work_date,
+            "period_from_snapshot": None,
+            "period_to_snapshot": None,
             "starts_at_snapshot": starts_at,
             "ends_at_snapshot": ends_at,
             "duration_minutes": minutes,
@@ -175,7 +250,86 @@ def generate_accruals_for_staff(
             dedupe_key=f"legacy-appointment:{appointment.pk}:staff:{staff.pk}",
         )
 
+    for fixed in fixed_positions:
+        if not (date_from <= fixed.accrual_on <= date_to):
+            continue
+        revision = fixed.current_revision
+        budget_revision = fixed.payroll_budget.current_revision
+        if revision is None or budget_revision is None:
+            raise ValueError("У фиксированной грантовой позиции отсутствует текущая редакция.")
+        subject = (
+            revision.service.name
+            if revision.compensation_scope
+            == GrantFixedCompensation.CompensationScope.SERVICE_DELIVERY
+            else revision.assignment_label
+        )
+        defaults = {
+            "accrual_kind": PayrollAccrual.AccrualKind.GRANT_FIXED,
+            "staff_assignment": None,
+            "appointment": None,
+            "appointment_participant": None,
+            "ledger_entry": None,
+            "staff_member": staff,
+            "service": None,
+            "funding_source": fixed.payroll_budget.funding_source,
+            "pay_rule": None,
+            "grant_allocation_revision": None,
+            "grant_fixed_compensation_revision": revision,
+            "payroll_budget_revision": budget_revision,
+            "work_date": revision.accrual_on,
+            "period_from_snapshot": revision.period_from,
+            "period_to_snapshot": revision.period_to,
+            "starts_at_snapshot": None,
+            "ends_at_snapshot": None,
+            "duration_minutes": None,
+            "rate_type_snapshot": None,
+            "rate_amount_snapshot": None,
+            "session_scope_snapshot": None,
+            "group_pay_policy_snapshot": None,
+            "charged_participants_count_snapshot": None,
+            "pay_units_snapshot": None,
+            "amount": revision.amount,
+            "note": f"Фиксированная грантовая оплата: {subject}",
+            "created_by": actor,
+        }
+        dedupe_key = f"grant-fixed:{fixed.pk}"
+        accrual = PayrollAccrual.objects.filter(dedupe_key=dedupe_key).first()
+        if accrual is None:
+            PayrollAccrual.objects.create(dedupe_key=dedupe_key, **defaults)
+            counters["created"] += 1
+            continue
+        if accrual.status != PayrollAccrual.Status.DRAFT:
+            counters["existing_locked"] += 1
+            continue
+        if accrual.sheet_lines.exclude(
+            payroll_sheet__status=PayrollSheet.Status.CANCELLED
+        ).exists():
+            counters["existing_locked"] += 1
+            continue
+        for field, value in defaults.items():
+            setattr(accrual, field, value)
+        accrual.save(update_fields=[*defaults.keys(), "updated_at"])
+        counters["updated"] += 1
+
     return PayrollGenerationResult(**counters)
+
+
+def _payroll_line_label(accrual: PayrollAccrual) -> str:
+    if accrual.accrual_kind == PayrollAccrual.AccrualKind.APPOINTMENT:
+        if accrual.service is None:
+            raise ValueError("У начисления за занятие отсутствует услуга.")
+        return accrual.service.name
+    revision = accrual.grant_fixed_compensation_revision
+    if revision is None:
+        raise ValueError("У фиксированного начисления отсутствует редакция позиции.")
+    if (
+        revision.compensation_scope
+        == GrantFixedCompensation.CompensationScope.SERVICE_DELIVERY
+    ):
+        if revision.service is None:
+            raise ValueError("У фиксированной оплаты услуги отсутствует услуга.")
+        return f"Фиксировано: {revision.service.name}"
+    return revision.assignment_label
 
 
 @transaction.atomic
@@ -205,11 +359,32 @@ def create_payroll_sheet_for_staff(
                 PayrollSheet.Status.PAID,
             ]
         )
-        .select_related("appointment", "service")
-        .order_by("work_date", "starts_at_snapshot", "service__name")
+        .select_related(
+            "appointment",
+            "service",
+            "funding_source",
+            "payroll_budget_revision",
+            "grant_fixed_compensation_revision",
+            "grant_fixed_compensation_revision__service",
+            "grant_fixed_compensation_revision__fixed_compensation",
+        )
+        .order_by("work_date", "accrual_kind", "pk")
     )
     if not accruals:
         raise ValueError("Нет черновых начислений для расчетного листа.")
+
+    accrual_budgets, _budgets = _lock_payroll_budgets_for_accruals(accruals)
+    now = timezone.now()
+    for accrual in accruals:
+        budget = accrual_budgets.get(accrual.pk)
+        accrual.payroll_budget_revision = (
+            budget.current_revision if budget is not None else None
+        )
+        accrual.updated_at = now
+    PayrollAccrual.objects.bulk_update(
+        accruals,
+        ["payroll_budget_revision", "updated_at"],
+    )
 
     total = sum((accrual.amount for accrual in accruals), Decimal("0"))
     sheet = PayrollSheet.objects.create(
@@ -224,9 +399,15 @@ def create_payroll_sheet_for_staff(
             PayrollSheetLine(
                 payroll_sheet=sheet,
                 payroll_accrual=accrual,
+                accrual_kind_snapshot=accrual.accrual_kind,
                 appointment=accrual.appointment,
                 service=accrual.service,
+                funding_source=accrual.funding_source,
+                payroll_budget_revision=accrual.payroll_budget_revision,
                 work_date=accrual.work_date,
+                period_from_snapshot=accrual.period_from_snapshot,
+                period_to_snapshot=accrual.period_to_snapshot,
+                line_label=_payroll_line_label(accrual),
                 duration_minutes=accrual.duration_minutes,
                 amount=accrual.amount,
                 note=accrual.note,
@@ -364,9 +545,169 @@ def record_payroll_payout(
     return payout
 
 
+def _lock_payroll_budgets_for_accruals(
+    accruals: list[PayrollAccrual],
+) -> tuple[dict[int, FundingPayrollBudget], list[FundingPayrollBudget]]:
+    source_ids = sorted(
+        {
+            accrual.funding_source_id
+            for accrual in accruals
+            if accrual.funding_source_id is not None
+        }
+    )
+    if source_ids:
+        list(
+            FundingSource.all_objects.select_for_update()
+            .filter(pk__in=source_ids)
+            .order_by("pk")
+        )
+
+    budget_ids: set[int] = set()
+    appointment_accruals = [
+        accrual
+        for accrual in accruals
+        if accrual.accrual_kind == PayrollAccrual.AccrualKind.APPOINTMENT
+        and accrual.funding_source_id is not None
+    ]
+    if appointment_accruals:
+        earliest = min(accrual.work_date for accrual in appointment_accruals)
+        latest = max(accrual.work_date for accrual in appointment_accruals)
+        budget_ids.update(
+            FundingPayrollBudget.objects.filter(
+                funding_source_id__in=source_ids,
+                starts_on__lte=latest,
+                ends_on__gte=earliest,
+            ).values_list("pk", flat=True)
+        )
+
+    for accrual in accruals:
+        if accrual.accrual_kind != PayrollAccrual.AccrualKind.GRANT_FIXED:
+            continue
+        revision = accrual.grant_fixed_compensation_revision
+        if revision is None:
+            raise ValueError(
+                "У фиксированного начисления отсутствует редакция позиции."
+            )
+        budget_ids.add(revision.fixed_compensation.payroll_budget_id)
+
+    budgets = list(
+        FundingPayrollBudget.objects.select_for_update(of=("self",))
+        .filter(pk__in=budget_ids)
+        .select_related("current_revision")
+        .order_by("pk")
+    )
+    for budget in budgets:
+        if (
+            budget.current_revision is None
+            or budget.current_revision.payroll_budget_id != budget.pk
+            or budget.current_revision.superseded_by.exists()
+        ):
+            raise ValueError(
+                "Нарушена цепочка редакций бюджета оплаты труда. "
+                "Запустите проверку грантового плана."
+            )
+
+    accrual_budgets = _match_accruals_to_locked_budgets(accruals, budgets)
+    used_budget_ids = {budget.pk for budget in accrual_budgets.values()}
+    return (
+        accrual_budgets,
+        [budget for budget in budgets if budget.pk in used_budget_ids],
+    )
+
+
+def _match_accruals_to_locked_budgets(
+    accruals: list[PayrollAccrual],
+    budgets: list[FundingPayrollBudget],
+) -> dict[int, FundingPayrollBudget]:
+    budgets_by_id = {budget.pk: budget for budget in budgets}
+    accrual_budgets: dict[int, FundingPayrollBudget] = {}
+    for accrual in accruals:
+        if accrual.accrual_kind == PayrollAccrual.AccrualKind.GRANT_FIXED:
+            revision = accrual.grant_fixed_compensation_revision
+            if revision is None:
+                raise ValueError(
+                    "У фиксированного начисления отсутствует редакция позиции."
+                )
+            budget_id = revision.fixed_compensation.payroll_budget_id
+            budget = budgets_by_id.get(budget_id)
+            if budget is None:
+                raise ValueError("Не найден бюджет фиксированного начисления.")
+            if budget.funding_source_id != accrual.funding_source_id:
+                raise ValueError(
+                    "Источник фиксированного начисления не совпадает с бюджетом."
+                )
+            accrual_budgets[accrual.pk] = budget
+            continue
+
+        matches = [
+            budget
+            for budget in budgets
+            if budget.funding_source_id == accrual.funding_source_id
+            and budget.starts_on <= accrual.work_date <= budget.ends_on
+        ]
+        if len(matches) > 1:
+            raise ValueError(
+                "Для начисления найдено несколько бюджетов оплаты труда. "
+                "Запустите проверку грантового плана."
+            )
+        if matches:
+            accrual_budgets[accrual.pk] = matches[0]
+    return accrual_budgets
+
+
+def _payroll_budget_lock_signature(
+    accruals: list[PayrollAccrual],
+) -> list[tuple[int, str, int | None, date, int | None]]:
+    signature = []
+    for accrual in accruals:
+        fixed_budget_id = None
+        if accrual.accrual_kind == PayrollAccrual.AccrualKind.GRANT_FIXED:
+            revision = accrual.grant_fixed_compensation_revision
+            if revision is None:
+                raise ValueError(
+                    "У фиксированного начисления отсутствует редакция позиции."
+                )
+            fixed_budget_id = revision.fixed_compensation.payroll_budget_id
+        signature.append(
+            (
+                accrual.pk,
+                accrual.accrual_kind,
+                accrual.funding_source_id,
+                accrual.work_date,
+                fixed_budget_id,
+            )
+        )
+    return signature
+
+
 @transaction.atomic
-def approve_payroll_sheet(sheet: PayrollSheet, *, actor: Any = None) -> PayrollSheet:
+def approve_payroll_sheet(
+    sheet: PayrollSheet,
+    *,
+    actor: Any = None,
+    note: str = "",
+) -> PayrollSheet:
     _require_director(actor, "Утвердить расчетный лист")
+    normalized_note = (note or "").strip()
+
+    candidate_accrual_ids = list(
+        PayrollSheetLine.objects.filter(payroll_sheet_id=sheet.pk)
+        .order_by("payroll_accrual_id")
+        .values_list("payroll_accrual_id", flat=True)
+    )
+    candidate_accruals = list(
+        PayrollAccrual.objects.filter(pk__in=candidate_accrual_ids)
+        .select_related(
+            "funding_source",
+            "grant_fixed_compensation_revision",
+            "grant_fixed_compensation_revision__fixed_compensation",
+        )
+        .order_by("pk")
+    )
+    if len(candidate_accruals) != len(candidate_accrual_ids):
+        raise ValueError("В расчетном листе есть отсутствующие начисления.")
+    candidate_signature = _payroll_budget_lock_signature(candidate_accruals)
+    _, budgets = _lock_payroll_budgets_for_accruals(candidate_accruals)
 
     sheet = PayrollSheet.objects.select_for_update().get(pk=sheet.pk)
     if sheet.status != PayrollSheet.Status.DRAFT:
@@ -377,14 +718,27 @@ def approve_payroll_sheet(sheet: PayrollSheet, *, actor: Any = None) -> PayrollS
         .filter(payroll_sheet=sheet)
         .order_by("pk")
     )
+    if not lines:
+        raise ValueError("В расчетном листе нет строк начислений.")
     accrual_ids = [line.payroll_accrual_id for line in lines]
     accruals = list(
-        PayrollAccrual.objects.select_for_update().filter(pk__in=accrual_ids).order_by("pk")
+        PayrollAccrual.objects.select_for_update(of=("self",))
+        .filter(pk__in=accrual_ids)
+        .select_related(
+            "funding_source",
+            "grant_fixed_compensation_revision",
+            "grant_fixed_compensation_revision__fixed_compensation",
+        )
+        .order_by("pk")
     )
     if len(accruals) != len(accrual_ids) or any(
         accrual.status != PayrollAccrual.Status.DRAFT for accrual in accruals
     ):
         raise ValueError("В расчетном листе есть начисления, которые уже нельзя утвердить.")
+    if _payroll_budget_lock_signature(accruals) != candidate_signature:
+        raise ValueError(
+            "Состав или бюджет расчетного листа изменился. Повторите утверждение."
+        )
     accruals_by_id = {accrual.pk: accrual for accrual in accruals}
     if any(
         line.amount != accruals_by_id[line.payroll_accrual_id].amount
@@ -395,17 +749,108 @@ def approve_payroll_sheet(sheet: PayrollSheet, *, actor: Any = None) -> PayrollS
             "Пересоздайте черновик перед утверждением."
         )
 
+    accrual_budgets = _match_accruals_to_locked_budgets(accruals, budgets)
+    current_by_budget: dict[int, Decimal] = {
+        budget.pk: Decimal("0") for budget in budgets
+    }
+    lines_by_accrual_id = {line.payroll_accrual_id: line for line in lines}
+    for accrual in accruals:
+        budget = accrual_budgets.get(accrual.pk)
+        if budget is not None:
+            current_by_budget[budget.pk] += lines_by_accrual_id[accrual.pk].amount
+
+    consumed_rows = (
+        PayrollSheetLine.objects.filter(
+            payroll_budget_revision__payroll_budget_id__in=[
+                budget.pk for budget in budgets
+            ],
+            payroll_sheet__status__in=[
+                PayrollSheet.Status.APPROVED,
+                PayrollSheet.Status.SENT,
+                PayrollSheet.Status.PAID,
+            ],
+        )
+        .values("payroll_budget_revision__payroll_budget_id")
+        .annotate(total=Sum("amount"))
+    )
+    consumed_by_budget = {
+        row["payroll_budget_revision__payroll_budget_id"]: row["total"] or Decimal("0")
+        for row in consumed_rows
+    }
+    overage_by_budget: dict[int, Decimal] = {}
+    for budget in budgets:
+        consumed = consumed_by_budget.get(budget.pk, Decimal("0"))
+        projected = consumed + current_by_budget[budget.pk]
+        overage = max(projected - budget.planned_amount, Decimal("0"))
+        overage_by_budget[budget.pk] = overage
+        if (
+            overage
+            and budget.enforcement_mode
+            == FundingPayrollBudget.EnforcementMode.HARD
+        ):
+            raise ValueError(
+                f"Утверждение превысит жесткий бюджет «{budget.funding_source}» "
+                f"на {overage}."
+            )
+        if overage and len(normalized_note) < 5:
+            raise ValueError(
+                "Для превышения предупреждающего бюджета укажите отдельное основание."
+            )
+
     now = timezone.now()
     total = sum((line.amount for line in lines), Decimal("0"))
+    for accrual in accruals:
+        budget = accrual_budgets.get(accrual.pk)
+        budget_revision = budget.current_revision if budget is not None else None
+        accrual.payroll_budget_revision = budget_revision
+        accrual.status = PayrollAccrual.Status.APPROVED
+        accrual.approved_by = actor
+        accrual.approved_at = now
+        accrual.updated_at = now
+        line = lines_by_accrual_id[accrual.pk]
+        line.payroll_budget_revision = budget_revision
+        line.updated_at = now
+    PayrollAccrual.objects.bulk_update(
+        accruals,
+        [
+            "payroll_budget_revision",
+            "status",
+            "approved_by",
+            "approved_at",
+            "updated_at",
+        ],
+    )
+    PayrollSheetLine.objects.bulk_update(
+        lines,
+        ["payroll_budget_revision", "updated_at"],
+    )
     sheet.total_amount = total
     sheet.status = PayrollSheet.Status.APPROVED
     sheet.approved_by = actor
     sheet.approved_at = now
     sheet.save(update_fields=["total_amount", "status", "approved_by", "approved_at", "updated_at"])
-    PayrollAccrual.objects.filter(pk__in=accrual_ids).update(
-        status=PayrollAccrual.Status.APPROVED,
-        approved_by=actor,
-        approved_at=now,
-        updated_at=now,
-    )
+    if budgets:
+        for budget in budgets:
+            PayrollSheetLifecycleEvent.objects.create(
+                payroll_sheet=sheet,
+                event_type=PayrollSheetLifecycleEvent.EventType.APPROVED,
+                status_from=PayrollSheet.Status.DRAFT,
+                status_to=PayrollSheet.Status.APPROVED,
+                actor=actor,
+                actor_role_snapshot=PayrollSheetLifecycleEvent.ActorRole.DIRECTOR,
+                note=normalized_note if overage_by_budget[budget.pk] else "",
+                payroll_budget_revision=budget.current_revision,
+                budget_overage_amount=overage_by_budget[budget.pk],
+                occurred_at=now,
+            )
+    else:
+        PayrollSheetLifecycleEvent.objects.create(
+            payroll_sheet=sheet,
+            event_type=PayrollSheetLifecycleEvent.EventType.APPROVED,
+            status_from=PayrollSheet.Status.DRAFT,
+            status_to=PayrollSheet.Status.APPROVED,
+            actor=actor,
+            actor_role_snapshot=PayrollSheetLifecycleEvent.ActorRole.DIRECTOR,
+            occurred_at=now,
+        )
     return sheet

@@ -40,6 +40,10 @@ def _approved_payroll_sheet(*, staff: StaffMember, service: Service, director: U
         duration_minutes=30,
         rate_type_snapshot=StaffCompensationRule.RateType.PER_SESSION,
         rate_amount_snapshot=Decimal("500.00"),
+        session_scope_snapshot=StaffCompensationRule.SessionScope.ALL,
+        group_pay_policy_snapshot=StaffCompensationRule.GroupPayPolicy.PER_SESSION,
+        charged_participants_count_snapshot=1,
+        pay_units_snapshot=1,
         amount=Decimal("500.00"),
         status=PayrollAccrual.Status.APPROVED,
         approved_by=director,
@@ -57,8 +61,10 @@ def _approved_payroll_sheet(*, staff: StaffMember, service: Service, director: U
     PayrollSheetLine.objects.create(
         payroll_sheet=sheet,
         payroll_accrual=accrual,
+        accrual_kind_snapshot=PayrollAccrual.AccrualKind.APPOINTMENT,
         service=service,
         work_date=work_date,
+        line_label=service.name,
         duration_minutes=30,
         amount=Decimal("500.00"),
     )
