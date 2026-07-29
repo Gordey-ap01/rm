@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+{% block title %}Закрытый снимок грантового отчета{% endblock %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Закрытый грантовый отчет</p>
+    <h1>{{ payload_report.funding_source.ref }}</h1>
+    <p>
+      {{ report_root.date_from|date:"d.m.Y" }}–{{ report_root.date_to|date:"d.m.Y" }},
+      снимок №{{ snapshot.snapshot_number }}
+    </p>
+  </div>
+  <div class="header-actions">
+    <a
+      class="button-link secondary-button"
+      href="{% url 'grant_report' %}?funding={{ report_root.funding_source_id }}&date_from={{ report_root.date_from|date:'Y-m-d' }}&date_to={{ report_root.date_to|date:'Y-m-d' }}"
+    >
+      К живому отчету
+    </a>
+    <a class="button-link" href="{% url 'donor_report_snapshot_json' snapshot.pk %}">
+      Скачать JSON
+    </a>
+  </div>
+</section>
+
+<section class="grant-report-overview">
+  <article class="panel grant-summary-panel">
+    <div class="timesheet-table-head">
+      <div>
+        <h2>Реквизиты снимка</h2>
+        <p>Эта версия читается только из закрытого payload.</p>
+      </div>
+    </div>
+    <div class="grant-summary-grid">
+      <div>
+        <span>Донор</span>
+        <strong>{{ payload_report.donor.ref|default:"Внутренняя сверка" }}</strong>
+        <small>{{ payload_report.donor.type|default:"Без контрагента" }}</small>
+      </div>
+      <div>
+        <span>Версия</span>
+        <strong>№{{ snapshot.snapshot_number }}</strong>
+        <small>{{ snapshot.get_event_type_display }}</small>
+      </div>
+      <div>
+        <span>Данные на</span>
+        <strong>{{ snapshot.data_as_of|date:"d.m.Y H:i:s" }}</strong>
+        <small>Единый MVCC-срез</small>
+      </div>
+      <div>
+        <span>Закрыл</span>
+        <strong>{{ snapshot.actor.get_full_name|default:snapshot.actor.username }}</strong>
+        <small>{{ snapshot.closed_at|date:"d.m.Y H:i" }}</small>
+      </div>
+      <div>
+        <span>Целостность</span>
+        <strong>{% if snapshot_hashes_valid %}Подтверждена{% else %}Нарушена{% endif %}</strong>
+        <small>Payload и evidence manifest, SHA-256</small>
+      </div>
+      <div>
+        <span>Состояние</span>
+        <strong>{% if is_current %}Текущий{% else %}Исторический{% endif %}</strong>
+        <small>Снимок неизменяем</small>
+      </div>
+    </div>
+  </article>
+  <article class="panel grant-control-panel">
+    <h2>Основание</h2>
+    <p class="mb-0">{{ snapshot.reason }}</p>
+  </article>
+</section>
+
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <h2 class="h5 mb-3">Балансы по единицам</h2>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Единица</th>
+          <th class="text-end">На начало</th>
+          <th class="text-end">Поступления</th>
+          <th class="text-end">Расход</th>
+          <th class="text-end">На конец</th>
+          <th class="text-end">Занятий</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in balance_rows %}
+          <tr>
+            <td>{{ row.unit }}</td>
+            <td class="text-end">{{ row.opening }}</td>
+            <td class="text-end">{{ row.inflows }}</td>
+            <td class="text-end">{{ row.outflows }}</td>
+            <td class="text-end fw-semibold">{{ row.closing }}</td>
+            <td class="text-end">{{ row.appointment_count }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="text-secondary">Нет балансов за период.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <h2 class="h5 mb-3">Квоты и распределение специалистам</h2>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Услуга / специалист</th>
+          <th class="text-end">План</th>
+          <th class="text-end">Распределено</th>
+          <th class="text-end">Списано</th>
+          <th class="text-end">Остаток</th>
+          <th class="text-end">Ставка</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for quota in quota_rows %}
+          <tr class="table-light fw-semibold">
+            <td>
+              {{ quota.service.ref }} / {{ quota.service.category }}
+              <span class="text-secondary">{{ quota.ref }}</span>
+            </td>
+            <td class="text-end">{{ quota.planned_sessions }}</td>
+            <td class="text-end">{{ quota.allocated_sessions }}</td>
+            <td class="text-end">{{ quota.charged_sessions }}</td>
+            <td class="text-end">{{ quota.remaining_sessions }}</td>
+            <td></td>
+          </tr>
+          {% for allocation in quota.staff_allocations %}
+            <tr>
+              <td class="ps-4">{{ allocation.staff_ref }}</td>
+              <td></td>
+              <td class="text-end">{{ allocation.allocated_sessions }}</td>
+              <td class="text-end">{{ allocation.charged_sessions }}</td>
+              <td class="text-end">{{ allocation.remaining_sessions }}</td>
+              <td class="text-end">{{ allocation.session_pay_amount|default:"—" }}</td>
+            </tr>
+          {% endfor %}
+        {% empty %}
+          <tr><td colspan="6" class="text-secondary">Квоты за период не заданы.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 col-xl-7">
+    <section class="bg-white border rounded p-3 shadow-sm h-100">
+      <h2 class="h5 mb-3">Бюджеты оплаты труда</h2>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Бюджет</th>
+              <th>Период</th>
+              <th class="text-end">План</th>
+              <th class="text-end">Утверждено</th>
+              <th class="text-end">Черновики</th>
+              <th class="text-end">Доступно</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in payroll.budgets %}
+              <tr>
+                <td>{{ row.budget_ref }}</td>
+                <td>{{ row.starts_on }}–{{ row.ends_on }}</td>
+                <td class="text-end">{{ row.planned_amount }}</td>
+                <td class="text-end">{{ row.consumed_amount }}</td>
+                <td class="text-end">{{ row.draft_commitment_amount }}</td>
+                <td class="text-end">{{ row.available_amount }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="6" class="text-secondary">Нет бюджетов за период.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <div class="col-12 col-xl-5">
+    <section class="bg-white border rounded p-3 shadow-sm h-100">
+      <h2 class="h5 mb-3">Начисления по статусам</h2>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Вид</th>
+              <th>Статус</th>
+              <th class="text-end">Строк</th>
+              <th class="text-end">Сумма</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in payroll.accrual_totals %}
+              <tr>
+                <td>{{ row.staff_ref }} / {{ row.accrual_kind }}</td>
+                <td>{{ row.status }}</td>
+                <td class="text-end">{{ row.count }}</td>
+                <td class="text-end">{{ row.amount }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="text-secondary">Нет начислений за период.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <h2 class="h5 mb-3">Фиксированные позиции оплаты труда</h2>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Позиция / специалист</th>
+          <th>Вид</th>
+          <th>Услуга</th>
+          <th>Период</th>
+          <th>Начислить</th>
+          <th class="text-end">Сумма</th>
+          <th>Статус</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in payroll.fixed_positions %}
+          <tr>
+            <td>{{ row.fixed_ref }} / {{ row.staff_ref }}</td>
+            <td>{{ row.compensation_scope }}</td>
+            <td>
+              {% if row.service %}
+                {{ row.service.ref }} / {{ row.service.category }}
+              {% else %}
+                Проектная роль
+              {% endif %}
+            </td>
+            <td>{{ row.period.from }}–{{ row.period.to }}</td>
+            <td>{{ row.accrual_on }}</td>
+            <td class="text-end">{{ row.amount }}</td>
+            <td>{{ row.lifecycle_status }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="text-secondary">Нет фиксированных позиций за период.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 col-xl-6">
+    <section class="bg-white border rounded p-3 shadow-sm h-100">
+      <h2 class="h5 mb-3">Обезличенные выделения</h2>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Получатель</th>
+              <th>Услуга</th>
+              <th class="text-end">Выделено</th>
+              <th class="text-end">Списано</th>
+              <th class="text-end">Остаток</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in recipient_rows %}
+              <tr>
+                <td>{{ row.recipient_ref }}</td>
+                <td>{{ row.service.ref }} / {{ row.service.category }}</td>
+                <td class="text-end">{{ row.allocated_sessions }}</td>
+                <td class="text-end">{{ row.charged_sessions }}</td>
+                <td class="text-end">{{ row.remaining_sessions }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5" class="text-secondary">Нет выделений.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <div class="col-12 col-xl-6">
+    <section class="bg-white border rounded p-3 shadow-sm h-100">
+      <h2 class="h5 mb-3">Расходы проекта</h2>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Категория</th>
+              <th>Статус</th>
+              <th class="text-end">Количество</th>
+              <th class="text-end">Сумма</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in expense_rows %}
+              <tr>
+                <td>{{ row.expense_type }}</td>
+                <td>{{ row.status }}</td>
+                <td class="text-end">{{ row.count }}</td>
+                <td class="text-end">{{ row.amount }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="text-secondary">Нет расходов.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+{% if warning_rows %}
+<section class="bg-white border border-warning rounded p-3 shadow-sm mb-3">
+  <h2 class="h5 mb-3">Предупреждения снимка</h2>
+  <ul class="mb-0">
+    {% for warning in warning_rows %}
+      <li>
+        <strong>{{ warning.code }}</strong>
+        {% if warning.object_ref %} — {{ warning.object_ref }}{% endif %}
+        {% if warning.unit %} — {{ warning.unit }}{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <h2 class="h5 mb-3">История версий</h2>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Версия</th>
+          <th>Событие</th>
+          <th>Дата</th>
+          <th>Руководитель</th>
+          <th>Основание</th>
+          <th class="text-end">Действие</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in history %}
+          <tr>
+            <td>№{{ item.snapshot_number }}</td>
+            <td>{{ item.get_event_type_display }}</td>
+            <td>{{ item.closed_at|date:"d.m.Y H:i" }}</td>
+            <td>{{ item.actor.get_full_name|default:item.actor.username }}</td>
+            <td>{{ item.reason }}</td>
+            <td class="text-end">
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'donor_report_snapshot_detail' item.pk %}">
+                Открыть
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% if correction_review_form %}
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <h2 class="h5 mb-1">Проверить исправляющую версию</h2>
+  <p class="text-secondary">
+    Сначала откроется новый обезличенный preview. Прежний снимок не изменится.
+  </p>
+  <form method="post" action="{% url 'donor_report_snapshot_review' %}">
+    {% csrf_token %}
+    {{ correction_review_form.funding_source }}
+    {{ correction_review_form.counterparty.as_hidden }}
+    {{ correction_review_form.date_from }}
+    {{ correction_review_form.date_to }}
+    {{ correction_review_form.expected_snapshot_id }}
+    <div class="mt-3">
+      <button type="submit" class="btn btn-primary">Построить preview исправления</button>
+    </div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

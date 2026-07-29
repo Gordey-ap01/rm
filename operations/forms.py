@@ -3724,6 +3724,44 @@ class GrantReportFilterForm(forms.Form):
         return cleaned
 
 
+class DonorReportReviewForm(forms.Form):
+    funding_source: Any = forms.ModelChoiceField(
+        queryset=FundingSource.all_objects.all(),
+        widget=forms.HiddenInput(),
+    )
+    counterparty: Any = forms.ModelChoiceField(
+        label="Донор / контрагент",
+        queryset=Counterparty.all_objects.order_by("name"),
+        required=False,
+        help_text="Можно оставить пустым для внутренней сверки без конкретного донора.",
+    )
+    date_from = forms.DateField(widget=forms.HiddenInput())
+    date_to = forms.DateField(widget=forms.HiddenInput())
+    expected_snapshot_id = forms.IntegerField(required=False, widget=forms.HiddenInput())
+
+    def clean(self):
+        cleaned = super().clean()
+        date_from = cleaned.get("date_from")
+        date_to = cleaned.get("date_to")
+        if date_from and date_to and date_to < date_from:
+            raise forms.ValidationError("Дата окончания не может быть раньше даты начала.")
+        return cleaned
+
+
+class DonorReportCloseForm(DonorReportReviewForm):
+    expected_review_token = forms.CharField(
+        min_length=64,
+        max_length=64,
+        widget=forms.HiddenInput(),
+    )
+    reason = forms.CharField(
+        label="Основание закрытия / исправления",
+        min_length=5,
+        max_length=2000,
+        strip=True,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+
 class FundingServiceQuotaQuickForm(forms.ModelForm):
     reason = forms.CharField(
         label="Основание решения",

@@ -15,8 +15,11 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from operations.forms import (
+    DonorReportCloseForm,
+    DonorReportReviewForm,
     FundingPayrollBudgetForm,
     FundingServiceQuotaQuickForm,
     FundingStaffAllocationQuickForm,
@@ -32,6 +35,8 @@ from operations.forms import (
 )
 from operations.models import (
     Appointment,
+    DonorReport,
+    DonorReportSnapshot,
     FundingPayrollBudget,
     FundingPayrollBudgetRevision,
     FundingServiceQuota,
@@ -47,6 +52,7 @@ from operations.models import (
     StaffMember,
 )
 from operations.services import (
+    donor_reports as donor_reports_svc,
     grant_compensation as grant_compensation_svc,
     grant_plans as grant_plans_svc,
     payroll as payroll_svc,
@@ -1032,6 +1038,8 @@ def grant_report(request, pk: int | None = None):
         )
     form = GrantReportFilterForm(filter_data or None)
     report = None
+    donor_reports: list[DonorReport] = []
+    donor_report_review_form = None
     payroll_budgets: list[FundingPayrollBudget] = []
     form_is_valid = form.is_valid()
     if selected_funding is None and form.is_bound:
@@ -1077,6 +1085,23 @@ def grant_report(request, pk: int | None = None):
         )
         for budget in payroll_budgets:
             budget.payroll_usage = payroll_usage_by_budget[budget.pk]
+        donor_reports = list(
+            DonorReport.objects.filter(
+                funding_source=selected_funding,
+                date_from=period_from,
+                date_to=period_to,
+                report_kind=donor_reports_svc.SNAPSHOT_SCHEMA_VERSION,
+            )
+            .select_related("counterparty", "current_snapshot", "current_snapshot__actor")
+            .order_by("counterparty__name", "pk")
+        )
+        donor_report_review_form = DonorReportReviewForm(
+            initial={
+                "funding_source": selected_funding,
+                "date_from": period_from,
+                "date_to": period_to,
+            }
+        )
 
     if "csv" in request.GET and report is not None:
         response = HttpResponse(content_type="text/csv; charset=utf-8")
@@ -1164,13 +1189,15 @@ def grant_report(request, pk: int | None = None):
                         _csv_text(row.balance_account),
                     ]
                 )
+        response["Cache-Control"] = "private, no-store"
+        response["X-Data-Classification"] = "internal-personal-data"
         return response
 
     can_manage_grants = bool(
         is_director(request.user)
         and (selected_funding is None or selected_funding.archived_at is None)
     )
-    return render(
+    response = render(
         request,
         "operations/grant_report.html",
         {
@@ -1181,8 +1208,299 @@ def grant_report(request, pk: int | None = None):
             "grant_attention_items": _grant_report_attention_items(report),
             "payroll_budgets": payroll_budgets,
             "can_manage_grants": can_manage_grants,
+            "can_close_donor_report": is_director(request.user),
+            "donor_reports": donor_reports,
+            "donor_report_review_form": donor_report_review_form,
         },
     )
+    response["Cache-Control"] = "private, no-store"
+    response["X-Data-Classification"] = "internal-personal-data"
+    return response
+
+
+def _donor_report_validation_messages(exc: ValidationError) -> list[str]:
+    if hasattr(exc, "message_dict"):
+        return [
+            str(message)
+            for field_messages in exc.message_dict.values()
+            for message in field_messages
+        ]
+    return [str(message) for message in exc.messages]
+
+
+def _donor_report_snapshot_hashes_valid(
+    snapshot: DonorReportSnapshot,
+    *,
+    payload_sha256: str | None = None,
+) -> bool:
+    if not isinstance(snapshot.payload, dict) or not isinstance(
+        snapshot.evidence_manifest, dict
+    ):
+        return False
+    try:
+        if payload_sha256 is None:
+            _, payload_sha256 = donor_reports_svc.canonical_json_document(
+                snapshot.payload
+            )
+        _, evidence_sha256 = donor_reports_svc.canonical_json_document(
+            snapshot.evidence_manifest
+        )
+    except (TypeError, ValueError):
+        return False
+    return (
+        payload_sha256 == snapshot.payload_sha256
+        and evidence_sha256 == snapshot.evidence_manifest_sha256
+        and snapshot.evidence_manifest.get("payload_sha256")
+        == snapshot.payload_sha256
+    )
+
+
+@admin_required
+@require_POST
+def donor_report_snapshot_review(request):
+    form = DonorReportReviewForm(request.POST)
+    if not form.is_valid():
+        for field_errors in form.errors.values():
+            for error in field_errors:
+                messages.error(request, str(error))
+        funding_id = _parse_model_pk(request.POST.get("funding_source"))
+        return redirect(
+            _grant_report_url(funding_id)
+            if funding_id is not None
+            else reverse("grant_report")
+        )
+
+    funding = form.cleaned_data["funding_source"]
+    date_from = form.cleaned_data["date_from"]
+    date_to = form.cleaned_data["date_to"]
+    expected_snapshot_id = form.cleaned_data["expected_snapshot_id"]
+    if expected_snapshot_id is None:
+        expected_snapshot_id = (
+            DonorReport.objects.filter(
+                funding_source=funding,
+                counterparty=form.cleaned_data["counterparty"],
+                date_from=date_from,
+                date_to=date_to,
+                report_kind=donor_reports_svc.SNAPSHOT_SCHEMA_VERSION,
+            )
+            .values_list("current_snapshot_id", flat=True)
+            .first()
+        )
+    try:
+        review = donor_reports_svc.review_donor_report_snapshot(
+            funding_source_id=funding.pk,
+            counterparty=form.cleaned_data["counterparty"],
+            date_from=date_from,
+            date_to=date_to,
+            expected_snapshot_id=expected_snapshot_id,
+        )
+    except ValidationError as exc:
+        for message in _donor_report_validation_messages(exc):
+            messages.error(request, message)
+        return redirect(
+            _grant_report_url(
+                funding.pk,
+                date_from=date_from,
+                date_to=date_to,
+            )
+        )
+
+    close_form = None
+    if is_director(request.user):
+        close_form = DonorReportCloseForm(
+            initial={
+                "funding_source": funding,
+                "counterparty": form.cleaned_data["counterparty"],
+                "date_from": date_from,
+                "date_to": date_to,
+                "expected_snapshot_id": review.expected_snapshot_id,
+                "expected_review_token": review.review_token,
+            }
+        )
+    response = render(
+        request,
+        "operations/donor_report_snapshot_review.html",
+        {
+            "review": review,
+            "payload_report": review.payload["report"],
+            "balance_rows": review.payload["balances"],
+            "quota_rows": review.payload["quotas"],
+            "recipient_rows": review.payload["recipient_allocations"],
+            "payroll": review.payload["payroll"],
+            "expense_rows": review.payload["expenses"],
+            "warning_rows": review.payload["integrity"]["warnings"],
+            "close_form": close_form,
+        },
+    )
+    response["Cache-Control"] = "private, no-store"
+    response["X-Data-Classification"] = "internal-pseudonymized-report"
+    return response
+
+
+@director_required
+@require_POST
+def donor_report_snapshot_close(request):
+    form = DonorReportCloseForm(request.POST)
+    if not form.is_valid():
+        for field_errors in form.errors.values():
+            for error in field_errors:
+                messages.error(request, str(error))
+        funding_id = _parse_model_pk(request.POST.get("funding_source"))
+        return redirect(
+            _grant_report_url(funding_id)
+            if funding_id is not None
+            else reverse("grant_report")
+        )
+
+    funding = form.cleaned_data["funding_source"]
+    date_from = form.cleaned_data["date_from"]
+    date_to = form.cleaned_data["date_to"]
+    try:
+        snapshot = donor_reports_svc.close_donor_report_snapshot(
+            funding_source_id=funding.pk,
+            counterparty=form.cleaned_data["counterparty"],
+            date_from=date_from,
+            date_to=date_to,
+            actor=request.user,
+            reason=form.cleaned_data["reason"],
+            expected_review_token=form.cleaned_data["expected_review_token"],
+            expected_snapshot_id=form.cleaned_data["expected_snapshot_id"],
+        )
+    except ValidationError as exc:
+        for message in _donor_report_validation_messages(exc):
+            messages.error(request, message)
+        return redirect(
+            _grant_report_url(
+                funding.pk,
+                date_from=date_from,
+                date_to=date_to,
+            )
+        )
+
+    messages.success(
+        request,
+        (
+            f"Снимок №{snapshot.snapshot_number} закрыт и защищен от изменений."
+        ),
+    )
+    return redirect("donor_report_snapshot_detail", pk=snapshot.pk)
+
+
+@admin_required
+def donor_report_snapshot_detail(request, pk: int):
+    snapshot = get_object_or_404(
+        DonorReportSnapshot.objects.select_related(
+            "report",
+            "report__funding_source",
+            "report__counterparty",
+            "report__current_snapshot",
+            "actor",
+            "supersedes",
+        ),
+        pk=pk,
+    )
+    report_root = snapshot.report
+    payload = snapshot.payload
+    payload_report = payload.get("report", {})
+    history = list(
+        report_root.snapshots.select_related("actor")
+        .only(
+            "pk",
+            "report_id",
+            "snapshot_number",
+            "event_type",
+            "closed_at",
+            "actor__username",
+            "reason",
+            "payload_sha256",
+        )
+        .order_by("-snapshot_number")
+    )
+    is_current = report_root.current_snapshot_id == snapshot.pk
+    correction_review_form = None
+    if is_current:
+        correction_review_form = DonorReportReviewForm(
+            initial={
+                "funding_source": report_root.funding_source,
+                "counterparty": report_root.counterparty,
+                "date_from": report_root.date_from,
+                "date_to": report_root.date_to,
+                "expected_snapshot_id": snapshot.pk,
+            }
+        )
+    response = render(
+        request,
+        "operations/donor_report_snapshot_detail.html",
+        {
+            "snapshot": snapshot,
+            "report_root": report_root,
+            "payload_report": payload_report,
+            "balance_rows": payload.get("balances", []),
+            "quota_rows": payload.get("quotas", []),
+            "recipient_rows": payload.get("recipient_allocations", []),
+            "payroll": payload.get("payroll", {}),
+            "expense_rows": payload.get("expenses", []),
+            "warning_rows": payload.get("integrity", {}).get("warnings", []),
+            "history": history,
+            "is_current": is_current,
+            "correction_review_form": correction_review_form,
+            "snapshot_hashes_valid": _donor_report_snapshot_hashes_valid(snapshot),
+        },
+    )
+    response["Cache-Control"] = "private, no-store"
+    response["X-Data-Classification"] = "internal-confidential"
+    return response
+
+
+@admin_required
+def donor_report_snapshot_json(request, pk: int):
+    snapshot = get_object_or_404(
+        DonorReportSnapshot.objects.only(
+            "pk",
+            "report_id",
+            "snapshot_number",
+            "payload",
+            "evidence_manifest",
+            "payload_sha256",
+            "evidence_manifest_sha256",
+        ),
+        pk=pk,
+    )
+    try:
+        payload_bytes, payload_sha256 = donor_reports_svc.canonical_json_document(
+            snapshot.payload
+        )
+    except (TypeError, ValueError):
+        payload_bytes = b""
+        payload_sha256 = ""
+    if (
+        payload_sha256 != snapshot.payload_sha256
+        or not _donor_report_snapshot_hashes_valid(
+            snapshot,
+            payload_sha256=payload_sha256,
+        )
+    ):
+        response = HttpResponse(
+            "Целостность закрытого снимка нарушена. Выгрузка заблокирована.",
+            status=409,
+            content_type="text/plain; charset=utf-8",
+        )
+        response["X-Content-Type-Options"] = "nosniff"
+        response["Cache-Control"] = "private, no-store"
+        response["X-Data-Classification"] = "internal-confidential"
+        return response
+    response = HttpResponse(
+        payload_bytes,
+        content_type="application/json; charset=utf-8",
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="donor_report_{snapshot.report_id}'
+        f'_v{snapshot.snapshot_number}.json"'
+    )
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, no-store"
+    response["X-Data-Classification"] = "internal-pseudonymized-report"
+    return response
 
 
 @director_required

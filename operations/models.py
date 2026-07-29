@@ -1789,6 +1789,292 @@ class GrantFixedCompensationRevision(TimeStampedModel):
         return f"{self.fixed_compensation} / редакция {self.revision_number}"
 
 
+class DonorReport(TimeStampedModel):
+    class ReportKind(models.TextChoices):
+        INTERNAL_GRANT_RECONCILIATION_V1 = (
+            "internal_grant_reconciliation_v1",
+            "Внутренняя сверка грантового проекта",
+        )
+
+    funding_source = models.ForeignKey(
+        FundingSource,
+        verbose_name="источник финансирования",
+        on_delete=models.PROTECT,
+        related_name="donor_reports",
+    )
+    counterparty = models.ForeignKey(
+        "Counterparty",
+        verbose_name="донор / контрагент",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="donor_reports",
+    )
+    date_from = models.DateField("период с")
+    date_to = models.DateField("период по")
+    report_kind = models.CharField(
+        "вид отчета",
+        max_length=50,
+        choices=ReportKind.choices,
+        default=ReportKind.INTERNAL_GRANT_RECONCILIATION_V1,
+    )
+    current_snapshot = models.OneToOneField(
+        "DonorReportSnapshot",
+        verbose_name="текущий снимок",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="current_for_donor_report",
+    )
+
+    class Meta:
+        verbose_name = "закрытый отчет донору"
+        verbose_name_plural = "закрытые отчеты донорам"
+        ordering = ["-date_to", "-date_from", "funding_source__name", "pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(date_to__gte=models.F("date_from")),
+                name="donor_report_dates_order",
+            ),
+            models.UniqueConstraint(
+                fields=[
+                    "funding_source",
+                    "counterparty",
+                    "date_from",
+                    "date_to",
+                    "report_kind",
+                ],
+                nulls_distinct=False,
+                name="unique_donor_report_identity",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["funding_source", "date_from", "date_to", "report_kind"],
+                name="donor_report_source_period",
+            ),
+            models.Index(fields=["counterparty", "date_to"], name="donor_report_donor_period"),
+        ]
+
+    immutable_fields = (
+        "funding_source_id",
+        "counterparty_id",
+        "date_from",
+        "date_to",
+        "report_kind",
+        "current_snapshot_id",
+    )
+
+    def clean(self) -> None:
+        if self.date_from and self.date_to and self.date_to < self.date_from:
+            raise ValidationError({"date_to": "Дата окончания не может быть раньше даты начала."})
+
+    def _ensure_service_write(self) -> None:
+        if not self.pk:
+            return
+        current = type(self).objects.get(pk=self.pk)
+        if any(getattr(self, field) != getattr(current, field) for field in self.immutable_fields):
+            raise ValidationError(
+                "Закрытый отчет нельзя изменять напрямую. "
+                "Создайте исправляющий снимок через сервис отчетов."
+            )
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.full_clean()
+        self._ensure_service_write()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Закрытый отчет нельзя удалить.")
+
+    def __str__(self) -> str:
+        return (
+            f"{self.funding_source}: {self.date_from:%d.%m.%Y}-"
+            f"{self.date_to:%d.%m.%Y}"
+        )
+
+
+class DonorReportSnapshot(TimeStampedModel):
+    class EventType(models.TextChoices):
+        CLOSED = "closed", "Закрыт"
+        CORRECTED = "corrected", "Исправлен"
+
+    class ActorRole(models.TextChoices):
+        DIRECTOR = "director", "Руководитель"
+
+    report = models.ForeignKey(
+        DonorReport,
+        verbose_name="отчет",
+        on_delete=models.PROTECT,
+        related_name="snapshots",
+    )
+    snapshot_number = models.PositiveIntegerField("номер снимка")
+    event_type = models.CharField("событие", max_length=20, choices=EventType.choices)
+    snapshot_schema_version = models.CharField("версия схемы", max_length=64)
+    canonicalizer_version = models.CharField("версия канонизации", max_length=32)
+    payload = models.JSONField("закрытый payload")
+    evidence_manifest = models.JSONField("закрытый манифест доказательств")
+    payload_sha256 = models.CharField("SHA-256 payload", max_length=64)
+    evidence_manifest_sha256 = models.CharField("SHA-256 манифеста", max_length=64)
+    data_as_of = models.DateTimeField("данные по состоянию на")
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="закрыл отчет",
+        on_delete=models.PROTECT,
+        related_name="closed_donor_report_snapshots",
+    )
+    actor_role_snapshot = models.CharField(
+        "роль на момент закрытия",
+        max_length=20,
+        choices=ActorRole.choices,
+    )
+    reason = models.TextField("основание")
+    closed_at = models.DateTimeField("время закрытия")
+    supersedes = models.ForeignKey(
+        "self",
+        verbose_name="предыдущий снимок",
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name="superseded_by",
+    )
+
+    class Meta:
+        verbose_name = "неизменяемый снимок отчета донору"
+        verbose_name_plural = "неизменяемые снимки отчетов донорам"
+        ordering = ["report_id", "-snapshot_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["report", "snapshot_number"],
+                name="unique_donor_report_snapshot_number",
+            ),
+            models.UniqueConstraint(
+                fields=["supersedes"],
+                condition=Q(supersedes__isnull=False),
+                name="unique_donor_report_snapshot_successor",
+            ),
+            models.CheckConstraint(
+                condition=Q(snapshot_number__gte=1),
+                name="donor_report_snapshot_number_positive",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type="closed",
+                        snapshot_number=1,
+                        supersedes__isnull=True,
+                    )
+                    | Q(
+                        event_type="corrected",
+                        snapshot_number__gt=1,
+                        supersedes__isnull=False,
+                    )
+                ),
+                name="donor_report_snapshot_chain_event",
+            ),
+            models.CheckConstraint(
+                condition=Q(actor_role_snapshot="director"),
+                name="donor_report_snapshot_director_actor",
+            ),
+            models.CheckConstraint(
+                condition=~Q(reason=""),
+                name="donor_report_snapshot_reason_required",
+            ),
+            models.CheckConstraint(
+                condition=Q(closed_at__gte=F("data_as_of")),
+                name="donor_report_snapshot_time_order",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["report", "-closed_at"], name="donor_snapshot_report_closed"),
+            models.Index(fields=["payload_sha256"], name="donor_snapshot_payload_hash"),
+        ]
+
+    def clean(self) -> None:
+        from operations.services.donor_reports import (
+            CANONICALIZER_VERSION,
+            SNAPSHOT_SCHEMA_VERSION,
+            _validate_evidence_manifest,
+            _validate_payload_values,
+            canonical_sha256,
+        )
+
+        errors: dict[str, str] = {}
+        if not isinstance(self.payload, dict):
+            errors["payload"] = "Payload снимка должен быть JSON-объектом."
+        if not isinstance(self.evidence_manifest, dict):
+            errors["evidence_manifest"] = "Манифест доказательств должен быть JSON-объектом."
+        if isinstance(self.payload, dict):
+            try:
+                _validate_payload_values(self.payload)
+            except ValidationError as exc:
+                errors["payload"] = "; ".join(exc.messages)
+        if isinstance(self.evidence_manifest, dict):
+            try:
+                _validate_evidence_manifest(self.evidence_manifest)
+            except ValidationError as exc:
+                errors["evidence_manifest"] = "; ".join(exc.messages)
+        for field_name in ("payload_sha256", "evidence_manifest_sha256"):
+            value = getattr(self, field_name, "")
+            if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+                errors[field_name] = "Ожидается SHA-256 в нижнем шестнадцатеричном формате."
+        if self.snapshot_schema_version != SNAPSHOT_SCHEMA_VERSION:
+            errors["snapshot_schema_version"] = "Неподдерживаемая версия схемы снимка."
+        if self.canonicalizer_version != CANONICALIZER_VERSION:
+            errors["canonicalizer_version"] = "Неподдерживаемая версия канонизации."
+        if isinstance(self.payload, dict):
+            try:
+                if self.payload_sha256 != canonical_sha256(self.payload):
+                    errors["payload_sha256"] = "Хеш не соответствует payload."
+            except (TypeError, ValueError):
+                errors["payload"] = "Payload нельзя канонизировать."
+        if isinstance(self.evidence_manifest, dict):
+            try:
+                if self.evidence_manifest_sha256 != canonical_sha256(
+                    self.evidence_manifest
+                ):
+                    errors["evidence_manifest_sha256"] = (
+                        "Хеш не соответствует манифесту доказательств."
+                    )
+            except (TypeError, ValueError):
+                errors["evidence_manifest"] = (
+                    "Манифест доказательств нельзя канонизировать."
+                )
+            if (
+                self.evidence_manifest.get("payload_sha256")
+                != self.payload_sha256
+            ):
+                errors["evidence_manifest"] = (
+                    "Манифест должен ссылаться на хеш своего payload."
+                )
+        if len((self.reason or "").strip()) < 5:
+            errors["reason"] = "Укажите содержательное основание (минимум 5 символов)."
+        if self.actor_role_snapshot != self.ActorRole.DIRECTOR:
+            errors["actor_role_snapshot"] = "Закрыть отчет может только руководитель."
+        if self.supersedes_id:
+            if self.supersedes.report_id != self.report_id:
+                errors["supersedes"] = "Предыдущий снимок должен относиться к тому же отчету."
+            if self.snapshot_number != self.supersedes.snapshot_number + 1:
+                errors["snapshot_number"] = "Номер снимка должен продолжать цепочку без пропусков."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError(
+                "Закрытый снимок неизменяем. Создайте исправляющую версию."
+            )
+        self.reason = (self.reason or "").strip()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Закрытый снимок нельзя удалить.")
+
+    def __str__(self) -> str:
+        return f"{self.report} / снимок {self.snapshot_number}"
+
+
 class BalanceAccount(TimeStampedModel, SoftDeleteMixin):
     class Unit(models.TextChoices):
         SESSIONS = "sessions", "Занятия"

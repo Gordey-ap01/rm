@@ -130,6 +130,10 @@ from .recipients import (
 )
 from .recommendations import recommendation_acknowledge, recommendation_create, recommendation_list
 from .reports import (
+    donor_report_snapshot_close,
+    donor_report_snapshot_detail,
+    donor_report_snapshot_json,
+    donor_report_snapshot_review,
     funding_payroll_budget_close,
     funding_payroll_budget_create,
     funding_payroll_budget_edit,
@@ -234,6 +238,10 @@ __all__ = [
     "donation_contract_edit",
     "donation_contract_pdf",
     "donation_contract_word",
+    "donor_report_snapshot_close",
+    "donor_report_snapshot_detail",
+    "donor_report_snapshot_json",
+    "donor_report_snapshot_review",
     "equipment_asset_create",
     "equipment_asset_edit",
     "equipment_asset_list",

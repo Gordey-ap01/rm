@@ -397,6 +397,26 @@ urlpatterns = [
     path("grants/", views.grant_report, name="grant_report"),
     path("grants/<int:pk>/", views.grant_report, name="grant_report_funding"),
     path(
+        "grants/report-snapshots/review/",
+        views.donor_report_snapshot_review,
+        name="donor_report_snapshot_review",
+    ),
+    path(
+        "grants/report-snapshots/close/",
+        views.donor_report_snapshot_close,
+        name="donor_report_snapshot_close",
+    ),
+    path(
+        "grants/report-snapshots/<int:pk>/",
+        views.donor_report_snapshot_detail,
+        name="donor_report_snapshot_detail",
+    ),
+    path(
+        "grants/report-snapshots/<int:pk>/json/",
+        views.donor_report_snapshot_json,
+        name="donor_report_snapshot_json",
+    ),
+    path(
         "grants/payroll-budgets/new/",
         views.funding_payroll_budget_create,
         name="funding_payroll_budget_create",

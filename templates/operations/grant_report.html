@@ -38,6 +38,114 @@
   </form>
 </section>
 
+{% if report %}
+<div class="alert alert-warning d-flex align-items-start gap-2" role="alert">
+  <i class="bi bi-shield-exclamation" aria-hidden="true"></i>
+  <div>
+    <strong>Внутренний отчет содержит персональные данные.</strong>
+    Не отправляйте этот экран и CSV донору. Для передачи используйте только
+    обезличенный закрытый снимок.
+  </div>
+</div>
+
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+    <div>
+      <h2 class="h5 mb-1">Закрытые снимки периода</h2>
+      <p class="text-secondary mb-0">
+        Неизменяемые обезличенные версии для внутренней сверки проекта.
+      </p>
+    </div>
+    {% if donor_report_review_form %}
+      <button
+        class="btn btn-sm btn-primary"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#donor-report-review-form"
+        aria-expanded="false"
+        aria-controls="donor-report-review-form"
+      >
+        Проверить снимок
+      </button>
+    {% endif %}
+  </div>
+
+  {% if donor_report_review_form %}
+    <div class="collapse mb-3" id="donor-report-review-form">
+      <form method="post" action="{% url 'donor_report_snapshot_review' %}" class="border-top pt-3">
+        {% csrf_token %}
+        {{ donor_report_review_form.funding_source }}
+        {{ donor_report_review_form.date_from }}
+        {{ donor_report_review_form.date_to }}
+        {{ donor_report_review_form.expected_snapshot_id }}
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <label class="form-label" for="{{ donor_report_review_form.counterparty.id_for_label }}">
+              {{ donor_report_review_form.counterparty.label }}
+            </label>
+            {{ donor_report_review_form.counterparty }}
+            <div class="form-text">{{ donor_report_review_form.counterparty.help_text }}</div>
+          </div>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+          <button type="submit" class="btn btn-primary">Построить безопасный preview</button>
+          <span class="small text-secondary">
+            Проверка не закрывает отчет и не создает запись в истории.
+          </span>
+        </div>
+      </form>
+    </div>
+  {% endif %}
+
+  <div class="table-responsive grant-report-table-wrap">
+    <table class="table table-hover align-middle mb-0 grant-report-table">
+      <thead class="table-light">
+        <tr>
+          <th>Донор</th>
+          <th>Текущая версия</th>
+          <th>Закрыт</th>
+          <th>Руководитель</th>
+          <th class="text-end">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for donor_report in donor_reports %}
+          <tr>
+            <td data-label="Донор">
+              {{ donor_report.counterparty|default:"Внутренняя сверка" }}
+            </td>
+            <td data-label="Текущая версия">
+              №{{ donor_report.current_snapshot.snapshot_number }}
+              <span class="badge text-bg-success">Неизменяемая</span>
+            </td>
+            <td data-label="Закрыт">
+              {{ donor_report.current_snapshot.closed_at|date:"d.m.Y H:i" }}
+            </td>
+            <td data-label="Руководитель">
+              {{ donor_report.current_snapshot.actor.get_full_name|default:donor_report.current_snapshot.actor.username }}
+            </td>
+            <td class="text-end" data-label="Действия">
+              <a
+                class="btn btn-sm btn-outline-secondary"
+                href="{% url 'donor_report_snapshot_detail' donor_report.current_snapshot.pk %}"
+              >
+                Открыть
+              </a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="5" class="text-secondary">
+              За выбранный период закрытых снимков пока нет.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
 <section class="grant-report-overview">
   <article class="panel grant-summary-panel">
     <div class="timesheet-table-head">
