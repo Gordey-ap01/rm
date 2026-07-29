@@ -16,7 +16,7 @@ browser-приемка рабочих ролей, persisted transfer/conversion 
 59A-1/`0049` и 59A-2/`0050-0052` реализованы одним DB owner: payroll-бюджет,
 фиксированный план и общее fixed-начисление прошли SQLite regression,
 browser-приемку ролей и PostgreSQL 17 migration/trigger/concurrency gate;
-59A принят. 59B-1/`0053` реализован и локально принят: закрытая внутренняя
+59A принят. 59B-1/`0053` реализован и принят локально/CI: закрытая внутренняя
 сверка сохраняется неизменяемым обезличенным снимком с проверяемыми hash,
 MVCC-временем данных и цепочкой исправлений. 59B-2 с фактом сдачи конкретного
 файла не начат до готовности приватного storage; параллельно нужны решения по
@@ -305,6 +305,10 @@ MVCC-временем данных и цепочкой исправлений. 5
   прочитал текущую версию и не получил close-команд. Desktop/mobile проверены,
   browser console errors отсутствуют; JSON-download дополнительно покрыт
   view-тестами, так как browser блокирует автоматическую загрузку файла.
+- GitHub Actions run `30413567385` для commit `66db14d` успешно прошел чистую
+  PostgreSQL 17 migration chain до `0053`, Django/migration checks, Ruff,
+  dependency manifests, Compose/preflight, Linux restore-drill и полный pytest
+  (`859 passed`) за `8m27s`.
 
 ## Следующая работа
 
