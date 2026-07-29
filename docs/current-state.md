@@ -255,11 +255,9 @@ MVCC-временем данных и цепочкой исправлений. 5
   БД: все экраны ответили `200`, browser console/page errors и HTTP `4xx`/`5xx`
   отсутствовали, desktop и mobile screenshots проверены визуально. Временные
   данные, settings и процесс удалены после запуска.
-- Graphify code index сохранен локально без LLM-вызова: `6102` nodes,
-  `27116` edges, built from commit `4aeb5962`. Он не содержит последующие
-  изменения, включая 59A-1; обновление остается отдельным chore после фиксации
-  среза. Семантическое обновление документов не применено: внешний Gemini
-  backend недоступен по региону/лимиту, но это не блокирует кодовый граф.
+- Graphify code index инкрементально обновлен без LLM/API key: `6486` nodes,
+  `30036` edges, built from commit `4d356c6f`; срез 59B-1 включен.
+  Семантический слой документов не пересоздавался и не блокирует кодовый граф.
 - 59A-1 focused SQLite: `152 passed, 15 skipped`; полный SQLite regression:
   `787 passed, 24 skipped`. Пропуски относятся к PostgreSQL-only проверкам.
   Ruff, Django system check, migration dry-run и `git diff --check` прошли.
