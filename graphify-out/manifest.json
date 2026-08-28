@@ -105,8 +105,8 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/models.py": {
-    "mtime": 1787935203.191946,
-    "ast_hash": "c5a541de3532960576b94ec5f0551dd3",
+    "mtime": 1787937850.620694,
+    "ast_hash": "a3dafb5d2cb7fcd3f706500b438398dc",
     "semantic_hash": ""
   },
   "operations/services/__init__.py": {
@@ -405,8 +405,8 @@
     "semantic_hash": "4743b79b7b2298e1650284eda55e92cb"
   },
   "docs/01-prd.md": {
-    "mtime": 1787935589.6913033,
-    "ast_hash": "b21051c8577056c96e4caf85f4d860cc",
+    "mtime": 1787937761.404104,
+    "ast_hash": "cc88a90db1b040b96ee930b1eda1c755",
     "semantic_hash": ""
   },
   "docs/02-tech-stack-research.md": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1787936460.5123332,
-    "ast_hash": "43281c140342fe93a6e04d964929ac92",
+    "mtime": 1787938897.9285014,
+    "ast_hash": "6a5ae5b6aa11ed27f3bc4b785c57a088",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -820,8 +820,8 @@
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1787935589.692302,
-    "ast_hash": "06df93638753c2266afed82cefa02609",
+    "mtime": 1787937761.4025064,
+    "ast_hash": "ec8da843440661117c275b4e8b0286d5",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1795,8 +1795,8 @@
     "semantic_hash": ""
   },
   "operations/database_roles.py": {
-    "mtime": 1787925893.7635574,
-    "ast_hash": "9ed16ddad7d63c567c8b7ff52bb080fd",
+    "mtime": 1787938312.5141327,
+    "ast_hash": "c8a9188bdadcd767f4be2e01d3051b42",
     "semantic_hash": ""
   },
   "scripts/deploy_prod.sh": {
@@ -1830,13 +1830,13 @@
     "semantic_hash": ""
   },
   "operations/tests/test_program_series.py": {
-    "mtime": 1787936527.8988123,
-    "ast_hash": "f7b1d44ef824142df89474d909dfc1f5",
+    "mtime": 1787938176.0639849,
+    "ast_hash": "98afb5678b1203b51179d6cac88ba087",
     "semantic_hash": ""
   },
   "docs/61-group-program-series-lifecycle-contract.md": {
-    "mtime": 1787935909.4524884,
-    "ast_hash": "d41ff478fc2294544530d655b3bb3274",
+    "mtime": 1787937761.3993242,
+    "ast_hash": "d8e5354b76f2d249f7a9151fc31ae8e6",
     "semantic_hash": ""
   },
   "templates/operations/appointment_series_detail.html": {
@@ -1880,13 +1880,18 @@
     "semantic_hash": ""
   },
   "docs/decisions/ADR-009-appointment-series-revisions-and-runs.md": {
-    "mtime": 1787927274.8214688,
-    "ast_hash": "6c24465cfa03716aee55bb15c8c01b02",
+    "mtime": 1787937761.4003756,
+    "ast_hash": "e5d1ec420cbfac540af6613ab2bd3f54",
     "semantic_hash": ""
   },
   "operations/migrations/0060_series_cross_revision_attempt_guards.py": {
     "mtime": 1787933691.3425686,
     "ast_hash": "f4f94f7737256077fef5359273dad9f2",
+    "semantic_hash": ""
+  },
+  "operations/migrations/0061_series_retry_target_expand.py": {
+    "mtime": 1787938500.8595223,
+    "ast_hash": "168da73230f25a6aa5b7633f8127fcac",
     "semantic_hash": ""
   }
 }
