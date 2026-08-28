@@ -425,7 +425,8 @@ PostgreSQL 17: `1014 passed` без пропусков. Полный модул�
 `88 passed, 38 skipped`, PostgreSQL `126 passed`. PostgreSQL races покрывают
 cancel против charge/attendance/confirmation/reschedule и переназначение
 специалиста против табеля. Нового UI в 4c нет, поэтому browser acceptance
-перенесена на рабочие команды 61D.
+перенесена на рабочие команды 61D. Graphify обновлен и проверен запросом по
+новому cancellation-result и следующему срезу 61C-4d.
 
 #### Acceptance criteria 61C
 

@@ -144,6 +144,9 @@ MVCC-временем данных и цепочкой исправлений. 5
   `88 passed, 38 skipped`, PostgreSQL `126 passed`; billing decisions
   PostgreSQL `2 passed`. Ruff, Django check, migration dry-run и независимый
   read-only review прошли без P0-P2.
+- Graphify после 61C-4c обновлен инкрементально и проверен запросом по
+  `AppointmentSeriesCancellationResult`. После временного rate limit все
+  semantic-cache misses дозаполнены; tracked-файлы не содержат LLM/API-ключей.
 - Приемка frozen retry targets `0061`: весь `test_program_series.py` прошел на
   SQLite `54 passed, 27 skipped` и PostgreSQL 17 `81 passed`. Отдельно проверены
   fail-closed preflight старых retry runs, deferred count, immutable/reverse
