@@ -134,6 +134,8 @@ if not DEBUG:
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = DATA_DIR / "media"
+PRIVATE_ARTIFACT_ROOT = (DATA_DIR / "private-artifacts").resolve()
+DONOR_REPORT_SUBMISSIONS_ENABLED = False
 
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"

@@ -417,6 +417,16 @@ urlpatterns = [
         name="donor_report_snapshot_json",
     ),
     path(
+        "grants/report-snapshots/<int:pk>/submissions/add/",
+        views.donor_report_submission_create,
+        name="donor_report_submission_create",
+    ),
+    path(
+        "grants/report-submissions/<int:pk>/download/",
+        views.donor_report_submission_download,
+        name="donor_report_submission_download",
+    ),
+    path(
         "grants/payroll-budgets/new/",
         views.funding_payroll_budget_create,
         name="funding_payroll_budget_create",

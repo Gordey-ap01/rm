@@ -9,6 +9,7 @@ class OperationsConfig(AppConfig):
     def ready(self) -> None:
         from auditlog.registry import auditlog
 
+        from . import checks as _checks  # noqa: F401
         from .models import (
             Appointment,
             AppointmentConfirmation,
@@ -36,6 +37,7 @@ class OperationsConfig(AppConfig):
             Counterparty,
             Document,
             DonationContract,
+            DonorReportSubmission,
             EquipmentAsset,
             ExpenseFundingSplit,
             FinancialIntegrityCheckRun,
@@ -140,6 +142,7 @@ class OperationsConfig(AppConfig):
             PayrollSheetLine,
             Recommendation,
             Document,
+            DonorReportSubmission,
             Consent,
             Payment,
             TimeOffRequest,

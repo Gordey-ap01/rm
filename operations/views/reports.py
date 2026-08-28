@@ -3,23 +3,27 @@
 from __future__ import annotations
 
 import csv
+import io
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from urllib.parse import urlencode
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Prefetch, Q
-from django.http import HttpResponse
+from django.db.models import Count, Prefetch, Q
+from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
+from django.views.decorators.http import require_GET, require_POST
 
 from operations.forms import (
     DonorReportCloseForm,
     DonorReportReviewForm,
+    DonorReportSubmissionForm,
     FundingPayrollBudgetForm,
     FundingServiceQuotaQuickForm,
     FundingStaffAllocationQuickForm,
@@ -37,6 +41,7 @@ from operations.models import (
     Appointment,
     DonorReport,
     DonorReportSnapshot,
+    DonorReportSubmission,
     FundingPayrollBudget,
     FundingPayrollBudgetRevision,
     FundingServiceQuota,
@@ -56,12 +61,29 @@ from operations.services import (
     grant_compensation as grant_compensation_svc,
     grant_plans as grant_plans_svc,
     payroll as payroll_svc,
+    private_artifacts as private_artifacts_svc,
     reports as reports_svc,
     rescheduling_plans as plan_svc,
     scheduling as sched_svc,
 )
+from operations.upload_handlers import PrivateArtifactSizeLimitUploadHandler
 
 from ._common import admin_required, director_required, is_admin_user, is_director
+
+
+class _AccessAuditedBytesIO(io.BytesIO):
+    """Create the access event on the first response-body read."""
+
+    def __init__(self, payload: bytes, on_first_read) -> None:
+        super().__init__(payload)
+        self._on_first_read = on_first_read
+        self._access_recorded = False
+
+    def read(self, size: int = -1) -> bytes:
+        if not self._access_recorded:
+            self._on_first_read()
+            self._access_recorded = True
+        return super().read(size)
 
 
 def _grant_report_url(
@@ -1417,6 +1439,12 @@ def donor_report_snapshot_detail(request, pk: int):
         .order_by("-snapshot_number")
     )
     is_current = report_root.current_snapshot_id == snapshot.pk
+    submissions = list(
+        snapshot.submissions.select_related("actor")
+        .annotate(access_count=Count("access_events"))
+        .order_by("-submission_number")
+    )
+    current_submission = submissions[0] if submissions else None
     correction_review_form = None
     if is_current:
         correction_review_form = DonorReportReviewForm(
@@ -1426,6 +1454,16 @@ def donor_report_snapshot_detail(request, pk: int):
                 "date_from": report_root.date_from,
                 "date_to": report_root.date_to,
                 "expected_snapshot_id": snapshot.pk,
+            }
+        )
+    submission_form = None
+    if settings.DONOR_REPORT_SUBMISSIONS_ENABLED and is_director(request.user):
+        submission_form = DonorReportSubmissionForm(
+            initial={
+                "submitted_on": timezone.localdate(),
+                "expected_submission_id": (
+                    current_submission.pk if current_submission else None
+                ),
             }
         )
     response = render(
@@ -1442,6 +1480,12 @@ def donor_report_snapshot_detail(request, pk: int):
             "expense_rows": payload.get("expenses", []),
             "warning_rows": payload.get("integrity", {}).get("warnings", []),
             "history": history,
+            "submissions": submissions,
+            "current_submission": current_submission,
+            "submission_form": submission_form,
+            "can_download_submission": (
+                donor_reports_svc.can_download_donor_report_submission(request.user)
+            ),
             "is_current": is_current,
             "correction_review_form": correction_review_form,
             "snapshot_hashes_valid": _donor_report_snapshot_hashes_valid(snapshot),
@@ -1449,6 +1493,101 @@ def donor_report_snapshot_detail(request, pk: int):
     )
     response["Cache-Control"] = "private, no-store"
     response["X-Data-Classification"] = "internal-confidential"
+    return response
+
+
+@csrf_exempt
+@require_POST
+def donor_report_submission_create(request, pk: int):
+    if not settings.DONOR_REPORT_SUBMISSIONS_ENABLED:
+        raise PermissionDenied("Фиксация донорских файлов пока не допущена к эксплуатации.")
+    return _donor_report_submission_authorized(request, pk)
+
+
+@director_required
+def _donor_report_submission_authorized(request, pk: int):
+    request.upload_handlers.insert(
+        0,
+        PrivateArtifactSizeLimitUploadHandler(request),
+    )
+    return _donor_report_submission_create(request, pk)
+
+
+@csrf_protect
+@require_POST
+def _donor_report_submission_create(request, pk: int):
+    snapshot = get_object_or_404(DonorReportSnapshot, pk=pk)
+    form = DonorReportSubmissionForm(request.POST, request.FILES)
+    if form.is_valid():
+        try:
+            submission = donor_reports_svc.create_donor_report_submission(
+                report_snapshot_id=snapshot.pk,
+                uploaded_file=form.cleaned_data["file"],
+                submitted_on=form.cleaned_data["submitted_on"],
+                actor=request.user,
+                reason=form.cleaned_data["reason"],
+                external_reference=form.cleaned_data["external_reference"],
+                note=form.cleaned_data["note"],
+                expected_submission_id=form.cleaned_data["expected_submission_id"],
+            )
+        except ValidationError as exc:
+            _add_grant_plan_form_errors(form, exc)
+        else:
+            messages.success(
+                request,
+                f"Сдача №{submission.submission_number} зафиксирована неизменяемо.",
+            )
+            return redirect("donor_report_snapshot_detail", pk=snapshot.pk)
+    for field_errors in form.errors.values():
+        for message in field_errors:
+            messages.error(request, message)
+    return redirect("donor_report_snapshot_detail", pk=snapshot.pk)
+
+
+@admin_required
+@require_GET
+def donor_report_submission_download(request, pk: int):
+    try:
+        (
+            submission,
+            payload,
+            actor_role_snapshot,
+            permission_basis,
+        ) = donor_reports_svc.read_donor_report_submission(
+            submission_id=pk,
+            actor=request.user,
+        )
+    except DonorReportSubmission.DoesNotExist:
+        return HttpResponse("Файл сдачи не найден.", status=404)
+    except private_artifacts_svc.ArtifactIntegrityError:
+        response = HttpResponse(
+            "Целостность приватного файла нарушена. Скачивание заблокировано.",
+            status=409,
+            content_type="text/plain; charset=utf-8",
+        )
+        response["Cache-Control"] = "private, no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        response["X-Data-Classification"] = "restricted-donor-submission"
+        return response
+    audited_stream = _AccessAuditedBytesIO(
+        payload,
+        lambda: donor_reports_svc.record_donor_report_submission_access(
+            submission=submission,
+            actor=request.user,
+            actor_role_snapshot=actor_role_snapshot,
+            permission_basis=permission_basis,
+        ),
+    )
+    response = FileResponse(
+        audited_stream,
+        as_attachment=True,
+        filename=submission.original_filename,
+        content_type=submission.content_type,
+    )
+    response["Content-Length"] = str(submission.file_size)
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    response["X-Data-Classification"] = "restricted-donor-submission"
     return response
 
 

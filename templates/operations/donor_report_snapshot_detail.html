@@ -71,6 +71,133 @@
 </section>
 
 <section class="bg-white border rounded p-3 shadow-sm mb-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+      <h2 class="h5 mb-1">Фактическая сдача файла</h2>
+      <p class="text-secondary mb-0">
+        Файл хранится приватно. Замена добавляет новую запись и не меняет закрытые данные.
+      </p>
+    </div>
+    {% if current_submission %}
+      <span class="badge text-bg-success">Текущая сдача №{{ current_submission.submission_number }}</span>
+    {% else %}
+      <span class="badge text-bg-secondary">Еще не сдавался</span>
+    {% endif %}
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Сдача</th>
+          <th>Файл</th>
+          <th>Дата</th>
+          <th>Руководитель</th>
+          <th>Основание</th>
+          <th>Доступ</th>
+          <th class="text-end">Действие</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in submissions %}
+          <tr>
+            <td>
+              №{{ item.submission_number }}
+              <div class="small text-secondary">{{ item.get_event_type_display }}</div>
+            </td>
+            <td>
+              {{ item.original_filename }}
+              <div class="small text-secondary">
+                {{ item.file_size|filesizeformat }} · SHA-256 {{ item.file_sha256|slice:":12" }}…
+              </div>
+            </td>
+            <td>
+              {{ item.submitted_on|date:"d.m.Y" }}
+              <div class="small text-secondary">{{ item.recorded_at|date:"d.m.Y H:i" }}</div>
+            </td>
+            <td>{{ item.actor.get_full_name|default:item.actor.username }}</td>
+            <td>
+              {{ item.reason }}
+              {% if item.external_reference %}
+                <div class="small text-secondary">{{ item.external_reference }}</div>
+              {% endif %}
+            </td>
+            <td>Выдано: {{ item.access_count }}</td>
+            <td class="text-end">
+              {% if can_download_submission %}
+                <a
+                  class="btn btn-sm btn-outline-secondary"
+                  href="{% url 'donor_report_submission_download' item.pk %}"
+                >
+                  Скачать
+                </a>
+              {% else %}
+                <span class="small text-secondary">Нужно разрешение</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="7" class="text-secondary">Факт сдачи еще не зафиксирован.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if submission_form %}
+    <form
+      method="post"
+      enctype="multipart/form-data"
+      action="{% url 'donor_report_submission_create' snapshot.pk %}"
+      class="border-top mt-3 pt-3"
+    >
+      {% csrf_token %}
+      {{ submission_form.expected_submission_id }}
+      <h3 class="h6">
+        {% if current_submission %}Добавить заменяющую сдачу{% else %}Зафиксировать первую сдачу{% endif %}
+      </h3>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <label class="form-label" for="{{ submission_form.file.id_for_label }}">
+            {{ submission_form.file.label }}
+          </label>
+          {{ submission_form.file }}
+          <div class="form-text">{{ submission_form.file.help_text }}</div>
+        </div>
+        <div class="col-lg-3">
+          <label class="form-label" for="{{ submission_form.submitted_on.id_for_label }}">
+            {{ submission_form.submitted_on.label }}
+          </label>
+          {{ submission_form.submitted_on }}
+        </div>
+        <div class="col-lg-3">
+          <label class="form-label" for="{{ submission_form.external_reference.id_for_label }}">
+            {{ submission_form.external_reference.label }}
+          </label>
+          {{ submission_form.external_reference }}
+        </div>
+        <div class="col-lg-8">
+          <label class="form-label" for="{{ submission_form.reason.id_for_label }}">
+            {{ submission_form.reason.label }}
+          </label>
+          {{ submission_form.reason }}
+        </div>
+        <div class="col-lg-4">
+          <label class="form-label" for="{{ submission_form.note.id_for_label }}">
+            {{ submission_form.note.label }}
+          </label>
+          {{ submission_form.note }}
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary mt-3">
+        {% if current_submission %}Зафиксировать замену{% else %}Зафиксировать сдачу{% endif %}
+      </button>
+    </form>
+  {% endif %}
+</section>
+
+<section class="bg-white border rounded p-3 shadow-sm mb-3">
   <h2 class="h5 mb-3">Балансы по единицам</h2>
   <div class="table-responsive">
     <table class="table table-hover align-middle mb-0">

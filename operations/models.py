@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import unicodedata
 import uuid
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -56,6 +58,62 @@ class SoftDeleteManager(models.Manager.from_queryset(SoftDeleteQuerySet)):
 
 class AllObjectsManager(models.Manager.from_queryset(SoftDeleteQuerySet)):
     """Доступ ко всем записям, включая архивные (для админки и отчётов)."""
+
+
+class ImmutableHistoryQuerySet(QuerySet):
+    def bulk_create(
+        self,
+        objs: list[models.Model],
+        batch_size: int | None = None,
+        ignore_conflicts: bool = False,
+        update_conflicts: bool = False,
+        update_fields: list[str] | None = None,
+        unique_fields: list[str] | None = None,
+    ) -> list[models.Model]:
+        raise ValidationError(
+            "Неизменяемую историю нельзя создавать в обход проверки модели."
+        )
+
+    def update(self, **kwargs: object) -> int:
+        raise ValidationError("Неизменяемую историю нельзя обновить.")
+
+    def delete(self) -> tuple[int, dict[str, int]]:
+        raise ValidationError("Неизменяемую историю нельзя удалить.")
+
+    def bulk_update(
+        self,
+        objs: list[models.Model],
+        fields: list[str],
+        batch_size: int | None = None,
+    ) -> int:
+        raise ValidationError("Неизменяемую историю нельзя обновить.")
+
+
+class ImmutableHistoryManager(models.Manager.from_queryset(ImmutableHistoryQuerySet)):
+    pass
+
+
+def normalize_immutable_reason(value: object) -> str:
+    normalized = unicodedata.normalize(
+        "NFKC",
+        str(value or "").replace("\r\n", "\n").replace("\r", "\n"),
+    ).strip()
+    if any(
+        unicodedata.category(character) == "Cf"
+        or (
+            unicodedata.category(character) == "Cc"
+            and character != "\n"
+        )
+        for character in normalized
+    ):
+        raise ValidationError(
+            "Основание содержит невидимые управляющие символы."
+        )
+    if len(normalized) < 5:
+        raise ValidationError(
+            "Укажите содержательное основание (минимум 5 символов)."
+        )
+    return normalized
 
 
 class SoftDeleteMixin(models.Model):
@@ -2073,6 +2131,368 @@ class DonorReportSnapshot(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.report} / снимок {self.snapshot_number}"
+
+
+class DonorReportSubmission(TimeStampedModel):
+    class EventType(models.TextChoices):
+        SUBMITTED = "submitted", "Сдан"
+        REPLACED = "replaced", "Заменен"
+
+    class ActorRole(models.TextChoices):
+        DIRECTOR = "director", "Руководитель"
+
+    report_snapshot = models.ForeignKey(
+        DonorReportSnapshot,
+        verbose_name="снимок отчета",
+        on_delete=models.PROTECT,
+        related_name="submissions",
+    )
+    submission_number = models.PositiveIntegerField("номер сдачи")
+    event_type = models.CharField("событие", max_length=20, choices=EventType.choices)
+    supersedes = models.ForeignKey(
+        "self",
+        verbose_name="предыдущая сдача",
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name="superseded_by",
+    )
+    storage_key = models.CharField("приватный storage key", max_length=320, unique=True)
+    original_filename = models.CharField("исходное имя файла", max_length=255)
+    content_type = models.CharField("проверенный MIME", max_length=120)
+    file_size = models.PositiveBigIntegerField("размер файла")
+    file_sha256 = models.CharField("SHA-256 файла", max_length=64)
+    submitted_on = models.DateField("фактическая дата сдачи")
+    recorded_at = models.DateTimeField("техническое время записи")
+    external_reference = models.CharField(
+        "внешний номер / ссылка",
+        max_length=500,
+        blank=True,
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="зафиксировал сдачу",
+        on_delete=models.PROTECT,
+        related_name="donor_report_submissions",
+    )
+    actor_role_snapshot = models.CharField(
+        "роль на момент сдачи",
+        max_length=20,
+        choices=ActorRole.choices,
+    )
+    reason = models.TextField("основание")
+    note = models.TextField("примечание", blank=True)
+
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        verbose_name = "неизменяемый факт сдачи отчета"
+        verbose_name_plural = "неизменяемые факты сдачи отчетов"
+        ordering = ["report_snapshot_id", "-submission_number"]
+        permissions = [
+            (
+                "download_donorreportsubmission",
+                "Может скачивать приватные файлы сдачи отчетов",
+            )
+        ]
+        default_permissions = ("view",)
+        base_manager_name = "objects"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["report_snapshot", "submission_number"],
+                name="unique_donor_submission_number",
+            ),
+            models.UniqueConstraint(
+                fields=["supersedes"],
+                condition=Q(supersedes__isnull=False),
+                name="unique_donor_submission_successor",
+            ),
+            models.CheckConstraint(
+                condition=Q(submission_number__gte=1),
+                name="donor_submission_number_positive",
+            ),
+            models.CheckConstraint(
+                condition=Q(submission_number__lte=999999),
+                name="donor_submission_number_bounded",
+            ),
+            models.CheckConstraint(
+                condition=Q(file_size__gte=1),
+                name="donor_submission_size_positive",
+            ),
+            models.CheckConstraint(
+                condition=Q(file_size__lte=25 * 1024 * 1024),
+                name="donor_submission_size_bounded",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type="submitted",
+                        submission_number=1,
+                        supersedes__isnull=True,
+                    )
+                    | Q(
+                        event_type="replaced",
+                        submission_number__gt=1,
+                        supersedes__isnull=False,
+                    )
+                ),
+                name="donor_submission_chain_event",
+            ),
+            models.CheckConstraint(
+                condition=Q(actor_role_snapshot="director"),
+                name="donor_submission_director_actor",
+            ),
+            models.CheckConstraint(
+                condition=Q(
+                    content_type__in=[
+                        "application/pdf",
+                        (
+                            "application/vnd.openxmlformats-officedocument."
+                            "wordprocessingml.document"
+                        ),
+                        (
+                            "application/vnd.openxmlformats-officedocument."
+                            "spreadsheetml.sheet"
+                        ),
+                        "application/vnd.oasis.opendocument.text",
+                        "application/vnd.oasis.opendocument.spreadsheet",
+                    ]
+                ),
+                name="donor_submission_mime_allowed",
+            ),
+            models.CheckConstraint(
+                condition=~Q(reason=""),
+                name="donor_submission_reason_required",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["report_snapshot", "-recorded_at"],
+                name="donor_submission_snapshot_time",
+            ),
+            models.Index(fields=["file_sha256"], name="donor_submission_file_hash"),
+        ]
+
+    def clean(self) -> None:
+        from operations.services import private_artifacts
+
+        errors: dict[str, str] = {}
+        if len(self.file_sha256 or "") != 64 or any(
+            character not in "0123456789abcdef" for character in (self.file_sha256 or "")
+        ):
+            errors["file_sha256"] = "Ожидается SHA-256 в нижнем шестнадцатеричном формате."
+        if self.file_size and self.file_size > 25 * 1024 * 1024:
+            errors["file_size"] = "Файл превышает ограничение 25 MiB."
+        extension = private_artifacts.MIME_TO_EXTENSION.get(self.content_type)
+        if extension is None:
+            errors["content_type"] = "Формат файла не поддерживается."
+        elif self.report_snapshot_id and self.submission_number and self.file_sha256:
+            try:
+                expected_key = private_artifacts.build_storage_key(
+                    snapshot_id=self.report_snapshot_id,
+                    submission_number=self.submission_number,
+                    file_sha256=self.file_sha256,
+                    extension=extension,
+                )
+            except ValueError:
+                errors["storage_key"] = "Storage key нельзя построить из метаданных."
+            else:
+                if self.storage_key != expected_key:
+                    errors["storage_key"] = "Storage key не соответствует неизменяемым метаданным."
+        original_filename = self.original_filename or ""
+        if (
+            not original_filename.strip()
+            or "/" in original_filename
+            or "\\" in original_filename
+            or any(
+                unicodedata.category(character) in {"Cc", "Cf"}
+                for character in original_filename
+            )
+        ):
+            errors["original_filename"] = "Имя файла содержит недопустимые символы."
+        elif extension and not original_filename.lower().endswith(f".{extension}"):
+            errors["original_filename"] = "Расширение имени файла не соответствует формату."
+        try:
+            normalize_immutable_reason(self.reason)
+        except ValidationError as exc:
+            errors["reason"] = exc.messages[0]
+        if self.actor_role_snapshot != self.ActorRole.DIRECTOR:
+            errors["actor_role_snapshot"] = "Сдачу может зафиксировать только руководитель."
+        if self.actor_id:
+            from operations.services.authority import AuthorityRole, authority_role
+
+            actor = self.actor
+            if not actor.is_active or authority_role(actor) != AuthorityRole.DIRECTOR:
+                errors["actor"] = "Фактический пользователь не является руководителем."
+        if self.submitted_on and self.submitted_on > timezone.localdate():
+            errors["submitted_on"] = "Дата сдачи не может быть в будущем."
+        if self.recorded_at and self.report_snapshot_id:
+            snapshot_date = timezone.localtime(self.report_snapshot.closed_at).date()
+            recorded_date = timezone.localtime(self.recorded_at).date()
+            if self.recorded_at < self.report_snapshot.closed_at:
+                errors["recorded_at"] = "Сдача не может быть записана раньше закрытия снимка."
+            if not self.pk and not (
+                timezone.now() - timedelta(minutes=5)
+                <= self.recorded_at
+                <= timezone.now() + timedelta(seconds=5)
+            ):
+                errors["recorded_at"] = "Техническое время сдачи должно задаваться сервером."
+            if self.submitted_on and not snapshot_date <= self.submitted_on <= recorded_date:
+                errors["submitted_on"] = (
+                    "Дата сдачи должна быть не раньше закрытия снимка "
+                    "и не позже технической даты записи."
+                )
+        if "\n" in (self.external_reference or "") or "\r" in (self.external_reference or ""):
+            errors["external_reference"] = "Внешний номер или ссылка должны быть одной строкой."
+        if self.supersedes_id:
+            if self.supersedes.report_snapshot_id != self.report_snapshot_id:
+                errors["supersedes"] = "Предыдущая сдача должна относиться к тому же снимку."
+            if self.submission_number != self.supersedes.submission_number + 1:
+                errors["submission_number"] = "Номер сдачи должен продолжать цепочку без пропусков."
+            if self.file_sha256 == self.supersedes.file_sha256:
+                errors["file_sha256"] = "Заменяющий файл должен отличаться от предыдущего."
+            if self.recorded_at and self.recorded_at < self.supersedes.recorded_at:
+                errors["recorded_at"] = "Замена не может предшествовать предыдущей сдаче."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Факт сдачи неизменяем. Создайте заменяющую сдачу.")
+        self.reason = normalize_immutable_reason(self.reason)
+        self.note = (self.note or "").strip()
+        self.external_reference = (self.external_reference or "").strip()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Факт сдачи нельзя удалить.")
+
+    def __str__(self) -> str:
+        return f"{self.report_snapshot} / сдача {self.submission_number}"
+
+
+class DonorReportSubmissionAccess(TimeStampedModel):
+    class ActorRole(models.TextChoices):
+        DIRECTOR = "director", "Руководитель"
+        ADMINISTRATOR = "administrator", "Администратор"
+
+    class PermissionBasis(models.TextChoices):
+        DIRECTOR_ROLE = "director_role", "Роль руководителя"
+        EXPLICIT_PERMISSION = "explicit_permission", "Отдельное разрешение"
+
+    submission = models.ForeignKey(
+        DonorReportSubmission,
+        verbose_name="сдача отчета",
+        on_delete=models.PROTECT,
+        related_name="access_events",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="получил файл",
+        on_delete=models.PROTECT,
+        related_name="donor_report_submission_accesses",
+    )
+    actor_role_snapshot = models.CharField(
+        "роль на момент доступа",
+        max_length=20,
+        choices=ActorRole.choices,
+    )
+    permission_basis = models.CharField(
+        "основание доступа",
+        max_length=30,
+        choices=PermissionBasis.choices,
+    )
+    verified_sha256 = models.CharField("проверенный SHA-256", max_length=64)
+    accessed_at = models.DateTimeField("время выдачи")
+
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        verbose_name = "факт выдачи сдачи отчета"
+        verbose_name_plural = "факты выдачи сдач отчетов"
+        ordering = ["-accessed_at", "-pk"]
+        default_permissions = ("view",)
+        base_manager_name = "objects"
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        actor_role_snapshot="director",
+                        permission_basis="director_role",
+                    )
+                    | Q(
+                        actor_role_snapshot="administrator",
+                        permission_basis="explicit_permission",
+                    )
+                ),
+                name="donor_submission_access_authority",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["submission", "-accessed_at"],
+                name="donor_access_submission_time",
+            ),
+            models.Index(fields=["actor", "-accessed_at"], name="donor_access_actor_time"),
+            models.Index(fields=["-accessed_at"], name="donor_access_time"),
+        ]
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        expected_basis = {
+            self.ActorRole.DIRECTOR: self.PermissionBasis.DIRECTOR_ROLE,
+            self.ActorRole.ADMINISTRATOR: self.PermissionBasis.EXPLICIT_PERMISSION,
+        }.get(self.actor_role_snapshot)
+        if expected_basis != self.permission_basis:
+            errors["permission_basis"] = "Основание доступа не соответствует роли."
+        if self.actor_id:
+            from operations.services.authority import AuthorityRole, authority_role
+
+            actor = self.actor
+            actual_role = authority_role(actor)
+            valid_actor = actor.is_active and (
+                (
+                    self.actor_role_snapshot == self.ActorRole.DIRECTOR
+                    and actual_role == AuthorityRole.DIRECTOR
+                )
+                or (
+                    self.actor_role_snapshot == self.ActorRole.ADMINISTRATOR
+                    and actual_role == AuthorityRole.ADMINISTRATOR
+                    and not hasattr(actor, "staff_profile")
+                    and actor.has_perm("operations.download_donorreportsubmission")
+                )
+            )
+            if not valid_actor:
+                errors["actor"] = "Фактический пользователь не имеет указанного доступа."
+        if self.submission_id and self.verified_sha256 != self.submission.file_sha256:
+            errors["verified_sha256"] = "Проверенный hash не соответствует сдаче."
+        if (
+            self.submission_id
+            and self.accessed_at
+            and self.accessed_at < self.submission.recorded_at
+        ):
+            errors["accessed_at"] = "Выдача файла не может предшествовать его сдаче."
+        if self.accessed_at and not self.pk and not (
+            timezone.now() - timedelta(minutes=5)
+            <= self.accessed_at
+            <= timezone.now() + timedelta(seconds=5)
+        ):
+            errors["accessed_at"] = "Техническое время выдачи должно задаваться сервером."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Факт выдачи неизменяем.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Факт выдачи нельзя удалить.")
+
+    def __str__(self) -> str:
+        return f"{self.submission_id}: {self.actor_id} / {self.accessed_at:%d.%m.%Y %H:%M}"
 
 
 class BalanceAccount(TimeStampedModel, SoftDeleteMixin):

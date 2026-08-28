@@ -12,9 +12,12 @@ __pycache__/
 .coverage
 htmlcov/
 media/
+private-artifacts/
 db-data/
 data/
 backups/
+/tmp/
+/.runtime/
 серверапаролиключи/
 *.sqlite3
 staticfiles/

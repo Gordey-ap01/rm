@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -69,8 +71,31 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "rehab_center.wsgi.application"
 
+DATABASE_HOST = os.environ.get("DATABASE_HOST")
 DATABASE_URL = os.environ.get("DATABASE_URL")
-if DATABASE_URL:
+if DATABASE_HOST:
+    required_database_values = {
+        "NAME": os.environ.get("DATABASE_NAME", ""),
+        "USER": os.environ.get("DATABASE_USER", ""),
+        "PASSWORD": os.environ.get("DATABASE_PASSWORD", ""),
+    }
+    missing_database_values = [
+        name for name, value in required_database_values.items() if not value
+    ]
+    if missing_database_values:
+        raise ImproperlyConfigured(
+            "Missing database settings: " + ", ".join(missing_database_values)
+        )
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            **required_database_values,
+            "HOST": DATABASE_HOST,
+            "PORT": os.environ.get("DATABASE_PORT", "5432"),
+            "CONN_MAX_AGE": 600,
+        }
+    }
+elif DATABASE_URL:
     DATABASES = {"default": dj_database_url.config(default=DATABASE_URL, conn_max_age=600)}
 else:
     _data_dir = BASE_DIR / "data"
@@ -85,6 +110,14 @@ else:
             },
         }
     }
+
+restore_database_name = os.environ.get("RESTORE_DATABASE_NAME_OVERRIDE")
+if restore_database_name:
+    if re.fullmatch(r"rm_restore_stage_\d{14}_\d+", restore_database_name) is None:
+        raise ImproperlyConfigured("Invalid restore database name override.")
+    if not DATABASES["default"]["ENGINE"].endswith("postgresql"):
+        raise ImproperlyConfigured("Restore database override requires PostgreSQL.")
+    DATABASES["default"]["NAME"] = restore_database_name
 
 _IS_POSTGRES = DATABASES["default"].get("ENGINE", "").endswith("postgresql")
 if _IS_POSTGRES:
@@ -123,6 +156,12 @@ if not DEBUG:
     }
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+PRIVATE_ARTIFACT_ROOT = Path(
+    os.environ.get("PRIVATE_ARTIFACT_ROOT", BASE_DIR / "private-artifacts")
+).resolve()
+DONOR_REPORT_SUBMISSIONS_ENABLED = (
+    os.environ.get("DONOR_REPORT_SUBMISSIONS_ENABLED", "0") == "1"
+)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

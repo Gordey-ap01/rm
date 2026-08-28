@@ -29,6 +29,10 @@ from .models import (
     Counterparty,
     Document,
     DonationContract,
+    DonorReport,
+    DonorReportSnapshot,
+    DonorReportSubmission,
+    DonorReportSubmissionAccess,
     EquipmentAsset,
     ExpenseFundingSplit,
     FinancialIntegrityCheckRun,
@@ -1908,3 +1912,68 @@ class NoteAdmin(admin.ModelAdmin):
     )
     list_filter = ("priority",)
     autocomplete_fields = ("child", "parent", "staff_member", "appointment", "author")
+
+
+class ImmutableDonorReportAdmin(admin.ModelAdmin):
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(DonorReport)
+class DonorReportAdmin(ImmutableDonorReportAdmin):
+    list_display = (
+        "funding_source",
+        "counterparty",
+        "date_from",
+        "date_to",
+        "current_snapshot",
+    )
+    list_filter = ("report_kind", "date_from", "date_to")
+    search_fields = ("funding_source__name", "counterparty__name")
+
+
+@admin.register(DonorReportSnapshot)
+class DonorReportSnapshotAdmin(ImmutableDonorReportAdmin):
+    list_display = (
+        "report",
+        "snapshot_number",
+        "event_type",
+        "closed_at",
+        "actor",
+        "payload_sha256",
+    )
+    list_filter = ("event_type", "closed_at")
+    search_fields = ("report__funding_source__name", "payload_sha256", "actor__username")
+
+
+@admin.register(DonorReportSubmission)
+class DonorReportSubmissionAdmin(ImmutableDonorReportAdmin):
+    list_display = (
+        "report_snapshot",
+        "submission_number",
+        "event_type",
+        "submitted_on",
+        "actor",
+        "file_sha256",
+    )
+    list_filter = ("event_type", "submitted_on", "content_type")
+    search_fields = ("original_filename", "file_sha256", "external_reference", "actor__username")
+
+
+@admin.register(DonorReportSubmissionAccess)
+class DonorReportSubmissionAccessAdmin(ImmutableDonorReportAdmin):
+    list_display = (
+        "accessed_at",
+        "submission",
+        "actor",
+        "actor_role_snapshot",
+        "permission_basis",
+    )
+    list_filter = ("actor_role_snapshot", "permission_basis", "accessed_at")
+    search_fields = ("submission__file_sha256", "actor__username")

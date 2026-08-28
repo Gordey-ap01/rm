@@ -12,6 +12,7 @@ from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from typing import Any
 
+from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, OperationalError, connection, transaction
 from django.db.models import Count, F, Q, Sum
@@ -27,6 +28,8 @@ from operations.models import (
     Counterparty,
     DonorReport,
     DonorReportSnapshot,
+    DonorReportSubmission,
+    DonorReportSubmissionAccess,
     ExpenseFundingSplit,
     FundingPayrollBudget,
     FundingServiceQuota,
@@ -39,14 +42,16 @@ from operations.models import (
     PayrollSheet,
     PayrollSheetLine,
     Service,
+    normalize_immutable_reason,
 )
 from operations.services import (
     financial_integrity as financial_integrity_svc,
     grant_compensation as grant_compensation_svc,
     grant_plans as grant_plans_svc,
+    private_artifacts as private_artifacts_svc,
     reports as reports_svc,
 )
-from operations.services.authority import is_director_user
+from operations.services.authority import AuthorityRole, authority_role, is_director_user
 
 SNAPSHOT_SCHEMA_VERSION = "internal_grant_reconciliation_v1"
 CANONICALIZER_VERSION = "canonical-json-v1"
@@ -2939,3 +2944,211 @@ def close_donor_report_snapshot(
             ):
                 raise
     raise RuntimeError("Unreachable donor report retry state.")
+
+
+def _snapshot_hashes_are_valid(snapshot: DonorReportSnapshot) -> bool:
+    try:
+        return (
+            canonical_sha256(snapshot.payload) == snapshot.payload_sha256
+            and canonical_sha256(snapshot.evidence_manifest)
+            == snapshot.evidence_manifest_sha256
+            and snapshot.evidence_manifest.get("payload_sha256")
+            == snapshot.payload_sha256
+        )
+    except (TypeError, ValueError):
+        return False
+
+
+def _donor_submission_atomic():
+    return transaction.atomic()
+
+
+def create_donor_report_submission(
+    *,
+    report_snapshot_id: int,
+    uploaded_file: Any,
+    submitted_on: date,
+    actor: Any,
+    reason: str,
+    external_reference: str = "",
+    note: str = "",
+    expected_submission_id: int | None = None,
+) -> DonorReportSubmission:
+    if not settings.DONOR_REPORT_SUBMISSIONS_ENABLED:
+        raise PermissionDenied("Фиксация донорских файлов пока не допущена к эксплуатации.")
+    _require_director(actor)
+    if connection.in_atomic_block:
+        raise RuntimeError(
+            "Donor report submission must start outside an existing transaction "
+            "so file cleanup can follow the final database commit."
+        )
+    normalized_reason = normalize_immutable_reason(reason)
+    normalized_reference = (external_reference or "").strip()
+    normalized_note = (note or "").strip()
+    if submitted_on > timezone.localdate():
+        raise ValidationError({"submitted_on": "Дата сдачи не может быть в будущем."})
+    if "\n" in normalized_reference or "\r" in normalized_reference:
+        raise ValidationError(
+            {"external_reference": "Внешний номер или ссылка должны быть одной строкой."}
+        )
+
+    staged = private_artifacts_svc.stage_upload(uploaded_file)
+    storage_key = ""
+    published = False
+    owns_published_artifact = False
+    transaction_body_completed = False
+    try:
+        with _donor_submission_atomic():
+            snapshot = (
+                DonorReportSnapshot.objects.select_related("report")
+                .get(pk=report_snapshot_id)
+            )
+            # Serialize the append-only submission chain through its mutable
+            # aggregate root. PostgreSQL requires UPDATE privilege for
+            # SELECT FOR UPDATE, which immutable history tables must not have.
+            DonorReport.objects.select_for_update(of=("self",)).only("pk").get(
+                pk=snapshot.report_id
+            )
+            if not _snapshot_hashes_are_valid(snapshot):
+                raise ValidationError(
+                    {"report_snapshot": "Целостность закрытого снимка нарушена."}
+                )
+            previous = (
+                DonorReportSubmission.objects.filter(report_snapshot=snapshot)
+                .order_by("-submission_number", "-pk")
+                .first()
+            )
+            actual_previous_id = previous.pk if previous else None
+            if expected_submission_id != actual_previous_id:
+                raise ValidationError(
+                    {
+                        "expected_submission_id": (
+                            "История сдач изменилась. Обновите страницу и повторите действие."
+                        )
+                    }
+                )
+            if previous and previous.file_sha256 == staged.file_sha256:
+                raise ValidationError(
+                    {"file": "Новый файл полностью совпадает с текущей сдачей."}
+                )
+            submission_number = previous.submission_number + 1 if previous else 1
+            storage_key = private_artifacts_svc.build_storage_key(
+                snapshot_id=snapshot.pk,
+                submission_number=submission_number,
+                file_sha256=staged.file_sha256,
+                extension=staged.extension,
+            )
+            if DonorReportSubmission.objects.filter(storage_key=storage_key).exists():
+                raise ValidationError(
+                    {
+                        "file": (
+                            "Storage key уже связан с историей сдачи. "
+                            "Запустите integrity scan."
+                        )
+                    }
+                )
+            recorded_at = _database_data_as_of()
+            _, owns_published_artifact = private_artifacts_svc.publish_staged_artifact(
+                staged,
+                storage_key,
+                allow_verified_existing=True,
+            )
+            published = True
+            submission = DonorReportSubmission.objects.create(
+                report_snapshot=snapshot,
+                submission_number=submission_number,
+                event_type=(
+                    DonorReportSubmission.EventType.REPLACED
+                    if previous
+                    else DonorReportSubmission.EventType.SUBMITTED
+                ),
+                supersedes=previous,
+                storage_key=storage_key,
+                original_filename=staged.original_filename,
+                content_type=staged.content_type,
+                file_size=staged.file_size,
+                file_sha256=staged.file_sha256,
+                submitted_on=submitted_on,
+                recorded_at=recorded_at,
+                external_reference=normalized_reference,
+                actor=actor,
+                actor_role_snapshot=DonorReportSubmission.ActorRole.DIRECTOR,
+                reason=normalized_reason,
+                note=normalized_note,
+            )
+            transaction_body_completed = True
+        return submission
+    except Exception:
+        # Once the body completed, a connection loss during COMMIT has an
+        # indeterminate outcome. Keeping a possible orphan is reconcilable;
+        # deleting a file whose row committed would be irreversible damage.
+        if published and owns_published_artifact and not transaction_body_completed:
+            private_artifacts_svc.remove_published_artifact(storage_key)
+        raise
+    finally:
+        private_artifacts_svc.discard_staged_artifact(staged)
+
+
+def donor_submission_download_authority(
+    actor: Any,
+) -> tuple[str, str]:
+    role = authority_role(actor)
+    if role == AuthorityRole.DIRECTOR:
+        return (
+            DonorReportSubmissionAccess.ActorRole.DIRECTOR,
+            DonorReportSubmissionAccess.PermissionBasis.DIRECTOR_ROLE,
+        )
+    if (
+        role == AuthorityRole.ADMINISTRATOR
+        and not hasattr(actor, "staff_profile")
+        and actor.has_perm("operations.download_donorreportsubmission")
+    ):
+        return (
+            DonorReportSubmissionAccess.ActorRole.ADMINISTRATOR,
+            DonorReportSubmissionAccess.PermissionBasis.EXPLICIT_PERMISSION,
+        )
+    raise PermissionDenied("Нет отдельного разрешения на скачивание файла сдачи.")
+
+
+def can_download_donor_report_submission(actor: Any) -> bool:
+    try:
+        donor_submission_download_authority(actor)
+    except PermissionDenied:
+        return False
+    return True
+
+
+def read_donor_report_submission(
+    *,
+    submission_id: int,
+    actor: Any,
+) -> tuple[DonorReportSubmission, bytes, str, str]:
+    actor_role_snapshot, permission_basis = donor_submission_download_authority(actor)
+    submission = DonorReportSubmission.objects.select_related("report_snapshot").get(
+        pk=submission_id
+    )
+    payload = private_artifacts_svc.read_verified_artifact(
+        storage_key=submission.storage_key,
+        expected_size=submission.file_size,
+        expected_sha256=submission.file_sha256,
+        expected_content_type=submission.content_type,
+    )
+    return submission, payload, actor_role_snapshot, permission_basis
+
+
+def record_donor_report_submission_access(
+    *,
+    submission: DonorReportSubmission,
+    actor: Any,
+    actor_role_snapshot: str,
+    permission_basis: str,
+) -> DonorReportSubmissionAccess:
+    with transaction.atomic():
+        return DonorReportSubmissionAccess.objects.create(
+            submission=submission,
+            actor=actor,
+            actor_role_snapshot=actor_role_snapshot,
+            permission_basis=permission_basis,
+            verified_sha256=submission.file_sha256,
+            accessed_at=_database_data_as_of(),
+        )

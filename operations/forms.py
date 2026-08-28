@@ -3762,6 +3762,59 @@ class DonorReportCloseForm(DonorReportReviewForm):
         widget=forms.Textarea(attrs={"rows": 3}),
     )
 
+
+class DonorReportSubmissionForm(forms.Form):
+    file = forms.FileField(
+        label="Фактически отправленный файл",
+        widget=forms.ClearableFileInput(
+            attrs={"accept": ".pdf,.docx,.xlsx,.odt,.ods"}
+        ),
+        help_text="PDF, DOCX, XLSX, ODT или ODS, до 25 MiB.",
+    )
+    submitted_on = forms.DateField(
+        label="Фактическая дата сдачи",
+        widget=DATE_INPUT,
+        initial=timezone.localdate,
+    )
+    external_reference = forms.CharField(
+        label="Внешний номер / ссылка",
+        max_length=500,
+        required=False,
+    )
+    reason = forms.CharField(
+        label="Основание фиксации / замены",
+        min_length=5,
+        max_length=2000,
+        strip=True,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+    note = forms.CharField(
+        label="Примечание",
+        max_length=2000,
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 2}),
+    )
+    expected_submission_id = forms.IntegerField(
+        required=False,
+        widget=forms.HiddenInput(),
+    )
+
+    def clean_submitted_on(self):
+        value = self.cleaned_data["submitted_on"]
+        if value > timezone.localdate():
+            raise forms.ValidationError("Дата сдачи не может быть в будущем.")
+        return value
+
+    def clean_external_reference(self):
+        value = self.cleaned_data["external_reference"].strip()
+        if "\n" in value or "\r" in value:
+            raise forms.ValidationError("Укажите номер или ссылку одной строкой.")
+        return value
+
+    def clean_note(self):
+        return self.cleaned_data["note"].strip()
+
+
 class FundingServiceQuotaQuickForm(forms.ModelForm):
     reason = forms.CharField(
         label="Основание решения",

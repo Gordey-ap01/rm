@@ -1,4 +1,13 @@
 services:
+  volume-init:
+    build: .
+    user: "0:0"
+    command: sh -ec "chown -R rehab:rehab /app/media /app/private-artifacts"
+    volumes:
+      - media-data:/app/media
+      - private-artifact-data:/app/private-artifacts
+    restart: "no"
+
   web:
     build: .
     command: python manage.py runserver 0.0.0.0:8000
@@ -13,7 +22,10 @@ services:
     volumes:
       - .:/app
       - media-data:/app/media
+      - private-artifact-data:/app/private-artifacts
     depends_on:
+      volume-init:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       redis:
@@ -45,3 +57,4 @@ services:
 volumes:
   postgres-data:
   media-data:
+  private-artifact-data:
