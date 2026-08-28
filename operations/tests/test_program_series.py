@@ -38,6 +38,7 @@ from operations.models import (
     ProgramBlock,
     Room,
     Service,
+    StaffAvailability,
     StaffMember,
     TreatmentProgram,
 )
@@ -178,6 +179,47 @@ class GroupProgramSeriesTests(TestCase):
         }
         params.update(overrides)
         return program_series.preview_group_series(**params)
+
+    def create_third_block(self):
+        child = Child.objects.create(last_name="Группа", first_name="Третий")
+        account = BalanceAccount.objects.create(
+            child=child,
+            funding_source=self.funding,
+            unit=BalanceAccount.Unit.SESSIONS,
+            service_scope=BalanceAccount.ServiceScope.SPECIFIC_SERVICE,
+            service=self.service,
+            initial_amount=Decimal("10"),
+        )
+        program = TreatmentProgram.objects.create(
+            child=child,
+            title="Программа третьего",
+            status=TreatmentProgram.Status.ACTIVE,
+        )
+        block = ProgramBlock.objects.create(
+            program=program,
+            number=1,
+            title="Каскад третьего",
+            service=self.service,
+            staff_member=self.staff1,
+            planned_sessions=4,
+            balance_account=account,
+        )
+        return child, account, block
+
+    def flush_pending_revision_composition_constraints(self):
+        if connection.vendor != "postgresql":
+            return
+        constraint_names = ", ".join(
+            connection.ops.quote_name(name)
+            for name in (
+                "operations_appointmentseriesrevision_composition",
+                "operations_appointmentseriesrevisionparticipant_composition",
+                "operations_appointmentseriesrevisionstaffassignment_composition",
+            )
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(f"SET CONSTRAINTS {constraint_names} IMMEDIATE")
+            cursor.execute(f"SET CONSTRAINTS {constraint_names} DEFERRED")
 
     def form_payload(self, *, operation_key=None, action="preview"):
         return {
@@ -419,6 +461,415 @@ class GroupProgramSeriesTests(TestCase):
         self.assertEqual(result.skipped_count, 1)
         self.assertEqual(occurrence.outcome, AppointmentSeriesOccurrence.Outcome.SKIPPED)
         self.assertEqual(occurrence.reason_code, "funding_changed")
+        self.assertFalse(Appointment.objects.filter(series=series).exists())
+
+    def test_future_composition_revision_preserves_materialized_appointments(self):
+        applied = program_series.create_group_series(
+            self.preview(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = applied.series
+        series.refresh_from_db()
+        self.flush_pending_revision_composition_constraints()
+        previous = series.current_revision
+        child3, account3, block3 = self.create_third_block()
+        appointment_ids = list(
+            Appointment.objects.filter(series=series).values_list("pk", flat=True)
+        )
+        participant_inputs = [
+            series_revisions.SeriesParticipantInput(
+                child_id=self.child1.pk,
+                program_block_id=self.block1.pk,
+                billing_account_id=self.account1.pk,
+                position=1,
+            ),
+            series_revisions.SeriesParticipantInput(
+                child_id=child3.pk,
+                program_block_id=block3.pk,
+                billing_account_id=account3.pk,
+                position=2,
+            ),
+        ]
+        staff_inputs = [
+            series_revisions.SeriesStaffInput(
+                staff_member_id=self.staff2.pk,
+                role=AppointmentSeriesStaffAssignment.Role.ASSISTANT,
+            ),
+            series_revisions.SeriesStaffInput(
+                staff_member_id=self.staff1.pk,
+                role=AppointmentSeriesStaffAssignment.Role.PRIMARY,
+            ),
+        ]
+
+        revision = series_revisions.revise_future_composition(
+            series,
+            expected_revision_id=previous.pk,
+            effective_from=self.start_date + timedelta(days=1),
+            participants=participant_inputs,
+            staff_assignments=staff_inputs,
+            actor=self.admin,
+            reason="Изменение будущего состава группы.",
+        )
+
+        series.refresh_from_db()
+        self.assertEqual(revision.revision_number, 2)
+        self.assertEqual(
+            revision.event_type,
+            AppointmentSeriesRevision.EventType.FUTURE_COMPOSITION,
+        )
+        self.assertEqual(revision.supersedes_id, previous.pk)
+        self.assertEqual(series.current_revision_id, revision.pk)
+        self.assertEqual(
+            set(series.default_participants.values_list("child_id", flat=True)),
+            {self.child1.pk, child3.pk},
+        )
+        self.assertEqual(series.child_id, self.child1.pk)
+        self.assertEqual(series.program_block_id, self.block1.pk)
+        self.assertEqual(series.staff_member_id, self.staff1.pk)
+        self.assertEqual(revision.participants.count(), 2)
+        self.assertEqual(revision.staff_assignments.count(), 2)
+        series_revisions.assert_current_projection(series, revision)
+
+        self.assertEqual(
+            list(
+                Appointment.objects.filter(series=series)
+                .order_by("pk")
+                .values_list("pk", flat=True)
+            ),
+            appointment_ids,
+        )
+        for appointment in Appointment.objects.filter(series=series):
+            self.assertEqual(
+                set(appointment.participants.values_list("child_id", flat=True)),
+                {self.child1.pk, self.child2.pk},
+            )
+            self.assertFalse(appointment.participants.filter(child=child3).exists())
+
+        with self.assertRaisesMessage(
+            series_revisions.SeriesRevisionMismatch,
+            "уже изменен",
+        ):
+            series_revisions.revise_future_composition(
+                series,
+                expected_revision_id=previous.pk,
+                effective_from=self.start_date + timedelta(days=2),
+                participants=participant_inputs,
+                staff_assignments=staff_inputs,
+                actor=self.admin,
+                reason="Устаревшая повторная команда.",
+            )
+        self.assertEqual(series.revisions.count(), 2)
+        with self.assertRaisesMessage(ValidationError, "явного режима materialization"):
+            program_series.materialize_group_series(series, actor=self.admin)
+
+    def test_future_group_revision_rejects_incomplete_composition_atomically(self):
+        applied = program_series.create_group_series(
+            self.preview(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = applied.series
+        series.refresh_from_db()
+        self.flush_pending_revision_composition_constraints()
+        previous_id = series.current_revision_id
+
+        with self.assertRaisesMessage(ValidationError, "минимум двух"):
+            series_revisions.revise_future_composition(
+                series,
+                expected_revision_id=previous_id,
+                effective_from=self.start_date + timedelta(days=1),
+                participants=[
+                    series_revisions.SeriesParticipantInput(
+                        child_id=self.child1.pk,
+                        program_block_id=self.block1.pk,
+                        billing_account_id=self.account1.pk,
+                        position=1,
+                    )
+                ],
+                staff_assignments=[
+                    series_revisions.SeriesStaffInput(
+                        staff_member_id=self.staff1.pk,
+                        role=AppointmentSeriesStaffAssignment.Role.PRIMARY,
+                    )
+                ],
+                actor=self.admin,
+                reason="Неполный будущий состав.",
+            )
+
+        series.refresh_from_db()
+        self.assertEqual(series.current_revision_id, previous_id)
+        self.assertEqual(series.revisions.count(), 1)
+        self.assertEqual(
+            set(series.default_participants.values_list("child_id", flat=True)),
+            {self.child1.pk, self.child2.pk},
+        )
+
+    def test_future_composition_revision_requires_operator(self):
+        applied = program_series.create_group_series(
+            self.preview(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = applied.series
+        series.refresh_from_db()
+        self.flush_pending_revision_composition_constraints()
+        previous_id = series.current_revision_id
+
+        with self.assertRaises(PermissionDenied):
+            series_revisions.revise_future_composition(
+                series,
+                expected_revision_id=previous_id,
+                effective_from=self.start_date + timedelta(days=1),
+                participants=[
+                    series_revisions.SeriesParticipantInput(
+                        child_id=self.child1.pk,
+                        program_block_id=self.block1.pk,
+                        billing_account_id=self.account1.pk,
+                        position=1,
+                    ),
+                    series_revisions.SeriesParticipantInput(
+                        child_id=self.child2.pk,
+                        program_block_id=self.block2.pk,
+                        billing_account_id=self.account2.pk,
+                        position=2,
+                    ),
+                ],
+                staff_assignments=[
+                    series_revisions.SeriesStaffInput(
+                        staff_member_id=self.staff1.pk,
+                        role=AppointmentSeriesStaffAssignment.Role.PRIMARY,
+                    ),
+                    series_revisions.SeriesStaffInput(
+                        staff_member_id=self.staff2.pk,
+                        role=AppointmentSeriesStaffAssignment.Role.ASSISTANT,
+                    ),
+                ],
+                actor=self.specialist_user,
+                reason="Попытка изменить будущий состав специалистом.",
+            )
+
+        series.refresh_from_db()
+        self.assertEqual(series.current_revision_id, previous_id)
+        self.assertEqual(series.revisions.count(), 1)
+
+    def test_future_composition_rejects_program_ending_before_series(self):
+        applied = program_series.create_group_series(
+            self.preview(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = applied.series
+        series.refresh_from_db()
+        self.flush_pending_revision_composition_constraints()
+        previous_id = series.current_revision_id
+        child3, account3, block3 = self.create_third_block()
+        block3.program.ends_on = self.end_date - timedelta(days=1)
+        block3.program.save(update_fields=["ends_on", "updated_at"])
+
+        with self.assertRaisesMessage(ValidationError, "заканчивается раньше"):
+            series_revisions.revise_future_composition(
+                series,
+                expected_revision_id=previous_id,
+                effective_from=self.start_date + timedelta(days=1),
+                participants=[
+                    series_revisions.SeriesParticipantInput(
+                        child_id=self.child1.pk,
+                        program_block_id=self.block1.pk,
+                        billing_account_id=self.account1.pk,
+                        position=1,
+                    ),
+                    series_revisions.SeriesParticipantInput(
+                        child_id=child3.pk,
+                        program_block_id=block3.pk,
+                        billing_account_id=account3.pk,
+                        position=2,
+                    ),
+                ],
+                staff_assignments=[
+                    series_revisions.SeriesStaffInput(
+                        staff_member_id=self.staff1.pk,
+                        role=AppointmentSeriesStaffAssignment.Role.PRIMARY,
+                    )
+                ],
+                actor=self.admin,
+                reason="Программа не покрывает будущий остаток серии.",
+            )
+
+        series.refresh_from_db()
+        self.assertEqual(series.current_revision_id, previous_id)
+        self.assertEqual(series.revisions.count(), 1)
+
+    def test_future_composition_requires_override_for_staff_leave_status(self):
+        applied = program_series.create_group_series(
+            self.preview(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = applied.series
+        series.refresh_from_db()
+        self.flush_pending_revision_composition_constraints()
+        previous_id = series.current_revision_id
+        self.staff2.status = StaffMember.Status.VACATION
+        self.staff2.save(update_fields=["status", "updated_at"])
+        participants = [
+            series_revisions.SeriesParticipantInput(
+                child_id=self.child1.pk,
+                program_block_id=self.block1.pk,
+                billing_account_id=self.account1.pk,
+                position=1,
+            ),
+            series_revisions.SeriesParticipantInput(
+                child_id=self.child2.pk,
+                program_block_id=self.block2.pk,
+                billing_account_id=self.account2.pk,
+                position=2,
+            ),
+        ]
+
+        with self.assertRaisesMessage(ValidationError, "явного разрешения"):
+            series_revisions.revise_future_composition(
+                series,
+                expected_revision_id=previous_id,
+                effective_from=self.start_date + timedelta(days=1),
+                participants=participants,
+                staff_assignments=[
+                    series_revisions.SeriesStaffInput(
+                        staff_member_id=self.staff1.pk,
+                        role=AppointmentSeriesStaffAssignment.Role.PRIMARY,
+                    ),
+                    series_revisions.SeriesStaffInput(
+                        staff_member_id=self.staff2.pk,
+                        role=AppointmentSeriesStaffAssignment.Role.ASSISTANT,
+                    ),
+                ],
+                actor=self.admin,
+                reason="Специалист находится в отпуске.",
+            )
+
+        revision = series_revisions.revise_future_composition(
+            series,
+            expected_revision_id=previous_id,
+            effective_from=self.start_date + timedelta(days=1),
+            participants=participants,
+            staff_assignments=[
+                series_revisions.SeriesStaffInput(
+                    staff_member_id=self.staff1.pk,
+                    role=AppointmentSeriesStaffAssignment.Role.PRIMARY,
+                ),
+                series_revisions.SeriesStaffInput(
+                    staff_member_id=self.staff2.pk,
+                    role=AppointmentSeriesStaffAssignment.Role.ASSISTANT,
+                    override_availability=True,
+                    override_reason="Согласованный выход специалиста из отпуска.",
+                ),
+            ],
+            actor=self.admin,
+            reason="Согласован выход специалиста из отпуска.",
+        )
+
+        self.assertEqual(revision.revision_number, 2)
+        self.assertTrue(
+            revision.staff_assignments.get(staff_member=self.staff2).override_availability
+        )
+
+    def test_slot_conflict_honors_per_staff_availability_overrides(self):
+        for staff_member in (self.staff1, self.staff2):
+            StaffAvailability.objects.create(
+                staff_member=staff_member,
+                weekday=self.start_date.weekday(),
+                starts_at=time(12, 0),
+                ends_at=time(13, 0),
+            )
+        starts_at = _local(self.start_date, time(10, 0))
+        ends_at = starts_at + timedelta(minutes=45)
+
+        partially_overridden = program_series._slot_conflict(
+            starts_at=starts_at,
+            ends_at=ends_at,
+            blocks=[self.block1, self.block2],
+            staff_members=[self.staff1, self.staff2],
+            room=self.room,
+            allow_outside_availability=False,
+            availability_override_staff_ids={self.staff1.pk},
+        )
+        fully_overridden = program_series._slot_conflict(
+            starts_at=starts_at,
+            ends_at=ends_at,
+            blocks=[self.block1, self.block2],
+            staff_members=[self.staff1, self.staff2],
+            room=self.room,
+            allow_outside_availability=False,
+            availability_override_staff_ids={self.staff1.pk, self.staff2.pk},
+        )
+
+        self.assertEqual(partially_overridden[0], "staff_unavailable")
+        self.assertIn(str(self.staff2), partially_overridden[1])
+        self.assertEqual(fully_overridden[0], "")
+        self.staff2.status = StaffMember.Status.INACTIVE
+        inactive = program_series._slot_conflict(
+            starts_at=starts_at,
+            ends_at=ends_at,
+            blocks=[self.block1, self.block2],
+            staff_members=[self.staff1, self.staff2],
+            room=self.room,
+            allow_outside_availability=False,
+            availability_override_staff_ids={self.staff1.pk, self.staff2.pk},
+        )
+        self.assertEqual(inactive[0], "staff_inactive")
+
+    def test_group_materializer_locks_and_skips_inactive_staff(self):
+        preview = self.preview(
+            end_date=self.start_date,
+            allow_outside_availability=True,
+            override_reason="Согласованный выход специалистов вне графика.",
+        )
+        series, _ = program_series._create_series_definition(
+            preview,
+            operation_key=uuid4(),
+        )
+        self.staff2.status = StaffMember.Status.INACTIVE
+        self.staff2.save(update_fields=["status", "updated_at"])
+
+        result = program_series.materialize_group_series(series, actor=self.admin)
+
+        occurrence = series.occurrences.get()
+        self.assertEqual(result.created_count, 0)
+        self.assertEqual(result.skipped_count, 1)
+        self.assertEqual(occurrence.outcome, AppointmentSeriesOccurrence.Outcome.SKIPPED)
+        self.assertEqual(occurrence.reason_code, "staff_inactive")
+        self.assertFalse(Appointment.objects.filter(series=series).exists())
+
+    def test_individual_materializer_locks_and_skips_inactive_staff(self):
+        series = AppointmentSeries.objects.create(
+            operation_key=uuid4(),
+            child=self.child1,
+            service=self.service,
+            staff_member=self.staff1,
+            room=self.room,
+            program_block=self.block1,
+            title="Индивидуальная серия с деактивированным специалистом",
+            start_date=self.start_date,
+            end_date=self.start_date,
+            days_of_week=program_series._days_of_week_value(
+                {self.start_date.weekday()}
+            ),
+            time=time(10, 0),
+            duration_minutes=45,
+            session_type=Appointment.SessionType.INDIVIDUAL,
+            materialization_mode=AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS,
+            status=AppointmentSeries.Status.ACTIVE,
+        )
+        self.staff1.status = StaffMember.Status.INACTIVE
+        self.staff1.save(update_fields=["status", "updated_at"])
+
+        result = program_series.materialize_individual_series(series, actor=self.admin)
+
+        occurrence = series.occurrences.get()
+        self.assertEqual(result.created_count, 0)
+        self.assertEqual(result.skipped_count, 1)
+        self.assertEqual(occurrence.outcome, AppointmentSeriesOccurrence.Outcome.SKIPPED)
+        self.assertEqual(occurrence.reason_code, "staff_inactive")
         self.assertFalse(Appointment.objects.filter(series=series).exists())
 
     def test_materialization_rejects_mutated_root_projection(self):

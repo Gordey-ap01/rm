@@ -334,7 +334,10 @@ def _slot_conflict(
     staff_members: Iterable[StaffMember],
     room: Room,
     allow_outside_availability: bool,
+    availability_override_staff_ids: set[int] | None = None,
 ) -> tuple[str, str, int, int]:
+    staff_members = tuple(staff_members)
+    availability_override_staff_ids = availability_override_staff_ids or set()
     children = [block.program.child for block in blocks]
     report = scheduling.find_overlaps(
         starts_at,
@@ -348,10 +351,23 @@ def _slot_conflict(
         code = "capacity" if report.room_over_limit else "schedule_conflict"
         return code, reasons, report.room_staff_occupancy, report.room_recipient_occupancy
 
-    unavailable = [
-        f"{staff}: {reason}"
+    staff_issues = [
+        (staff, *_staff_availability_issue(staff, starts_at, ends_at))
         for staff in staff_members
-        if (reason := scheduling.is_within_availability(staff, starts_at, ends_at))
+    ]
+    inactive = [reason for _, code, reason in staff_issues if code == "staff_inactive"]
+    if inactive:
+        return (
+            "staff_inactive",
+            "; ".join(inactive),
+            report.room_staff_occupancy,
+            report.room_recipient_occupancy,
+        )
+    unavailable = [
+        reason
+        for staff, code, reason in staff_issues
+        if code == "staff_unavailable"
+        and staff.pk not in availability_override_staff_ids
     ]
     if unavailable and not allow_outside_availability:
         return (
@@ -361,6 +377,21 @@ def _slot_conflict(
             report.room_recipient_occupancy,
         )
     return "", "", report.room_staff_occupancy, report.room_recipient_occupancy
+
+
+def _staff_availability_issue(
+    staff: StaffMember,
+    starts_at: datetime,
+    ends_at: datetime,
+) -> tuple[str, str]:
+    if staff.is_archived or staff.status == StaffMember.Status.INACTIVE:
+        return "staff_inactive", f"Неактивный специалист: {staff}"
+    if staff.status != StaffMember.Status.ACTIVE:
+        return "staff_unavailable", f"{staff}: статус «{staff.get_status_display()}»"
+    reason = scheduling.is_within_availability(staff, starts_at, ends_at)
+    if reason:
+        return "staff_unavailable", f"{staff}: {reason}"
+    return "", ""
 
 
 def preview_group_series(
@@ -762,6 +793,11 @@ def _materialize_individual_date(
                     if limit_reason:
                         raise _SkipOccurrence(*limit_reason)
 
+                assignment.staff_member = (
+                    StaffMember.all_objects.select_for_update().get(
+                        pk=assignment.staff_member_id
+                    )
+                )
                 ends_at = starts_at + timedelta(minutes=revision.duration_minutes)
                 report = scheduling.find_overlaps(
                     starts_at,
@@ -774,16 +810,15 @@ def _materialize_individual_date(
                     reason = ", ".join(report.human_messages()) or "конфликт расписания"
                     code = "capacity" if report.room_over_limit else "schedule_conflict"
                     raise _SkipOccurrence(code, reason)
-                availability_reason = scheduling.is_within_availability(
+                staff_issue_code, staff_issue_reason = _staff_availability_issue(
                     assignment.staff_member,
                     starts_at,
                     ends_at,
                 )
-                if availability_reason and not assignment.override_availability:
-                    raise _SkipOccurrence(
-                        "staff_unavailable",
-                        f"{assignment.staff_member}: {availability_reason}",
-                    )
+                if staff_issue_code == "staff_inactive" or (
+                    staff_issue_code and not assignment.override_availability
+                ):
+                    raise _SkipOccurrence(staff_issue_code, staff_issue_reason)
                 schedule_writes.ensure_room_capacity(
                     starts_at=starts_at,
                     ends_at=ends_at,
@@ -862,6 +897,10 @@ def materialize_individual_series(
     if series.status != AppointmentSeries.Status.ACTIVE:
         raise ValidationError("Создавать занятия можно только для активной серии.")
     revision = _ensure_individual_revision(series, actor=actor)
+    if revision.event_type == AppointmentSeriesRevision.EventType.FUTURE_COMPOSITION:
+        raise ValidationError(
+            "Будущая редакция требует явного режима materialization из среза 61C-4."
+        )
     starts = _candidate_starts(
         revision.start_date,
         revision.end_date,
@@ -1009,6 +1048,22 @@ def _materialize_one_date(
                 if limit_reason:
                     raise _SkipOccurrence(*limit_reason)
 
+                staff_ids = sorted(
+                    {assignment.staff_member_id for assignment in assignments}
+                )
+                locked_staff = {
+                    staff.pk: staff
+                    for staff in StaffMember.all_objects.select_for_update()
+                    .filter(pk__in=staff_ids)
+                    .order_by("pk")
+                }
+                if len(locked_staff) != len(staff_ids):
+                    raise _SkipOccurrence(
+                        "series_composition",
+                        "Специалист из снимка групповой редакции больше не найден.",
+                    )
+                for assignment in assignments:
+                    assignment.staff_member = locked_staff[assignment.staff_member_id]
                 staff_members = [assignment.staff_member for assignment in assignments]
                 ends_at = starts_at + timedelta(minutes=revision.duration_minutes)
                 conflict = _slot_conflict(
@@ -1017,7 +1072,12 @@ def _materialize_one_date(
                     blocks=blocks,
                     staff_members=staff_members,
                     room=room,
-                    allow_outside_availability=revision.allow_outside_availability,
+                    allow_outside_availability=False,
+                    availability_override_staff_ids={
+                        assignment.staff_member_id
+                        for assignment in assignments
+                        if assignment.override_availability
+                    },
                 )
                 if conflict[0]:
                     raise _SkipOccurrence(conflict[0], conflict[1])
@@ -1046,10 +1106,10 @@ def _materialize_one_date(
                     billing_decision=Appointment.BillingDecision.UNDECIDED,
                     series=locked_series,
                     program_block=primary.program_block,
-                    staff_availability_override=revision.allow_outside_availability,
+                    staff_availability_override=primary_staff.override_availability,
                     staff_availability_override_reason=(
-                        revision.override_reason
-                        if revision.allow_outside_availability
+                        primary_staff.override_reason
+                        if primary_staff.override_availability
                         else ""
                     ),
                     admin_note="Создано из групповой серии программы.",
@@ -1136,6 +1196,10 @@ def materialize_group_series(
     skipped_count = 0
     unchanged_count = 0
     revision, _ = series_revisions.ensure_initial_revision(series, actor=actor)
+    if revision.event_type == AppointmentSeriesRevision.EventType.FUTURE_COMPOSITION:
+        raise ValidationError(
+            "Будущая редакция требует явного режима materialization из среза 61C-4."
+        )
     starts = _candidate_starts(
         revision.start_date,
         revision.end_date,
