@@ -2803,6 +2803,169 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
                 ["Bypass attempt", revision.pk],
             )
 
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Cross-revision result guard проверяется на PostgreSQL.",
+    )
+    def test_cross_revision_attempt_is_forward_only_and_blocks_reverse(self):
+        target_before = [("operations", "0059_series_revision_guards")]
+        target_after = [
+            ("operations", "0060_series_cross_revision_attempt_guards")
+        ]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+        apps = executor.loader.project_state(target_after).apps
+
+        with transaction.atomic():
+            series, first_revision, _ = self._create_native_series_history(
+                apps,
+                suffix="cross-revision",
+            )
+
+        run_model = apps.get_model(
+            "operations", "AppointmentSeriesMaterializationRun"
+        )
+        result_model = apps.get_model(
+            "operations", "AppointmentSeriesMaterializationResult"
+        )
+        revision_model = apps.get_model(
+            "operations", "AppointmentSeriesRevision"
+        )
+        revision_participant_model = apps.get_model(
+            "operations", "AppointmentSeriesRevisionParticipant"
+        )
+        revision_staff_model = apps.get_model(
+            "operations", "AppointmentSeriesRevisionStaffAssignment"
+        )
+        series_model = apps.get_model("operations", "AppointmentSeries")
+        day = first_revision.effective_from
+        starts_at = _local(day, time(10, 0))
+        first_run = run_model.objects.create(
+            series_id=series.pk,
+            revision_id=first_revision.pk,
+            operation_key=uuid4(),
+            fingerprint="f" * 64,
+            mode="missing_only",
+            date_from=day,
+            date_to=day,
+            expected_result_count=2,
+            actor_id=first_revision.actor_id,
+            actor_role_snapshot="director",
+            reason="First revision result.",
+        )
+        first_result = result_model.objects.create(
+            series_id=series.pk,
+            revision_id=first_revision.pk,
+            run_id=first_run.pk,
+            scheduled_starts_at=starts_at,
+            scheduled_date=day,
+            attempt_number=1,
+            provenance_kind="native",
+            outcome="skipped",
+            reason_code="fixture_skip",
+            reason="Skipped before the future revision.",
+        )
+        first_participant = revision_participant_model.objects.get(
+            revision_id=first_revision.pk
+        )
+        first_staff = revision_staff_model.objects.get(
+            revision_id=first_revision.pk
+        )
+        with transaction.atomic():
+            second_revision = revision_model.objects.create(
+                series_id=series.pk,
+                revision_number=2,
+                event_type="future_composition",
+                provenance_kind="native",
+                effective_from=day,
+                title=first_revision.title,
+                service_id=first_revision.service_id,
+                room_id=first_revision.room_id,
+                start_date=first_revision.start_date,
+                end_date=first_revision.end_date,
+                days_of_week=first_revision.days_of_week,
+                time=first_revision.time,
+                duration_minutes=first_revision.duration_minutes,
+                session_type=first_revision.session_type,
+                materialization_mode=first_revision.materialization_mode,
+                default_appointment_status=first_revision.default_appointment_status,
+                allow_unpaid_reserve=False,
+                allow_outside_availability=False,
+                override_reason="",
+                fingerprint="a" * 64,
+                actor_id=first_revision.actor_id,
+                actor_role_snapshot="director",
+                reason="Future composition migration fixture.",
+                supersedes_id=first_revision.pk,
+                decided_at=timezone.now(),
+            )
+            revision_participant_model.objects.create(
+                revision_id=second_revision.pk,
+                child_id=first_participant.child_id,
+                position=1,
+            )
+            revision_staff_model.objects.create(
+                revision_id=second_revision.pk,
+                staff_member_id=first_staff.staff_member_id,
+                role="primary",
+            )
+            series_model.objects.filter(pk=series.pk).update(
+                current_revision_id=second_revision.pk
+            )
+
+        second_run = run_model.objects.create(
+            series_id=series.pk,
+            revision_id=second_revision.pk,
+            operation_key=uuid4(),
+            fingerprint="b" * 64,
+            mode="missing_only",
+            date_from=day,
+            date_to=day,
+            expected_result_count=1,
+            actor_id=first_revision.actor_id,
+            actor_role_snapshot="director",
+            reason="Cross-revision unchanged result.",
+        )
+        second_result = result_model.objects.create(
+            series_id=series.pk,
+            revision_id=second_revision.pk,
+            run_id=second_run.pk,
+            scheduled_starts_at=starts_at,
+            scheduled_date=day,
+            attempt_number=2,
+            provenance_kind="native",
+            outcome="unchanged",
+            reason_code="existing_result",
+            reason="The date already has immutable history.",
+            supersedes_id=first_result.pk,
+        )
+
+        self.assertEqual(second_result.supersedes_id, first_result.pk)
+        with self.assertRaisesMessage(
+            DatabaseError,
+            "invalid series result attempt chain",
+        ), transaction.atomic():
+            result_model.objects.create(
+                series_id=series.pk,
+                revision_id=first_revision.pk,
+                run_id=first_run.pk,
+                scheduled_starts_at=starts_at,
+                scheduled_date=day,
+                attempt_number=3,
+                provenance_kind="native",
+                outcome="unchanged",
+                reason_code="reverse_revision_attempt",
+                reason="A newer revision cannot supersede into an older one.",
+                supersedes_id=second_result.pk,
+            )
+
+        executor = MigrationExecutor(connection)
+        with self.assertRaisesMessage(
+            RuntimeError,
+            "Cannot restore same-revision attempt guards",
+        ):
+            executor.migrate(target_before)
+
     def test_series_revision_backfill_copies_history_with_explicit_provenance(self):
         actor = User.objects.create_superuser(
             username="legacy-revision-retry-admin",

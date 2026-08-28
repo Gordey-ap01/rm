@@ -11,7 +11,8 @@
 append-only run/result, сверяемый legacy backfill, PostgreSQL guards и единый
 materializer индивидуальных/групповых/create/join серий. 61C-3 реализован и
 локально принят: атомарная редакция только будущего состава. Следующий кодовый
-подсрез - 61C-4 retry/cancel; затем 61D UI/жизненный цикл.
+подсрез - 61C-4 retry/cancel; его expand-gate `0060` локально принят, но
+`missing_only`/retry service еще не завершен. Затем 61D UI/жизненный цикл.
 Production preflight, health, проверяемый backup/restore, цельная
 browser-приемка рабочих ролей, persisted transfer/conversion и приемка
 грантового отчета завершены. Безопасный жизненный цикл грантового плана по
@@ -74,6 +75,11 @@ MVCC-временем данных и цепочкой исправлений. 5
 - До явных режимов 61C-4 прежняя `initial`-обертка fail-closed отклоняет запуск
   будущей редакции: она не переиспользует operation key и диапазон первой
   редакции для семантически неверного run.
+- Expand-gate 61C-4a1 `0060` разрешает цепочке попыток одной даты переходить
+  только к той же или более новой редакции. Reverse блокируется после первого
+  cross-revision result; чистая PostgreSQL-цепочка `0001-0060` и весь migration
+  class серий (`7 passed`) прошли. Пользовательское поведение `missing_only`
+  этим gate еще не считается реализованным.
 - Приемка 61C-3: весь `test_program_series.py` на SQLite `48 passed, 19 skipped`,
   PostgreSQL 17 `67 passed`; Django check, Ruff, `makemigrations --check` и
   `git diff --check` прошли. Миграция для этого подсреза не требуется.
@@ -433,13 +439,14 @@ MVCC-временем данных и цепочкой исправлений. 5
 
 ## Следующая работа
 
-1. Реализовать 61C-4: явные режимы `missing_only`/retry/cancel без изменения
-   фактов прошлого, включая безопасное прекращение новых запусков.
+1. Завершить 61C-4a: `missing_only` с durable run events, затем
+   `retry_skipped`; после этого 61C-4b-d stop/cancel/withdraw без изменения
+   фактов прошлого.
 2. Закрыть 61D: паузу/отмену, переходы программы/каскада, registry,
    руководительские отчеты и полную ролевую приемку серий.
-3. Перед production migration chain `0048-0059` выполнить backup v2, `--strict`
+3. Перед production migration chain `0048-0060` выполнить backup v2, `--strict`
    preflight, временно закрыть грантовые записи и подготовить совместимый
-   rollback-релиз. После появления истории `0053`/`0054` и series history `0055-0059`
+   rollback-релиз. После появления истории `0053`/`0054` и series history `0055-0060`
    эти миграции не откатываются:
    rollback сохраняет additive schema, private volume и immutable-историю.
 4. Закрыть production-допуск 59B-2: offsite backup, monitoring/alerting, реальный SMTP,
@@ -471,7 +478,7 @@ MVCC-временем данных и цепочкой исправлений. 5
 - offsite backup, monitoring/alerting и реальный SMTP;
 - регулярный targeted browser smoke и приемка на физическом телефоне;
 - приемка на реальных обезличенных сценариях центра;
-- production cutover migration chain `0048-0059` после backup v2/preflight.
+- production cutover migration chain `0048-0060` после backup v2/preflight.
 
 ## Риски и запреты
 
@@ -488,6 +495,8 @@ MVCC-временем данных и цепочкой исправлений. 5
   совместимый rollback сохраняет participant и occurrence-историю.
 - Не откатывать `0058`/`0059` после native revision/run/result; совместимый
   rollback сохраняет append-only таблицы и использует предыдущий read-path.
+- Не откатывать `0060` после cross-revision result: reverse намеренно
+  блокируется, а совместимый rollback сохраняет forward-only цепочку попыток.
 - Не объединять разделенные runtime/migration DB-роли: runtime не имеет
   DDL, role membership, право отключать triggers или заменять защитные
   функции `0053`/`0054`; live preflight технически это проверяет.

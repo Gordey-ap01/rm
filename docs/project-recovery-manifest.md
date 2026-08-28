@@ -63,7 +63,7 @@
 | `docs/58-grant-plan-versioning-contract.md` | Реализованный срез: типизированные редакции квот и распределений, director-only write-path, legacy backfill и payroll provenance. |
 | `docs/59-grant-fixed-compensation-and-donor-report-snapshot-contract.md` | Реализованный эпик 59: payroll-бюджет, fixed/per-session policy, фиксированная оплата проекта и закрытый донорский снимок. |
 | `docs/60-private-artifact-storage-and-donor-submission-contract.md` | Реализованный срез 59B-2: private storage, append-only сдачи/выдачи, integrity и backup/restore v2; там же production-блокеры. |
-| `docs/61-group-program-series-lifecycle-contract.md` | Активный доменный контракт: 61A-61B и 61C-1/61C-2/61C-3 реализованы; следующие 61C-4 retry/cancel и 61D. |
+| `docs/61-group-program-series-lifecycle-contract.md` | Активный доменный контракт: 61A-61B и 61C-1/61C-2/61C-3 реализованы; `0060` expand для 61C-4a принят локально, следующие missing/retry/cancel и 61D. |
 | `docs/decisions/ADR-001-*.md` | Django/PostgreSQL/local-first. |
 | `docs/decisions/ADR-002-*.md` | Балансовые счета и ledger. |
 | `docs/decisions/ADR-003-*.md` | Полномочия и ручные решения. |

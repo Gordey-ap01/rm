@@ -4614,13 +4614,15 @@ class AppointmentSeriesMaterializationResult(TimeStampedModel):
             previous = self.supersedes
             if (
                 previous.series_id != self.series_id
-                or previous.revision_id != self.revision_id
                 or previous.scheduled_starts_at != self.scheduled_starts_at
                 or previous.scheduled_date != self.scheduled_date
                 or previous.attempt_number + 1 != self.attempt_number
+                or previous.revision.revision_number
+                > self.revision.revision_number
             ):
                 errors["supersedes"] = (
-                    "Предыдущий результат должен быть попыткой той же даты и серии."
+                    "Предыдущий результат должен быть более ранней попыткой той же "
+                    "даты и не может относиться к более новой редакции."
                 )
         if self.scheduled_starts_at and self.scheduled_date:
             local_date = timezone.localtime(self.scheduled_starts_at).date()
