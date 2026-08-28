@@ -45,9 +45,9 @@
     "semantic_hash": "d80ac1c19490a5b7511537841e8e8211"
   },
   "operations/management/commands/seed_demo.py": {
-    "mtime": 1782680748.3338995,
-    "ast_hash": "50cc3d7794137c9f12b88bc811a9459c",
-    "semantic_hash": "50cc3d7794137c9f12b88bc811a9459c"
+    "mtime": 1787924323.5980535,
+    "ast_hash": "c132fa1c3b388e3ee9e1aeea8d917286",
+    "semantic_hash": ""
   },
   "operations/migrations/0001_initial.py": {
     "mtime": 1780411936.781608,
@@ -105,8 +105,8 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/models.py": {
-    "mtime": 1787914770.5017662,
-    "ast_hash": "03f35f5c9bf4e741e3d67a3bf68ba296",
+    "mtime": 1787924275.3072984,
+    "ast_hash": "d4e487a8c18bf1f0c5953b578719411d",
     "semantic_hash": ""
   },
   "operations/services/__init__.py": {
@@ -155,8 +155,8 @@
     "semantic_hash": "50782352c5fa9df21258784a69f4da41"
   },
   "operations/tests.py": {
-    "mtime": 1784951514.351638,
-    "ast_hash": "fb8b33bbfa16bde229dbac3f1d51c97c",
+    "mtime": 1787924323.5996292,
+    "ast_hash": "4d692cda7051cb03f67703f607aac9e8",
     "semantic_hash": ""
   },
   "operations/tests/test_auditlog.py": {
@@ -405,8 +405,8 @@
     "semantic_hash": "4743b79b7b2298e1650284eda55e92cb"
   },
   "docs/01-prd.md": {
-    "mtime": 1787918380.0365992,
-    "ast_hash": "4b8c35acd2d48a225ad6c3a5c1ab9810",
+    "mtime": 1787927274.82047,
+    "ast_hash": "faffc523a11a34a6c52a06eee30f9228",
     "semantic_hash": ""
   },
   "docs/02-tech-stack-research.md": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1787918380.0386057,
-    "ast_hash": "cfcdd60202c238daf8ee7ff1c30e2a1f",
+    "mtime": 1787928528.7666597,
+    "ast_hash": "678143699cd4359339b7efc05bcd3fd8",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -820,8 +820,8 @@
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1787918380.0376072,
-    "ast_hash": "f7f34902aa442cd9bc5b5ef3fac1a322",
+    "mtime": 1787927274.819469,
+    "ast_hash": "fb848dbe002d8890ee71e5cdabe34c0b",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1795,8 +1795,8 @@
     "semantic_hash": ""
   },
   "operations/database_roles.py": {
-    "mtime": 1787883069.4222164,
-    "ast_hash": "19def5b07ab50221168e4e93a3be1ad2",
+    "mtime": 1787925893.7635574,
+    "ast_hash": "9ed16ddad7d63c567c8b7ff52bb080fd",
     "semantic_hash": ""
   },
   "scripts/deploy_prod.sh": {
@@ -1825,18 +1825,18 @@
     "semantic_hash": ""
   },
   "operations/services/program_series.py": {
-    "mtime": 1787915871.266869,
-    "ast_hash": "9cc881867c466dd4a6a6db1ac4227ce9",
+    "mtime": 1787926249.8117082,
+    "ast_hash": "bb081b106dec3b74f976877e87ec44c4",
     "semantic_hash": ""
   },
   "operations/tests/test_program_series.py": {
-    "mtime": 1787915907.994236,
-    "ast_hash": "82b732a3883301760b7fad8756088bc5",
+    "mtime": 1787926870.6609895,
+    "ast_hash": "28bc32323b4b41087e21904003692062",
     "semantic_hash": ""
   },
   "docs/61-group-program-series-lifecycle-contract.md": {
-    "mtime": 1787918380.035543,
-    "ast_hash": "54d46a2b08c4947664ebb8b7be6bcb7e",
+    "mtime": 1787927274.8234699,
+    "ast_hash": "7d91a15067f0c5b3605c0b090d7a1af6",
     "semantic_hash": ""
   },
   "templates/operations/appointment_series_detail.html": {
@@ -1857,6 +1857,31 @@
   "templates/operations/group_program_join_form.html": {
     "mtime": 1787914589.0491774,
     "ast_hash": "52e8cd043cf8940a7c2f7f278d202860",
+    "semantic_hash": ""
+  },
+  "operations/migrations/0057_series_revision_expand.py": {
+    "mtime": 1787923808.337536,
+    "ast_hash": "d8c8836349ea34c98e3de6ffd96e6f5e",
+    "semantic_hash": ""
+  },
+  "operations/migrations/0058_backfill_series_revisions.py": {
+    "mtime": 1787926762.8393729,
+    "ast_hash": "7d6f53a1a052a6a89030bec1a0e81bb6",
+    "semantic_hash": ""
+  },
+  "operations/migrations/0059_series_revision_guards.py": {
+    "mtime": 1787925769.9843478,
+    "ast_hash": "82af08af1f5ee7ab0d58a2699b12a6bb",
+    "semantic_hash": ""
+  },
+  "operations/services/series_revisions.py": {
+    "mtime": 1787926200.832508,
+    "ast_hash": "37f10d1f449cc0599ceb1db555c3e251",
+    "semantic_hash": ""
+  },
+  "docs/decisions/ADR-009-appointment-series-revisions-and-runs.md": {
+    "mtime": 1787927274.8214688,
+    "ast_hash": "6c24465cfa03716aee55bb15c8c01b02",
     "semantic_hash": ""
   }
 }
