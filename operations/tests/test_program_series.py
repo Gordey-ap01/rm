@@ -10,7 +10,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import DatabaseError, close_old_connections, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 from django.db.models.deletion import ProtectedError
@@ -22,7 +22,14 @@ from operations.models import (
     Appointment,
     AppointmentParticipant,
     AppointmentSeries,
+    AppointmentSeriesMaterializationResult,
+    AppointmentSeriesMaterializationRun,
+    AppointmentSeriesMaterializationRunEvent,
     AppointmentSeriesOccurrence,
+    AppointmentSeriesRevision,
+    AppointmentSeriesRevisionParticipant,
+    AppointmentSeriesRevisionStaffAssignment,
+    AppointmentSeriesStaffAssignment,
     BalanceAccount,
     Child,
     FundingSource,
@@ -34,7 +41,12 @@ from operations.models import (
     StaffMember,
     TreatmentProgram,
 )
-from operations.services import billing as billing_svc, program_series, program_wizard
+from operations.services import (
+    billing as billing_svc,
+    program_series,
+    program_wizard,
+    series_revisions,
+)
 
 User = get_user_model()
 
@@ -247,6 +259,513 @@ class GroupProgramSeriesTests(TestCase):
         self.assertEqual(self.block2.status, ProgramBlock.Status.SCHEDULED)
         self.assertFalse(LedgerEntry.objects.exists())
 
+    def test_initial_revision_run_and_results_are_dual_written_idempotently(self):
+        operation_key = uuid4()
+        preview = self.preview(end_date=self.start_date)
+
+        first = program_series.create_group_series(
+            preview,
+            operation_key=operation_key,
+            actor=self.admin,
+        )
+        repeated = program_series.create_group_series(
+            preview,
+            operation_key=operation_key,
+            actor=self.admin,
+        )
+
+        series = first.series
+        series.refresh_from_db()
+        revision = series.current_revision
+        self.assertIsNotNone(revision)
+        self.assertEqual(revision.revision_number, 1)
+        self.assertEqual(revision.event_type, AppointmentSeriesRevision.EventType.CREATED)
+        self.assertEqual(
+            revision.provenance_kind,
+            AppointmentSeriesRevision.ProvenanceKind.NATIVE,
+        )
+        self.assertEqual(revision.participants.count(), 2)
+        self.assertEqual(revision.staff_assignments.count(), 2)
+        run = series.materialization_runs.get()
+        self.assertEqual(run.mode, AppointmentSeriesMaterializationRun.Mode.INITIAL)
+        self.assertEqual(run.operation_key, operation_key)
+        self.assertEqual(run.expected_result_count, 1)
+        occurrence = series.occurrences.get()
+        result = run.results.get()
+        self.assertEqual(result.compatibility_occurrence_id, occurrence.pk)
+        self.assertEqual(
+            result.scheduled_date,
+            timezone.localtime(occurrence.scheduled_starts_at).date(),
+        )
+        self.assertEqual(
+            result.provenance_kind,
+            AppointmentSeriesMaterializationResult.ProvenanceKind.NATIVE,
+        )
+        event = run.events.get()
+        self.assertEqual(
+            event.event_type,
+            AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED,
+        )
+        self.assertEqual(event.event_number, 1)
+        self.assertEqual(event.result_count, 1)
+        self.assertEqual(AppointmentSeriesRevision.objects.filter(series=series).count(), 1)
+        self.assertEqual(
+            AppointmentSeriesMaterializationRun.objects.filter(series=series).count(),
+            1,
+        )
+        self.assertEqual(
+            AppointmentSeriesMaterializationResult.objects.filter(series=series).count(),
+            1,
+        )
+        self.assertEqual(repeated.created_count, 0)
+        self.assertEqual(repeated.unchanged_count, 1)
+        self.assertFalse(LedgerEntry.objects.exists())
+
+    def test_occurrence_and_canonical_result_are_atomic_and_retryable(self):
+        operation_key = uuid4()
+        preview = self.preview(end_date=self.start_date)
+
+        with patch(
+            "operations.services.series_revisions.record_compatibility_result",
+            side_effect=ValidationError("Имитированный сбой dual-write."),
+        ), self.assertRaisesMessage(ValidationError, "dual-write"):
+            program_series.create_group_series(
+                preview,
+                operation_key=operation_key,
+                actor=self.admin,
+            )
+
+        series = AppointmentSeries.objects.get(operation_key=operation_key)
+        self.assertTrue(series.current_revision_id)
+        self.assertEqual(series.materialization_runs.count(), 1)
+        self.assertFalse(series.materialization_runs.get().events.exists())
+        self.assertFalse(series.occurrences.exists())
+        self.assertFalse(series.materialization_results.exists())
+        self.assertFalse(Appointment.objects.filter(series=series).exists())
+
+        recovered = program_series.create_group_series(
+            preview,
+            operation_key=operation_key,
+            actor=self.admin,
+        )
+
+        self.assertEqual(recovered.created_count, 1)
+        self.assertEqual(series.occurrences.count(), 1)
+        self.assertEqual(series.materialization_results.count(), 1)
+        self.assertEqual(series.materialization_runs.get().events.count(), 1)
+
+    def test_materializer_selects_primary_staff_by_role_not_row_order(self):
+        series, _ = program_series._create_series_definition(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+        )
+        series.default_staff_assignments.all().delete()
+        AppointmentSeriesStaffAssignment.objects.create(
+            series=series,
+            staff_member=self.staff2,
+            role=AppointmentSeriesStaffAssignment.Role.ASSISTANT,
+        )
+        AppointmentSeriesStaffAssignment.objects.create(
+            series=series,
+            staff_member=self.staff1,
+            role=AppointmentSeriesStaffAssignment.Role.PRIMARY,
+        )
+
+        result = program_series.materialize_group_series(
+            series,
+            actor=self.admin,
+        )
+
+        appointment = Appointment.objects.get(series=series)
+        self.assertEqual(result.created_count, 1)
+        self.assertEqual(appointment.staff_member_id, self.staff1.pk)
+        self.assertEqual(
+            appointment.staff_assignments.get(
+                role=AppointmentSeriesStaffAssignment.Role.PRIMARY
+            ).staff_member_id,
+            self.staff1.pk,
+        )
+        self.assertEqual(
+            appointment.staff_assignments.get(
+                role=AppointmentSeriesStaffAssignment.Role.ASSISTANT
+            ).staff_member_id,
+            self.staff2.pk,
+        )
+
+    def test_materializer_fails_closed_when_block_account_changes_after_revision(self):
+        series, _ = program_series._create_series_definition(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+        )
+        series_revisions.ensure_initial_revision(series, actor=self.admin)
+        replacement = BalanceAccount.objects.create(
+            child=self.child1,
+            funding_source=self.funding,
+            unit=BalanceAccount.Unit.SESSIONS,
+            service_scope=BalanceAccount.ServiceScope.SPECIFIC_SERVICE,
+            service=self.service,
+            initial_amount=Decimal("10"),
+        )
+        self.block1.balance_account = replacement
+        self.block1.save(update_fields=["balance_account", "updated_at"])
+
+        result = program_series.materialize_group_series(
+            series,
+            actor=self.admin,
+        )
+
+        occurrence = series.occurrences.get()
+        self.assertEqual(result.created_count, 0)
+        self.assertEqual(result.skipped_count, 1)
+        self.assertEqual(occurrence.outcome, AppointmentSeriesOccurrence.Outcome.SKIPPED)
+        self.assertEqual(occurrence.reason_code, "funding_changed")
+        self.assertFalse(Appointment.objects.filter(series=series).exists())
+
+    def test_materialization_rejects_mutated_root_projection(self):
+        applied = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment_count = Appointment.objects.count()
+        occurrence_count = AppointmentSeriesOccurrence.objects.count()
+        AppointmentSeries.objects.filter(pk=applied.series.pk).update(
+            title="Несогласованная ручная правка"
+        )
+        applied.series.refresh_from_db()
+
+        with self.assertRaisesMessage(
+            series_revisions.SeriesRevisionMismatch,
+            "не совпадает с immutable-редакцией",
+        ):
+            program_series.materialize_group_series(
+                applied.series,
+                actor=self.admin,
+            )
+
+        self.assertEqual(Appointment.objects.count(), appointment_count)
+        self.assertEqual(AppointmentSeriesOccurrence.objects.count(), occurrence_count)
+
+    @skipUnless(connection.vendor == "postgresql", "DB guards проверяются на PostgreSQL.")
+    def test_revision_history_database_guards_block_mutation_and_pointer_clear(self):
+        applied = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = applied.series
+        series.refresh_from_db()
+        revision = series.current_revision
+        materialization_result = series.materialization_results.get()
+
+        with self.assertRaisesMessage(
+            DatabaseError, "appointment series history rows are immutable"
+        ), transaction.atomic():
+            AppointmentSeriesRevision._base_manager.filter(pk=revision.pk).update(
+                reason="Bypass attempt"
+            )
+        with self.assertRaisesMessage(
+            DatabaseError, "appointment series history rows are immutable"
+        ), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM operations_appointmentseriesmaterializationresult WHERE id = %s",
+                [materialization_result.pk],
+            )
+        with self.assertRaisesMessage(
+            DatabaseError,
+            "appointment series with revision history requires current revision",
+        ), transaction.atomic():
+            AppointmentSeries.objects.filter(pk=series.pk).update(current_revision=None)
+        late_result = AppointmentSeriesMaterializationResult(
+            series=series,
+            revision=revision,
+            run=series.materialization_runs.get(),
+            scheduled_starts_at=materialization_result.scheduled_starts_at,
+            scheduled_date=materialization_result.scheduled_date,
+            attempt_number=1,
+            provenance_kind=AppointmentSeriesMaterializationResult.ProvenanceKind.NATIVE,
+            outcome=AppointmentSeriesOccurrence.Outcome.SKIPPED,
+            reason_code="late_result",
+            reason="Завершенный запуск не должен меняться.",
+        )
+        with self.assertRaisesMessage(
+            DatabaseError, "completed series run does not accept results"
+        ), transaction.atomic():
+            AppointmentSeriesMaterializationResult._base_manager.bulk_create(
+                [late_result]
+            )
+
+    def test_revision_history_queryset_mutations_are_blocked_on_all_databases(self):
+        applied = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        revision = applied.series.revisions.get()
+        materialization_result = applied.series.materialization_results.get()
+
+        with self.assertRaisesMessage(ValidationError, "историю нельзя"):
+            AppointmentSeriesRevision.objects.filter(pk=revision.pk).update(
+                reason="Bypass attempt"
+            )
+        with self.assertRaisesMessage(ValidationError, "историю нельзя"):
+            AppointmentSeriesMaterializationResult.objects.filter(
+                pk=materialization_result.pk
+            ).delete()
+
+    @skipUnless(connection.vendor == "postgresql", "DB guards проверяются на PostgreSQL.")
+    def test_revision_insert_requires_current_pointer_to_move_in_same_transaction(self):
+        applied = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = applied.series
+        series.refresh_from_db()
+        previous = series.current_revision
+
+        revision = AppointmentSeriesRevision(
+            series=series,
+            revision_number=2,
+            event_type=AppointmentSeriesRevision.EventType.FUTURE_COMPOSITION,
+            provenance_kind=AppointmentSeriesRevision.ProvenanceKind.NATIVE,
+            effective_from=previous.effective_from,
+            title=previous.title,
+            service=previous.service,
+            room=previous.room,
+            start_date=previous.start_date,
+            end_date=previous.end_date,
+            days_of_week=previous.days_of_week,
+            time=previous.time,
+            duration_minutes=previous.duration_minutes,
+            session_type=previous.session_type,
+            materialization_mode=previous.materialization_mode,
+            default_appointment_status=previous.default_appointment_status,
+            allow_unpaid_reserve=previous.allow_unpaid_reserve,
+            allow_outside_availability=previous.allow_outside_availability,
+            override_reason=previous.override_reason,
+            fingerprint="f" * 64,
+            actor=self.admin,
+            actor_role_snapshot=AppointmentSeriesRevision.ActorRole.ADMINISTRATOR,
+            reason="Проверка обязательного перевода текущей редакции.",
+            supersedes=previous,
+            decided_at=timezone.now(),
+        )
+
+        with self.assertRaisesMessage(
+            DatabaseError,
+            "appointment series current revision does not match inserted revision",
+        ), transaction.atomic():
+            AppointmentSeriesRevision._base_manager.bulk_create([revision])
+            AppointmentSeriesRevisionParticipant._base_manager.bulk_create(
+                [
+                    AppointmentSeriesRevisionParticipant(
+                        revision=revision,
+                        child_id=participant.child_id,
+                        program_block_id=participant.program_block_id,
+                        billing_account_id=participant.billing_account_id,
+                        position=participant.position,
+                    )
+                    for participant in previous.participants.all()
+                ]
+            )
+            AppointmentSeriesRevisionStaffAssignment._base_manager.bulk_create(
+                [
+                    AppointmentSeriesRevisionStaffAssignment(
+                        revision=revision,
+                        staff_member_id=assignment.staff_member_id,
+                        role=assignment.role,
+                        override_availability=assignment.override_availability,
+                        override_reason=assignment.override_reason,
+                    )
+                    for assignment in previous.staff_assignments.all()
+                ]
+            )
+            with connection.cursor() as cursor:
+                cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
+
+    @skipUnless(connection.vendor == "postgresql", "DB guards проверяются на PostgreSQL.")
+    def test_run_database_guards_reject_cross_root_and_false_completion(self):
+        first = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        second = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        first.series.refresh_from_db()
+        second.series.refresh_from_db()
+
+        invalid_run = AppointmentSeriesMaterializationRun(
+            series=first.series,
+            revision=second.series.current_revision,
+            operation_key=uuid4(),
+            fingerprint="a" * 64,
+            mode=AppointmentSeriesMaterializationRun.Mode.MISSING_ONLY,
+            date_from=self.start_date,
+            date_to=self.start_date,
+            expected_result_count=0,
+            actor=self.admin,
+            actor_role_snapshot=AppointmentSeriesMaterializationRun.ActorRole.ADMINISTRATOR,
+        )
+        with self.assertRaisesMessage(
+            DatabaseError, "series run revision belongs to another series"
+        ), transaction.atomic():
+            AppointmentSeriesMaterializationRun._base_manager.bulk_create([invalid_run])
+
+        run = AppointmentSeriesMaterializationRun.objects.create(
+            series=first.series,
+            revision=first.series.current_revision,
+            operation_key=uuid4(),
+            fingerprint="b" * 64,
+            mode=AppointmentSeriesMaterializationRun.Mode.MISSING_ONLY,
+            date_from=self.start_date,
+            date_to=self.start_date,
+            expected_result_count=1,
+            actor=self.admin,
+            actor_role_snapshot=AppointmentSeriesMaterializationRun.ActorRole.ADMINISTRATOR,
+        )
+        false_completion = AppointmentSeriesMaterializationRunEvent(
+            run=run,
+            event_number=1,
+            event_type=AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED,
+            result_count=0,
+            created_count=0,
+            joined_count=0,
+            skipped_count=0,
+            unchanged_count=0,
+        )
+        with self.assertRaisesMessage(
+            DatabaseError, "series run completion counters do not match results"
+        ), transaction.atomic():
+            AppointmentSeriesMaterializationRunEvent._base_manager.bulk_create(
+                [false_completion]
+            )
+
+    @skipUnless(connection.vendor == "postgresql", "DB guards проверяются на PostgreSQL.")
+    def test_result_database_guard_rejects_participant_from_another_appointment(self):
+        first = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        second = program_series.create_group_series(
+            self.preview(end_date=self.start_date, start_time=time(12, 0)),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        first.series.refresh_from_db()
+        first_appointment = Appointment.objects.get(series=first.series)
+        foreign_participant = AppointmentParticipant.objects.filter(
+            appointment__series=second.series
+        ).first()
+        self.assertIsNotNone(foreign_participant)
+        run = AppointmentSeriesMaterializationRun.objects.create(
+            series=first.series,
+            revision=first.series.current_revision,
+            operation_key=uuid4(),
+            fingerprint="c" * 64,
+            mode=AppointmentSeriesMaterializationRun.Mode.MISSING_ONLY,
+            date_from=self.start_date,
+            date_to=self.start_date,
+            expected_result_count=1,
+            actor=self.admin,
+            actor_role_snapshot=AppointmentSeriesMaterializationRun.ActorRole.ADMINISTRATOR,
+        )
+        invalid_result = AppointmentSeriesMaterializationResult(
+            series=first.series,
+            revision=first.series.current_revision,
+            run=run,
+            scheduled_starts_at=first_appointment.starts_at,
+            scheduled_date=timezone.localtime(first_appointment.starts_at).date(),
+            attempt_number=1,
+            provenance_kind=AppointmentSeriesMaterializationResult.ProvenanceKind.NATIVE,
+            appointment=first_appointment,
+            appointment_participant=foreign_participant,
+            outcome=AppointmentSeriesOccurrence.Outcome.JOINED,
+            reason_code="guard_test",
+            reason="Участник другого занятия должен быть отклонен.",
+        )
+
+        with self.assertRaisesMessage(
+            DatabaseError, "series result participant belongs to another appointment"
+        ), transaction.atomic():
+            AppointmentSeriesMaterializationResult._base_manager.bulk_create(
+                [invalid_result]
+            )
+
+    @skipUnless(connection.vendor == "postgresql", "DB guards проверяются на PostgreSQL.")
+    def test_result_database_guard_rejects_incorrect_local_date(self):
+        applied = program_series.create_group_series(
+            self.preview(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        applied.series.refresh_from_db()
+        revision = applied.series.current_revision
+        first_result = applied.series.materialization_results.order_by(
+            "scheduled_starts_at"
+        ).first()
+        self.assertIsNotNone(first_result)
+        run = AppointmentSeriesMaterializationRun.objects.create(
+            series=applied.series,
+            revision=revision,
+            operation_key=uuid4(),
+            fingerprint="d" * 64,
+            mode=AppointmentSeriesMaterializationRun.Mode.MISSING_ONLY,
+            date_from=revision.start_date,
+            date_to=revision.end_date,
+            expected_result_count=1,
+            actor=self.admin,
+            actor_role_snapshot=AppointmentSeriesMaterializationRun.ActorRole.ADMINISTRATOR,
+        )
+        invalid_result = AppointmentSeriesMaterializationResult(
+            series=applied.series,
+            revision=revision,
+            run=run,
+            scheduled_starts_at=first_result.scheduled_starts_at,
+            scheduled_date=revision.end_date,
+            attempt_number=1,
+            provenance_kind=AppointmentSeriesMaterializationResult.ProvenanceKind.NATIVE,
+            outcome=AppointmentSeriesOccurrence.Outcome.SKIPPED,
+            reason_code="invalid_local_date",
+            reason="Локальная дата не должна подменяться.",
+        )
+
+        with self.assertRaisesMessage(
+            DatabaseError,
+            "series result local date does not match scheduled start",
+        ), transaction.atomic():
+            AppointmentSeriesMaterializationResult._base_manager.bulk_create(
+                [invalid_result]
+            )
+
+    def test_series_service_requires_operator_before_writing(self):
+        operation_key = uuid4()
+
+        with self.assertRaises(PermissionDenied):
+            program_series.create_group_series(
+                self.preview(end_date=self.start_date),
+                operation_key=operation_key,
+                actor=self.specialist_user,
+            )
+
+        self.assertFalse(AppointmentSeries.objects.filter(operation_key=operation_key).exists())
+
+    def test_series_history_protects_materialized_appointment(self):
+        result = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = Appointment.objects.get(series=result.series)
+
+        with self.assertRaises(ProtectedError):
+            appointment.delete()
+
     def test_composition_preserves_selected_primary_participant_and_staff(self):
         preview = self.preview(
             blocks=[self.block2, self.block1],
@@ -254,7 +773,11 @@ class GroupProgramSeriesTests(TestCase):
             end_date=self.start_date,
         )
 
-        result = program_series.create_group_series(preview, operation_key=uuid4())
+        result = program_series.create_group_series(
+            preview,
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
 
         self.assertEqual(result.series.child_id, self.child2.pk)
         self.assertEqual(result.series.staff_member_id, self.staff2.pk)
@@ -447,10 +970,46 @@ class GroupProgramSeriesTests(TestCase):
             status=AppointmentSeries.Status.ACTIVE,
         )
 
-        self.assertEqual(series.materialize_series(), 1)
+        self.assertEqual(series.materialize_series(actor=self.admin), 1)
 
         created = Appointment.objects.get(series=series)
         self.assertEqual(created.primary_participant.sequence_number, 2)
+
+    def test_expand_gate_does_not_relabel_legacy_occurrence_as_native(self):
+        day = self.start_date + timedelta(days=1)
+        weekday_label = next(
+            label for label, value in AppointmentSeries.DAY_MAP.items() if value == day.weekday()
+        )
+        series = AppointmentSeries.objects.create(
+            child=self.child1,
+            service=self.service,
+            staff_member=self.staff1,
+            room=self.room,
+            program_block=self.block1,
+            title="Legacy series awaiting backfill",
+            start_date=day,
+            end_date=day,
+            days_of_week=weekday_label,
+            time=time(9, 0),
+            duration_minutes=45,
+            status=AppointmentSeries.Status.ACTIVE,
+        )
+        AppointmentSeriesOccurrence.objects.create(
+            series=series,
+            scheduled_starts_at=_local(day, time(9, 0)),
+            outcome=AppointmentSeriesOccurrence.Outcome.SKIPPED,
+            reason_code="legacy_backfill",
+            reason="Исторический результат до dual-write.",
+        )
+
+        with self.assertRaisesMessage(ValidationError, "legacy backfill"):
+            series.materialize_series(actor=self.admin)
+
+        series.refresh_from_db()
+        self.assertIsNone(series.current_revision_id)
+        self.assertFalse(series.default_participants.exists())
+        self.assertFalse(series.default_staff_assignments.exists())
+        self.assertFalse(series.materialization_results.exists())
 
     def test_normal_planning_fails_closed_without_usable_account(self):
         self.block2.balance_account = None
@@ -539,6 +1098,7 @@ class GroupProgramSeriesTests(TestCase):
         result = program_series.create_group_series(
             preview,
             operation_key=uuid4(),
+            actor=self.admin,
         )
 
         self.assertEqual(result.created_count, 0)
@@ -551,6 +1111,7 @@ class GroupProgramSeriesTests(TestCase):
         result = program_series.create_group_series(
             self.preview(end_date=self.start_date),
             operation_key=uuid4(),
+            actor=self.admin,
         )
         occurrence = result.series.occurrences.get()
         occurrence.reason = "Попытка изменить историю"
@@ -567,6 +1128,7 @@ class GroupProgramSeriesTests(TestCase):
         result = program_series.create_group_series(
             self.preview(end_date=self.start_date),
             operation_key=uuid4(),
+            actor=self.admin,
         )
         occurrence = result.series.occurrences.get()
 
@@ -576,9 +1138,7 @@ class GroupProgramSeriesTests(TestCase):
             AppointmentSeriesOccurrence.objects.filter(pk=occurrence.pk).update(
                 reason="Bypass attempt"
             )
-        with self.assertRaisesMessage(
-            DatabaseError, "occurrences are immutable"
-        ), transaction.atomic():
+        with self.assertRaises(ProtectedError), transaction.atomic():
             AppointmentSeriesOccurrence.objects.filter(pk=occurrence.pk).delete()
 
     def test_group_series_view_preview_create_and_detail(self):
@@ -777,6 +1337,23 @@ class GroupProgramJoinTests(TestCase):
         self.assertEqual(occurrence.outcome, AppointmentSeriesOccurrence.Outcome.JOINED)
         self.assertEqual(occurrence.appointment, target)
         self.assertEqual(occurrence.appointment_participant, participant)
+        result.series.refresh_from_db()
+        revision = result.series.current_revision
+        self.assertEqual(
+            revision.provenance_kind,
+            AppointmentSeriesRevision.ProvenanceKind.NATIVE,
+        )
+        self.assertEqual(revision.participants.count(), 1)
+        self.assertEqual(revision.staff_assignments.count(), 0)
+        run = result.series.materialization_runs.get()
+        materialization_result = run.results.get()
+        self.assertEqual(materialization_result.outcome, occurrence.outcome)
+        self.assertEqual(
+            materialization_result.compatibility_occurrence_id,
+            occurrence.pk,
+        )
+        self.assertEqual(materialization_result.appointment_participant_id, participant.pk)
+        self.assertEqual(run.events.get().result_count, 1)
         with self.assertRaises(ProtectedError):
             participant.delete()
 
@@ -810,11 +1387,13 @@ class GroupProgramJoinTests(TestCase):
             block=self.block,
             appointments=[first],
             operation_key=operation_key,
+            actor=self.admin,
         )
         repeated = program_series.join_program_block_to_groups(
             block=self.block,
             appointments=[first],
             operation_key=operation_key,
+            actor=self.admin,
         )
 
         self.assertEqual(initial.joined_count, 1)
@@ -826,6 +1405,7 @@ class GroupProgramJoinTests(TestCase):
                 block=self.block,
                 appointments=[second],
                 operation_key=operation_key,
+                actor=self.admin,
             )
 
     def test_preview_blocks_capacity_recipient_conflict_and_missing_funding(self):
@@ -875,6 +1455,10 @@ class GroupProgramJoinTests(TestCase):
             (target,),
             operation_key=uuid4(),
         )
+        revision, _ = series_revisions.ensure_initial_revision(
+            series,
+            actor=self.admin,
+        )
         replacement = BalanceAccount.objects.create(
             child=self.children[2],
             funding_source=self.funding,
@@ -888,6 +1472,7 @@ class GroupProgramJoinTests(TestCase):
 
         occurrence, created = program_series._join_one_appointment(
             series,
+            revision,
             target,
             actor=self.admin,
         )
@@ -917,6 +1502,7 @@ class GroupProgramJoinTests(TestCase):
                 block=self.block,
                 appointments=[target],
                 operation_key=operation_key,
+                actor=self.admin,
             )
         self.assertFalse(target.participants.filter(child=self.children[2]).exists())
 
@@ -1024,6 +1610,12 @@ class GroupProgramJoinTests(TestCase):
 
 class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
     def setUp(self):
+        self.admin = User.objects.create_user(
+            "group-series-concurrency-admin",
+            password="x",
+            is_staff=True,
+            is_superuser=True,
+        )
         self.children = [
             Child.objects.create(last_name="Concurrent", first_name=f"Child {index}")
             for index in range(1, 5)
@@ -1110,6 +1702,7 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
                 block=block,
                 appointments=[appointment],
                 operation_key=operation_key,
+                actor=self.admin,
             )
         except BaseException as exc:
             outcomes.put(exc)
@@ -1183,6 +1776,7 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
                 result = program_series.create_group_series(
                     preview,
                     operation_key=uuid4(),
+                    actor=self.admin,
                 )
             except BaseException as exc:
                 outcomes.put(exc)
@@ -1273,6 +1867,7 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
                 result = program_series.create_group_series(
                     preview,
                     operation_key=operation_key,
+                    actor=self.admin,
                 )
             except BaseException as exc:
                 outcomes.put(exc)
@@ -1403,6 +1998,7 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
                     block=selected_block,
                     appointments=[selected_target],
                     operation_key=uuid4(),
+                    actor=self.admin,
                 )
                 outcomes.put(("join", result.joined_count))
             except BaseException as exc:
@@ -1575,6 +2171,472 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
         executor.migrate(executor.loader.graph.leaf_nodes("operations"))
         super().tearDown()
 
+    def _create_native_series_history(self, apps, *, suffix):
+        user_model = apps.get_model("auth", "User")
+        child_model = apps.get_model("operations", "Child")
+        staff_model = apps.get_model("operations", "StaffMember")
+        service_model = apps.get_model("operations", "Service")
+        room_model = apps.get_model("operations", "Room")
+        series_model = apps.get_model("operations", "AppointmentSeries")
+        revision_model = apps.get_model("operations", "AppointmentSeriesRevision")
+        revision_participant_model = apps.get_model(
+            "operations", "AppointmentSeriesRevisionParticipant"
+        )
+        revision_staff_model = apps.get_model(
+            "operations", "AppointmentSeriesRevisionStaffAssignment"
+        )
+        run_model = apps.get_model(
+            "operations", "AppointmentSeriesMaterializationRun"
+        )
+
+        actor = user_model.objects.create(
+            username=f"series-migration-{suffix}",
+            password="!",
+            is_staff=True,
+            is_superuser=True,
+        )
+        child = child_model.objects.create(
+            last_name="Native",
+            first_name=f"Series {suffix}",
+        )
+        staff = staff_model.objects.create(full_name=f"Native staff {suffix}")
+        service = service_model.objects.create(
+            name=f"Native service {suffix}",
+            code=f"NATIVE-{suffix}",
+        )
+        room = room_model.objects.create(name=f"Native room {suffix}")
+        day = timezone.localdate() + timedelta(days=40)
+        series = series_model.objects.create(
+            child=child,
+            service=service,
+            staff_member=staff,
+            room=room,
+            title=f"Native series {suffix}",
+            start_date=day,
+            end_date=day,
+            days_of_week="ПН",
+            time=time(10, 0),
+            duration_minutes=30,
+            session_type="individual",
+            materialization_mode="create_appointments",
+            default_appointment_status="proposed",
+            status="active",
+        )
+        revision = revision_model.objects.create(
+            series_id=series.pk,
+            revision_number=1,
+            event_type="created",
+            provenance_kind="native",
+            effective_from=day,
+            title=series.title,
+            service_id=service.pk,
+            room_id=room.pk,
+            start_date=day,
+            end_date=day,
+            days_of_week="ПН",
+            time=time(10, 0),
+            duration_minutes=30,
+            session_type="individual",
+            materialization_mode="create_appointments",
+            default_appointment_status="proposed",
+            allow_unpaid_reserve=False,
+            allow_outside_availability=False,
+            override_reason="",
+            fingerprint="d" * 64,
+            actor_id=actor.pk,
+            actor_role_snapshot="director",
+            reason="Native dual-write migration fixture.",
+            decided_at=timezone.now(),
+        )
+        revision_participant_model.objects.create(
+            revision_id=revision.pk,
+            child_id=child.pk,
+            position=1,
+        )
+        revision_staff_model.objects.create(
+            revision_id=revision.pk,
+            staff_member_id=staff.pk,
+            role="primary",
+        )
+        series_model.objects.filter(pk=series.pk).update(
+            current_revision_id=revision.pk
+        )
+        run = run_model.objects.create(
+            series_id=series.pk,
+            revision_id=revision.pk,
+            operation_key=uuid4(),
+            fingerprint="e" * 64,
+            mode="initial",
+            date_from=day,
+            date_to=day,
+            expected_result_count=0,
+            actor_id=actor.pk,
+            actor_role_snapshot="director",
+            reason="Native dual-write migration fixture.",
+        )
+        return series, revision, run
+
+    def test_backfill_skips_complete_native_dual_write_state(self):
+        target_before = [("operations", "0057_series_revision_expand")]
+        target_after = [("operations", "0058_backfill_series_revisions")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_before)
+        apps = executor.loader.project_state(target_before).apps
+
+        with transaction.atomic():
+            series, revision, run = self._create_native_series_history(
+                apps,
+                suffix="mixed",
+            )
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+        migrated_apps = executor.loader.project_state(target_after).apps
+        revision_model = migrated_apps.get_model(
+            "operations", "AppointmentSeriesRevision"
+        )
+        run_model = migrated_apps.get_model(
+            "operations", "AppointmentSeriesMaterializationRun"
+        )
+        migrated_series = migrated_apps.get_model(
+            "operations", "AppointmentSeries"
+        ).objects.get(pk=series.pk)
+
+        self.assertEqual(migrated_series.current_revision_id, revision.pk)
+        self.assertEqual(revision_model.objects.filter(series_id=series.pk).count(), 1)
+        self.assertEqual(run_model.objects.filter(series_id=series.pk).count(), 1)
+        self.assertEqual(run_model.objects.get(pk=run.pk).mode, "initial")
+        self.assertFalse(
+            revision_model.objects.filter(
+                series_id=series.pk,
+                event_type="legacy_import",
+            ).exists()
+        )
+
+    @skipUnless(connection.vendor == "postgresql", "Reverse guard проверяется на PostgreSQL.")
+    def test_native_history_blocks_guard_removal_and_keeps_triggers_installed(self):
+        target_with_guards = [("operations", "0059_series_revision_guards")]
+        target_without_guards = [("operations", "0058_backfill_series_revisions")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_with_guards)
+        apps = executor.loader.project_state(target_with_guards).apps
+
+        with transaction.atomic():
+            _, revision, _ = self._create_native_series_history(
+                apps,
+                suffix="reverse",
+            )
+
+        executor = MigrationExecutor(connection)
+        with self.assertRaisesMessage(
+            RuntimeError,
+            "Cannot remove series revision guards while native history exists",
+        ):
+            executor.migrate(target_without_guards)
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT EXISTS ("
+                "SELECT 1 FROM pg_trigger "
+                "WHERE tgname = 'operations_appointmentseriesrevision_immutable'"
+                ")"
+            )
+            self.assertTrue(cursor.fetchone()[0])
+        with self.assertRaisesMessage(
+            DatabaseError,
+            "appointment series history rows are immutable",
+        ), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE operations_appointmentseriesrevision "
+                "SET reason = %s WHERE id = %s",
+                ["Bypass attempt", revision.pk],
+            )
+
+    def test_series_revision_backfill_copies_history_with_explicit_provenance(self):
+        actor = User.objects.create_superuser(
+            username="legacy-revision-retry-admin",
+            password="x",
+        )
+        target_before = [("operations", "0056_group_series_join_mode")]
+        target_after = [("operations", "0058_backfill_series_revisions")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_before)
+        old_apps = executor.loader.project_state(target_before).apps
+
+        child_model = old_apps.get_model("operations", "Child")
+        staff_model = old_apps.get_model("operations", "StaffMember")
+        service_model = old_apps.get_model("operations", "Service")
+        room_model = old_apps.get_model("operations", "Room")
+        program_model = old_apps.get_model("operations", "TreatmentProgram")
+        block_model = old_apps.get_model("operations", "ProgramBlock")
+        series_model = old_apps.get_model("operations", "AppointmentSeries")
+        series_participant_model = old_apps.get_model(
+            "operations", "AppointmentSeriesParticipant"
+        )
+        series_staff_model = old_apps.get_model(
+            "operations", "AppointmentSeriesStaffAssignment"
+        )
+        appointment_model = old_apps.get_model("operations", "Appointment")
+        participant_model = old_apps.get_model("operations", "AppointmentParticipant")
+        assignment_model = old_apps.get_model("operations", "AppointmentStaffAssignment")
+        occurrence_model = old_apps.get_model(
+            "operations", "AppointmentSeriesOccurrence"
+        )
+
+        child = child_model.objects.create(last_name="Revision", first_name="Legacy")
+        staff = staff_model.objects.create(full_name="Legacy revision staff")
+        service = service_model.objects.create(
+            name="Legacy revision service",
+            code="LEGACY-REVISION",
+        )
+        room = room_model.objects.create(name="Legacy revision room")
+        program = program_model.objects.create(
+            child=child,
+            title="Legacy revision program",
+            status="active",
+        )
+        block = block_model.objects.create(
+            program=program,
+            number=1,
+            title="Legacy revision block",
+            service=service,
+            staff_member=staff,
+            planned_sessions=1,
+        )
+        day = timezone.localdate() + timedelta(days=40)
+        weekday_label = ("ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС")[
+            day.weekday()
+        ]
+        starts_at = _local(day, time(10, 0))
+        ends_at = starts_at + timedelta(minutes=30)
+        series = series_model.objects.create(
+            child=child,
+            service=service,
+            staff_member=staff,
+            room=room,
+            program_block=block,
+            title="Legacy revision series",
+            start_date=day,
+            end_date=day,
+            days_of_week=weekday_label,
+            time=time(10, 0),
+            duration_minutes=30,
+            session_type="individual",
+            status="active",
+        )
+        series_participant_model.objects.create(
+            series=series,
+            child=child,
+            program_block=block,
+            position=1,
+        )
+        series_staff_model.objects.create(
+            series=series,
+            staff_member=staff,
+            role="primary",
+        )
+        appointment = appointment_model.objects.create(
+            child=child,
+            service=service,
+            staff_member=staff,
+            room=room,
+            starts_at=starts_at,
+            ends_at=ends_at,
+            status="confirmed",
+            series=series,
+            program_block=block,
+            session_type="individual",
+        )
+        participant_model.objects.create(
+            appointment=appointment,
+            child=child,
+            program_block=block,
+            starts_at_snapshot=starts_at,
+            ends_at_snapshot=ends_at,
+            appointment_status="confirmed",
+        )
+        assignment_model.objects.create(
+            appointment=appointment,
+            staff_member=staff,
+            role="primary",
+            starts_at_snapshot=starts_at,
+            ends_at_snapshot=ends_at,
+            appointment_status="confirmed",
+        )
+        occurrence = occurrence_model.objects.create(
+            series=series,
+            scheduled_starts_at=starts_at,
+            appointment=appointment,
+            outcome="created",
+            reason_code="legacy_backfill",
+            reason="Existing immutable history.",
+        )
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+        apps = executor.loader.project_state(target_after).apps
+        migrated_series = apps.get_model("operations", "AppointmentSeries").objects.get(
+            pk=series.pk
+        )
+        revision_model = apps.get_model("operations", "AppointmentSeriesRevision")
+        run_model = apps.get_model(
+            "operations", "AppointmentSeriesMaterializationRun"
+        )
+        result_model = apps.get_model(
+            "operations", "AppointmentSeriesMaterializationResult"
+        )
+        event_model = apps.get_model(
+            "operations", "AppointmentSeriesMaterializationRunEvent"
+        )
+        migrated_occurrence = apps.get_model(
+            "operations", "AppointmentSeriesOccurrence"
+        ).objects.get(pk=occurrence.pk)
+
+        revision = revision_model.objects.get(series_id=series.pk)
+        self.assertEqual(migrated_series.current_revision_id, revision.pk)
+        self.assertEqual(revision.revision_number, 1)
+        self.assertEqual(revision.provenance_kind, "legacy_reconstructed")
+        self.assertIsNone(revision.actor_id)
+        self.assertEqual(revision.participants.count(), 1)
+        self.assertEqual(revision.staff_assignments.count(), 1)
+        run = run_model.objects.get(series_id=series.pk)
+        self.assertEqual(run.mode, "legacy_import")
+        self.assertEqual(run.expected_result_count, 1)
+        result = result_model.objects.get(run_id=run.pk)
+        self.assertEqual(result.compatibility_occurrence_id, occurrence.pk)
+        self.assertEqual(result.provenance_kind, "legacy_reconstructed")
+        self.assertEqual(result.appointment_id, appointment.pk)
+        event = event_model.objects.get(run_id=run.pk)
+        self.assertEqual(event.event_number, 1)
+        self.assertEqual(event.result_count, 1)
+        self.assertEqual(migrated_occurrence.appointment_id, appointment.pk)
+
+        live_series = AppointmentSeries.objects.get(pk=series.pk)
+        self.assertEqual(live_series.materialize_series(actor=actor), 0)
+        self.assertEqual(live_series.materialization_runs.count(), 1)
+        self.assertEqual(live_series.materialization_results.count(), 1)
+        self.assertEqual(live_series.occurrences.count(), 1)
+
+        result_model.objects.create(
+            series_id=series.pk,
+            revision_id=revision.pk,
+            run_id=run.pk,
+            scheduled_starts_at=starts_at + timedelta(days=1),
+            scheduled_date=timezone.localtime(starts_at + timedelta(days=1)).date(),
+            attempt_number=1,
+            provenance_kind="native",
+            outcome="skipped",
+            reason_code="native_history",
+            reason="New history blocks destructive reverse.",
+        )
+        executor = MigrationExecutor(connection)
+        with self.assertRaisesMessage(
+            RuntimeError,
+            "Cannot reverse series revision backfill while new revision or run history exists",
+        ):
+            executor.migrate(target_before)
+
+    def test_single_participant_legacy_group_replays_without_new_appointments(self):
+        actor = User.objects.create_superuser(
+            username="legacy-group-retry-admin",
+            password="x",
+        )
+        target_before = [("operations", "0056_group_series_join_mode")]
+        target_after = [("operations", "0058_backfill_series_revisions")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_before)
+        apps = executor.loader.project_state(target_before).apps
+
+        child_model = apps.get_model("operations", "Child")
+        staff_model = apps.get_model("operations", "StaffMember")
+        service_model = apps.get_model("operations", "Service")
+        room_model = apps.get_model("operations", "Room")
+        series_model = apps.get_model("operations", "AppointmentSeries")
+        participant_model = apps.get_model(
+            "operations", "AppointmentSeriesParticipant"
+        )
+        staff_assignment_model = apps.get_model(
+            "operations", "AppointmentSeriesStaffAssignment"
+        )
+        appointment_model = apps.get_model("operations", "Appointment")
+        occurrence_model = apps.get_model(
+            "operations", "AppointmentSeriesOccurrence"
+        )
+
+        child = child_model.objects.create(last_name="Legacy", first_name="Group")
+        staff = staff_model.objects.create(full_name="Legacy group specialist")
+        service = service_model.objects.create(
+            name="Legacy group service",
+            code="LEGACY-GROUP-REPLAY",
+        )
+        room = room_model.objects.create(name="Legacy group room")
+        day = timezone.localdate() + timedelta(days=35)
+        weekday_label = ("ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС")[
+            day.weekday()
+        ]
+        starts_at = _local(day, time(10, 0))
+        series = series_model.objects.create(
+            operation_key=uuid4(),
+            child=child,
+            service=service,
+            staff_member=staff,
+            room=room,
+            title="Legacy group awaiting recruitment",
+            start_date=day,
+            end_date=day,
+            days_of_week=weekday_label,
+            time=time(10, 0),
+            duration_minutes=30,
+            session_type="group",
+            materialization_mode="create_appointments",
+            default_appointment_status="confirmed",
+            status="active",
+        )
+        participant_model.objects.create(
+            series=series,
+            child=child,
+            position=1,
+        )
+        staff_assignment_model.objects.create(
+            series=series,
+            staff_member=staff,
+            role="primary",
+        )
+        appointment = appointment_model.objects.create(
+            child=child,
+            service=service,
+            staff_member=staff,
+            room=room,
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(minutes=30),
+            status="confirmed",
+            series=series,
+            session_type="group",
+        )
+        occurrence_model.objects.create(
+            series=series,
+            scheduled_starts_at=starts_at,
+            appointment=appointment,
+            outcome="created",
+            reason_code="legacy_backfill",
+            reason="Legacy group fact.",
+        )
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+        live_series = AppointmentSeries.objects.get(pk=series.pk)
+        replay = program_series.materialize_group_series(
+            live_series,
+            actor=actor,
+        )
+
+        self.assertEqual(replay.created_count, 0)
+        self.assertEqual(replay.unchanged_count, 1)
+        self.assertEqual(live_series.materialization_runs.count(), 1)
+        self.assertEqual(live_series.materialization_results.count(), 1)
+        self.assertEqual(live_series.occurrences.count(), 1)
+        self.assertEqual(Appointment.objects.filter(series_id=series.pk).count(), 1)
+
     @skipUnless(connection.vendor == "postgresql", "Миграционный backfill проверяется на PostgreSQL.")
     def test_legacy_series_is_backfilled_without_removing_legacy_fields(self):
         target_before = [("operations", "0054_donor_report_submission")]
@@ -1605,6 +2667,9 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
             planned_sessions=2,
         )
         day = timezone.localdate() + timedelta(days=30)
+        weekday_label = ("ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС")[
+            day.weekday()
+        ]
         series = series_old.objects.create(
             child=child,
             service=service,
@@ -1614,7 +2679,7 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
             title="Legacy series",
             start_date=day,
             end_date=day,
-            days_of_week="ПН",
+            days_of_week=weekday_label,
             time=time(10, 0),
             duration_minutes=30,
             status="active",
@@ -1688,9 +2753,10 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
                 reason_code="legacy_backfill",
             ).exists()
         )
+
         occurrence_new.objects.create(
             series_id=series.pk,
-            scheduled_starts_at=starts_at + timedelta(days=1),
+            scheduled_starts_at=starts_at + timedelta(hours=1),
             outcome="skipped",
             reason_code="new_series_history",
             reason="New history must block a destructive reverse migration.",
@@ -1721,6 +2787,9 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
         service_model = apps.get_model("operations", "Service")
         room_model = apps.get_model("operations", "Room")
         series_model = apps.get_model("operations", "AppointmentSeries")
+        series_participant_model = apps.get_model(
+            "operations", "AppointmentSeriesParticipant"
+        )
 
         child = child_model.objects.create(last_name="Join", first_name="History")
         staff = staff_model.objects.create(full_name="Join migration staff")
@@ -1730,7 +2799,7 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
         )
         room = room_model.objects.create(name="Join migration room")
         day = timezone.localdate() + timedelta(days=30)
-        series_model.objects.create(
+        series = series_model.objects.create(
             child=child,
             service=service,
             staff_member=staff,
@@ -1744,6 +2813,11 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
             session_type="group",
             materialization_mode="join_existing",
             status="active",
+        )
+        series_participant_model.objects.create(
+            series=series,
+            child=child,
+            position=1,
         )
 
         executor = MigrationExecutor(connection)

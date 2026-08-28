@@ -22,6 +22,7 @@ from operations.models import (
     AppointmentSeries,
     AppointmentSeriesOccurrence,
     AppointmentSeriesParticipant,
+    AppointmentSeriesRevision,
     AppointmentSeriesStaffAssignment,
     AppointmentStaffAssignment,
     BalanceAccount,
@@ -30,7 +31,7 @@ from operations.models import (
     StaffMember,
     TreatmentProgram,
 )
-from operations.services import program_wizard, scheduling
+from operations.services import program_wizard, scheduling, series_revisions
 
 
 @dataclass(frozen=True)
@@ -77,6 +78,14 @@ class GroupSeriesCreateResult:
     skipped_count: int
     unchanged_count: int
     reused_series: bool = False
+
+
+@dataclass(frozen=True)
+class SeriesMaterializationResult:
+    series: AppointmentSeries
+    created_count: int
+    skipped_count: int
+    unchanged_count: int
 
 
 @dataclass(frozen=True)
@@ -609,8 +618,77 @@ def _record_skipped(
     return occurrence, created
 
 
-def _materialize_one_date(
+@transaction.atomic
+def _ensure_individual_revision(
     series: AppointmentSeries,
+    *,
+    actor: Any,
+) -> AppointmentSeriesRevision:
+    locked = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
+    if locked.session_type != Appointment.SessionType.INDIVIDUAL:
+        raise ValidationError("Индивидуальный materializer не обслуживает групповые серии.")
+    if (
+        locked.materialization_mode
+        != AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS
+    ):
+        raise ValidationError("Серия присоединения не создает новые занятия.")
+
+    participants = list(locked.default_participants.order_by("position", "pk"))
+    assignments = list(locked.default_staff_assignments.order_by("pk"))
+    if locked.current_revision_id:
+        if len(participants) != 1 or len(assignments) != 1:
+            raise series_revisions.SeriesRevisionMismatch(
+                "Нормализованный состав индивидуальной серии поврежден."
+            )
+    else:
+        if not participants:
+            billing_account_id = None
+            if locked.program_block_id:
+                program_block = ProgramBlock.objects.select_for_update().get(
+                    pk=locked.program_block_id
+                )
+                billing_account_id = program_block.balance_account_id
+                if billing_account_id:
+                    BalanceAccount.all_objects.select_for_update().get(
+                        pk=billing_account_id
+                    )
+            participants = [
+                AppointmentSeriesParticipant.objects.create(
+                    series=locked,
+                    child=locked.child,
+                    program_block=locked.program_block,
+                    billing_account_id=billing_account_id,
+                    position=1,
+                )
+            ]
+        if not assignments:
+            assignments = [
+                AppointmentSeriesStaffAssignment.objects.create(
+                    series=locked,
+                    staff_member=locked.staff_member,
+                    role=AppointmentSeriesStaffAssignment.Role.PRIMARY,
+                )
+            ]
+    participant = participants[0]
+    assignment = assignments[0]
+    if (
+        len(participants) != 1
+        or participant.child_id != locked.child_id
+        or participant.program_block_id != locked.program_block_id
+        or len(assignments) != 1
+        or assignment.staff_member_id != locked.staff_member_id
+        or assignment.role != AppointmentSeriesStaffAssignment.Role.PRIMARY
+    ):
+        raise ValidationError(
+            "Legacy-проекция индивидуальной серии не совпадает с нормализованным составом."
+        )
+    revision, _ = series_revisions.ensure_initial_revision(locked, actor=actor)
+    return revision
+
+
+def _materialize_individual_date(
+    series: AppointmentSeries,
+    revision: AppointmentSeriesRevision,
     starts_at: datetime,
     *,
     actor: Any,
@@ -618,6 +696,7 @@ def _materialize_one_date(
     try:
         with transaction.atomic():
             locked_series = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
+            series_revisions.assert_current_projection(locked_series, revision)
             existing = AppointmentSeriesOccurrence.objects.filter(
                 series=locked_series,
                 scheduled_starts_at=starts_at,
@@ -625,8 +704,252 @@ def _materialize_one_date(
             if existing:
                 return existing, False
 
-            participants, assignments = _series_composition(locked_series)
-            room_id = locked_series.room_id
+            participants = list(
+                revision.participants.select_related(
+                    "child",
+                    "program_block__program",
+                    "program_block__balance_account",
+                    "billing_account",
+                )
+            )
+            assignments = list(
+                revision.staff_assignments.select_related("staff_member")
+            )
+            if len(participants) != 1 or len(assignments) != 1:
+                raise series_revisions.SeriesRevisionMismatch(
+                    "Снимок индивидуальной редакции поврежден."
+                )
+            participant = participants[0]
+            assignment = assignments[0]
+            room_id = revision.room_id
+            with schedule_writes.lock_schedule_write(room_ids=[room_id]) as locked:
+                room = locked.room_for(room_id)
+                block = None
+                if participant.program_block_id:
+                    block = (
+                        ProgramBlock.objects.select_for_update(of=("self",))
+                        .select_related("program__child", "service", "balance_account")
+                        .get(pk=participant.program_block_id)
+                    )
+                    block.program = TreatmentProgram.objects.select_for_update().get(
+                        pk=block.program_id
+                    )
+                    if (
+                        block.program.child_id != participant.child_id
+                        or block.service_id != revision.service_id
+                    ):
+                        raise _SkipOccurrence(
+                            "series_composition",
+                            "Каскад больше не соответствует снимку редакции серии.",
+                        )
+                    if block.balance_account_id != participant.billing_account_id:
+                        raise _SkipOccurrence(
+                            "funding_changed",
+                            "Счет каскада изменился после фиксации редакции серии.",
+                        )
+                    if participant.billing_account_id:
+                        block.balance_account = (
+                            BalanceAccount.all_objects.select_for_update().get(
+                                pk=participant.billing_account_id
+                            )
+                        )
+                    limit_reason = _block_limit_reason(
+                        [block],
+                        0,
+                        allow_unpaid_reserve=revision.allow_unpaid_reserve,
+                        on_date=timezone.localtime(starts_at).date(),
+                    )
+                    if limit_reason:
+                        raise _SkipOccurrence(*limit_reason)
+
+                ends_at = starts_at + timedelta(minutes=revision.duration_minutes)
+                report = scheduling.find_overlaps(
+                    starts_at,
+                    ends_at,
+                    children=[participant.child],
+                    staff_members=[assignment.staff_member],
+                    room=room,
+                )
+                if report.has_conflict:
+                    reason = ", ".join(report.human_messages()) or "конфликт расписания"
+                    code = "capacity" if report.room_over_limit else "schedule_conflict"
+                    raise _SkipOccurrence(code, reason)
+                availability_reason = scheduling.is_within_availability(
+                    assignment.staff_member,
+                    starts_at,
+                    ends_at,
+                )
+                if availability_reason and not assignment.override_availability:
+                    raise _SkipOccurrence(
+                        "staff_unavailable",
+                        f"{assignment.staff_member}: {availability_reason}",
+                    )
+                schedule_writes.ensure_room_capacity(
+                    starts_at=starts_at,
+                    ends_at=ends_at,
+                    children=[participant.child],
+                    staff_members=[assignment.staff_member],
+                    room=room,
+                    status=revision.default_appointment_status,
+                )
+                appointment = Appointment.objects.create(
+                    child=participant.child,
+                    staff_member=assignment.staff_member,
+                    service=revision.service,
+                    room=room,
+                    starts_at=starts_at,
+                    ends_at=ends_at,
+                    session_type=Appointment.SessionType.INDIVIDUAL,
+                    title=revision.title,
+                    status=revision.default_appointment_status,
+                    billing_account=participant.billing_account,
+                    billing_decision=Appointment.BillingDecision.UNDECIDED,
+                    series=locked_series,
+                    program_block=block,
+                    staff_availability_override=assignment.override_availability,
+                    staff_availability_override_reason=(
+                        assignment.override_reason
+                        if assignment.override_availability
+                        else ""
+                    ),
+                    admin_note="Создано единым materializer серии.",
+                )
+                if block and block.status == ProgramBlock.Status.PLANNED:
+                    ProgramBlock.objects.filter(pk=block.pk).update(
+                        status=ProgramBlock.Status.SCHEDULED,
+                        updated_at=timezone.now(),
+                    )
+                return (
+                    AppointmentSeriesOccurrence.objects.create(
+                        series=locked_series,
+                        scheduled_starts_at=starts_at,
+                        appointment=appointment,
+                        outcome=AppointmentSeriesOccurrence.Outcome.CREATED,
+                        created_by=actor,
+                    ),
+                    True,
+                )
+    except _SkipOccurrence as exc:
+        return _record_skipped(
+            series,
+            starts_at,
+            code=exc.code,
+            reason=exc.reason,
+            actor=actor,
+        )
+    except series_revisions.SeriesRevisionMismatch:
+        raise
+    except (ValidationError, IntegrityError) as exc:
+        return _record_skipped(
+            series,
+            starts_at,
+            code="stale_conflict",
+            reason=(
+                "Расписание изменилось во время создания: " + "; ".join(exc.messages)
+                if isinstance(exc, ValidationError)
+                else "Расписание изменилось во время создания; дата безопасно пропущена."
+            ),
+            actor=actor,
+        )
+
+
+def materialize_individual_series(
+    series: AppointmentSeries,
+    *,
+    actor: Any,
+) -> SeriesMaterializationResult:
+    series_revisions.require_operator_role(actor)
+    if series.status != AppointmentSeries.Status.ACTIVE:
+        raise ValidationError("Создавать занятия можно только для активной серии.")
+    revision = _ensure_individual_revision(series, actor=actor)
+    starts = _candidate_starts(
+        revision.start_date,
+        revision.end_date,
+        (
+            AppointmentSeries.DAY_MAP[token.strip().upper()]
+            for token in revision.days_of_week.split(",")
+        ),
+        revision.time,
+    )
+    run, _ = series_revisions.get_or_create_initial_run(
+        series,
+        revision,
+        operation_key=series.operation_key,
+        actor=actor,
+        expected_result_count=len(starts),
+    )
+    created_count = 0
+    skipped_count = 0
+    unchanged_count = 0
+    for starts_at in starts:
+        with transaction.atomic():
+            occurrence, created = _materialize_individual_date(
+                series,
+                revision,
+                starts_at,
+                actor=actor,
+            )
+            series_revisions.record_compatibility_result(run, occurrence)
+        if not created:
+            unchanged_count += 1
+        elif occurrence.outcome == AppointmentSeriesOccurrence.Outcome.CREATED:
+            created_count += 1
+        else:
+            skipped_count += 1
+    series_revisions.complete_run(run)
+    return SeriesMaterializationResult(
+        series=series,
+        created_count=created_count,
+        skipped_count=skipped_count,
+        unchanged_count=unchanged_count,
+    )
+
+
+def _materialize_one_date(
+    series: AppointmentSeries,
+    revision: AppointmentSeriesRevision,
+    starts_at: datetime,
+    *,
+    actor: Any,
+) -> tuple[AppointmentSeriesOccurrence, bool]:
+    try:
+        with transaction.atomic():
+            locked_series = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
+            series_revisions.assert_current_projection(locked_series, revision)
+            existing = AppointmentSeriesOccurrence.objects.filter(
+                series=locked_series,
+                scheduled_starts_at=starts_at,
+            ).first()
+            if existing:
+                return existing, False
+
+            participants = list(
+                revision.participants.select_related(
+                    "child",
+                    "program_block__program",
+                    "billing_account",
+                ).order_by("position", "pk")
+            )
+            assignments = list(
+                revision.staff_assignments.select_related("staff_member").order_by(
+                    "pk"
+                )
+            )
+            primary_assignments = [
+                assignment
+                for assignment in assignments
+                if assignment.role == AppointmentSeriesStaffAssignment.Role.PRIMARY
+            ]
+            if (
+                len(participants) < 2
+                or any(not participant.program_block_id for participant in participants)
+                or len(primary_assignments) != 1
+            ):
+                raise _SkipOccurrence(
+                    "series_composition",
+                    "Снимок состава групповой редакции неполон.",
+                )
+            room_id = revision.room_id
             with schedule_writes.lock_schedule_write(room_ids=[room_id]) as locked:
                 room = locked.room_for(room_id)
                 block_ids = sorted(
@@ -650,7 +973,21 @@ def _materialize_one_date(
                 }
                 for block in blocks:
                     block.program = locked_programs[block.program_id]
-                if not locked_series.allow_unpaid_reserve:
+                for participant, block in zip(participants, blocks, strict=True):
+                    if (
+                        block.program.child_id != participant.child_id
+                        or block.service_id != revision.service_id
+                    ):
+                        raise _SkipOccurrence(
+                            "series_composition",
+                            "Каскад больше не соответствует снимку групповой редакции.",
+                        )
+                    if block.balance_account_id != participant.billing_account_id:
+                        raise _SkipOccurrence(
+                            "funding_changed",
+                            "Счет каскада изменился после фиксации групповой редакции.",
+                        )
+                if not revision.allow_unpaid_reserve:
                     account_ids = sorted(
                         {block.balance_account_id for block in blocks if block.balance_account_id}
                     )
@@ -666,21 +1003,21 @@ def _materialize_one_date(
                 limit_reason = _block_limit_reason(
                     blocks,
                     0,
-                    allow_unpaid_reserve=locked_series.allow_unpaid_reserve,
+                    allow_unpaid_reserve=revision.allow_unpaid_reserve,
                     on_date=timezone.localtime(starts_at).date(),
                 )
                 if limit_reason:
                     raise _SkipOccurrence(*limit_reason)
 
                 staff_members = [assignment.staff_member for assignment in assignments]
-                ends_at = starts_at + timedelta(minutes=locked_series.duration_minutes)
+                ends_at = starts_at + timedelta(minutes=revision.duration_minutes)
                 conflict = _slot_conflict(
                     starts_at=starts_at,
                     ends_at=ends_at,
                     blocks=blocks,
                     staff_members=staff_members,
                     room=room,
-                    allow_outside_availability=locked_series.allow_outside_availability,
+                    allow_outside_availability=revision.allow_outside_availability,
                 )
                 if conflict[0]:
                     raise _SkipOccurrence(conflict[0], conflict[1])
@@ -690,29 +1027,29 @@ def _materialize_one_date(
                     children=[participant.child for participant in participants],
                     staff_members=staff_members,
                     room=room,
-                    status=locked_series.default_appointment_status,
+                    status=revision.default_appointment_status,
                 )
 
                 primary = participants[0]
-                primary_staff = assignments[0]
+                primary_staff = primary_assignments[0]
                 appointment = Appointment.objects.create(
                     child=primary.child,
                     staff_member=primary_staff.staff_member,
-                    service=locked_series.service,
+                    service=revision.service,
                     room=room,
                     starts_at=starts_at,
                     ends_at=ends_at,
                     session_type=Appointment.SessionType.GROUP,
-                    title=locked_series.title,
-                    status=locked_series.default_appointment_status,
+                    title=revision.title,
+                    status=revision.default_appointment_status,
                     billing_account=primary.billing_account,
                     billing_decision=Appointment.BillingDecision.UNDECIDED,
                     series=locked_series,
                     program_block=primary.program_block,
-                    staff_availability_override=locked_series.allow_outside_availability,
+                    staff_availability_override=revision.allow_outside_availability,
                     staff_availability_override_reason=(
-                        locked_series.override_reason
-                        if locked_series.allow_outside_availability
+                        revision.override_reason
+                        if revision.allow_outside_availability
                         else ""
                     ),
                     admin_note="Создано из групповой серии программы.",
@@ -728,7 +1065,9 @@ def _materialize_one_date(
                         ends_at_snapshot=ends_at,
                         appointment_status=appointment.status,
                     )
-                for assignment in assignments[1:]:
+                for assignment in assignments:
+                    if assignment.pk == primary_staff.pk:
+                        continue
                     AppointmentStaffAssignment.objects.create(
                         appointment=appointment,
                         staff_member=assignment.staff_member,
@@ -763,6 +1102,8 @@ def _materialize_one_date(
             reason=exc.reason,
             actor=actor,
         )
+    except series_revisions.SeriesRevisionMismatch:
+        raise
     except (ValidationError, IntegrityError) as exc:
         return _record_skipped(
             series,
@@ -780,6 +1121,7 @@ def materialize_group_series(
     *,
     actor: Any = None,
 ) -> GroupSeriesCreateResult:
+    series_revisions.require_operator_role(actor)
     if series.status != AppointmentSeries.Status.ACTIVE:
         raise ValidationError("Создавать занятия можно только для активной серии.")
     if series.session_type != Appointment.SessionType.GROUP:
@@ -793,20 +1135,39 @@ def materialize_group_series(
     created_count = 0
     skipped_count = 0
     unchanged_count = 0
+    revision, _ = series_revisions.ensure_initial_revision(series, actor=actor)
     starts = _candidate_starts(
-        series.start_date,
-        series.end_date,
-        (AppointmentSeries.DAY_MAP[token.strip().upper()] for token in series.days_of_week.split(",")),
-        series.time,
+        revision.start_date,
+        revision.end_date,
+        (
+            AppointmentSeries.DAY_MAP[token.strip().upper()]
+            for token in revision.days_of_week.split(",")
+        ),
+        revision.time,
+    )
+    run, _ = series_revisions.get_or_create_initial_run(
+        series,
+        revision,
+        operation_key=series.operation_key,
+        actor=actor,
+        expected_result_count=len(starts),
     )
     for starts_at in starts:
-        occurrence, created = _materialize_one_date(series, starts_at, actor=actor)
+        with transaction.atomic():
+            occurrence, created = _materialize_one_date(
+                series,
+                revision,
+                starts_at,
+                actor=actor,
+            )
+            series_revisions.record_compatibility_result(run, occurrence)
         if not created:
             unchanged_count += 1
         elif occurrence.outcome == AppointmentSeriesOccurrence.Outcome.CREATED:
             created_count += 1
         else:
             skipped_count += 1
+    series_revisions.complete_run(run)
     return GroupSeriesCreateResult(
         series=series,
         created_count=created_count,
@@ -821,6 +1182,7 @@ def create_group_series(
     operation_key: UUID,
     actor: Any = None,
 ) -> GroupSeriesCreateResult:
+    series_revisions.require_operator_role(actor)
     try:
         series, reused = _create_series_definition(preview, operation_key=operation_key)
     except IntegrityError as exc:
@@ -1150,6 +1512,7 @@ def _create_join_series_definition(
 
 def _join_one_appointment(
     series: AppointmentSeries,
+    revision: AppointmentSeriesRevision,
     appointment: Appointment,
     *,
     actor: Any,
@@ -1158,6 +1521,7 @@ def _join_one_appointment(
     try:
         with transaction.atomic():
             locked_series = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
+            series_revisions.assert_current_projection(locked_series, revision)
             existing = AppointmentSeriesOccurrence.objects.filter(
                 series=locked_series,
                 scheduled_starts_at=expected_starts_at,
@@ -1192,13 +1556,22 @@ def _join_one_appointment(
                         "target_changed",
                         "Дата или время группового занятия изменились после выбора.",
                     )
+                if (
+                    target.room_id != revision.room_id
+                    or target.service_id != revision.service_id
+                    or target.duration_minutes != revision.duration_minutes
+                ):
+                    raise _SkipOccurrence(
+                        "target_changed",
+                        "Кабинет, услуга или длительность занятия изменились после выбора.",
+                    )
 
                 memberships = list(
-                    locked_series.default_participants.select_related(
+                    revision.participants.select_related(
                         "child",
                         "program_block",
                         "billing_account",
-                    )
+                    ).order_by("position", "pk")
                 )
                 if len(memberships) != 1 or not memberships[0].program_block_id:
                     raise _SkipOccurrence(
@@ -1290,6 +1663,8 @@ def _join_one_appointment(
             reason=exc.reason,
             actor=actor,
         )
+    except series_revisions.SeriesRevisionMismatch:
+        raise
     except Appointment.DoesNotExist:
         return _record_skipped(
             series,
@@ -1320,6 +1695,7 @@ def join_program_block_to_groups(
     operation_key: UUID,
     actor: Any = None,
 ) -> GroupJoinCreateResult:
+    series_revisions.require_operator_role(actor)
     selected = _validate_join_selection(appointments)
     try:
         series, reused = _create_join_series_definition(
@@ -1340,17 +1716,34 @@ def join_program_block_to_groups(
         )
         reused = True
 
+    revision, _ = series_revisions.ensure_initial_revision(series, actor=actor)
+    run, _ = series_revisions.get_or_create_initial_run(
+        series,
+        revision,
+        operation_key=series.operation_key,
+        actor=actor,
+        expected_result_count=len(selected),
+        target_appointment_ids=[appointment.pk for appointment in selected],
+    )
     joined_count = 0
     skipped_count = 0
     unchanged_count = 0
     for appointment in selected:
-        occurrence, created = _join_one_appointment(series, appointment, actor=actor)
+        with transaction.atomic():
+            occurrence, created = _join_one_appointment(
+                series,
+                revision,
+                appointment,
+                actor=actor,
+            )
+            series_revisions.record_compatibility_result(run, occurrence)
         if not created:
             unchanged_count += 1
         elif occurrence.outcome == AppointmentSeriesOccurrence.Outcome.JOINED:
             joined_count += 1
         else:
             skipped_count += 1
+    series_revisions.complete_run(run)
     return GroupJoinCreateResult(
         series=series,
         joined_count=joined_count,

@@ -1754,6 +1754,12 @@ class ApiAccessTests(TestCase):
 class SchedulingBusinessRulesTests(TestCase):
     @classmethod
     def setUpTestData(cls):
+        cls.admin = User.objects.create_user(
+            "scheduling-admin",
+            password="x",
+            is_staff=True,
+            is_superuser=True,
+        )
         cls.parent = ParentGuardian.objects.create(
             last_name="Parent", first_name="One", phone="+70000000001"
         )
@@ -2475,7 +2481,7 @@ class SchedulingBusinessRulesTests(TestCase):
             status=AppointmentSeries.Status.ACTIVE,
         )
 
-        created = series.materialize_series()
+        created = series.materialize_series(actor=self.admin)
 
         self.assertEqual(created, 1)
         self.assertFalse(

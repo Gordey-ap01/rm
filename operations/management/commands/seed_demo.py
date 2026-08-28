@@ -162,7 +162,7 @@ class Command(BaseCommand):
                 },
             )
             try:
-                created = series.materialize_series()
+                created = series.materialize_series(actor=admin_user)
             except ValidationError as exc:
                 self.stdout.write(self.style.WARNING(f"  Серия «{title}» пропущена: {exc}"))
                 continue

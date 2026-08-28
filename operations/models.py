@@ -2958,84 +2958,13 @@ class AppointmentSeries(TimeStampedModel):
         "ВС": 6,
     }
 
-    def materialize_series(self) -> int:
-        """Create missing Appointment instances for this series.
+    def materialize_series(self, *, actor: Any) -> int:
+        """Compatibility wrapper for the canonical individual materializer."""
 
-        Iterates ``start_date`` → ``end_date`` and on every day matching
-        ``days_of_week`` creates an ``Appointment`` if one does not already
-        exist for the same series, date and time.
+        from operations.services import program_series
 
-        Returns the number of newly created appointments.
-        """
-        if self.status != self.Status.ACTIVE:
-            raise ValidationError("Создавать занятия можно только для активной серии.")
-        if self.materialization_mode != self.MaterializationMode.CREATE_APPOINTMENTS:
-            raise ValidationError("Эта серия не создает новые занятия.")
-        if self.session_type == "group":
-            raise ValidationError(
-                "Групповая серия создается сервисом групповых программ."
-            )
-
-        import datetime as dtmod
-
-        from django.utils import timezone
-
-        from operations import schedule_writes
-
-        days_raw = [d.strip().upper() for d in self.days_of_week.split(",")]
-        weekdays = {self.DAY_MAP[d] for d in days_raw if d in self.DAY_MAP}
-        if not weekdays:
-            return 0
-
-        tz = timezone.get_current_timezone()
-        created = 0
-        delta = self.end_date - self.start_date
-        overlaps = set(
-            Appointment.objects.filter(
-                status__in=ACTIVE_APPOINTMENT_STATUSES,
-                child_id=self.child_id,
-                staff_member_id=self.staff_member_id,
-                starts_at__date__gte=self.start_date,
-                starts_at__date__lte=self.end_date,
-            ).values_list("starts_at", flat=True)
-        )
-        for offset in range(delta.days + 1):
-            day = self.start_date + dtmod.timedelta(days=offset)
-            if day.weekday() not in weekdays:
-                continue
-            series_time = self.time
-            starts_at = dtmod.datetime.combine(day, series_time).replace(tzinfo=tz)
-            ends_at = starts_at + dtmod.timedelta(minutes=self.duration_minutes)
-            if starts_at in overlaps:
-                continue
-            try:
-                with schedule_writes.lock_schedule_write(
-                    room_ids=[self.room_id],
-                ) as locked:
-                    room = locked.room_for(self.room_id)
-                    schedule_writes.ensure_room_capacity(
-                        starts_at=starts_at,
-                        ends_at=ends_at,
-                        children=[self.child],
-                        staff_members=[self.staff_member],
-                        room=room,
-                        status=Appointment.Status.CONFIRMED,
-                    )
-                    Appointment.objects.create(
-                        child=self.child,
-                        staff_member=self.staff_member,
-                        service=self.service,
-                        room=room,
-                        starts_at=starts_at,
-                        ends_at=ends_at,
-                        status=Appointment.Status.CONFIRMED,
-                        series=self,
-                        program_block=self.program_block,
-                    )
-            except ValidationError:
-                continue
-            created += 1
-        return created
+        result = program_series.materialize_individual_series(self, actor=actor)
+        return result.created_count
 
 
 class AppointmentSeriesRevision(TimeStampedModel):
