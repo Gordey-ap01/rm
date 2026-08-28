@@ -405,8 +405,8 @@
     "semantic_hash": "4743b79b7b2298e1650284eda55e92cb"
   },
   "docs/01-prd.md": {
-    "mtime": 1787937761.404104,
-    "ast_hash": "cc88a90db1b040b96ee930b1eda1c755",
+    "mtime": 1787942197.490673,
+    "ast_hash": "317d5bbfa605b443090d22e2ec34bf36",
     "semantic_hash": ""
   },
   "docs/02-tech-stack-research.md": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1787938897.9285014,
-    "ast_hash": "6a5ae5b6aa11ed27f3bc4b785c57a088",
+    "mtime": 1787943093.5602684,
+    "ast_hash": "aade08c7c3c4b41cf6a6d32368f31499",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -820,8 +820,8 @@
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1787937761.4025064,
-    "ast_hash": "ec8da843440661117c275b4e8b0286d5",
+    "mtime": 1787941251.6716552,
+    "ast_hash": "41a7b381c59b5d3488c407be0f74504f",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1825,18 +1825,18 @@
     "semantic_hash": ""
   },
   "operations/services/program_series.py": {
-    "mtime": 1787935181.544638,
-    "ast_hash": "408020f9efa27793bccf493049085b5f",
+    "mtime": 1787942343.9095526,
+    "ast_hash": "2b3904d815bda7d7d982555f7d703e5d",
     "semantic_hash": ""
   },
   "operations/tests/test_program_series.py": {
-    "mtime": 1787938176.0639849,
-    "ast_hash": "98afb5678b1203b51179d6cac88ba087",
+    "mtime": 1787941412.1843548,
+    "ast_hash": "6eda20419f892745d6d01f7773f9b995",
     "semantic_hash": ""
   },
   "docs/61-group-program-series-lifecycle-contract.md": {
-    "mtime": 1787937761.3993242,
-    "ast_hash": "d8e5354b76f2d249f7a9151fc31ae8e6",
+    "mtime": 1787941219.635912,
+    "ast_hash": "a92ebedf8983865d36f1097aea4cdec8",
     "semantic_hash": ""
   },
   "templates/operations/appointment_series_detail.html": {
@@ -1875,13 +1875,13 @@
     "semantic_hash": ""
   },
   "operations/services/series_revisions.py": {
-    "mtime": 1787935909.4484878,
-    "ast_hash": "d574287abaca2198ddccb8b54cec193b",
+    "mtime": 1787942305.4695127,
+    "ast_hash": "fd1c5e2bd99c9c13df795af48ba51eee",
     "semantic_hash": ""
   },
   "docs/decisions/ADR-009-appointment-series-revisions-and-runs.md": {
-    "mtime": 1787937761.4003756,
-    "ast_hash": "e5d1ec420cbfac540af6613ab2bd3f54",
+    "mtime": 1787941419.4191747,
+    "ast_hash": "dcf592bae726455603f5463436093bc2",
     "semantic_hash": ""
   },
   "operations/migrations/0060_series_cross_revision_attempt_guards.py": {
