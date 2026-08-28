@@ -415,9 +415,44 @@ cross-revision attempt chain и `missing_only` service локально прин
   insert/принадлежность/статус и `UPDATE/DELETE` результата PostgreSQL-триггерами.
   Reverse запрещен после cancel-history и после несовместимого с `0062`
   `withdraw: cancelled -> cancelled`;
-- 61C-4d тем же журналом и результатами реализует
-  `withdraw_future_joined_participations`, сохраняя общий Appointment. До 4d
-  массово менять `AppointmentParticipant` из join-серии запрещено.
+- 61C-4d тем же lifecycle-журналом реализует
+  `withdraw_future_joined_participations`, сохраняя общий Appointment. Целью
+  является только canonical materialization-result с outcome `joined`; его
+  `appointment_participant` доказывает владение участием этой join-серией;
+- `AppointmentSeriesCancellationResult` получает nullable
+  `appointment_participant`. Для cancel create-серии он остается `NULL`, а для
+  withdraw обязан совпадать с participant канонического `joined`-результата.
+  Один event по-прежнему имеет не более одного результата на Appointment,
+  поскольку одна join-серия создается из одного каскада/получателя;
+- безопасное снятие не удаляет `AppointmentParticipant`: оно переводит только
+  его `appointment_status` в `cancelled` и добавляет основание. Общий
+  Appointment, его staff assignments, другие participants, room slot,
+  sequence number, ProgramBlock, billing decision/account и существующий
+  LedgerEntry не меняются;
+- `unchanged` фиксирует уже неактивное участие или терминальный общий слот.
+  Несовпадение source/participant/appointment, чужое владение, отметка
+  посещения либо изменившаяся проекция дают `manual_review` без записи в
+  операционную строку;
+- общий status writer не может реактивировать withdrawn participant массовым
+  snapshot-update. Табель и reschedule работают только с активными участиями;
+  подтверждение/уведомление, адресованное withdrawn participant, не меняет
+  статус общего Appointment. Billing запрещает новый charge именно для снятого
+  participant, не блокируя остальных участников группы;
+- lock-order withdraw: series -> все целевые Appointment по `pk` -> все их
+  participant snapshots -> staff snapshots -> ProgramBlock -> BalanceAccount
+  -> LedgerEntry. Поэтому withdraw линеаризуется с attendance, reschedule,
+  confirmation и charge, не удаляя победивший ранее финансовый факт;
+- миграция `0064` расширяет result-таблицу и PostgreSQL insert guard для двух
+  типов цели: cancel проверяет статус Appointment и source `created`, withdraw
+  проверяет статус AppointmentParticipant и source `joined`. Reverse
+  fail-closed после первого withdraw event/result. До 4d массово менять
+  `AppointmentParticipant` из join-серии запрещено.
+
+Acceptance 61C-4d: идемпотентный replay, typed partial outcomes, неизменность
+общего слота/чужого состава/ledger, запрет повторного charge и реактивации,
+PostgreSQL races withdraw-vs-charge/attendance/reschedule, migration empty
+round-trip/history reverse guard, полный SQLite/PostgreSQL regression и
+независимый read-only review.
 
 Статус приемки 61C-4c: Ruff, Django check, migration dry-run, независимый
 read-only review и полный regression прошли. SQLite: `932 passed, 82 skipped`;
