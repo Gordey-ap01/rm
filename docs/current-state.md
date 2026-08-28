@@ -19,7 +19,7 @@ browser-приемку ролей и PostgreSQL 17 migration/trigger/concurrency
 59A принят. 59B-1/`0053` реализован и принят локально/CI: закрытая внутренняя
 сверка сохраняется неизменяемым обезличенным снимком с проверяемыми hash,
 MVCC-временем данных и цепочкой исправлений. 59B-2/`0054` реализован и
-локально принят: фактически переданный файл хранится в отдельном
+локально/CI принят: фактически переданный файл хранится в отдельном
 приватном write-once контуре, а его версии и выдачи фиксируются append-only.
 Перед production остаются эксплуатационные решения раздела 10 контракта 60.
 
@@ -257,7 +257,7 @@ MVCC-временем данных и цепочкой исправлений. 5
   отсутствовали, desktop и mobile screenshots проверены визуально. Временные
   данные, settings и процесс удалены после запуска.
 - Graphify code index инкрементально обновлен без LLM/API key: `6732` nodes,
-  `31648` edges и `353` communities; срез 59B-2 и изолированные
+  `31648` edges; community clustering пересобран, срез 59B-2 и изолированные
   backup/restore maintenance services включены.
   Семантический слой
   измененных документов не пересоздавался и не блокирует кодовый граф.
@@ -361,6 +361,10 @@ MVCC-временем данных и цепочкой исправлений. 5
 - Focused 59B-2: SQLite `20 passed, 8 skipped`, PostgreSQL 17 `28 passed`
   без пропусков. Полный SQLite regression после финального hardening:
   `844 passed, 43 skipped`; пропуски относятся к PostgreSQL-only контрактам.
+- GitHub Actions run `33139833208` для commit `cdfca64` успешно прошел чистую
+  PostgreSQL 17 migration chain, Django/Ruff/dependency/Compose checks,
+  Linux restore drill с operator-owned `0700` backup и полный regression:
+  `887 passed` за `326.28s`.
 - Browser-приемка на обезличенной PostgreSQL-БД прошла замену
   PDF, историю №1/№2, private download и access event. Desktop и
   `390px` не имеют page overflow, browser console чиста; матрица ролей

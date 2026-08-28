@@ -3910,7 +3910,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "commands_drain_tasks",
-      "community": 344,
+      "community": 342,
       "norm_label": "drain_tasks.py"
     },
     {
@@ -3920,7 +3920,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "commands_drain_tasks_command",
-      "community": 344,
+      "community": 342,
       "norm_label": "command"
     },
     {
@@ -3930,7 +3930,7 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "commands_drain_tasks_command_add_arguments",
-      "community": 344,
+      "community": 342,
       "norm_label": ".add_arguments()"
     },
     {
@@ -3940,7 +3940,7 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "commands_drain_tasks_command_handle",
-      "community": 344,
+      "community": 342,
       "norm_label": ".handle()"
     },
     {
@@ -3950,7 +3950,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "commands_drain_tasks_rationale_1",
-      "community": 344,
+      "community": 342,
       "norm_label": "\u043f\u0430\u043a\u0435\u0442\u043d\u043e\u0435 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u0435 \u0432\u0441\u0435\u0445 \u0437\u0430\u0434\u0430\u0447 \u0438\u0437 \u043e\u0447\u0435\u0440\u0435\u0434\u0438 django-tasks.  \u0443\u0434\u043e\u0431\u043d\u043e \u0434\u043b\u044f \u0442\u0435\u0441\u0442\u043e\u0432 \u0438 \u043e\u0434\u043d"
     },
     {
@@ -37253,7 +37253,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_xe",
-      "community": 27,
+      "community": 39,
       "norm_label": "xe()"
     },
     {
@@ -37433,7 +37433,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_qe",
-      "community": 5,
+      "community": 19,
       "norm_label": "qe()"
     },
     {
@@ -37513,7 +37513,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ot",
-      "community": 21,
+      "community": 14,
       "norm_label": "ot()"
     },
     {
@@ -37523,7 +37523,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_at",
-      "community": 5,
+      "community": 14,
       "norm_label": "at()"
     },
     {
@@ -37583,7 +37583,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_pt",
-      "community": 318,
+      "community": 5,
       "norm_label": "pt()"
     },
     {
@@ -37603,7 +37603,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_vt",
-      "community": 39,
+      "community": 14,
       "norm_label": "vt()"
     },
     {
@@ -37613,7 +37613,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_yt",
-      "community": 39,
+      "community": 14,
       "norm_label": "yt()"
     },
     {
@@ -37663,7 +37663,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ht",
-      "community": 5,
+      "community": 14,
       "norm_label": "ht()"
     },
     {
@@ -37673,7 +37673,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_jt",
-      "community": 21,
+      "community": 14,
       "norm_label": "jt()"
     },
     {
@@ -37703,7 +37703,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_qt",
-      "community": 5,
+      "community": 39,
       "norm_label": "qt()"
     },
     {
@@ -37933,7 +37933,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_dn",
-      "community": 169,
+      "community": 5,
       "norm_label": "dn()"
     },
     {
@@ -38033,7 +38033,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_pn",
-      "community": 21,
+      "community": 14,
       "norm_label": "pn()"
     },
     {
@@ -38073,7 +38073,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_hn_createnowmarker",
-      "community": 21,
+      "community": 14,
       "norm_label": ".createnowmarker()"
     },
     {
@@ -38083,7 +38083,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_hn_createmarkermeta",
-      "community": 21,
+      "community": 14,
       "norm_label": ".createmarkermeta()"
     },
     {
@@ -38093,7 +38093,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_hn_parse",
-      "community": 21,
+      "community": 14,
       "norm_label": ".parse()"
     },
     {
@@ -38133,7 +38133,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_hn_add",
-      "community": 27,
+      "community": 39,
       "norm_label": ".add()"
     },
     {
@@ -38203,7 +38203,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_hn_countdurationsbetween",
-      "community": 39,
+      "community": 14,
       "norm_label": ".countdurationsbetween()"
     },
     {
@@ -38293,7 +38293,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_hn_timestamptomarker",
-      "community": 21,
+      "community": 14,
       "norm_label": ".timestamptomarker()"
     },
     {
@@ -38643,7 +38643,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_er",
-      "community": 27,
+      "community": 14,
       "norm_label": "er"
     },
     {
@@ -38653,7 +38653,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_er_render",
-      "community": 27,
+      "community": 14,
       "norm_label": ".render()"
     },
     {
@@ -38663,7 +38663,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_tr",
-      "community": 27,
+      "community": 14,
       "norm_label": "tr()"
     },
     {
@@ -38693,7 +38693,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ir",
-      "community": 27,
+      "community": 39,
       "norm_label": "ir()"
     },
     {
@@ -38723,7 +38723,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ar",
-      "community": 15,
+      "community": 5,
       "norm_label": "ar()"
     },
     {
@@ -38983,7 +38983,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_pr",
-      "community": 27,
+      "community": 39,
       "norm_label": "pr()"
     },
     {
@@ -39053,7 +39053,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_zr",
-      "community": 27,
+      "community": 39,
       "norm_label": "zr()"
     },
     {
@@ -39133,7 +39133,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_vr_hashandlers",
-      "community": 5,
+      "community": 19,
       "norm_label": ".hashandlers()"
     },
     {
@@ -39753,7 +39753,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_vi",
-      "community": 39,
+      "community": 10,
       "norm_label": "vi()"
     },
     {
@@ -39763,7 +39763,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_yi",
-      "community": 5,
+      "community": 19,
       "norm_label": "yi()"
     },
     {
@@ -39863,7 +39863,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_oi_constructor",
-      "community": 21,
+      "community": 39,
       "norm_label": ".constructor()"
     },
     {
@@ -39913,7 +39913,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_oi_computetiming",
-      "community": 21,
+      "community": 39,
       "norm_label": ".computetiming()"
     },
     {
@@ -40323,7 +40323,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_bi",
-      "community": 15,
+      "community": 5,
       "norm_label": "bi()"
     },
     {
@@ -40333,7 +40333,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ji",
-      "community": 15,
+      "community": 5,
       "norm_label": "ji()"
     },
     {
@@ -40343,7 +40343,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_zi",
-      "community": 15,
+      "community": 5,
       "norm_label": "zi()"
     },
     {
@@ -40443,7 +40443,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ns",
-      "community": 15,
+      "community": 5,
       "norm_label": "ns()"
     },
     {
@@ -40453,7 +40453,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_rs",
-      "community": 15,
+      "community": 5,
       "norm_label": "rs()"
     },
     {
@@ -40533,7 +40533,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_is_getheight",
-      "community": 39,
+      "community": 318,
       "norm_label": ".getheight()"
     },
     {
@@ -41003,7 +41003,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_us",
-      "community": 15,
+      "community": 5,
       "norm_label": "us()"
     },
     {
@@ -41023,7 +41023,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_fs",
-      "community": 319,
+      "community": 10,
       "norm_label": "fs()"
     },
     {
@@ -41033,7 +41033,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_gs",
-      "community": 319,
+      "community": 10,
       "norm_label": "gs()"
     },
     {
@@ -41043,7 +41043,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ps",
-      "community": 15,
+      "community": 5,
       "norm_label": "ps()"
     },
     {
@@ -41143,7 +41143,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_rs_render",
-      "community": 15,
+      "community": 5,
       "norm_label": ".render()"
     },
     {
@@ -41443,7 +41443,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_fs_constructor",
-      "community": 319,
+      "community": 10,
       "norm_label": ".constructor()"
     },
     {
@@ -41453,7 +41453,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_fs_createref",
-      "community": 319,
+      "community": 10,
       "norm_label": ".createref()"
     },
     {
@@ -41483,7 +41483,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_qs",
-      "community": 319,
+      "community": 10,
       "norm_label": "qs()"
     },
     {
@@ -41563,7 +41563,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ro_rendersection",
-      "community": 319,
+      "community": 10,
       "norm_label": ".rendersection()"
     },
     {
@@ -41573,7 +41573,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ro_renderchunktd",
-      "community": 319,
+      "community": 10,
       "norm_label": ".renderchunktd()"
     },
     {
@@ -41683,7 +41683,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_so",
-      "community": 5,
+      "community": 19,
       "norm_label": "so"
     },
     {
@@ -41693,7 +41693,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_so_render",
-      "community": 5,
+      "community": 19,
       "norm_label": ".render()"
     },
     {
@@ -41713,7 +41713,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_co",
-      "community": 5,
+      "community": 39,
       "norm_label": "co"
     },
     {
@@ -41723,7 +41723,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_co_constructor",
-      "community": 5,
+      "community": 39,
       "norm_label": ".constructor()"
     },
     {
@@ -41733,7 +41733,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_co_render",
-      "community": 5,
+      "community": 39,
       "norm_label": ".render()"
     },
     {
@@ -41783,7 +41783,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_go",
-      "community": 169,
+      "community": 5,
       "norm_label": "go()"
     },
     {
@@ -41793,7 +41793,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_po",
-      "community": 39,
+      "community": 10,
       "norm_label": "po()"
     },
     {
@@ -41813,7 +41813,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_yo",
-      "community": 169,
+      "community": 5,
       "norm_label": "yo"
     },
     {
@@ -41823,7 +41823,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_yo_constructor",
-      "community": 169,
+      "community": 5,
       "norm_label": ".constructor()"
     },
     {
@@ -41843,7 +41843,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_yo_componentdidmount",
-      "community": 10,
+      "community": 5,
       "norm_label": ".componentdidmount()"
     },
     {
@@ -41853,7 +41853,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_yo_componentwillunmount",
-      "community": 169,
+      "community": 5,
       "norm_label": ".componentwillunmount()"
     },
     {
@@ -41863,7 +41863,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_yo_updatesize",
-      "community": 15,
+      "community": 5,
       "norm_label": ".updatesize()"
     },
     {
@@ -41983,7 +41983,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_wo",
-      "community": 169,
+      "community": 5,
       "norm_label": "wo()"
     },
     {
@@ -42063,7 +42063,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_jo",
-      "community": 169,
+      "community": 5,
       "norm_label": "jo()"
     },
     {
@@ -42073,7 +42073,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_zo",
-      "community": 169,
+      "community": 5,
       "norm_label": "zo()"
     },
     {
@@ -42093,7 +42093,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_qo",
-      "community": 169,
+      "community": 5,
       "norm_label": "qo()"
     },
     {
@@ -42293,7 +42293,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_parse",
-      "community": 21,
+      "community": 14,
       "norm_label": "parse()"
     },
     {
@@ -42303,7 +42303,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_expand",
-      "community": 27,
+      "community": 39,
       "norm_label": "expand()"
     },
     {
@@ -42433,7 +42433,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ua_handleinput",
-      "community": 21,
+      "community": 14,
       "norm_label": ".handleinput()"
     },
     {
@@ -42443,7 +42443,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ua_getdatemarker",
-      "community": 21,
+      "community": 39,
       "norm_label": ".getdatemarker()"
     },
     {
@@ -43463,7 +43463,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_va_constructor",
-      "community": 15,
+      "community": 5,
       "norm_label": ".constructor()"
     },
     {
@@ -43513,7 +43513,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_qa",
-      "community": 15,
+      "community": 5,
       "norm_label": "qa"
     },
     {
@@ -43523,7 +43523,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_qa_constructor",
-      "community": 15,
+      "community": 5,
       "norm_label": ".constructor()"
     },
     {
@@ -43533,7 +43533,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_qa_processfirstcoord",
-      "community": 15,
+      "community": 5,
       "norm_label": ".processfirstcoord()"
     },
     {
@@ -43553,7 +43553,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_qa_preparehits",
-      "community": 169,
+      "community": 5,
       "norm_label": ".preparehits()"
     },
     {
@@ -43563,7 +43563,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_qa_releasehits",
-      "community": 15,
+      "community": 5,
       "norm_label": ".releasehits()"
     },
     {
@@ -43623,7 +43623,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ja_builddragmeta",
-      "community": 21,
+      "community": 14,
       "norm_label": ".builddragmeta()"
     },
     {
@@ -43823,7 +43823,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ll",
-      "community": 5,
+      "community": 19,
       "norm_label": "ll"
     },
     {
@@ -43833,7 +43833,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ll_render",
-      "community": 5,
+      "community": 19,
       "norm_label": ".render()"
     },
     {
@@ -43923,7 +43923,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_gl",
-      "community": 5,
+      "community": 10,
       "norm_label": "gl()"
     },
     {
@@ -44103,7 +44103,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_el_renderfillsegs",
-      "community": 39,
+      "community": 10,
       "norm_label": ".renderfillsegs()"
     },
     {
@@ -44383,7 +44383,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_l",
-      "community": 14,
+      "community": 39,
       "norm_label": "_l()"
     },
     {
@@ -44503,7 +44503,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_jl",
-      "community": 39,
+      "community": 318,
       "norm_label": "jl"
     },
     {
@@ -44513,7 +44513,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_jl_constructor",
-      "community": 39,
+      "community": 318,
       "norm_label": ".constructor()"
     },
     {
@@ -44523,7 +44523,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_jl_safecomputetop",
-      "community": 39,
+      "community": 318,
       "norm_label": ".safecomputetop()"
     },
     {
@@ -44533,7 +44533,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_jl_computedatetop",
-      "community": 39,
+      "community": 318,
       "norm_label": ".computedatetop()"
     },
     {
@@ -44543,7 +44543,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_jl_computetimetop",
-      "community": 39,
+      "community": 318,
       "norm_label": ".computetimetop()"
     },
     {
@@ -44553,7 +44553,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_zl",
-      "community": 5,
+      "community": 10,
       "norm_label": "zl"
     },
     {
@@ -44563,7 +44563,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_zl_render",
-      "community": 5,
+      "community": 10,
       "norm_label": ".render()"
     },
     {
@@ -44633,7 +44633,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ql",
-      "community": 5,
+      "community": 10,
       "norm_label": "ql()"
     },
     {
@@ -44643,7 +44643,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_jl_render",
-      "community": 39,
+      "community": 318,
       "norm_label": ".render()"
     },
     {
@@ -44753,7 +44753,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_nc",
-      "community": 58,
+      "community": 318,
       "norm_label": "nc"
     },
     {
@@ -44763,7 +44763,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_nc_constructor",
-      "community": 58,
+      "community": 318,
       "norm_label": ".constructor()"
     },
     {
@@ -44773,7 +44773,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_nc_render",
-      "community": 58,
+      "community": 318,
       "norm_label": ".render()"
     },
     {
@@ -44783,7 +44783,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_nc_componentdidmount",
-      "community": 58,
+      "community": 318,
       "norm_label": ".componentdidmount()"
     },
     {
@@ -44793,7 +44793,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_nc_componentdidupdate",
-      "community": 58,
+      "community": 318,
       "norm_label": ".componentdidupdate()"
     },
     {
@@ -44803,7 +44803,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_nc_updatecoords",
-      "community": 58,
+      "community": 318,
       "norm_label": ".updatecoords()"
     },
     {
@@ -44943,7 +44943,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_ac",
-      "community": 14,
+      "community": 39,
       "norm_label": "ac()"
     },
     {
@@ -45093,7 +45093,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_eventstoretosegs",
-      "community": 27,
+      "community": 39,
       "norm_label": "_eventstoretosegs()"
     },
     {
@@ -45103,7 +45103,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_eventrangestosegs",
-      "community": 27,
+      "community": 39,
       "norm_label": "eventrangestosegs()"
     },
     {
@@ -45113,7 +45113,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_eventrangetosegs",
-      "community": 27,
+      "community": 39,
       "norm_label": "eventrangetosegs()"
     },
     {
@@ -45143,7 +45143,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_componentdidmount",
-      "community": 10,
+      "community": 5,
       "norm_label": "componentdidmount()"
     },
     {
@@ -45173,7 +45173,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_updatesize",
-      "community": 10,
+      "community": 5,
       "norm_label": "updatesize()"
     },
     {
@@ -45253,7 +45253,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "fullcalendar_index_global_min_setclassnames",
-      "community": 27,
+      "community": 39,
       "norm_label": "setclassnames()"
     },
     {
@@ -46093,7 +46093,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "alpine_alpine_min_has",
-      "community": 133,
+      "community": 147,
       "norm_label": "has()"
     },
     {
@@ -46533,7 +46533,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "alpine_alpine_min_je",
-      "community": 133,
+      "community": 147,
       "norm_label": "je()"
     },
     {
@@ -46683,7 +46683,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "alpine_alpine_min_ti",
-      "community": 133,
+      "community": 147,
       "norm_label": "ti()"
     },
     {
@@ -64720,7 +64720,7 @@
       "label": "\u0421\u043b\u0435\u0434\u0443\u044e\u0449\u0430\u044f \u0440\u0430\u0431\u043e\u0442\u0430",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L369",
+      "source_location": "L373",
       "_origin": "ast",
       "id": "docs_current_state_\u0441\u043b\u0435\u0434\u0443\u044e\u0449\u0430\u044f_\u0440\u0430\u0431\u043e\u0442\u0430",
       "community": 218,
@@ -64730,7 +64730,7 @@
       "label": "\u0413\u043b\u043e\u0431\u0430\u043b\u044c\u043d\u0430\u044f \u0433\u043e\u0442\u043e\u0432\u043d\u043e\u0441\u0442\u044c",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L385",
+      "source_location": "L389",
       "_origin": "ast",
       "id": "docs_current_state_\u0433\u043b\u043e\u0431\u0430\u043b\u044c\u043d\u0430\u044f_\u0433\u043e\u0442\u043e\u0432\u043d\u043e\u0441\u0442\u044c",
       "community": 218,
@@ -64740,7 +64740,7 @@
       "label": "\u0420\u0438\u0441\u043a\u0438 \u0438 \u0437\u0430\u043f\u0440\u0435\u0442\u044b",
       "file_type": "document",
       "source_file": "docs/current-state.md",
-      "source_location": "L409",
+      "source_location": "L413",
       "_origin": "ast",
       "id": "docs_current_state_\u0440\u0438\u0441\u043a\u0438_\u0438_\u0437\u0430\u043f\u0440\u0435\u0442\u044b",
       "community": 218,
@@ -391741,5 +391741,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "758a3fba3fc799acef19d47476f8ffb52a6ee28d"
+  "built_at_commit": "cdfca641d664a5ff6032dd6a3ae8afb9a0849f77"
 }
