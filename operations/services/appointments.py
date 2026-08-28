@@ -16,6 +16,8 @@ from operations import schedule_writes as schedule_write_svc
 from operations.models import (
     Appointment,
     AppointmentParticipant,
+    AppointmentSeries,
+    AppointmentSeriesCancellationResult,
     AppointmentStaffAssignment,
     BalanceAccount,
     Child,
@@ -23,6 +25,7 @@ from operations.models import (
     Service,
     StaffMember,
 )
+from operations.services.authority import is_center_operator
 
 
 @dataclass(frozen=True)
@@ -31,6 +34,180 @@ class MoveResult:
 
     old: Appointment
     new: Appointment
+
+
+class AppointmentStateConflict(ValueError):
+    """The appointment changed before a serialized status command acquired its lock."""
+
+
+_OPEN_APPOINTMENT_STATUSES = {
+    Appointment.Status.PROPOSED,
+    Appointment.Status.CONFIRMED,
+    Appointment.Status.RESERVED,
+}
+
+
+def require_open_appointment(appointment: Appointment, *, action: str) -> None:
+    has_series_cancellation_result = (
+        AppointmentSeriesCancellationResult.objects.filter(
+            appointment=appointment,
+        ).exists()
+    )
+    if (
+        appointment.status not in _OPEN_APPOINTMENT_STATUSES
+        or has_series_cancellation_result
+    ):
+        raise AppointmentStateConflict(
+            f"Нельзя {action}: занятие уже имеет статус «{appointment.get_status_display()}»."
+        )
+
+
+def require_no_series_reactivation(
+    appointment: Appointment,
+    *,
+    requested_status: str,
+    action: str,
+) -> None:
+    if (
+        requested_status != appointment.status
+        and AppointmentSeriesCancellationResult.objects.filter(
+            appointment=appointment,
+        ).exists()
+    ):
+        raise AppointmentStateConflict(
+            f"Нельзя {action}: результат массовой отмены серии уже зафиксирован; "
+            "для смены статуса требуется отдельное аудируемое решение."
+        )
+
+
+def transition_locked_appointment_status(
+    appointment: Appointment,
+    *,
+    status: str,
+    allowed_from: set[str],
+    action: str,
+    note_lines: Iterable[str] = (),
+) -> Appointment:
+    """Apply a transition after the caller locked appointment and snapshot rows."""
+
+    if appointment.status not in allowed_from:
+        raise AppointmentStateConflict(
+            f"Нельзя {action}: занятие уже имеет статус «{appointment.get_status_display()}»."
+        )
+    require_no_series_reactivation(
+        appointment,
+        requested_status=status,
+        action=action,
+    )
+    appointment.status = status
+    appointment.admin_note = "\n".join(
+        part for part in [appointment.admin_note, *note_lines] if part
+    )
+    appointment.save(
+        update_fields=["status", "admin_note", "updated_at"],
+        validate_schedule=False,
+        sync_legacy=False,
+    )
+    now = timezone.now()
+    AppointmentParticipant.objects.filter(appointment=appointment).update(
+        appointment_status=status,
+        starts_at_snapshot=appointment.starts_at,
+        ends_at_snapshot=appointment.ends_at,
+        updated_at=now,
+    )
+    AppointmentStaffAssignment.objects.filter(appointment=appointment).update(
+        appointment_status=status,
+        starts_at_snapshot=appointment.starts_at,
+        ends_at_snapshot=appointment.ends_at,
+        updated_at=now,
+    )
+    return appointment
+
+
+def set_locked_appointment_status(
+    appointment: Appointment,
+    *,
+    status: str,
+    note_lines: Iterable[str] = (),
+) -> Appointment:
+    """Change a status after the caller locked appointment, participant and staff rows."""
+
+    if status not in {Appointment.Status.CANCELLED, Appointment.Status.NO_SHOW}:
+        raise ValueError("Сервис отмены поддерживает только статусы «отменено» и «неявка».")
+    return transition_locked_appointment_status(
+        appointment,
+        status=status,
+        allowed_from=_OPEN_APPOINTMENT_STATUSES,
+        action="изменить статус",
+        note_lines=note_lines,
+    )
+
+
+@transaction.atomic
+def transition_appointment_status(
+    appointment: Appointment,
+    *,
+    status: str,
+    allowed_from: set[str],
+    action: str,
+) -> Appointment:
+    locked = Appointment.objects.select_for_update().get(pk=appointment.pk)
+    list(
+        AppointmentParticipant.objects.select_for_update()
+        .filter(appointment=locked)
+        .order_by("pk")
+    )
+    list(
+        AppointmentStaffAssignment.objects.select_for_update()
+        .filter(appointment=locked)
+        .order_by("pk")
+    )
+    return transition_locked_appointment_status(
+        locked,
+        status=status,
+        allowed_from=allowed_from,
+        action=action,
+    )
+
+
+def lock_series_root_for_appointment(
+    appointment_id: int,
+) -> tuple[int | None, AppointmentSeries | None]:
+    """Discover and lock the series before any appointment row lock."""
+
+    series_id = (
+        Appointment.objects.filter(pk=appointment_id)
+        .values_list("series_id", flat=True)
+        .first()
+    )
+    if series_id is None:
+        return None, None
+    return (
+        series_id,
+        AppointmentSeries.objects.select_for_update().get(pk=series_id),
+    )
+
+
+def require_locked_series_projection(
+    appointment: Appointment,
+    *,
+    expected_series_id: int | None,
+    locked_series: AppointmentSeries | None,
+    action: str,
+    require_active: bool = True,
+) -> None:
+    if appointment.series_id != expected_series_id:
+        raise AppointmentStateConflict(
+            f"Нельзя {action}: принадлежность занятия серии изменилась."
+        )
+    if (
+        require_active
+        and locked_series is not None
+        and locked_series.status != AppointmentSeries.Status.ACTIVE
+    ):
+        raise AppointmentStateConflict(
+            f"Нельзя {action}: новые действия по серии остановлены."
+        )
 
 
 def _copy_rescheduled_participants(old: Appointment, new: Appointment) -> None:
@@ -172,6 +349,9 @@ def reschedule(
     actor: Any = None,
 ) -> MoveResult:
     """Переносит занятие: помечает исходное как ``RESCHEDULED`` и создаёт новое."""
+    expected_series_id, locked_series = lock_series_root_for_appointment(
+        appointment.pk
+    )
     room_id = getattr(room, "pk", None)
     with schedule_write_svc.lock_schedule_write(
         appointment_id=appointment.pk,
@@ -180,6 +360,13 @@ def reschedule(
         appointment = locked.appointment
         if appointment is None:  # Defensive: appointment_id is required above.
             raise Appointment.DoesNotExist
+        require_locked_series_projection(
+            appointment,
+            expected_series_id=expected_series_id,
+            locked_series=locked_series,
+            action="перенести занятие",
+        )
+        require_open_appointment(appointment, action="перенести занятие")
 
         participants = list(
             appointment.participants.select_related(
@@ -262,11 +449,22 @@ def cancel(
     admin_note: str = "",
 ) -> Appointment:
     """Отменяет или помечает как no-show. ``reason_text`` — человекочитаемое описание."""
-    appointment.status = status
-    note_lines = [appointment.admin_note, f"Причина отмены: {reason_text}.", admin_note]
-    appointment.admin_note = "\n".join(part for part in note_lines if part)
-    appointment.save(update_fields=["status", "admin_note", "updated_at"])
-    return appointment
+    appointment = Appointment.objects.select_for_update().get(pk=appointment.pk)
+    list(
+        AppointmentParticipant.objects.select_for_update()
+        .filter(appointment=appointment)
+        .order_by("pk")
+    )
+    list(
+        AppointmentStaffAssignment.objects.select_for_update()
+        .filter(appointment=appointment)
+        .order_by("pk")
+    )
+    return set_locked_appointment_status(
+        appointment,
+        status=status,
+        note_lines=[f"Причина отмены: {reason_text}.", admin_note],
+    )
 
 
 @transaction.atomic
@@ -274,25 +472,125 @@ def record_attendance(
     appointment: Appointment,
     *,
     action: str,
+    actor: Any,
     note: str = "",
+    participant_statuses: dict[int, str] | None = None,
 ) -> Appointment:
     """Отмечает факт проведения/неявки со стороны специалиста.
 
     ``action`` — ``"completed"`` или ``"not_completed"``.
     Решение по списанию остаётся за администратором.
     """
+    appointment = Appointment.objects.select_for_update().get(pk=appointment.pk)
+    require_open_appointment(appointment, action="отметить посещение")
+    participants = list(
+        AppointmentParticipant.objects.select_for_update()
+        .filter(appointment=appointment)
+        .order_by("pk")
+    )
+    if not participants and appointment.child_id:
+        participants = [
+            AppointmentParticipant.objects.create(
+                appointment=appointment,
+                child_id=appointment.child_id,
+                attendance_status=appointment.attendance_status,
+                billing_decision=appointment.billing_decision,
+                billing_account_id=appointment.billing_account_id,
+                program_block_id=appointment.program_block_id,
+                sequence_number=appointment.sequence_number,
+                admin_note=appointment.admin_note,
+                specialist_note=appointment.specialist_note,
+                marked_by_staff_at=appointment.specialist_marked_at,
+                starts_at_snapshot=appointment.starts_at,
+                ends_at_snapshot=appointment.ends_at,
+                appointment_status=appointment.status,
+            )
+        ]
+    assignments = list(
+        AppointmentStaffAssignment.objects.select_for_update()
+        .filter(appointment=appointment)
+        .order_by("pk")
+    )
+    if not assignments and appointment.staff_member_id:
+        assignments = [
+            AppointmentStaffAssignment.objects.create(
+                appointment=appointment,
+                staff_member_id=appointment.staff_member_id,
+                role=AppointmentStaffAssignment.Role.PRIMARY,
+                starts_at_snapshot=appointment.starts_at,
+                ends_at_snapshot=appointment.ends_at,
+                appointment_status=appointment.status,
+            )
+        ]
+
+    if not is_center_operator(actor):
+        actor_staff_id = (
+            StaffMember.objects.filter(user_id=getattr(actor, "pk", None))
+            .values_list("pk", flat=True)
+            .first()
+        )
+        assigned_staff_ids = {
+            assignment.staff_member_id for assignment in assignments
+        }
+        if actor_staff_id is None or actor_staff_id not in assigned_staff_ids:
+            raise AppointmentStateConflict(
+                "Нельзя отметить посещение: специалист больше не назначен на это занятие."
+            )
+
     if action == "completed":
         appointment.status = Appointment.Status.COMPLETED
-        appointment.attendance_status = Appointment.AttendanceStatus.ATTENDED
+        fallback_attendance = Appointment.AttendanceStatus.ATTENDED
     elif action == "not_completed":
         appointment.status = Appointment.Status.NO_SHOW
-        appointment.attendance_status = Appointment.AttendanceStatus.MISSED
+        fallback_attendance = Appointment.AttendanceStatus.MISSED
     else:
         raise ValueError(f"Неизвестное действие: {action!r}")
+
+    participant_statuses = participant_statuses or {}
+    valid_statuses = set(Appointment.AttendanceStatus.values)
+    participant_ids = {participant.pk for participant in participants}
+    if not set(participant_statuses).issubset(participant_ids) or any(
+        status not in valid_statuses for status in participant_statuses.values()
+    ):
+        raise ValueError("Передана недопустимая отметка участника занятия.")
     if note:
         appointment.specialist_note = note
     marked_at = timezone.now()
     appointment.specialist_marked_at = marked_at
+    for participant in participants:
+        participant.appointment_status = appointment.status
+        participant.starts_at_snapshot = appointment.starts_at
+        participant.ends_at_snapshot = appointment.ends_at
+        update_fields = [
+            "appointment_status",
+            "starts_at_snapshot",
+            "ends_at_snapshot",
+            "updated_at",
+        ]
+        if not participant_statuses or participant.pk in participant_statuses:
+            participant.attendance_status = participant_statuses.get(
+                participant.pk,
+                fallback_attendance,
+            )
+            participant.marked_by_staff_at = marked_at
+            update_fields.extend(["attendance_status", "marked_by_staff_at"])
+            if note:
+                participant.specialist_note = note
+                update_fields.append("specialist_note")
+        participant.save(update_fields=update_fields)
+
+    participant_attendance = [participant.attendance_status for participant in participants]
+    if Appointment.AttendanceStatus.ATTENDED in participant_attendance:
+        appointment.attendance_status = Appointment.AttendanceStatus.ATTENDED
+    elif Appointment.AttendanceStatus.UNKNOWN in participant_attendance:
+        appointment.attendance_status = Appointment.AttendanceStatus.UNKNOWN
+    elif participant_attendance and all(
+        status == Appointment.AttendanceStatus.EXCUSED
+        for status in participant_attendance
+    ):
+        appointment.attendance_status = Appointment.AttendanceStatus.EXCUSED
+    else:
+        appointment.attendance_status = fallback_attendance
     appointment.save(
         update_fields=[
             "status",
@@ -300,19 +598,18 @@ def record_attendance(
             "specialist_marked_at",
             "specialist_note",
             "updated_at",
-        ]
+        ],
+        validate_schedule=False,
+        sync_legacy=False,
     )
-    participant_updates = {
-        "appointment_status": appointment.status,
-        "attendance_status": appointment.attendance_status,
-        "starts_at_snapshot": appointment.starts_at,
-        "ends_at_snapshot": appointment.ends_at,
-        "marked_by_staff_at": marked_at,
-        "updated_at": marked_at,
-    }
-    if note:
-        participant_updates["specialist_note"] = note
-    appointment.participants.update(**participant_updates)
+    AppointmentStaffAssignment.objects.filter(
+        pk__in=[assignment.pk for assignment in assignments]
+    ).update(
+        appointment_status=appointment.status,
+        starts_at_snapshot=appointment.starts_at,
+        ends_at_snapshot=appointment.ends_at,
+        updated_at=marked_at,
+    )
     return appointment
 
 

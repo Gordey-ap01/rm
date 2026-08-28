@@ -198,8 +198,10 @@ fail-closed отклоняет будущую редакцию. Expand-gate `006
 cross-revision attempt chain и `missing_only` service локально приняты. Expand
 `0061` и сервисное исполнение `retry_skipped` локально приняты. 61C-4b и
 аддитивная миграция `0062` реализуют append-only stop/resume с приоритетом
-руководителя и продолжением принятого run. Следующий продуктовый подсрез -
-61C-4c cancel, затем 61C-4d withdraw и рабочий 61D UI.
+руководителя и продолжением принятого run. 61C-4c и миграция `0063` реализуют
+аудируемую отмену будущих неначавшихся занятий create-серии без изменения
+финансовых фактов. Следующий продуктовый подсрез - 61C-4d withdraw, затем
+рабочий 61D UI.
 
 #### 61C-1. Аддитивная модель редакций и запусков
 
@@ -387,11 +389,43 @@ cross-revision attempt chain и `missing_only` service локально прин
   дата принятого run также сначала блокирует корень: после stop она оставляет
   durable `interrupted`, а после отдельного директорского resume тот же run
   продолжает только отсутствующие результаты;
-- 61C-4c добавляет нормализованные результаты `cancel_future_unstarted` и
-  отменяет только безопасно принадлежащие create-серии будущие занятия;
+- 61C-4c добавляет append-only `AppointmentSeriesCancellationResult` с одним
+  результатом на целевое Appointment: `cancelled`, `unchanged` либо
+  `manual_review`, исходный/итоговый статус и типизированную причину. Команда
+  доступна только `create_appointments`, принимает новый event как
+  `active -> cancelled` либо усиливает прежний stop как
+  `cancelled -> cancelled`; replay operation key не пересчитывает цели;
+- кандидатами является объединение канонических будущих Appointment из
+  `created` materialization-result этой серии и legacy-проекции
+  `Appointment.series`. Поэтому устаревшая или обнуленная legacy-ссылка не
+  скрывает каноническую цель. Перед отменой сервис под lock сверяет источник,
+  точную revision, расписание и состав. Чужой join/create, ручное изменение
+  состава, неизвестное legacy-происхождение и неподдерживаемый статус дают
+  `manual_review` без изменения Appointment;
+- безопасная отмена меняет только Appointment и его статусные snapshots на
+  `cancelled`, добавляет основание и не меняет billing decision, account,
+  ProgramBlock, sequence number либо существующие LedgerEntry. Новый charge
+  после series-cancellation запрещен, но charge, сериализованно победивший до
+  cancel, остается финансовым фактом для отдельного решения администратора;
+- любой зафиксированный `cancelled/unchanged/manual_review` результат замораживает
+  последующую смену статуса Appointment. Автоматические подтверждения,
+  уведомления, табель и общая форма не могут повторно открыть его; ручной разбор
+  будет отдельной аудируемой командой, а не обходом immutable-результата;
+- `0063` fail-closed отклоняет legacy cancel-history без результатов, защищает
+  insert/принадлежность/статус и `UPDATE/DELETE` результата PostgreSQL-триггерами.
+  Reverse запрещен после cancel-history и после несовместимого с `0062`
+  `withdraw: cancelled -> cancelled`;
 - 61C-4d тем же журналом и результатами реализует
   `withdraw_future_joined_participations`, сохраняя общий Appointment. До 4d
   массово менять `AppointmentParticipant` из join-серии запрещено.
+
+Статус приемки 61C-4c: Ruff, Django check, migration dry-run, независимый
+read-only review и полный regression прошли. SQLite: `932 passed, 82 skipped`;
+PostgreSQL 17: `1014 passed` без пропусков. Полный модуль серий: SQLite
+`88 passed, 38 skipped`, PostgreSQL `126 passed`. PostgreSQL races покрывают
+cancel против charge/attendance/confirmation/reschedule и переназначение
+специалиста против табеля. Нового UI в 4c нет, поэтому browser acceptance
+перенесена на рабочие команды 61D.
 
 #### Acceptance criteria 61C
 

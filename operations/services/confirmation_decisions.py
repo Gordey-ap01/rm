@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
+
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils import timezone
@@ -11,6 +13,7 @@ from operations.models import (
     AppointmentConfirmation,
     AppointmentConfirmationDecision,
 )
+from operations.services import appointments as appointment_svc
 
 from .authority import AuthorityRole, authority_role
 
@@ -60,8 +63,13 @@ def _sync_confirmation_effects(confirmation: AppointmentConfirmation) -> None:
         and confirmation.appointment.status
         in {Appointment.Status.DRAFT, Appointment.Status.PROPOSED}
     ):
-        confirmation.appointment.status = Appointment.Status.CONFIRMED
-        confirmation.appointment.save(update_fields=["status", "updated_at"])
+        with suppress(appointment_svc.AppointmentStateConflict):
+            appointment_svc.transition_appointment_status(
+                confirmation.appointment,
+                status=Appointment.Status.CONFIRMED,
+                allowed_from={Appointment.Status.DRAFT, Appointment.Status.PROPOSED},
+                action="подтвердить занятие",
+            )
 
 
 def _record_decision(

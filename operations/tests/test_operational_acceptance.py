@@ -94,6 +94,7 @@ class OperationalAcceptanceTests(TestCase):
         appointment_svc.record_attendance(
             appointment,
             action="completed",
+            actor=self.administrator,
             note="Занятие проведено в приемочном сценарии.",
         )
 

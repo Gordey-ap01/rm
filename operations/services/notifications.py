@@ -12,6 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from operations.models import Appointment, AppointmentConfirmation
+from operations.services import appointments as appointment_svc
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +121,16 @@ def send_confirmation_email(confirmation_id: int) -> bool:
     confirmation.save(update_fields=["delivery_status", "sent_at", "updated_at"])
 
     if confirmation.appointment.status == Appointment.Status.DRAFT:
-        confirmation.appointment.status = Appointment.Status.PROPOSED
-        confirmation.appointment.save(update_fields=["status", "updated_at"])
+        try:
+            appointment_svc.transition_appointment_status(
+                confirmation.appointment,
+                status=Appointment.Status.PROPOSED,
+                allowed_from={Appointment.Status.DRAFT},
+                action="отправить согласование",
+            )
+        except appointment_svc.AppointmentStateConflict:
+            logger.info(
+                "Confirmation %s was sent after appointment state changed; status was not reactivated",
+                confirmation.pk,
+            )
     return True

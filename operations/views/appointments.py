@@ -24,6 +24,7 @@ from operations.forms import (
     BillingDecisionForm,
 )
 from operations.models import Appointment, AppointmentConfirmationDecision, LedgerEntry
+from operations.services import appointments as appointment_svc
 from operations.services.authority import AuthorityRole, authority_role
 
 from ._common import is_admin_user, safe_next_url
@@ -774,6 +775,8 @@ def appointment_edit(request, pk: int):
                 appointment = form.save()
             except IntegrityError:
                 form.add_error(None, "Не удалось сохранить: найден конфликт расписания.")
+            except appointment_svc.AppointmentStateConflict as exc:
+                form.add_error(None, str(exc))
             else:
                 messages.success(request, "Занятие обновлено.")
                 return redirect("appointment_detail", pk=appointment.pk)
@@ -807,6 +810,8 @@ def appointment_move(request, pk: int):
                 new_appointment = form.save()
             except IntegrityError:
                 form.add_error(None, "Не удалось перенести: найден конфликт расписания.")
+            except appointment_svc.AppointmentStateConflict as exc:
+                form.add_error(None, str(exc))
             else:
                 messages.success(
                     request,
@@ -850,11 +855,15 @@ def appointment_cancel(request, pk: int):
     if request.method == "POST":
         form = AppointmentCancelForm(request.POST, appointment=appointment)
         if form.is_valid():
-            form.save()
-            messages.success(
-                request, "Статус занятия изменен. Решение по списанию примите отдельно."
-            )
-            return redirect("appointment_detail", pk=appointment.pk)
+            try:
+                form.save()
+            except appointment_svc.AppointmentStateConflict as exc:
+                form.add_error(None, str(exc))
+            else:
+                messages.success(
+                    request, "Статус занятия изменен. Решение по списанию примите отдельно."
+                )
+                return redirect("appointment_detail", pk=appointment.pk)
     else:
         form = AppointmentCancelForm(
             appointment=appointment, initial={"status": Appointment.Status.CANCELLED}

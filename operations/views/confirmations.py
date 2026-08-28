@@ -5,6 +5,7 @@ from __future__ import annotations
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.http import HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -15,7 +16,10 @@ from operations.forms import (
     ManualConfirmationDecisionForm,
 )
 from operations.models import Appointment, AppointmentConfirmation
-from operations.services import confirmation_decisions as decision_svc
+from operations.services import (
+    appointments as appointment_svc,
+    confirmation_decisions as decision_svc,
+)
 from operations.tasks import send_appointment_confirmation_email
 
 from ._common import is_admin_user, safe_next_url
@@ -154,11 +158,27 @@ def appointment_send_confirmation(request, pk: int):
 
     form = AppointmentConfirmationSendForm(request.POST, appointment=appointment)
     if form.is_valid():
-        confirmation = form.save(request.user)
+        try:
+            with transaction.atomic():
+                confirmation = form.save(request.user)
+                if appointment.status == Appointment.Status.DRAFT:
+                    appointment_svc.transition_appointment_status(
+                        appointment,
+                        status=Appointment.Status.PROPOSED,
+                        allowed_from={Appointment.Status.DRAFT},
+                        action="отправить согласование",
+                    )
+        except appointment_svc.AppointmentStateConflict as exc:
+            form.add_error(None, str(exc))
+            messages.error(request, "Письмо не отправлено: состояние занятия изменилось.")
+            return render(
+                request,
+                "operations/appointment_detail.html",
+                appointment_detail_context(appointment, actor=request.user)
+                | {"confirmation_form": form},
+                status=409,
+            )
         send_appointment_confirmation_email.enqueue(confirmation.pk)
-        if appointment.status == Appointment.Status.DRAFT:
-            appointment.status = Appointment.Status.PROPOSED
-            appointment.save(update_fields=["status", "updated_at"])
         messages.success(
             request,
             f"Письмо поставлено в очередь на {confirmation.email}.",

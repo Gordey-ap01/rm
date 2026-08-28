@@ -25,6 +25,7 @@ from operations.schedule_validation import (
     appointment_group_conflicts,
     build_local_datetime,
 )
+from operations.services import appointments as appointment_svc
 
 
 @dataclass(frozen=True)
@@ -396,6 +397,7 @@ def mass_reschedule(
             status__in=active_statuses,
         )
         .distinct()
+        .order_by("pk")
         .select_related("child", "service", "child__primary_parent")
         .prefetch_related(
             "participants__child__primary_parent",
@@ -407,11 +409,14 @@ def mass_reschedule(
     cancelled: list[Appointment] = []
     confirmations: list[AppointmentConfirmation] = []
     for appt in appointments:
-        appt.status = Appointment.Status.CANCELLED
-        appt.admin_note = "\n".join(
-            part for part in [appt.admin_note, f"Массовая отмена ({reason})."] if part
-        )
-        appt.save(update_fields=["status", "admin_note", "updated_at"])
+        try:
+            appt = appointment_svc.cancel(
+                appt,
+                status=Appointment.Status.CANCELLED,
+                reason_text=f"Массовая отмена ({reason})",
+            )
+        except appointment_svc.AppointmentStateConflict:
+            continue
         cancelled.append(appt)
 
         for target in representative_confirmation_targets(appt):

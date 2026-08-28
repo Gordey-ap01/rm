@@ -14,6 +14,7 @@ from django.db.models import Q
 from operations.models import (
     Appointment,
     AppointmentParticipant,
+    AppointmentSeriesCancellationResult,
     BalanceAccount,
     BalanceTransfer,
     Child,
@@ -99,18 +100,27 @@ def _locked_participant(
     raise ValueError("Участник не относится к выбранному занятию или был удален.")
 
 
-def _locked_ledger_entries(
+def _ledger_entries(
     appointment: Appointment,
     participant: AppointmentParticipant | None,
-) -> list[LedgerEntry]:
-    entries = LedgerEntry.objects.select_for_update().filter(appointment=appointment)
+):
+    entries = LedgerEntry.objects.filter(appointment=appointment)
     if participant is not None:
         entries = entries.filter(
             Q(appointment_participant=participant) | Q(appointment_participant__isnull=True)
         )
     else:
         entries = entries.filter(appointment_participant__isnull=True)
-    return list(entries.order_by("pk"))
+    return entries
+
+
+def _locked_ledger_entries(
+    appointment: Appointment,
+    participant: AppointmentParticipant | None,
+) -> list[LedgerEntry]:
+    return list(
+        _ledger_entries(appointment, participant).select_for_update().order_by("pk")
+    )
 
 
 def _unlink_entries(entries: list[LedgerEntry]) -> int:
@@ -176,13 +186,59 @@ def apply_decision(
         appointment = (
             Appointment.objects.select_for_update().select_related("service").get(pk=appointment.pk)
         )
+        if (
+            decision == Appointment.BillingDecision.CHARGE
+            and AppointmentSeriesCancellationResult.objects.filter(
+                appointment=appointment,
+                outcome=AppointmentSeriesCancellationResult.Outcome.CANCELLED,
+            ).exists()
+        ):
+            raise ValueError(
+                "Нельзя списать оплату после массовой отмены будущего занятия серией."
+            )
         participant, participants = _locked_participant(appointment, participant)
+        block_ids = {
+            block_id
+            for block_id in [
+                appointment.program_block_id,
+                participant.program_block_id if participant is not None else None,
+            ]
+            if block_id is not None
+        }
+        list(
+            ProgramBlock.objects.select_for_update()
+            .filter(pk__in=block_ids)
+            .order_by("pk")
+        )
+
+        if decision == Appointment.BillingDecision.CHARGE and account is None:
+            raise ValueError("Для списания нужно передать счёт баланса.")
+        account_ids = {
+            account_id
+            for account_id in [
+                appointment.billing_account_id,
+                participant.billing_account_id if participant is not None else None,
+                account.pk if account is not None else None,
+            ]
+            if account_id is not None
+        }
+        account_ids.update(
+            _ledger_entries(appointment, participant).values_list(
+                "account_id", flat=True
+            )
+        )
+        locked_accounts = {
+            locked.pk: locked
+            for locked in BalanceAccount.all_objects.select_for_update()
+            .filter(pk__in=account_ids)
+            .order_by("pk")
+        }
 
         locked_account = None
         if decision == Appointment.BillingDecision.CHARGE:
-            if account is None:
-                raise ValueError("Для списания нужно передать счёт баланса.")
-            locked_account = BalanceAccount.objects.select_for_update().get(pk=account.pk)
+            locked_account = locked_accounts.get(account.pk)
+            if locked_account is None:
+                raise ValueError("Счёт баланса больше не существует.")
             if not locked_account.can_pay_for(appointment.service):
                 raise ValueError("Счёт не подходит для этой услуги.")
             expected_child_id = participant.child_id if participant is not None else appointment.child_id

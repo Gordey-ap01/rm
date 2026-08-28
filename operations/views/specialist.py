@@ -22,13 +22,12 @@ from operations.forms import (
 )
 from operations.models import (
     Appointment,
-    AppointmentParticipant,
     AppointmentStaffAssignment,
     StaffAvailability,
     StaffMember,
     TimeOffRequest,
 )
-from operations.services import time_off_decisions as time_off_svc
+from operations.services import appointments as appointment_svc, time_off_decisions as time_off_svc
 
 from ._common import is_admin_user, safe_next_url
 
@@ -64,58 +63,6 @@ def has_mobile_access(request, staff) -> bool:
 
 def deny_mobile_access():
     return HttpResponseForbidden("Доступ к мобильному кабинету специалиста отключен.")
-
-
-def aggregate_participant_attendance(participants) -> str:
-    statuses = [participant.attendance_status for participant in participants]
-    if not statuses:
-        return Appointment.AttendanceStatus.UNKNOWN
-    if Appointment.AttendanceStatus.ATTENDED in statuses:
-        return Appointment.AttendanceStatus.ATTENDED
-    if Appointment.AttendanceStatus.UNKNOWN in statuses:
-        return Appointment.AttendanceStatus.UNKNOWN
-    if all(status == Appointment.AttendanceStatus.EXCUSED for status in statuses):
-        return Appointment.AttendanceStatus.EXCUSED
-    return Appointment.AttendanceStatus.MISSED
-
-
-def participants_for_marking(appointment: Appointment) -> list[AppointmentParticipant]:
-    participants = list(appointment.participants.select_related("child"))
-    if participants or not appointment.child_id:
-        return participants
-    participant, _ = AppointmentParticipant.objects.update_or_create(
-        appointment=appointment,
-        child_id=appointment.child_id,
-        defaults={
-            "attendance_status": appointment.attendance_status,
-            "billing_decision": appointment.billing_decision,
-            "billing_account_id": appointment.billing_account_id,
-            "program_block_id": appointment.program_block_id,
-            "sequence_number": appointment.sequence_number,
-            "admin_note": appointment.admin_note,
-            "specialist_note": appointment.specialist_note,
-            "marked_by_staff_at": appointment.specialist_marked_at,
-            "starts_at_snapshot": appointment.starts_at,
-            "ends_at_snapshot": appointment.ends_at,
-            "appointment_status": appointment.status,
-        },
-    )
-    return [participant]
-
-
-def ensure_staff_assignment_for_marking(appointment: Appointment) -> None:
-    if appointment.staff_assignments.exists() or not appointment.staff_member_id:
-        return
-    AppointmentStaffAssignment.objects.update_or_create(
-        appointment=appointment,
-        staff_member_id=appointment.staff_member_id,
-        defaults={
-            "role": AppointmentStaffAssignment.Role.PRIMARY,
-            "starts_at_snapshot": appointment.starts_at,
-            "ends_at_snapshot": appointment.ends_at,
-            "appointment_status": appointment.status,
-        },
-    )
 
 
 def specialist_week_summary_items(
@@ -390,66 +337,34 @@ def mark_appointment(request, pk: int):
     if request.method == "POST":
         action = request.POST.get("action")
         note = request.POST.get("specialist_note", "").strip()
-        if action == "completed":
-            appointment_status = Appointment.Status.COMPLETED
-            fallback_attendance = Appointment.AttendanceStatus.ATTENDED
-        elif action == "not_completed":
-            appointment_status = Appointment.Status.NO_SHOW
-            fallback_attendance = Appointment.AttendanceStatus.MISSED
-        else:
+        if action not in {"completed", "not_completed"}:
             messages.error(request, "Неизвестное действие отметки.")
             return redirect(specialist_home_redirect(request, staff))
 
-        now = timezone.now()
-        participants = participants_for_marking(appointment)
-        ensure_staff_assignment_for_marking(appointment)
         valid_attendance_statuses = set(Appointment.AttendanceStatus.values)
-        posted_statuses = {
-            participant.pk: request.POST[f"participant_status_{participant.pk}"]
-            for participant in participants
-            if request.POST.get(f"participant_status_{participant.pk}") in valid_attendance_statuses
-        }
-
-        for participant in participants:
-            participant.appointment_status = appointment_status
-            participant.starts_at_snapshot = appointment.starts_at
-            participant.ends_at_snapshot = appointment.ends_at
-            update_fields = [
-                "appointment_status",
-                "starts_at_snapshot",
-                "ends_at_snapshot",
-                "updated_at",
-            ]
-            if not posted_statuses or participant.pk in posted_statuses:
-                participant.attendance_status = posted_statuses.get(
-                    participant.pk, fallback_attendance
-                )
-                participant.marked_by_staff_at = now
-                update_fields.extend(["attendance_status", "marked_by_staff_at"])
-                if note:
-                    participant.specialist_note = note
-                    update_fields.append("specialist_note")
-            participant.updated_at = now
-            participant.save(update_fields=update_fields)
-
-        attendance_status = (
-            aggregate_participant_attendance(participants) if participants else fallback_attendance
-        )
-        appointment_updates = {
-            "status": appointment_status,
-            "attendance_status": attendance_status,
-            "specialist_marked_at": now,
-            "updated_at": now,
-        }
-        if note:
-            appointment_updates["specialist_note"] = note
-        Appointment.objects.filter(pk=appointment.pk).update(**appointment_updates)
-        AppointmentStaffAssignment.objects.filter(appointment=appointment).update(
-            appointment_status=appointment_status,
-            starts_at_snapshot=appointment.starts_at,
-            ends_at_snapshot=appointment.ends_at,
-            updated_at=now,
-        )
+        posted_statuses = {}
+        for key, value in request.POST.items():
+            if not key.startswith("participant_status_") or value not in valid_attendance_statuses:
+                continue
+            try:
+                participant_id = int(key.removeprefix("participant_status_"))
+            except ValueError:
+                continue
+            posted_statuses[participant_id] = value
+        try:
+            appointment_svc.record_attendance(
+                appointment,
+                action=action,
+                actor=request.user,
+                note=note,
+                participant_statuses=posted_statuses,
+            )
+        except appointment_svc.AppointmentStateConflict as exc:
+            messages.error(request, str(exc))
+            return redirect(specialist_home_redirect(request, staff))
+        except ValueError:
+            messages.error(request, "Отметка не сохранена: состав занятия изменился.")
+            return redirect(specialist_home_redirect(request, staff))
         messages.success(
             request,
             "Отметка специалиста сохранена. Решение по списанию остается за администратором.",

@@ -14,8 +14,10 @@ materializer индивидуальных/групповых/create/join сер�
 подсрез - 61C-4: expand-gate `0060` и `missing_only` реализованы и локально
 приняты; expand `0061` и сервисное исполнение `retry_skipped` реализованы и
 локально приняты. 61C-4b/`0062` реализует append-only stop/resume,
-директорское возобновление и продолжение принятого run. Следующий подсрез -
-61C-4c cancel, затем 61C-4d withdraw и рабочий 61D UI.
+директорское возобновление и продолжение принятого run. 61C-4c/`0063`
+реализует аудируемую отмену будущих неначавшихся занятий create-серии,
+сохраняет ledger и блокирует неявное повторное открытие. Следующий подсрез -
+61C-4d withdraw, затем рабочий 61D UI.
 Production preflight, health, проверяемый backup/restore, цельная
 browser-приемка рабочих ролей, persisted transfer/conversion и приемка
 грантового отчета завершены. Безопасный жизненный цикл грантового плана по
@@ -126,6 +128,22 @@ MVCC-временем данных и цепочкой исправлений. 5
   `git diff --check` прошли; полный PostgreSQL 17 regression - `991 passed`
   без пропусков. Единственная warning относится к внешней миграции
   `django_tasks`, не к коду проекта.
+- 61C-4c добавляет immutable `AppointmentSeriesCancellationResult` и `0063`.
+  Канонические `created`-результаты и legacy-проекция образуют полный набор
+  целей; каждое занятие получает `cancelled`, `unchanged` или `manual_review`
+  с источником, исходным/итоговым статусом и типизированной причиной.
+- Отмена сериализована с переносом, табелем, подтверждением и billing. Она
+  меняет только статус занятия/snapshots, не переписывает каскад, счет,
+  нумерацию, billing decision или ledger. Любой итог отмены замораживает смену
+  статуса до будущей отдельной аудируемой команды ручного разбора.
+- Все writer-пути общей формы, calendar API, массового переноса, mobile-табеля,
+  уведомлений и подтверждений используют единые status guards. Mobile-табель
+  повторно проверяет актуальное назначение специалиста внутри транзакции.
+- Приемка 61C-4c: полный SQLite regression `932 passed, 82 skipped`; полный
+  PostgreSQL 17 regression `1014 passed` без пропусков. Модуль серий: SQLite
+  `88 passed, 38 skipped`, PostgreSQL `126 passed`; billing decisions
+  PostgreSQL `2 passed`. Ruff, Django check, migration dry-run и независимый
+  read-only review прошли без P0-P2.
 - Приемка frozen retry targets `0061`: весь `test_program_series.py` прошел на
   SQLite `54 passed, 27 skipped` и PostgreSQL 17 `81 passed`. Отдельно проверены
   fail-closed preflight старых retry runs, deferred count, immutable/reverse
@@ -496,13 +514,13 @@ MVCC-временем данных и цепочкой исправлений. 5
 
 ## Следующая работа
 
-1. Реализовать 61C-4b-d stop/cancel/withdraw без изменения фактов прошлого и
-   подключить retry/cancel к рабочему интерфейсу администратора.
+1. Реализовать 61C-4d withdraw без изменения общего занятия и подключить
+   retry/cancel/withdraw к рабочему интерфейсу администратора.
 2. Закрыть 61D: паузу/завершение, переходы программы/каскада, registry,
    руководительские отчеты и полную ролевую приемку серий.
-3. Перед production migration chain `0048-0062` выполнить backup v2, `--strict`
+3. Перед production migration chain `0048-0063` выполнить backup v2, `--strict`
    preflight, временно закрыть грантовые записи и подготовить совместимый
-   rollback-релиз. После появления истории `0053`/`0054` и series history `0055-0061`
+   rollback-релиз. После появления истории `0053`/`0054` и series history `0055-0063`
    эти миграции не откатываются:
    rollback сохраняет additive schema, private volume и immutable-историю.
 4. Закрыть production-допуск 59B-2: offsite backup, monitoring/alerting, реальный SMTP,
@@ -528,13 +546,13 @@ MVCC-временем данных и цепочкой исправлений. 5
 Критические зоны до рабочего production-контура:
 
 - завершенная матрица ролей во всех управленческих действиях;
-- остаток 61C-4 и 61D: cancel/withdraw, UI retry и полный жизненный цикл серий;
+- остаток 61C-4 и 61D: withdraw, UI retry/cancel и полный жизненный цикл серий;
 - production policy и внешняя защита приватных артефактов 59B-2;
 - policy возвратов и обратной конвертации;
 - offsite backup, monitoring/alerting и реальный SMTP;
 - регулярный targeted browser smoke и приемка на физическом телефоне;
 - приемка на реальных обезличенных сценариях центра;
-- production cutover migration chain `0048-0062` после backup v2/preflight.
+- production cutover migration chain `0048-0063` после backup v2/preflight.
 
 ## Риски и запреты
 
@@ -555,6 +573,9 @@ MVCC-временем данных и цепочкой исправлений. 5
   блокируется, а совместимый rollback сохраняет forward-only цепочку попыток.
 - Не откатывать `0061` после появления frozen retry target: reverse намеренно
   блокируется, а совместимый rollback сохраняет цель и продолжает принятый run.
+- Не откатывать `0063` после появления cancel-result либо совместимого с ним
+  lifecycle-history: rollback сохраняет immutable результаты и использует
+  совместимую версию приложения.
 - Не объединять разделенные runtime/migration DB-роли: runtime не имеет
   DDL, role membership, право отключать triggers или заменять защитные
   функции `0053`/`0054`; live preflight технически это проверяет.

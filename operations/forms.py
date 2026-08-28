@@ -273,6 +273,9 @@ class AppointmentForm(forms.ModelForm):
         self.actor = kwargs.pop("actor", None)
         instance = kwargs.get("instance")
         initial = kwargs.pop("initial", {}).copy()
+        self._original_updated_at = instance.updated_at if instance and instance.pk else None
+        self._original_starts_at = instance.starts_at if instance and instance.pk else None
+        self._original_ends_at = instance.ends_at if instance and instance.pk else None
         self._original_child_id = instance.child_id if instance else None
         self._original_staff_member_id = instance.staff_member_id if instance else None
         self._original_participant_ids: set[int] = set()
@@ -685,7 +688,10 @@ class AppointmentForm(forms.ModelForm):
             if hasattr(self.instance, "_skip_room_limit_validation"):
                 del self.instance._skip_room_limit_validation
 
+    @transaction.atomic
     def save(self, commit=True):
+        from operations.services import appointments as appointment_svc
+
         appointment = super().save(commit=False)
         appointment.starts_at = self.cleaned_data["starts_at"]
         appointment.ends_at = self.cleaned_data["ends_at"]
@@ -696,10 +702,45 @@ class AppointmentForm(forms.ModelForm):
             "staff_availability_override_reason", ""
         )
         if commit:
+            expected_series_id = None
+            locked_series = None
+            if appointment.pk:
+                expected_series_id, locked_series = (
+                    appointment_svc.lock_series_root_for_appointment(appointment.pk)
+                )
             with schedule_write_svc.lock_schedule_write(
                 appointment_id=appointment.pk,
                 room_ids=[appointment.room_id],
             ) as locked:
+                if (
+                    locked.appointment is not None
+                    and locked.appointment.updated_at != self._original_updated_at
+                ):
+                    raise appointment_svc.AppointmentStateConflict(
+                        "Занятие изменилось после открытия формы. Обновите страницу и повторите действие."
+                    )
+                if locked.appointment is not None:
+                    schedule_changed = (
+                        appointment.starts_at != self._original_starts_at
+                        or appointment.ends_at != self._original_ends_at
+                    )
+                    appointment_svc.require_locked_series_projection(
+                        locked.appointment,
+                        expected_series_id=expected_series_id,
+                        locked_series=locked_series,
+                        action="изменить время занятия",
+                        require_active=schedule_changed,
+                    )
+                    if schedule_changed:
+                        appointment_svc.require_open_appointment(
+                            locked.appointment,
+                            action="изменить время занятия",
+                        )
+                    appointment_svc.require_no_series_reactivation(
+                        locked.appointment,
+                        requested_status=appointment.status,
+                        action="сохранить занятие",
+                    )
                 room = locked.room_for(appointment.room_id)
                 room_conflicts = schedule_write_svc.ensure_room_capacity(
                     starts_at=appointment.starts_at,
@@ -947,11 +988,16 @@ class AppointmentMoveForm(forms.Form):
 
     @transaction.atomic
     def save(self):
+        from operations.services import appointments as appointment_svc
+
         starts_at = self.cleaned_data["starts_at"]
         ends_at = self.cleaned_data["ends_at"]
         staff_member = self.cleaned_data["staff_member"]
         room = self.cleaned_data["room"]
         note = self.cleaned_data.get("admin_note", "").strip()
+        expected_series_id, locked_series = (
+            appointment_svc.lock_series_root_for_appointment(self.appointment.pk)
+        )
         with schedule_write_svc.lock_schedule_write(
             appointment_id=self.appointment.pk,
             room_ids=[room.pk if room else None],
@@ -959,6 +1005,13 @@ class AppointmentMoveForm(forms.Form):
             old = locked.appointment
             if old is None:  # Defensive: appointment_id is always present above.
                 raise forms.ValidationError("Исходное занятие не найдено.")
+            appointment_svc.require_locked_series_projection(
+                old,
+                expected_series_id=expected_series_id,
+                locked_series=locked_series,
+                action="перенести занятие",
+            )
+            appointment_svc.require_open_appointment(old, action="перенести занятие")
 
             participants = list(
                 old.participants.select_related("child", "billing_account").order_by("pk")
@@ -1103,22 +1156,21 @@ class AppointmentCancelForm(forms.Form):
         return cleaned
 
     def save(self):
-        appointment = self.appointment
+        from operations.services import appointments as appointment_svc
+
         reason = dict(self.REASON_CHOICES)[self.cleaned_data["reason"]]
         note = self.cleaned_data.get("admin_note", "").strip()
-        appointment.status = self.cleaned_data["status"]
         same_day_note = (
             "Отмена день-в-день: решение по списанию принимает администратор отдельно."
             if self.is_same_day_cancellation
             else ""
         )
-        appointment.admin_note = "\n".join(
-            part
-            for part in [appointment.admin_note, f"Причина отмены: {reason}.", same_day_note, note]
-            if part
+        return appointment_svc.cancel(
+            self.appointment,
+            status=self.cleaned_data["status"],
+            reason_text=reason,
+            admin_note="\n".join(part for part in [same_day_note, note] if part),
         )
-        appointment.save(update_fields=["status", "admin_note", "updated_at"])
-        return appointment
 
 
 class BillingDecisionForm(forms.Form):

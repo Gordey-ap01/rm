@@ -4959,12 +4959,17 @@ class AppointmentSeriesLifecycleEvent(TimeStampedModel):
                         supersedes__isnull=False,
                     )
                     | Q(
+                        event_type="stop_materialization",
+                        status_from="active",
+                        status_to="cancelled",
+                        supersedes__isnull=True,
+                    )
+                    | Q(
                         event_type__in=[
-                            "stop_materialization",
                             "cancel_future_unstarted",
                             "withdraw_future_joined_participations",
                         ],
-                        status_from="active",
+                        status_from__in=["active", "cancelled"],
                         status_to="cancelled",
                         supersedes__isnull=True,
                     )
@@ -5064,6 +5069,167 @@ class AppointmentSeriesLifecycleEvent(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.series} / {self.get_event_type_display()} / {self.occurred_at:%d.%m.%Y %H:%M}"
+
+
+class AppointmentSeriesCancellationResult(TimeStampedModel):
+    class Outcome(models.TextChoices):
+        CANCELLED = "cancelled", "Занятие отменено"
+        UNCHANGED = "unchanged", "Оставлено без изменений"
+        MANUAL_REVIEW = "manual_review", "Требуется ручной разбор"
+
+    lifecycle_event = models.ForeignKey(
+        AppointmentSeriesLifecycleEvent,
+        verbose_name="событие отмены серии",
+        on_delete=models.PROTECT,
+        related_name="cancellation_results",
+    )
+    appointment = models.ForeignKey(
+        Appointment,
+        verbose_name="занятие",
+        on_delete=models.PROTECT,
+        related_name="series_cancellation_results",
+    )
+    source_materialization_result = models.ForeignKey(
+        AppointmentSeriesMaterializationResult,
+        verbose_name="исходный результат создания занятия",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="series_cancellation_results",
+    )
+    outcome = models.CharField("результат", max_length=20, choices=Outcome.choices)
+    status_from = models.CharField(
+        "статус был",
+        max_length=30,
+        choices=Appointment.Status.choices,
+    )
+    status_to = models.CharField(
+        "статус стал",
+        max_length=30,
+        choices=Appointment.Status.choices,
+    )
+    reason_code = models.CharField("код причины", max_length=50)
+    reason = models.TextField("причина")
+    processed_at = models.DateTimeField("время обработки", default=timezone.now, db_index=True)
+
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        verbose_name = "результат отмены занятия серии"
+        verbose_name_plural = "результаты отмены занятий серии"
+        ordering = ["lifecycle_event_id", "appointment__starts_at", "appointment_id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["lifecycle_event", "appointment"],
+                name="unique_series_cancel_result_appointment",
+            ),
+            models.CheckConstraint(
+                condition=~Q(reason_code=""),
+                name="series_cancel_result_code_required",
+            ),
+            models.CheckConstraint(
+                condition=~Q(reason=""),
+                name="series_cancel_result_reason_required",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        outcome="cancelled",
+                        status_from__in=["proposed", "confirmed", "reserved"],
+                        status_to="cancelled",
+                        source_materialization_result__isnull=False,
+                    )
+                    | Q(
+                        outcome__in=["unchanged", "manual_review"],
+                        status_to=models.F("status_from"),
+                    )
+                ),
+                name="series_cancel_result_valid_transition",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["lifecycle_event", "outcome"]),
+            models.Index(fields=["appointment", "-processed_at"]),
+        ]
+
+    def clean(self) -> None:
+        self.reason = normalize_immutable_reason(self.reason)
+        errors: dict[str, str] = {}
+        if not (self.reason_code or "").strip():
+            errors["reason_code"] = "Укажите типизированную причину результата отмены."
+        if self.lifecycle_event_id:
+            event = self.lifecycle_event
+            if event.event_type != (
+                AppointmentSeriesLifecycleEvent.EventType.CANCEL_FUTURE_UNSTARTED
+            ):
+                errors["lifecycle_event"] = (
+                    "Результат отмены должен относиться к cancel lifecycle-событию."
+                )
+            if event.status_to != AppointmentSeries.Status.CANCELLED:
+                errors["lifecycle_event"] = (
+                    "Cancel lifecycle-событие должно останавливать новые запуски серии."
+                )
+            if self.processed_at and self.processed_at < event.occurred_at:
+                errors["processed_at"] = (
+                    "Результат отмены не может предшествовать lifecycle-событию."
+                )
+            if (
+                self.appointment_id
+                and not self.source_materialization_result_id
+                and event.series_id != self.appointment.series_id
+            ):
+                errors["appointment"] = "Занятие должно принадлежать отменяемой серии."
+        if self.source_materialization_result_id:
+            source = self.source_materialization_result
+            if source.outcome != AppointmentSeriesOccurrence.Outcome.CREATED:
+                errors["source_materialization_result"] = (
+                    "Источником отмены может быть только результат создания занятия."
+                )
+            if source.appointment_id != self.appointment_id:
+                errors["source_materialization_result"] = (
+                    "Исходный результат должен указывать на отменяемое занятие."
+                )
+            if self.lifecycle_event_id and source.series_id != self.lifecycle_event.series_id:
+                errors["source_materialization_result"] = (
+                    "Исходный результат должен принадлежать отменяемой серии."
+                )
+        if self.outcome == self.Outcome.CANCELLED:
+            if self.status_from not in {
+                Appointment.Status.PROPOSED,
+                Appointment.Status.CONFIRMED,
+                Appointment.Status.RESERVED,
+            } or self.status_to != Appointment.Status.CANCELLED:
+                errors["outcome"] = "Отменять можно только будущее активное занятие."
+            if not self.source_materialization_result_id:
+                errors["source_materialization_result"] = (
+                    "Без доказуемого результата создания массовая отмена запрещена."
+                )
+        elif self.status_to != self.status_from:
+            errors["status_to"] = "Результат без изменения должен сохранять исходный статус."
+        if self.appointment_id:
+            current_status = (
+                Appointment.objects.filter(pk=self.appointment_id)
+                .values_list("status", flat=True)
+                .first()
+            )
+            if current_status is not None and current_status != self.status_to:
+                errors["status_to"] = (
+                    "Итоговый статус результата должен совпадать с текущим статусом занятия."
+                )
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Результат отмены занятия серии нельзя изменять.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Результат отмены занятия серии нельзя удалять.")
+
+    def __str__(self) -> str:
+        return f"{self.lifecycle_event} / {self.appointment} / {self.get_outcome_display()}"
 
 
 def room_usage_counts(appointment_qs: QuerySet[Appointment]) -> tuple[int, int]:

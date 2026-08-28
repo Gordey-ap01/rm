@@ -304,7 +304,12 @@ class AppointmentServiceTests(_FixturesMixin, TestCase):
             room=self.room1,
             billing_account=self.account,
         )
-        appt_svc.record_attendance(appt, action="completed", note="Всё ок")
+        appt_svc.record_attendance(
+            appt,
+            action="completed",
+            actor=self.user,
+            note="Всё ок",
+        )
         appt.refresh_from_db()
         self.assertEqual(appt.status, Appointment.Status.COMPLETED)
         self.assertEqual(appt.attendance_status, Appointment.AttendanceStatus.ATTENDED)
@@ -321,7 +326,12 @@ class AppointmentServiceTests(_FixturesMixin, TestCase):
             billing_account=self.account,
         )
 
-        appt_svc.record_attendance(appt, action="completed", note="Готово")
+        appt_svc.record_attendance(
+            appt,
+            action="completed",
+            actor=self.user,
+            note="Готово",
+        )
 
         participant = appt.participants.get(child=self.child)
         self.assertEqual(participant.appointment_status, Appointment.Status.COMPLETED)
@@ -340,7 +350,7 @@ class AppointmentServiceTests(_FixturesMixin, TestCase):
             billing_account=self.account,
         )
         with self.assertRaises(ValueError):
-            appt_svc.record_attendance(appt, action="weird")
+            appt_svc.record_attendance(appt, action="weird", actor=self.user)
 
 
 class ScheduleValidationTests(_FixturesMixin, TestCase):

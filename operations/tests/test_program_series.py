@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 from queue import Queue
@@ -20,8 +21,10 @@ from django.utils import timezone
 
 from operations.models import (
     Appointment,
+    AppointmentConfirmation,
     AppointmentParticipant,
     AppointmentSeries,
+    AppointmentSeriesCancellationResult,
     AppointmentSeriesLifecycleEvent,
     AppointmentSeriesMaterializationResult,
     AppointmentSeriesMaterializationRun,
@@ -32,6 +35,7 @@ from operations.models import (
     AppointmentSeriesRevisionParticipant,
     AppointmentSeriesRevisionStaffAssignment,
     AppointmentSeriesStaffAssignment,
+    AppointmentStaffAssignment,
     BalanceAccount,
     Child,
     FundingSource,
@@ -45,7 +49,10 @@ from operations.models import (
     TreatmentProgram,
 )
 from operations.services import (
+    appointments as appointment_svc,
     billing as billing_svc,
+    confirmation_decisions,
+    notifications,
     program_series,
     program_wizard,
     series_lifecycle,
@@ -2714,6 +2721,453 @@ class GroupProgramSeriesTests(TestCase):
         self.assertEqual(replay.series.appointments.count(), 1)
         self.assertEqual(replay.series.materialization_runs.count(), 1)
 
+    def test_cancel_future_unstarted_is_audited_idempotent_and_syncs_snapshots(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        operation_key = uuid4()
+        reason = "Администратор отменил оставшиеся будущие занятия серии."
+
+        cancelled = series_lifecycle.cancel_future_unstarted(
+            materialized.series,
+            operation_key=operation_key,
+            actor=self.admin,
+            reason=reason,
+        )
+        replay = series_lifecycle.cancel_future_unstarted(
+            materialized.series,
+            operation_key=operation_key,
+            actor=self.admin,
+            reason=reason,
+        )
+
+        appointment.refresh_from_db()
+        result = cancelled.results[0]
+        self.assertEqual(cancelled.cancelled_count, 1)
+        self.assertEqual(cancelled.unchanged_count, 0)
+        self.assertEqual(cancelled.manual_review_count, 0)
+        self.assertEqual(cancelled.event.event_number, 1)
+        self.assertEqual(
+            cancelled.event.event_type,
+            AppointmentSeriesLifecycleEvent.EventType.CANCEL_FUTURE_UNSTARTED,
+        )
+        self.assertEqual(appointment.status, Appointment.Status.CANCELLED)
+        self.assertEqual(result.outcome, AppointmentSeriesCancellationResult.Outcome.CANCELLED)
+        self.assertEqual(result.status_from, Appointment.Status.PROPOSED)
+        self.assertEqual(result.status_to, Appointment.Status.CANCELLED)
+        self.assertEqual(result.source_materialization_result.appointment_id, appointment.pk)
+        self.assertEqual(
+            set(appointment.participants.values_list("appointment_status", flat=True)),
+            {Appointment.Status.CANCELLED},
+        )
+        self.assertEqual(
+            set(appointment.staff_assignments.values_list("appointment_status", flat=True)),
+            {Appointment.Status.CANCELLED},
+        )
+        self.assertTrue(replay.reused_event)
+        self.assertEqual(replay.event.pk, cancelled.event.pk)
+        self.assertEqual([item.pk for item in replay.results], [result.pk])
+        with self.assertRaises(series_lifecycle.SeriesLifecycleMismatch):
+            series_lifecycle.cancel_future_unstarted(
+                materialized.series,
+                operation_key=operation_key,
+                actor=self.admin,
+                reason="Другое основание массовой отмены будущих занятий.",
+            )
+
+    def test_calendar_api_cannot_move_series_cancelled_appointment(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        series_lifecycle.cancel_future_unstarted(
+            materialized.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Отменённое серией занятие нельзя вернуть переносом календаря.",
+        )
+        target_start = appointment.starts_at + timedelta(days=1)
+
+        response = self.client.patch(
+            f"/api/appointments/{appointment.pk}/move/",
+            data=json.dumps(
+                {
+                    "starts_at": target_start.isoformat(),
+                    "ends_at": (target_start + timedelta(minutes=45)).isoformat(),
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        appointment.refresh_from_db()
+        self.assertEqual(appointment.status, Appointment.Status.CANCELLED)
+        self.assertNotEqual(appointment.starts_at, target_start)
+
+    def test_appointment_edit_form_cannot_reactivate_series_cancelled_appointment(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        series_lifecycle.cancel_future_unstarted(
+            materialized.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Отменённое серией занятие нельзя вернуть общей формой.",
+        )
+        target_day = timezone.localdate(appointment.starts_at) + timedelta(days=1)
+
+        response = self.client.post(
+            reverse("appointment_edit", args=[appointment.pk]),
+            {
+                "session_type": Appointment.SessionType.GROUP,
+                "child": self.child1.pk,
+                "participants": [self.child1.pk, self.child2.pk],
+                "service": self.service.pk,
+                "staff_member": self.staff1.pk,
+                "staff_members": [self.staff1.pk, self.staff2.pk],
+                "room": self.room.pk,
+                "program_block": self.block1.pk,
+                "billing_account": self.account1.pk,
+                "status": Appointment.Status.CONFIRMED,
+                "date": target_day.isoformat(),
+                "time": "11:00",
+                "duration_minutes": "45",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "новые действия по серии остановлены")
+        appointment.refresh_from_db()
+        self.assertEqual(appointment.status, Appointment.Status.CANCELLED)
+
+    def test_unchanged_cancellation_result_freezes_status_in_edit_form(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        appointment_svc.cancel(
+            appointment,
+            status=Appointment.Status.CANCELLED,
+            reason_text="Занятие отменено до остановки всей серии",
+        )
+        cancelled = series_lifecycle.cancel_future_unstarted(
+            materialized.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Ранее отмененное занятие должно остаться неизменным.",
+        )
+        appointment.refresh_from_db()
+        local_start = timezone.localtime(appointment.starts_at)
+
+        response = self.client.post(
+            reverse("appointment_edit", args=[appointment.pk]),
+            {
+                "session_type": Appointment.SessionType.GROUP,
+                "child": self.child1.pk,
+                "participants": [self.child1.pk, self.child2.pk],
+                "service": self.service.pk,
+                "staff_member": self.staff1.pk,
+                "staff_members": [self.staff1.pk, self.staff2.pk],
+                "room": self.room.pk,
+                "program_block": self.block1.pk,
+                "billing_account": self.account1.pk,
+                "status": Appointment.Status.CONFIRMED,
+                "date": local_start.date().isoformat(),
+                "time": local_start.strftime("%H:%M"),
+                "duration_minutes": str(appointment.duration_minutes),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "отдельное аудируемое решение")
+        appointment.refresh_from_db()
+        self.assertEqual(
+            cancelled.results[0].outcome,
+            AppointmentSeriesCancellationResult.Outcome.UNCHANGED,
+        )
+        self.assertEqual(appointment.status, Appointment.Status.CANCELLED)
+
+    def test_manual_review_result_blocks_notification_and_confirmation_status_changes(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        Appointment.objects.filter(pk=appointment.pk).update(
+            status=Appointment.Status.DRAFT
+        )
+        appointment.participants.update(appointment_status=Appointment.Status.DRAFT)
+        appointment.staff_assignments.update(
+            appointment_status=Appointment.Status.DRAFT
+        )
+        appointment.refresh_from_db()
+        cancelled = series_lifecycle.cancel_future_unstarted(
+            materialized.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Черновик требует отдельного ручного решения после остановки серии.",
+        )
+        confirmation = AppointmentConfirmation.objects.create(
+            appointment=appointment,
+            target_type=AppointmentConfirmation.TargetType.REPRESENTATIVE,
+            email="representative@example.local",
+            subject="Подтверждение занятия",
+            message="Подтвердите занятие",
+            sent_by=self.admin,
+        )
+
+        self.assertTrue(notifications.send_confirmation_email(confirmation.pk))
+        appointment.refresh_from_db()
+        self.assertEqual(
+            cancelled.results[0].outcome,
+            AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW,
+        )
+        self.assertEqual(appointment.status, Appointment.Status.DRAFT)
+
+        confirmation_decisions.record_external_response(
+            confirmation,
+            action="confirm",
+        )
+        appointment.refresh_from_db()
+        confirmation.refresh_from_db()
+        self.assertEqual(confirmation.status, AppointmentConfirmation.Status.CONFIRMED)
+        self.assertEqual(appointment.status, Appointment.Status.DRAFT)
+
+    def test_cancel_future_unstarted_strengthens_stop_and_preserves_ledger(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        participant = appointment.participants.get(child=self.child1)
+        charged = billing_svc.apply_decision(
+            appointment,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=self.account1,
+            amount=Decimal("-1"),
+            actor=self.admin,
+            participant=participant,
+        ).entry
+        ledger_snapshot = tuple(
+            LedgerEntry.objects.filter(pk=charged.pk).values_list(
+                "pk",
+                "account_id",
+                "appointment_id",
+                "appointment_participant_id",
+                "entry_type",
+                "amount",
+            )
+        )
+        stopped = series_lifecycle.stop_materialization(
+            materialized.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Руководитель остановил новые запуски до решения об отмене.",
+        )
+
+        cancelled = series_lifecycle.cancel_future_unstarted(
+            stopped.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Руководитель подтвердил отмену будущих занятий серии.",
+        )
+
+        participant.refresh_from_db()
+        self.assertEqual(cancelled.event.event_number, 2)
+        self.assertEqual(cancelled.event.status_from, AppointmentSeries.Status.CANCELLED)
+        self.assertEqual(cancelled.event.status_to, AppointmentSeries.Status.CANCELLED)
+        self.assertEqual(
+            tuple(
+                LedgerEntry.objects.filter(pk=charged.pk).values_list(
+                    "pk",
+                    "account_id",
+                    "appointment_id",
+                    "appointment_participant_id",
+                    "entry_type",
+                    "amount",
+                )
+            ),
+            ledger_snapshot,
+        )
+        self.assertEqual(participant.billing_decision, Appointment.BillingDecision.CHARGE)
+        with self.assertRaisesMessage(ValueError, "массовой отмены"):
+            billing_svc.apply_decision(
+                appointment,
+                decision=Appointment.BillingDecision.CHARGE,
+                account=self.account1,
+                amount=Decimal("-1"),
+                actor=self.admin,
+                participant=participant,
+            )
+
+    def test_cancel_future_unstarted_routes_changed_composition_to_manual_review(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        child, account, block = self.create_third_block()
+        AppointmentParticipant.objects.create(
+            appointment=appointment,
+            child=child,
+            billing_account=account,
+            program_block=block,
+            starts_at_snapshot=appointment.starts_at,
+            ends_at_snapshot=appointment.ends_at,
+            appointment_status=appointment.status,
+        )
+
+        result = series_lifecycle.cancel_future_unstarted(
+            materialized.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Состав проверяется перед массовой отменой будущих занятий.",
+        )
+
+        appointment.refresh_from_db()
+        self.assertEqual(result.cancelled_count, 0)
+        self.assertEqual(result.manual_review_count, 1)
+        self.assertEqual(result.results[0].reason_code, "composition_changed")
+        self.assertEqual(appointment.status, Appointment.Status.PROPOSED)
+
+    def test_cancel_future_unstarted_keeps_canonical_target_with_stale_series_projection(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        Appointment.objects.filter(pk=appointment.pk).update(series=None)
+
+        result = series_lifecycle.cancel_future_unstarted(
+            materialized.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Канонический результат не должен исчезнуть из проверки владения.",
+        )
+
+        appointment.refresh_from_db()
+        self.assertEqual(result.cancelled_count, 0)
+        self.assertEqual(result.manual_review_count, 1)
+        self.assertEqual(result.results[0].reason_code, "series_projection_changed")
+        self.assertEqual(
+            result.results[0].source_materialization_result.series_id,
+            materialized.series.pk,
+        )
+        self.assertEqual(appointment.status, Appointment.Status.PROPOSED)
+
+    def test_cancel_future_unstarted_keeps_externally_joined_group_for_manual_review(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        _child, _account, block = self.create_third_block()
+        joined = program_series.join_program_block_to_groups(
+            block=block,
+            appointments=[appointment],
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        self.assertEqual(joined.joined_count, 1)
+
+        result = series_lifecycle.cancel_future_unstarted(
+            materialized.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Общее занятие с чужим участием требует ручного решения.",
+        )
+
+        appointment.refresh_from_db()
+        self.assertEqual(result.cancelled_count, 0)
+        self.assertEqual(result.manual_review_count, 1)
+        self.assertEqual(result.results[0].reason_code, "external_join")
+        self.assertEqual(appointment.status, Appointment.Status.PROPOSED)
+
+    def test_cancel_future_unstarted_keeps_marked_active_fact_for_manual_review(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        participant = appointment.participants.get(child=self.child1)
+        participant.attendance_status = Appointment.AttendanceStatus.ATTENDED
+        participant.marked_by_staff_at = timezone.now()
+        participant.save(
+            update_fields=["attendance_status", "marked_by_staff_at", "updated_at"]
+        )
+
+        result = series_lifecycle.cancel_future_unstarted(
+            materialized.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Отмеченное занятие нельзя автоматически переписать отменой.",
+        )
+
+        appointment.refresh_from_db()
+        self.assertEqual(result.manual_review_count, 1)
+        self.assertEqual(result.results[0].reason_code, "attendance_recorded")
+        self.assertEqual(appointment.status, Appointment.Status.PROPOSED)
+
+    def test_cancel_future_unstarted_rejects_join_mode_without_history(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        AppointmentSeries.objects.filter(pk=materialized.series.pk).update(
+            materialization_mode=AppointmentSeries.MaterializationMode.JOIN_EXISTING
+        )
+        materialized.series.refresh_from_db()
+
+        with self.assertRaisesMessage(ValidationError, "Join-серия"):
+            series_lifecycle.cancel_future_unstarted(
+                materialized.series,
+                operation_key=uuid4(),
+                actor=self.admin,
+                reason="Массовая отмена общего занятия join-серией запрещена.",
+            )
+        self.assertFalse(materialized.series.lifecycle_events.exists())
+        self.assertFalse(AppointmentSeriesCancellationResult.objects.exists())
+
+    def test_series_cancellation_result_is_immutable(self):
+        cancelled = series_lifecycle.cancel_future_unstarted(
+            program_series.create_group_series(
+                self.preview(end_date=self.start_date),
+                operation_key=uuid4(),
+                actor=self.admin,
+            ).series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Фиксируем неизменяемый результат массовой отмены.",
+        )
+        result = cancelled.results[0]
+        result.reason = "Попытка переписать результат отмены."
+
+        with self.assertRaisesMessage(ValidationError, "нельзя изменять"):
+            result.save()
+        with self.assertRaisesMessage(ValidationError, "нельзя обновить"):
+            AppointmentSeriesCancellationResult.objects.filter(pk=result.pk).update(
+                reason="Обход model.save"
+            )
+        with self.assertRaisesMessage(ValidationError, "нельзя удалять"):
+            result.delete()
+
     def test_director_lifecycle_decision_has_priority_over_administrator(self):
         operator = User.objects.create_user(
             "series-priority-operator",
@@ -3102,6 +3556,57 @@ class GroupProgramSeriesTests(TestCase):
                     "Попытка raw override решения руководителя.",
                     operator.pk,
                     resumed.series.pk,
+                ],
+            )
+
+    @skipUnless(connection.vendor == "postgresql", "DB guard проверяется на PostgreSQL.")
+    def test_series_cancellation_postgresql_guards_block_raw_mutation_and_cross_owner(self):
+        first = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        cancelled = series_lifecycle.cancel_future_unstarted(
+            first.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Проверка неизменяемого PostgreSQL-журнала массовой отмены.",
+        )
+        result = cancelled.results[0]
+
+        with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE operations_appointmentseriescancellationresult "
+                "SET reason = %s WHERE id = %s",
+                ["Попытка raw update", result.pk],
+            )
+
+        second = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        foreign_appointment = second.series.appointments.get()
+        with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO operations_appointmentseriescancellationresult (
+                    created_at, updated_at, outcome, status_from, status_to,
+                    reason_code, reason, processed_at, appointment_id,
+                    lifecycle_event_id, source_materialization_result_id
+                ) VALUES (
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, %s, %s, %s,
+                    %s, %s, CURRENT_TIMESTAMP, %s, %s, NULL
+                )
+                """,
+                [
+                    AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW,
+                    foreign_appointment.status,
+                    foreign_appointment.status,
+                    "cross_owner",
+                    "Попытка связать результат с занятием другой серии.",
+                    foreign_appointment.pk,
+                    cancelled.event.pk,
                 ],
             )
 
@@ -4343,6 +4848,471 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
                 },
             )
 
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Гонка массовой отмены и списания проверяется только на PostgreSQL.",
+    )
+    def test_cancel_and_charge_have_one_linearized_outcome(self):
+        materialized = program_series.create_group_series(
+            self._preview_from_database(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        participant = appointment.participants.get(child=self.children[0])
+        account = self.blocks[0].balance_account
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def cancel_series():
+            close_old_connections()
+            try:
+                current = AppointmentSeries.objects.get(pk=materialized.series.pk)
+                actor = User.objects.get(pk=self.admin.pk)
+                barrier.wait(timeout=10)
+                result = series_lifecycle.cancel_future_unstarted(
+                    current,
+                    operation_key=uuid4(),
+                    actor=actor,
+                    reason="Concurrent cancel and charge are serialized.",
+                )
+                outcomes.put(("cancel", result.cancelled_count))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        def charge_participant():
+            close_old_connections()
+            try:
+                current = Appointment.objects.get(pk=appointment.pk)
+                current_participant = AppointmentParticipant.objects.get(pk=participant.pk)
+                current_account = BalanceAccount.objects.get(pk=account.pk)
+                actor = User.objects.get(pk=self.admin.pk)
+                barrier.wait(timeout=10)
+                result = billing_svc.apply_decision(
+                    current,
+                    decision=Appointment.BillingDecision.CHARGE,
+                    account=current_account,
+                    amount=Decimal("-1"),
+                    actor=actor,
+                    participant=current_participant,
+                )
+                outcomes.put(("charge", result.entry.pk))
+            except ValueError as exc:
+                outcomes.put(("charge_rejected", str(exc)))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        threads = [Thread(target=cancel_series), Thread(target=charge_participant)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        results = [outcomes.get_nowait() for _ in range(2)]
+        self.assertTrue(all(isinstance(item, tuple) for item in results), results)
+        self.assertEqual(sum(item[0] == "cancel" for item in results), 1, results)
+        self.assertEqual(
+            sum(item[0] in {"charge", "charge_rejected"} for item in results),
+            1,
+            results,
+        )
+        appointment.refresh_from_db()
+        self.assertEqual(appointment.status, Appointment.Status.CANCELLED)
+        self.assertTrue(
+            AppointmentSeriesCancellationResult.objects.filter(
+                appointment=appointment,
+                outcome=AppointmentSeriesCancellationResult.Outcome.CANCELLED,
+            ).exists()
+        )
+        charged = any(item[0] == "charge" for item in results)
+        self.assertEqual(
+            LedgerEntry.objects.filter(
+                appointment=appointment,
+                appointment_participant=participant,
+                entry_type=LedgerEntry.EntryType.DEBIT,
+            ).exists(),
+            charged,
+        )
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Гонка массовой отмены и отметки проверяется только на PostgreSQL.",
+    )
+    def test_cancel_and_attendance_do_not_overwrite_each_other(self):
+        materialized = program_series.create_group_series(
+            self._preview_from_database(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def cancel_series():
+            close_old_connections()
+            try:
+                current = AppointmentSeries.objects.get(pk=materialized.series.pk)
+                actor = User.objects.get(pk=self.admin.pk)
+                barrier.wait(timeout=10)
+                result = series_lifecycle.cancel_future_unstarted(
+                    current,
+                    operation_key=uuid4(),
+                    actor=actor,
+                    reason="Concurrent cancel and attendance are serialized.",
+                )
+                outcomes.put(("cancel", result.results[0].outcome))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        def mark_attendance():
+            close_old_connections()
+            try:
+                current = Appointment.objects.get(pk=appointment.pk)
+                barrier.wait(timeout=10)
+                appointment_svc.record_attendance(
+                    current,
+                    action="completed",
+                    actor=User.objects.get(pk=self.admin.pk),
+                )
+                outcomes.put(("attendance", Appointment.Status.COMPLETED))
+            except appointment_svc.AppointmentStateConflict:
+                outcomes.put(("attendance_rejected", Appointment.Status.CANCELLED))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        threads = [Thread(target=cancel_series), Thread(target=mark_attendance)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        results = [outcomes.get_nowait() for _ in range(2)]
+        self.assertTrue(all(isinstance(item, tuple) for item in results), results)
+        self.assertEqual(sum(item[0] == "cancel" for item in results), 1, results)
+        self.assertEqual(
+            sum(item[0] in {"attendance", "attendance_rejected"} for item in results),
+            1,
+            results,
+        )
+        appointment.refresh_from_db()
+        cancellation = AppointmentSeriesCancellationResult.objects.get(
+            appointment=appointment
+        )
+        if appointment.status == Appointment.Status.CANCELLED:
+            self.assertEqual(
+                cancellation.outcome,
+                AppointmentSeriesCancellationResult.Outcome.CANCELLED,
+            )
+            self.assertTrue(any(item[0] == "attendance_rejected" for item in results))
+        else:
+            self.assertEqual(appointment.status, Appointment.Status.COMPLETED)
+            self.assertEqual(
+                cancellation.outcome,
+                AppointmentSeriesCancellationResult.Outcome.UNCHANGED,
+            )
+            self.assertTrue(any(item[0] == "attendance" for item in results))
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Гонка переназначения и отметки проверяется только на PostgreSQL.",
+    )
+    def test_reassignment_and_attendance_recheck_specialist_authority_under_lock(self):
+        specialist_user = User.objects.create_user(
+            "concurrent-attendance-specialist",
+            password="x",
+        )
+        self.staff_members[0].user = specialist_user
+        self.staff_members[0].save(update_fields=["user", "updated_at"])
+        materialized = program_series.create_group_series(
+            self._preview_from_database(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def reassign_specialist():
+            close_old_connections()
+            try:
+                barrier.wait(timeout=10)
+                with transaction.atomic():
+                    current = Appointment.objects.select_for_update().get(
+                        pk=appointment.pk
+                    )
+                    assignments = list(
+                        AppointmentStaffAssignment.objects.select_for_update()
+                        .filter(appointment=current)
+                        .order_by("pk")
+                    )
+                    AppointmentStaffAssignment.objects.filter(
+                        pk__in=[assignment.pk for assignment in assignments]
+                    ).delete()
+                    current.staff_member_id = self.staff_members[1].pk
+                    current.save(
+                        update_fields=["staff_member", "updated_at"],
+                        validate_schedule=False,
+                        sync_legacy=False,
+                    )
+                    AppointmentStaffAssignment.objects.create(
+                        appointment=current,
+                        staff_member_id=self.staff_members[1].pk,
+                        role=AppointmentStaffAssignment.Role.PRIMARY,
+                        starts_at_snapshot=current.starts_at,
+                        ends_at_snapshot=current.ends_at,
+                        appointment_status=current.status,
+                    )
+                outcomes.put(("reassigned", self.staff_members[1].pk))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        def mark_attendance():
+            close_old_connections()
+            try:
+                barrier.wait(timeout=10)
+                current = Appointment.objects.get(pk=appointment.pk)
+                appointment_svc.record_attendance(
+                    current,
+                    action="completed",
+                    actor=User.objects.get(pk=specialist_user.pk),
+                )
+                outcomes.put(("attendance", Appointment.Status.COMPLETED))
+            except appointment_svc.AppointmentStateConflict:
+                outcomes.put(("attendance_rejected", None))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        threads = [Thread(target=reassign_specialist), Thread(target=mark_attendance)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        results = [outcomes.get_nowait() for _ in range(2)]
+        self.assertTrue(all(isinstance(item, tuple) for item in results), results)
+        self.assertEqual(sum(item[0] == "reassigned" for item in results), 1, results)
+        self.assertEqual(
+            sum(item[0] in {"attendance", "attendance_rejected"} for item in results),
+            1,
+            results,
+        )
+        appointment.refresh_from_db()
+        if any(item[0] == "attendance" for item in results):
+            self.assertEqual(appointment.status, Appointment.Status.COMPLETED)
+        else:
+            self.assertEqual(appointment.status, Appointment.Status.PROPOSED)
+        self.assertEqual(appointment.staff_member_id, self.staff_members[1].pk)
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Гонка массовой отмены и подтверждения проверяется только на PostgreSQL.",
+    )
+    def test_cancel_and_confirmation_cannot_reactivate_appointment(self):
+        materialized = program_series.create_group_series(
+            self._preview_from_database(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def cancel_series():
+            close_old_connections()
+            try:
+                current = AppointmentSeries.objects.get(pk=materialized.series.pk)
+                actor = User.objects.get(pk=self.admin.pk)
+                barrier.wait(timeout=10)
+                result = series_lifecycle.cancel_future_unstarted(
+                    current,
+                    operation_key=uuid4(),
+                    actor=actor,
+                    reason="Concurrent cancel and confirmation are serialized.",
+                )
+                outcomes.put(("cancel", result.cancelled_count))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        def confirm_appointment():
+            close_old_connections()
+            try:
+                current = Appointment.objects.get(pk=appointment.pk)
+                barrier.wait(timeout=10)
+                appointment_svc.transition_appointment_status(
+                    current,
+                    status=Appointment.Status.CONFIRMED,
+                    allowed_from={Appointment.Status.PROPOSED},
+                    action="подтвердить занятие",
+                )
+                outcomes.put(("confirmation", Appointment.Status.CONFIRMED))
+            except appointment_svc.AppointmentStateConflict:
+                outcomes.put(("confirmation_rejected", Appointment.Status.CANCELLED))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        threads = [Thread(target=cancel_series), Thread(target=confirm_appointment)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        results = [outcomes.get_nowait() for _ in range(2)]
+        self.assertTrue(all(isinstance(item, tuple) for item in results), results)
+        self.assertEqual(sum(item[0] == "cancel" for item in results), 1, results)
+        self.assertEqual(
+            sum(item[0] in {"confirmation", "confirmation_rejected"} for item in results),
+            1,
+            results,
+        )
+        appointment.refresh_from_db()
+        self.assertEqual(appointment.status, Appointment.Status.CANCELLED)
+        cancellation = AppointmentSeriesCancellationResult.objects.get(
+            appointment=appointment
+        )
+        self.assertEqual(
+            cancellation.outcome,
+            AppointmentSeriesCancellationResult.Outcome.CANCELLED,
+        )
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Гонка массовой отмены и переноса проверяется только на PostgreSQL.",
+    )
+    def test_cancel_and_reschedule_follow_series_first_lock_order(self):
+        materialized = program_series.create_group_series(
+            self._preview_from_database(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        past_start = timezone.now() - timedelta(days=1)
+        past_end = past_start + timedelta(minutes=30)
+        Appointment.objects.filter(pk=appointment.pk).update(
+            starts_at=past_start,
+            ends_at=past_end,
+        )
+        appointment.participants.update(
+            starts_at_snapshot=past_start,
+            ends_at_snapshot=past_end,
+        )
+        appointment.staff_assignments.update(
+            starts_at_snapshot=past_start,
+            ends_at_snapshot=past_end,
+        )
+        appointment.refresh_from_db()
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def cancel_series():
+            close_old_connections()
+            try:
+                current = AppointmentSeries.objects.get(pk=materialized.series.pk)
+                actor = User.objects.get(pk=self.admin.pk)
+                barrier.wait(timeout=10)
+                result = series_lifecycle.cancel_future_unstarted(
+                    current,
+                    operation_key=uuid4(),
+                    actor=actor,
+                    reason="Concurrent cancel and reschedule are serialized.",
+                )
+                outcomes.put(
+                    (
+                        "cancel",
+                        result.cancelled_count,
+                        result.unchanged_count,
+                        result.manual_review_count,
+                    )
+                )
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        def reschedule_appointment():
+            close_old_connections()
+            try:
+                current = Appointment.objects.get(pk=appointment.pk)
+                staff = StaffMember.objects.get(pk=self.staff_members[0].pk)
+                room = Room.objects.get(pk=self.room.pk)
+                new_start = timezone.now() + timedelta(days=2)
+                barrier.wait(timeout=10)
+                moved = appointment_svc.reschedule(
+                    current,
+                    starts_at=new_start,
+                    ends_at=new_start + timedelta(minutes=30),
+                    staff_member=staff,
+                    room=room,
+                    actor=User.objects.get(pk=self.admin.pk),
+                )
+                outcomes.put(("reschedule", moved.new.pk))
+            except appointment_svc.AppointmentStateConflict:
+                outcomes.put(("reschedule_rejected", None))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        threads = [Thread(target=cancel_series), Thread(target=reschedule_appointment)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        results = [outcomes.get_nowait() for _ in range(2)]
+        self.assertTrue(all(isinstance(item, tuple) for item in results), results)
+        self.assertEqual(sum(item[0] == "cancel" for item in results), 1, results)
+        self.assertEqual(
+            sum(item[0] in {"reschedule", "reschedule_rejected"} for item in results),
+            1,
+            results,
+        )
+        materialized.series.refresh_from_db()
+        self.assertEqual(materialized.series.status, AppointmentSeries.Status.CANCELLED)
+        appointment.refresh_from_db()
+        if any(item[0] == "reschedule" for item in results):
+            self.assertEqual(appointment.status, Appointment.Status.RESCHEDULED)
+            successor = appointment.rescheduled_to.get()
+            self.assertEqual(successor.status, Appointment.Status.CONFIRMED)
+            self.assertEqual(
+                set(
+                    materialized.series.lifecycle_events.get(
+                        event_type=AppointmentSeriesLifecycleEvent.EventType.CANCEL_FUTURE_UNSTARTED
+                    ).cancellation_results.values_list("outcome", flat=True)
+                ),
+                {
+                    AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW,
+                },
+            )
+        else:
+            self.assertEqual(appointment.status, Appointment.Status.PROPOSED)
+            self.assertFalse(appointment.rescheduled_to.exists())
+            self.assertFalse(
+                AppointmentSeriesCancellationResult.objects.filter(
+                    lifecycle_event__series=materialized.series
+                ).exists()
+            )
+
 
 class ProgramWizardPostgreSQLConcurrencyTests(TransactionTestCase):
     def setUp(self):
@@ -4475,7 +5445,13 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
         executor.migrate(executor.loader.graph.leaf_nodes("operations"))
         super().tearDown()
 
-    def _create_native_series_history(self, apps, *, suffix):
+    def _create_native_series_history(
+        self,
+        apps,
+        *,
+        suffix,
+        expected_result_count=0,
+    ):
         user_model = apps.get_model("auth", "User")
         child_model = apps.get_model("operations", "Child")
         staff_model = apps.get_model("operations", "StaffMember")
@@ -4573,7 +5549,7 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
             mode="initial",
             date_from=day,
             date_to=day,
-            expected_result_count=0,
+            expected_result_count=expected_result_count,
             actor_id=actor.pk,
             actor_role_snapshot="director",
             reason="Native dual-write migration fixture.",
@@ -5779,5 +6755,213 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
         with self.assertRaisesMessage(
             RuntimeError,
             "Cannot remove series lifecycle schema while lifecycle history exists",
+        ):
+            executor.migrate(target_before)
+
+    def test_series_cancellation_expand_has_empty_roundtrip(self):
+        target_before = [("operations", "0062_series_lifecycle_event_expand")]
+        target_after = [("operations", "0063_series_cancel_results_expand")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_before)
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+        apps = executor.loader.project_state(target_after).apps
+        apps.get_model("operations", "AppointmentSeriesCancellationResult")
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_before)
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+
+    def test_series_cancellation_expand_rejects_preexisting_cancel_event(self):
+        target_before = [("operations", "0062_series_lifecycle_event_expand")]
+        target_after = [("operations", "0063_series_cancel_results_expand")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_before)
+        apps = executor.loader.project_state(target_before).apps
+        with transaction.atomic():
+            series, revision, _ = self._create_native_series_history(
+                apps,
+                suffix="cancel-preflight",
+            )
+            event_model = apps.get_model(
+                "operations", "AppointmentSeriesLifecycleEvent"
+            )
+            event = event_model.objects.create(
+                series_id=series.pk,
+                operation_key=uuid4(),
+                fingerprint="b" * 64,
+                event_type="cancel_future_unstarted",
+                event_number=1,
+                status_from="active",
+                status_to="cancelled",
+                actor_id=revision.actor_id,
+                actor_role_snapshot="director",
+                reason="Pre-existing cancellation event has no auditable target results.",
+            )
+            apps.get_model("operations", "AppointmentSeries").objects.filter(
+                pk=series.pk
+            ).update(status="cancelled")
+
+        executor = MigrationExecutor(connection)
+        with self.assertRaisesMessage(
+            RuntimeError,
+            "Cannot install series cancellation results while pre-existing",
+        ):
+            executor.migrate(target_after)
+
+        if connection.vendor == "postgresql":
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "ALTER TABLE operations_appointmentserieslifecycleevent "
+                    "DISABLE TRIGGER operations_appointmentserieslifecycleevent_immutable"
+                )
+                try:
+                    cursor.execute(
+                        "DELETE FROM operations_appointmentserieslifecycleevent "
+                        "WHERE id = %s",
+                        [event.pk],
+                    )
+                finally:
+                    cursor.execute(
+                        "ALTER TABLE operations_appointmentserieslifecycleevent "
+                        "ENABLE TRIGGER operations_appointmentserieslifecycleevent_immutable"
+                    )
+        else:
+            event_model.objects.filter(pk=event.pk).delete()
+        apps.get_model("operations", "AppointmentSeries").objects.filter(
+            pk=series.pk
+        ).update(status="active")
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+
+    def test_series_cancellation_history_blocks_reverse(self):
+        target_before = [("operations", "0062_series_lifecycle_event_expand")]
+        target_after = [("operations", "0063_series_cancel_results_expand")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+        apps = executor.loader.project_state(target_after).apps
+        with transaction.atomic():
+            series, revision, run = self._create_native_series_history(
+                apps,
+                suffix="series-cancellation",
+                expected_result_count=1,
+            )
+
+        appointment_model = apps.get_model("operations", "Appointment")
+        result_model = apps.get_model(
+            "operations", "AppointmentSeriesMaterializationResult"
+        )
+        lifecycle_model = apps.get_model(
+            "operations", "AppointmentSeriesLifecycleEvent"
+        )
+        cancellation_model = apps.get_model(
+            "operations", "AppointmentSeriesCancellationResult"
+        )
+        series_model = apps.get_model("operations", "AppointmentSeries")
+        starts_at = _local(revision.effective_from, time(10, 0))
+        with transaction.atomic():
+            appointment = appointment_model.objects.create(
+                child_id=series.child_id,
+                staff_member_id=series.staff_member_id,
+                service_id=series.service_id,
+                room_id=series.room_id,
+                starts_at=starts_at,
+                ends_at=starts_at + timedelta(minutes=30),
+                status="proposed",
+                series_id=series.pk,
+                session_type="individual",
+            )
+            source = result_model.objects.create(
+                series_id=series.pk,
+                revision_id=revision.pk,
+                run_id=run.pk,
+                scheduled_starts_at=starts_at,
+                scheduled_date=revision.effective_from,
+                attempt_number=1,
+                provenance_kind="native",
+                appointment_id=appointment.pk,
+                outcome="created",
+            )
+            event = lifecycle_model.objects.create(
+                series_id=series.pk,
+                operation_key=uuid4(),
+                fingerprint="c" * 64,
+                event_type="cancel_future_unstarted",
+                event_number=1,
+                status_from="active",
+                status_to="cancelled",
+                actor_id=revision.actor_id,
+                actor_role_snapshot="director",
+                reason="Cancellation history must block destructive rollback.",
+            )
+            series_model.objects.filter(pk=series.pk).update(status="cancelled")
+            appointment_model.objects.filter(pk=appointment.pk).update(
+                status="cancelled"
+            )
+            cancellation_model.objects.create(
+                lifecycle_event_id=event.pk,
+                appointment_id=appointment.pk,
+                source_materialization_result_id=source.pk,
+                outcome="cancelled",
+                status_from="proposed",
+                status_to="cancelled",
+                reason_code="cancelled",
+                reason="Future appointment cancelled by its owning series.",
+            )
+
+        executor = MigrationExecutor(connection)
+        with self.assertRaisesMessage(
+            RuntimeError,
+            "Cannot remove series cancellation schema while incompatible lifecycle history exists",
+        ):
+            executor.migrate(target_before)
+
+    def test_cancelled_withdraw_history_blocks_series_cancellation_reverse(self):
+        target_before = [("operations", "0062_series_lifecycle_event_expand")]
+        target_after = [("operations", "0063_series_cancel_results_expand")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+        apps = executor.loader.project_state(target_after).apps
+        with transaction.atomic():
+            series, revision, _ = self._create_native_series_history(
+                apps,
+                suffix="cancelled-withdraw-reverse",
+            )
+            event_model = apps.get_model(
+                "operations", "AppointmentSeriesLifecycleEvent"
+            )
+            series_model = apps.get_model("operations", "AppointmentSeries")
+            event_model.objects.create(
+                series_id=series.pk,
+                operation_key=uuid4(),
+                fingerprint="d" * 64,
+                event_type="stop_materialization",
+                event_number=1,
+                status_from="active",
+                status_to="cancelled",
+                actor_id=revision.actor_id,
+                actor_role_snapshot="director",
+                reason="Stop the series before withdrawing joined participations.",
+            )
+            series_model.objects.filter(pk=series.pk).update(status="cancelled")
+            event_model.objects.create(
+                series_id=series.pk,
+                operation_key=uuid4(),
+                fingerprint="e" * 64,
+                event_type="withdraw_future_joined_participations",
+                event_number=2,
+                status_from="cancelled",
+                status_to="cancelled",
+                actor_id=revision.actor_id,
+                actor_role_snapshot="director",
+                reason="Withdraw joined participations after the series was stopped.",
+            )
+
+        executor = MigrationExecutor(connection)
+        with self.assertRaisesMessage(
+            RuntimeError,
+            "Cannot remove series cancellation schema while incompatible lifecycle history exists",
         ):
             executor.migrate(target_before)

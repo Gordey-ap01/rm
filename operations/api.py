@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as dtmod
 
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.http import HttpResponseForbidden
 from django.utils import timezone
 from ninja import NinjaAPI, Schema, Status
@@ -24,6 +25,7 @@ from operations.schedule_validation import (
     appointment_validation_staff_members,
     staff_unavailability_reason,
 )
+from operations.services import appointments as appointment_svc
 
 api = NinjaAPI(auth=django_auth, urls_namespace="api", version="1.0.0")
 
@@ -234,42 +236,58 @@ def move_appointment(request, pk: int, payload: AppointmentMoveIn):
         )
 
     try:
-        with schedule_write_svc.lock_schedule_write(
-            appointment_id=appointment.pk,
-            room_ids=[appointment.room_id],
-        ) as locked:
-            appointment = locked.appointment
-            if appointment is None:  # Defensive: appointment_id is present above.
-                return Status(404, ErrorOut(detail="Appointment not found"))
-            schedule_write_svc.ensure_room_capacity(
-                starts_at=new_start,
-                ends_at=new_end,
-                children=appointment_validation_children(appointment),
-                staff_members=appointment_validation_staff_members(appointment),
-                room=locked.room_for(appointment.room_id),
-                status=appointment.status,
-                exclude_pk=appointment.pk,
+        with transaction.atomic():
+            expected_series_id, locked_series = (
+                appointment_svc.lock_series_root_for_appointment(appointment.pk)
             )
-            appointment.starts_at = new_start
-            appointment.ends_at = new_end
-            appointment.staff_availability_override = False
-            appointment.staff_availability_override_reason = ""
-            appointment.save(validate_schedule=True, sync_legacy=False)
-            now = timezone.now()
-            appointment.participants.update(
-                starts_at_snapshot=appointment.starts_at,
-                ends_at_snapshot=appointment.ends_at,
-                appointment_status=appointment.status,
-                updated_at=now,
-            )
-            appointment.staff_assignments.update(
-                starts_at_snapshot=appointment.starts_at,
-                ends_at_snapshot=appointment.ends_at,
-                appointment_status=appointment.status,
-                override_availability=False,
-                override_reason="",
-                updated_at=now,
-            )
+            with schedule_write_svc.lock_schedule_write(
+                appointment_id=appointment.pk,
+                room_ids=[appointment.room_id],
+            ) as locked:
+                appointment = locked.appointment
+                if appointment is None:  # Defensive: appointment_id is present above.
+                    return Status(404, ErrorOut(detail="Appointment not found"))
+                appointment_svc.require_locked_series_projection(
+                    appointment,
+                    expected_series_id=expected_series_id,
+                    locked_series=locked_series,
+                    action="перенести занятие",
+                )
+                appointment_svc.require_open_appointment(
+                    appointment,
+                    action="перенести занятие",
+                )
+                schedule_write_svc.ensure_room_capacity(
+                    starts_at=new_start,
+                    ends_at=new_end,
+                    children=appointment_validation_children(appointment),
+                    staff_members=appointment_validation_staff_members(appointment),
+                    room=locked.room_for(appointment.room_id),
+                    status=appointment.status,
+                    exclude_pk=appointment.pk,
+                )
+                appointment.starts_at = new_start
+                appointment.ends_at = new_end
+                appointment.staff_availability_override = False
+                appointment.staff_availability_override_reason = ""
+                appointment.save(validate_schedule=True, sync_legacy=False)
+                now = timezone.now()
+                appointment.participants.update(
+                    starts_at_snapshot=appointment.starts_at,
+                    ends_at_snapshot=appointment.ends_at,
+                    appointment_status=appointment.status,
+                    updated_at=now,
+                )
+                appointment.staff_assignments.update(
+                    starts_at_snapshot=appointment.starts_at,
+                    ends_at_snapshot=appointment.ends_at,
+                    appointment_status=appointment.status,
+                    override_availability=False,
+                    override_reason="",
+                    updated_at=now,
+                )
+    except appointment_svc.AppointmentStateConflict as exc:
+        return Status(400, ErrorOut(detail=str(exc)))
     except ValidationError as exc:
         return Status(400, ErrorOut(detail="; ".join(exc.messages)))
     except Exception:
