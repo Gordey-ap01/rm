@@ -3314,6 +3314,10 @@ class AppointmentSeriesMaterializationRun(TimeStampedModel):
                 condition=~Q(mode="retry_skipped") | ~Q(reason=""),
                 name="series_retry_run_reason_required",
             ),
+            models.CheckConstraint(
+                condition=~Q(mode="retry_skipped") | Q(expected_result_count__gte=1),
+                name="series_retry_run_has_targets",
+            ),
         ]
         indexes = [
             models.Index(fields=["series", "-started_at"]),
@@ -3332,6 +3336,10 @@ class AppointmentSeriesMaterializationRun(TimeStampedModel):
             errors["date_from"] = "Диапазон запуска должен находиться внутри периода редакции."
         if self.mode == self.Mode.RETRY_SKIPPED and len(self.reason) < 5:
             errors["reason"] = "Для повторного запуска укажите основание (минимум 5 символов)."
+        if self.mode == self.Mode.RETRY_SKIPPED and self.expected_result_count < 1:
+            errors["expected_result_count"] = (
+                "Повторный запуск должен содержать хотя бы одну зафиксированную цель."
+            )
         if errors:
             raise ValidationError(errors)
 
@@ -4624,6 +4632,31 @@ class AppointmentSeriesMaterializationResult(TimeStampedModel):
                     "Предыдущий результат должен быть более ранней попыткой той же "
                     "даты и не может относиться к более новой редакции."
                 )
+        if self.run_id and self.run.mode == (
+            AppointmentSeriesMaterializationRun.Mode.RETRY_SKIPPED
+        ):
+            retry_target = self.run.retry_targets.filter(
+                scheduled_starts_at=self.scheduled_starts_at
+            ).first()
+            if (
+                retry_target is None
+                or self.supersedes_id != retry_target.chain_head_result_id
+                or self.outcome
+                not in {
+                    AppointmentSeriesOccurrence.Outcome.CREATED,
+                    AppointmentSeriesOccurrence.Outcome.SKIPPED,
+                }
+            ):
+                errors["run"] = (
+                    "Результат retry_skipped должен продолжать его зафиксированную "
+                    "цель исходом created или skipped."
+                )
+        elif self.supersedes_id and AppointmentSeriesRetryTarget.objects.filter(
+            chain_head_result_id=self.supersedes_id
+        ).exists():
+            errors["supersedes"] = (
+                "Вершина цепочки зарезервирована за принятым retry_skipped."
+            )
         if self.scheduled_starts_at and self.scheduled_date:
             local_date = timezone.localtime(self.scheduled_starts_at).date()
             if local_date != self.scheduled_date:
@@ -4696,6 +4729,137 @@ class AppointmentSeriesMaterializationResult(TimeStampedModel):
             f"{self.series} / {local_start:%d.%m.%Y %H:%M} / "
             f"попытка {self.attempt_number}"
         )
+
+
+class AppointmentSeriesRetryTarget(TimeStampedModel):
+    run = models.ForeignKey(
+        AppointmentSeriesMaterializationRun,
+        verbose_name="повторный запуск",
+        on_delete=models.PROTECT,
+        related_name="retry_targets",
+    )
+    scheduled_starts_at = models.DateTimeField("плановое начало")
+    scheduled_date = models.DateField("локальная дата занятия")
+    chain_head_result = models.ForeignKey(
+        AppointmentSeriesMaterializationResult,
+        verbose_name="вершина цепочки при принятии запуска",
+        on_delete=models.PROTECT,
+        related_name="retry_chain_head_targets",
+    )
+    effective_skipped_result = models.ForeignKey(
+        AppointmentSeriesMaterializationResult,
+        verbose_name="эффективный пропущенный результат",
+        on_delete=models.PROTECT,
+        related_name="retry_effective_targets",
+    )
+
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        verbose_name = "зафиксированная цель повторного запуска серии"
+        verbose_name_plural = "зафиксированные цели повторных запусков серий"
+        ordering = ["run_id", "scheduled_starts_at", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["run", "scheduled_starts_at"],
+                name="unique_series_retry_run_target",
+            ),
+            models.UniqueConstraint(
+                fields=["chain_head_result"],
+                name="unique_series_retry_chain_head",
+            ),
+        ]
+        indexes = [models.Index(fields=["run", "scheduled_date"])]
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        run = self.run if self.run_id else None
+        chain_head = self.chain_head_result if self.chain_head_result_id else None
+        effective = (
+            self.effective_skipped_result
+            if self.effective_skipped_result_id
+            else None
+        )
+
+        if run and run.mode != AppointmentSeriesMaterializationRun.Mode.RETRY_SKIPPED:
+            errors["run"] = "Цели фиксируются только для запуска retry_skipped."
+        if run and run.revision.materialization_mode != (
+            AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS
+        ):
+            errors["run"] = "Повтор пропущенных дат поддерживается только для создания занятий."
+        if self.scheduled_starts_at and self.scheduled_date:
+            local_date = timezone.localtime(self.scheduled_starts_at).date()
+            if local_date != self.scheduled_date:
+                errors["scheduled_date"] = (
+                    "Локальная дата не совпадает с плановым временем цели."
+                )
+        if run and self.scheduled_date and not (
+            run.date_from <= self.scheduled_date <= run.date_to
+        ):
+            errors["scheduled_date"] = "Цель должна находиться в диапазоне запуска."
+
+        if run and chain_head:
+            if (
+                chain_head.series_id != run.series_id
+                or chain_head.scheduled_starts_at != self.scheduled_starts_at
+                or chain_head.scheduled_date != self.scheduled_date
+                or chain_head.revision.revision_number > run.revision.revision_number
+            ):
+                errors["chain_head_result"] = (
+                    "Вершина цепочки должна относиться к той же серии, дате и не более "
+                    "новой редакции."
+                )
+            if chain_head.superseded_by.exists():
+                errors["chain_head_result"] = (
+                    "Повтор можно принять только от текущей вершины цепочки попыток."
+                )
+
+        resolved_effective = chain_head
+        visited: set[int] = set()
+        while (
+            resolved_effective
+            and resolved_effective.outcome
+            == AppointmentSeriesOccurrence.Outcome.UNCHANGED
+        ):
+            if resolved_effective.pk in visited or not resolved_effective.supersedes_id:
+                resolved_effective = None
+                break
+            visited.add(resolved_effective.pk)
+            resolved_effective = resolved_effective.supersedes
+
+        if (
+            not effective
+            or not resolved_effective
+            or resolved_effective.pk != effective.pk
+            or effective.outcome != AppointmentSeriesOccurrence.Outcome.SKIPPED
+        ):
+            errors["effective_skipped_result"] = (
+                "Эффективный исход текущей цепочки должен быть skipped."
+            )
+        elif run and (
+            effective.series_id != run.series_id
+            or effective.scheduled_starts_at != self.scheduled_starts_at
+            or effective.scheduled_date != self.scheduled_date
+        ):
+            errors["effective_skipped_result"] = (
+                "Пропущенный результат должен относиться к той же серии и дате."
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Зафиксированную цель повторного запуска нельзя изменять.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Зафиксированную цель повторного запуска нельзя удалять.")
+
+    def __str__(self) -> str:
+        local_start = timezone.localtime(self.scheduled_starts_at)
+        return f"{self.run} / {local_start:%d.%m.%Y %H:%M}"
 
 
 def room_usage_counts(appointment_qs: QuerySet[Appointment]) -> tuple[int, int]:

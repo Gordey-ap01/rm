@@ -26,6 +26,7 @@ from operations.models import (
     AppointmentSeriesMaterializationRun,
     AppointmentSeriesMaterializationRunEvent,
     AppointmentSeriesOccurrence,
+    AppointmentSeriesRetryTarget,
     AppointmentSeriesRevision,
     AppointmentSeriesRevisionParticipant,
     AppointmentSeriesRevisionStaffAssignment,
@@ -899,6 +900,136 @@ class GroupProgramSeriesTests(TestCase):
             applied.run.actor_role_snapshot,
             AppointmentSeriesMaterializationRun.ActorRole.ADMINISTRATOR,
         )
+
+    def test_retry_target_freezes_effective_skipped_chain_and_is_immutable(self):
+        conflict_start = _local(self.start_date, time(10, 0))
+        Appointment.objects.create(
+            child=self.child1,
+            staff_member=self.staff1,
+            service=self.service,
+            starts_at=conflict_start,
+            ends_at=conflict_start + timedelta(minutes=45),
+            status=Appointment.Status.CONFIRMED,
+        )
+        initial = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = initial.series
+        series.refresh_from_db()
+        skipped = series.materialization_results.get(
+            outcome=AppointmentSeriesOccurrence.Outcome.SKIPPED
+        )
+        missing = program_series.materialize_missing_series(
+            series=series,
+            date_from=self.start_date,
+            date_to=self.start_date,
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        chain_head = missing.run.results.get()
+        self.assertEqual(
+            chain_head.outcome,
+            AppointmentSeriesOccurrence.Outcome.UNCHANGED,
+        )
+
+        with transaction.atomic():
+            retry_run = AppointmentSeriesMaterializationRun.objects.create(
+                series=series,
+                revision=series.current_revision,
+                operation_key=uuid4(),
+                fingerprint="a" * 64,
+                mode=AppointmentSeriesMaterializationRun.Mode.RETRY_SKIPPED,
+                date_from=self.start_date,
+                date_to=self.start_date,
+                expected_result_count=1,
+                actor=self.admin,
+                actor_role_snapshot=(
+                    AppointmentSeriesMaterializationRun.ActorRole.ADMINISTRATOR
+                ),
+                reason="Повтор после устранения конфликта расписания.",
+            )
+            target = AppointmentSeriesRetryTarget.objects.create(
+                run=retry_run,
+                scheduled_starts_at=chain_head.scheduled_starts_at,
+                scheduled_date=chain_head.scheduled_date,
+                chain_head_result=chain_head,
+                effective_skipped_result=skipped,
+            )
+
+        target.scheduled_date += timedelta(days=1)
+        with self.assertRaisesMessage(ValidationError, "нельзя изменять"):
+            target.save()
+        with self.assertRaisesMessage(ValidationError, "нельзя удалять"):
+            target.delete()
+        with self.assertRaises(ValidationError):
+            AppointmentSeriesRetryTarget.objects.filter(pk=target.pk).update(
+                scheduled_date=self.start_date + timedelta(days=1)
+            )
+
+        invalid = AppointmentSeriesRetryTarget(
+            run=retry_run,
+            scheduled_starts_at=chain_head.scheduled_starts_at,
+            scheduled_date=chain_head.scheduled_date,
+            chain_head_result=chain_head,
+            effective_skipped_result=chain_head,
+        )
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Эффективный исход текущей цепочки должен быть skipped",
+        ):
+            invalid.full_clean(validate_unique=False, validate_constraints=False)
+
+        unrelated_run = AppointmentSeriesMaterializationRun.objects.create(
+            series=series,
+            revision=series.current_revision,
+            operation_key=uuid4(),
+            fingerprint="b" * 64,
+            mode=AppointmentSeriesMaterializationRun.Mode.MISSING_ONLY,
+            date_from=self.start_date,
+            date_to=self.start_date,
+            expected_result_count=1,
+            actor=self.admin,
+            actor_role_snapshot=(
+                AppointmentSeriesMaterializationRun.ActorRole.ADMINISTRATOR
+            ),
+            reason="Проверка резервирования вершины цепочки.",
+        )
+        unsafe_result = AppointmentSeriesMaterializationResult(
+            series=series,
+            revision=series.current_revision,
+            run=unrelated_run,
+            scheduled_starts_at=chain_head.scheduled_starts_at,
+            scheduled_date=chain_head.scheduled_date,
+            attempt_number=chain_head.attempt_number + 1,
+            provenance_kind=(
+                AppointmentSeriesMaterializationResult.ProvenanceKind.NATIVE
+            ),
+            outcome=AppointmentSeriesOccurrence.Outcome.UNCHANGED,
+            reason_code="unsafe_branch",
+            reason="Чужой запуск не должен занять цель retry.",
+            supersedes=chain_head,
+        )
+        with self.assertRaisesMessage(ValidationError, "зарезервирована"):
+            unsafe_result.save()
+
+        retry_result = AppointmentSeriesMaterializationResult.objects.create(
+            series=series,
+            revision=series.current_revision,
+            run=retry_run,
+            scheduled_starts_at=chain_head.scheduled_starts_at,
+            scheduled_date=chain_head.scheduled_date,
+            attempt_number=chain_head.attempt_number + 1,
+            provenance_kind=(
+                AppointmentSeriesMaterializationResult.ProvenanceKind.NATIVE
+            ),
+            outcome=AppointmentSeriesOccurrence.Outcome.SKIPPED,
+            reason_code="still_conflicted",
+            reason="Повтор выполнен, конфликт пока сохраняется.",
+            supersedes=chain_head,
+        )
+        self.assertEqual(retry_result.supersedes_id, chain_head.pk)
 
     def test_future_group_revision_rejects_incomplete_composition_atomically(self):
         applied = program_series.create_group_series(
@@ -3274,6 +3405,103 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
         )
         return series, revision, run
 
+    def _create_retry_target_history(self, apps, *, suffix, create_retry=True):
+        series, revision, _ = self._create_native_series_history(
+            apps,
+            suffix=suffix,
+        )
+        run_model = apps.get_model(
+            "operations", "AppointmentSeriesMaterializationRun"
+        )
+        result_model = apps.get_model(
+            "operations", "AppointmentSeriesMaterializationResult"
+        )
+        target_model = apps.get_model("operations", "AppointmentSeriesRetryTarget")
+        day = revision.effective_from
+        starts_at = _local(day, time(10, 0))
+        source_run = run_model.objects.create(
+            series_id=series.pk,
+            revision_id=revision.pk,
+            operation_key=uuid4(),
+            fingerprint="1" * 64,
+            mode="missing_only",
+            date_from=day,
+            date_to=day,
+            expected_result_count=1,
+            actor_id=revision.actor_id,
+            actor_role_snapshot="director",
+            reason="Retry target source run.",
+        )
+        effective_skipped = result_model.objects.create(
+            series_id=series.pk,
+            revision_id=revision.pk,
+            run_id=source_run.pk,
+            scheduled_starts_at=starts_at,
+            scheduled_date=day,
+            attempt_number=1,
+            provenance_kind="native",
+            outcome="skipped",
+            reason_code="fixture_skip",
+            reason="Skipped result for frozen retry target.",
+        )
+        head_run = run_model.objects.create(
+            series_id=series.pk,
+            revision_id=revision.pk,
+            operation_key=uuid4(),
+            fingerprint="2" * 64,
+            mode="missing_only",
+            date_from=day,
+            date_to=day,
+            expected_result_count=1,
+            actor_id=revision.actor_id,
+            actor_role_snapshot="director",
+            reason="Retry target chain head run.",
+        )
+        chain_head = result_model.objects.create(
+            series_id=series.pk,
+            revision_id=revision.pk,
+            run_id=head_run.pk,
+            scheduled_starts_at=starts_at,
+            scheduled_date=day,
+            attempt_number=2,
+            provenance_kind="native",
+            outcome="unchanged",
+            reason_code="existing_result",
+            reason="Transparent result before retry acceptance.",
+            supersedes_id=effective_skipped.pk,
+        )
+        retry_run = None
+        target = None
+        if create_retry:
+            retry_run = run_model.objects.create(
+                series_id=series.pk,
+                revision_id=revision.pk,
+                operation_key=uuid4(),
+                fingerprint="3" * 64,
+                mode="retry_skipped",
+                date_from=day,
+                date_to=day,
+                expected_result_count=1,
+                actor_id=revision.actor_id,
+                actor_role_snapshot="director",
+                reason="Retry skipped date after conflict resolution.",
+            )
+            target = target_model.objects.create(
+                run_id=retry_run.pk,
+                scheduled_starts_at=starts_at,
+                scheduled_date=day,
+                chain_head_result_id=chain_head.pk,
+                effective_skipped_result_id=effective_skipped.pk,
+            )
+        return (
+            series,
+            revision,
+            retry_run,
+            target,
+            chain_head,
+            effective_skipped,
+        )
+
     def test_backfill_skips_complete_native_dual_write_state(self):
         target_before = [("operations", "0057_series_revision_expand")]
         target_after = [("operations", "0058_backfill_series_revisions")]
@@ -3512,6 +3740,351 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
             "Cannot restore same-revision attempt guards",
         ):
             executor.migrate(target_before)
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Retry target migration preflight проверяется на PostgreSQL.",
+    )
+    def test_retry_target_expand_rejects_unfrozen_existing_retry_run(self):
+        target_before = [
+            ("operations", "0060_series_cross_revision_attempt_guards")
+        ]
+        target_after = [("operations", "0061_series_retry_target_expand")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_before)
+        apps = executor.loader.project_state(target_before).apps
+
+        with transaction.atomic():
+            series, revision, _ = self._create_native_series_history(
+                apps,
+                suffix="retry-preflight",
+            )
+            run_model = apps.get_model(
+                "operations", "AppointmentSeriesMaterializationRun"
+            )
+            legacy_retry = run_model.objects.create(
+                series_id=series.pk,
+                revision_id=revision.pk,
+                operation_key=uuid4(),
+                fingerprint="6" * 64,
+                mode="retry_skipped",
+                date_from=revision.effective_from,
+                date_to=revision.effective_from,
+                expected_result_count=1,
+                actor_id=revision.actor_id,
+                actor_role_snapshot="director",
+                reason="Unfrozen retry run must block the expand migration.",
+            )
+
+        executor = MigrationExecutor(connection)
+        with self.assertRaisesMessage(
+            RuntimeError,
+            "Cannot install frozen retry targets while legacy retry_skipped runs exist",
+        ):
+            executor.migrate(target_after)
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "ALTER TABLE operations_appointmentseriesmaterializationrun "
+                "DISABLE TRIGGER operations_appointmentseriesmaterializationrun_immutable"
+            )
+            try:
+                cursor.execute(
+                    "DELETE FROM operations_appointmentseriesmaterializationrun "
+                    "WHERE id = %s",
+                    [legacy_retry.pk],
+                )
+            finally:
+                cursor.execute(
+                    "ALTER TABLE operations_appointmentseriesmaterializationrun "
+                    "ENABLE TRIGGER "
+                    "operations_appointmentseriesmaterializationrun_immutable"
+                )
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Deferred retry target count проверяется на PostgreSQL.",
+    )
+    def test_retry_run_without_frozen_targets_is_rejected_at_commit(self):
+        target_after = [("operations", "0061_series_retry_target_expand")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+        apps = executor.loader.project_state(target_after).apps
+
+        with transaction.atomic():
+            series, revision, _ = self._create_native_series_history(
+                apps,
+                suffix="retry-count",
+            )
+        run_model = apps.get_model(
+            "operations", "AppointmentSeriesMaterializationRun"
+        )
+        with self.assertRaisesMessage(
+            DatabaseError,
+            "series retry target count does not match run",
+        ), transaction.atomic():
+            run_model.objects.create(
+                series_id=series.pk,
+                revision_id=revision.pk,
+                operation_key=uuid4(),
+                fingerprint="7" * 64,
+                mode="retry_skipped",
+                date_from=revision.effective_from,
+                date_to=revision.effective_from,
+                expected_result_count=1,
+                actor_id=revision.actor_id,
+                actor_role_snapshot="director",
+                reason="Retry run without a frozen target must fail.",
+            )
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Frozen retry target guards проверяются на PostgreSQL.",
+    )
+    def test_retry_target_guards_freeze_chain_and_block_unsafe_reverse(self):
+        target_before = [
+            ("operations", "0060_series_cross_revision_attempt_guards")
+        ]
+        target_after = [("operations", "0061_series_retry_target_expand")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+        apps = executor.loader.project_state(target_after).apps
+
+        with transaction.atomic():
+            series, revision, retry_run, target, chain_head, _ = (
+                self._create_retry_target_history(apps, suffix="retry-target")
+            )
+
+        run_model = apps.get_model(
+            "operations", "AppointmentSeriesMaterializationRun"
+        )
+        result_model = apps.get_model(
+            "operations", "AppointmentSeriesMaterializationResult"
+        )
+        target_model = apps.get_model("operations", "AppointmentSeriesRetryTarget")
+        day = revision.effective_from
+
+        unrelated_run = run_model.objects.create(
+            series_id=series.pk,
+            revision_id=revision.pk,
+            operation_key=uuid4(),
+            fingerprint="4" * 64,
+            mode="missing_only",
+            date_from=day,
+            date_to=day,
+            expected_result_count=1,
+            actor_id=revision.actor_id,
+            actor_role_snapshot="director",
+            reason="Must not consume a frozen retry target.",
+        )
+        with self.assertRaisesMessage(
+            DatabaseError,
+            "series result chain head is reserved for retry",
+        ), transaction.atomic():
+            result_model.objects.create(
+                series_id=series.pk,
+                revision_id=revision.pk,
+                run_id=unrelated_run.pk,
+                scheduled_starts_at=chain_head.scheduled_starts_at,
+                scheduled_date=day,
+                attempt_number=3,
+                provenance_kind="native",
+                outcome="unchanged",
+                reason_code="unsafe_branch",
+                reason="A missing run cannot consume the retry reservation.",
+                supersedes_id=chain_head.pk,
+            )
+
+        retry_result = result_model.objects.create(
+            series_id=series.pk,
+            revision_id=revision.pk,
+            run_id=retry_run.pk,
+            scheduled_starts_at=chain_head.scheduled_starts_at,
+            scheduled_date=day,
+            attempt_number=3,
+            provenance_kind="native",
+            outcome="skipped",
+            reason_code="still_conflicted",
+            reason="The retry was attempted and skipped again.",
+            supersedes_id=chain_head.pk,
+        )
+        self.assertEqual(retry_result.supersedes_id, chain_head.pk)
+
+        with self.assertRaisesMessage(
+            DatabaseError,
+            "appointment series history rows are immutable",
+        ), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE operations_appointmentseriesretrytarget "
+                "SET scheduled_date = scheduled_date + 1 WHERE id = %s",
+                [target.pk],
+            )
+
+        invalid_run = run_model.objects.create(
+            series_id=series.pk,
+            revision_id=revision.pk,
+            operation_key=uuid4(),
+            fingerprint="5" * 64,
+            mode="missing_only",
+            date_from=day,
+            date_to=day,
+            expected_result_count=1,
+            actor_id=revision.actor_id,
+            actor_role_snapshot="director",
+            reason="Invalid target run mode fixture.",
+        )
+        with self.assertRaisesMessage(
+            DatabaseError,
+            "invalid series retry target run",
+        ), transaction.atomic():
+            target_model.objects.create(
+                run_id=invalid_run.pk,
+                scheduled_starts_at=chain_head.scheduled_starts_at,
+                scheduled_date=day,
+                chain_head_result_id=retry_result.pk,
+                effective_skipped_result_id=retry_result.pk,
+            )
+
+        executor = MigrationExecutor(connection)
+        with self.assertRaisesMessage(
+            RuntimeError,
+            "Cannot remove series retry target schema while frozen targets exist",
+        ):
+            executor.migrate(target_before)
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT EXISTS ("
+                "SELECT 1 FROM pg_trigger "
+                "WHERE tgname = 'operations_appointmentseriesretrytarget_immutable'"
+                ")"
+            )
+            self.assertTrue(cursor.fetchone()[0])
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Retry target/result race проверяется на PostgreSQL.",
+    )
+    def test_retry_target_and_foreign_successor_are_serialized(self):
+        target_after = [("operations", "0061_series_retry_target_expand")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+        apps = executor.loader.project_state(target_after).apps
+
+        with transaction.atomic():
+            series, revision, _, _, chain_head, effective_skipped = (
+                self._create_retry_target_history(
+                    apps,
+                    suffix="retry-race",
+                    create_retry=False,
+                )
+            )
+        run_model = apps.get_model(
+            "operations", "AppointmentSeriesMaterializationRun"
+        )
+        result_model = apps.get_model(
+            "operations", "AppointmentSeriesMaterializationResult"
+        )
+        target_model = apps.get_model("operations", "AppointmentSeriesRetryTarget")
+        day = revision.effective_from
+        unrelated_run = run_model.objects.create(
+            series_id=series.pk,
+            revision_id=revision.pk,
+            operation_key=uuid4(),
+            fingerprint="8" * 64,
+            mode="missing_only",
+            date_from=day,
+            date_to=day,
+            expected_result_count=1,
+            actor_id=revision.actor_id,
+            actor_role_snapshot="director",
+            reason="Concurrent successor race fixture.",
+        )
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def accept_retry_target():
+            close_old_connections()
+            try:
+                with transaction.atomic():
+                    retry_run = run_model.objects.create(
+                        series_id=series.pk,
+                        revision_id=revision.pk,
+                        operation_key=uuid4(),
+                        fingerprint="9" * 64,
+                        mode="retry_skipped",
+                        date_from=day,
+                        date_to=day,
+                        expected_result_count=1,
+                        actor_id=revision.actor_id,
+                        actor_role_snapshot="director",
+                        reason="Concurrent frozen target acceptance.",
+                    )
+                    barrier.wait(timeout=10)
+                    target = target_model.objects.create(
+                        run_id=retry_run.pk,
+                        scheduled_starts_at=chain_head.scheduled_starts_at,
+                        scheduled_date=day,
+                        chain_head_result_id=chain_head.pk,
+                        effective_skipped_result_id=effective_skipped.pk,
+                    )
+                outcomes.put(("target", target.pk))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        def append_foreign_result():
+            close_old_connections()
+            try:
+                with transaction.atomic():
+                    barrier.wait(timeout=10)
+                    result = result_model.objects.create(
+                        series_id=series.pk,
+                        revision_id=revision.pk,
+                        run_id=unrelated_run.pk,
+                        scheduled_starts_at=chain_head.scheduled_starts_at,
+                        scheduled_date=day,
+                        attempt_number=chain_head.attempt_number + 1,
+                        provenance_kind="native",
+                        outcome="unchanged",
+                        reason_code="concurrent_successor",
+                        reason="Concurrent result competing with retry acceptance.",
+                        supersedes_id=chain_head.pk,
+                    )
+                outcomes.put(("result", result.pk))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        threads = [
+            Thread(target=accept_retry_target),
+            Thread(target=append_foreign_result),
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        results = [outcomes.get_nowait() for _ in range(2)]
+        self.assertEqual(sum(isinstance(item, tuple) for item in results), 1, results)
+        self.assertEqual(
+            sum(isinstance(item, DatabaseError) for item in results),
+            1,
+            results,
+        )
+        successor_count = result_model.objects.filter(
+            supersedes_id=chain_head.pk
+        ).count()
+        target_count = target_model.objects.filter(
+            chain_head_result_id=chain_head.pk
+        ).count()
+        self.assertEqual(successor_count + target_count, 1)
 
     def test_series_revision_backfill_copies_history_with_explicit_provenance(self):
         actor = User.objects.create_superuser(

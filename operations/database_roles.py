@@ -12,6 +12,7 @@ IMMUTABLE_APPEND_ONLY_TABLES = (
     "operations_appointmentseriesmaterializationrun",
     "operations_appointmentseriesmaterializationrunevent",
     "operations_appointmentseriesmaterializationresult",
+    "operations_appointmentseriesretrytarget",
 )
 APPEND_LOCK_TABLE = "operations_donorreport"
 RUNTIME_EXECUTE_FUNCTIONS = (

@@ -12,7 +12,8 @@ append-only run/result, сверяемый legacy backfill, PostgreSQL guards и
 materializer индивидуальных/групповых/create/join серий. 61C-3 реализован и
 локально принят: атомарная редакция только будущего состава. Следующий кодовый
 подсрез - 61C-4: expand-gate `0060` и `missing_only` реализованы и локально
-приняты; следующий режим `retry_skipped`, затем stop/cancel/withdraw и 61D UI.
+приняты; expand `0061` неизменяемых целей retry реализован. Следующий подсрез -
+исполнение `retry_skipped`, затем stop/cancel/withdraw и 61D UI.
 Production preflight, health, проверяемый backup/restore, цельная
 browser-приемка рабочих ролей, persisted transfer/conversion и приемка
 грантового отчета завершены. Безопасный жизненный цикл грантового плана по
@@ -61,7 +62,7 @@ MVCC-временем данных и цепочкой исправлений. 5
   непокрытых дат реализован явный `missing_only` режим 61C-4a.
 - Историческая группа с одним участником сохраняется и читается без создания
   новых занятий; новая native-группа по-прежнему требует минимум двух.
-- Runtime DB-role получила только `SELECT/INSERT` на семь append-only таблиц
+- Runtime DB-role получила только `SELECT/INSERT` на восемь append-only таблиц
   истории серий; реальная проверка ограниченной роли на PostgreSQL прошла.
 - Команда 61C-3 под блокировкой корня и `expected_revision_id` атомарно создает
   новую immutable-редакцию состава и переключает текущую проекцию. Она доступна
@@ -86,6 +87,19 @@ MVCC-временем данных и цепочкой исправлений. 5
   текущей редакции; принятый незавершенный диапазон продолжается по сохраненному
   immutable-снимку, а пересекающийся run новой редакции до этого не принимается.
   После `interrupted` SQLite и PostgreSQL запрещают новый result до `resumed`.
+- Expand `0061` добавляет `AppointmentSeriesRetryTarget`: run атомарно фиксирует
+  точную вершину цепочки и эффективный `skipped`, число целей сверяется с
+  `expected_result_count`. PostgreSQL блокирует изменение/удаление цели, чужое
+  продолжение зарезервированной вершины и reverse после появления данных;
+  ORM-проверки сохраняют цепочку и reservation на SQLite. Точное межстрочное
+  равенство количества на SQLite станет обязанностью единого атомарного сервиса;
+  до него доступного write-path команды нет.
+- Приемка frozen retry targets `0061`: весь `test_program_series.py` прошел на
+  SQLite `54 passed, 27 skipped` и PostgreSQL 17 `81 passed`. Отдельно проверены
+  fail-closed preflight старых retry runs, deferred count, immutable/reverse
+  guards и двухпоточная гонка target-vs-successor; повторный независимый review
+  не нашел оставшихся Critical/High. Полный SQLite regression после expand:
+  `898 passed, 70 skipped`; пропуски относятся к PostgreSQL-only контрактам.
 - Приемка 61C-4a `missing_only`: весь `test_program_series.py` на SQLite
   `53 passed, 23 skipped`, PostgreSQL 17 `76 passed`; включая fault recovery,
   смену редакции/роли/статуса и race-тесты same-key, different-key и
@@ -450,13 +464,14 @@ MVCC-временем данных и цепочкой исправлений. 5
 
 ## Следующая работа
 
-1. Реализовать 61C-4a2 `retry_skipped`; после этого 61C-4b-d
+1. Реализовать исполнение 61C-4a2 `retry_skipped` поверх frozen targets `0061`;
+   после этого 61C-4b-d
    stop/cancel/withdraw без изменения фактов прошлого.
 2. Закрыть 61D: паузу/отмену, переходы программы/каскада, registry,
    руководительские отчеты и полную ролевую приемку серий.
-3. Перед production migration chain `0048-0060` выполнить backup v2, `--strict`
+3. Перед production migration chain `0048-0061` выполнить backup v2, `--strict`
    preflight, временно закрыть грантовые записи и подготовить совместимый
-   rollback-релиз. После появления истории `0053`/`0054` и series history `0055-0060`
+   rollback-релиз. После появления истории `0053`/`0054` и series history `0055-0061`
    эти миграции не откатываются:
    rollback сохраняет additive schema, private volume и immutable-историю.
 4. Закрыть production-допуск 59B-2: offsite backup, monitoring/alerting, реальный SMTP,
@@ -488,7 +503,7 @@ MVCC-временем данных и цепочкой исправлений. 5
 - offsite backup, monitoring/alerting и реальный SMTP;
 - регулярный targeted browser smoke и приемка на физическом телефоне;
 - приемка на реальных обезличенных сценариях центра;
-- production cutover migration chain `0048-0060` после backup v2/preflight.
+- production cutover migration chain `0048-0061` после backup v2/preflight.
 
 ## Риски и запреты
 
@@ -507,6 +522,8 @@ MVCC-временем данных и цепочкой исправлений. 5
   rollback сохраняет append-only таблицы и использует предыдущий read-path.
 - Не откатывать `0060` после cross-revision result: reverse намеренно
   блокируется, а совместимый rollback сохраняет forward-only цепочку попыток.
+- Не откатывать `0061` после появления frozen retry target: reverse намеренно
+  блокируется, а совместимый rollback сохраняет цель и продолжает принятый run.
 - Не объединять разделенные runtime/migration DB-роли: runtime не имеет
   DDL, role membership, право отключать triggers или заменять защитные
   функции `0053`/`0054`; live preflight технически это проверяет.
