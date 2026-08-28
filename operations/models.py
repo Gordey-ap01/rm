@@ -2884,6 +2884,14 @@ class AppointmentSeries(TimeStampedModel):
     )
     override_reason = models.TextField("основание исключений", blank=True)
     status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.DRAFT)
+    current_revision = models.OneToOneField(
+        "AppointmentSeriesRevision",
+        verbose_name="текущая редакция",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="current_for_series",
+    )
 
     class Meta:
         verbose_name = "серия занятий"
@@ -3028,6 +3036,534 @@ class AppointmentSeries(TimeStampedModel):
                 continue
             created += 1
         return created
+
+
+class AppointmentSeriesRevision(TimeStampedModel):
+    class EventType(models.TextChoices):
+        CREATED = "created", "Создана"
+        FUTURE_COMPOSITION = "future_composition", "Изменен будущий состав"
+        LEGACY_IMPORT = "legacy_import", "Перенесена из прежней модели"
+
+    class ActorRole(models.TextChoices):
+        DIRECTOR = "director", "Руководитель"
+        ADMINISTRATOR = "administrator", "Администратор"
+        LEGACY = "legacy", "Автор неизвестен"
+
+    class ProvenanceKind(models.TextChoices):
+        NATIVE = "native", "Зафиксировано системой"
+        LEGACY_RECONSTRUCTED = "legacy_reconstructed", "Восстановлено из прежней модели"
+        LEGACY_UNKNOWN = "legacy_unknown", "Историческая точность неизвестна"
+
+    series = models.ForeignKey(
+        AppointmentSeries,
+        verbose_name="серия",
+        on_delete=models.PROTECT,
+        related_name="revisions",
+    )
+    revision_number = models.PositiveIntegerField("номер редакции")
+    event_type = models.CharField("действие", max_length=30, choices=EventType.choices)
+    provenance_kind = models.CharField(
+        "происхождение данных",
+        max_length=30,
+        choices=ProvenanceKind.choices,
+        default=ProvenanceKind.NATIVE,
+    )
+    effective_from = models.DateField("применяется с")
+    title = models.CharField("название серии", max_length=200)
+    service = models.ForeignKey(
+        Service,
+        verbose_name="услуга",
+        on_delete=models.PROTECT,
+        related_name="appointment_series_revisions",
+    )
+    room = models.ForeignKey(
+        Room,
+        verbose_name="помещение",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="appointment_series_revisions",
+    )
+    start_date = models.DateField("дата начала")
+    end_date = models.DateField("дата окончания")
+    days_of_week = models.CharField("дни недели", max_length=80)
+    time = models.TimeField("время")
+    duration_minutes = models.PositiveIntegerField("длительность, мин")
+    session_type = models.CharField(
+        "тип занятия",
+        max_length=20,
+        choices=(
+            ("individual", "Индивидуальное"),
+            ("group", "Групповое"),
+        ),
+    )
+    materialization_mode = models.CharField(
+        "режим серии",
+        max_length=30,
+        choices=AppointmentSeries.MaterializationMode.choices,
+    )
+    default_appointment_status = models.CharField(
+        "статус создаваемых занятий",
+        max_length=30,
+        choices=(
+            ("proposed", "Предложено"),
+            ("confirmed", "Согласовано"),
+            ("reserved", "Бронь"),
+        ),
+    )
+    allow_unpaid_reserve = models.BooleanField(
+        "разрешена бронь сверх оплаты",
+        default=False,
+    )
+    allow_outside_availability = models.BooleanField(
+        "разрешено назначение вне графика",
+        default=False,
+    )
+    override_reason = models.TextField("основание исключений", blank=True)
+    fingerprint = models.CharField("отпечаток редакции", max_length=64)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="решение зафиксировал",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="appointment_series_revisions",
+    )
+    actor_role_snapshot = models.CharField(
+        "роль на момент решения",
+        max_length=20,
+        choices=ActorRole.choices,
+    )
+    reason = models.TextField("основание")
+    supersedes = models.ForeignKey(
+        "self",
+        verbose_name="предыдущая редакция",
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name="superseded_by",
+    )
+    decided_at = models.DateTimeField("время решения", null=True, blank=True)
+
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        verbose_name = "редакция серии занятий"
+        verbose_name_plural = "редакции серий занятий"
+        ordering = ["series_id", "-revision_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["series", "revision_number"],
+                name="unique_appointment_series_revision_number",
+            ),
+            models.UniqueConstraint(
+                fields=["supersedes"],
+                condition=Q(supersedes__isnull=False),
+                name="unique_appointment_series_revision_successor",
+            ),
+            models.CheckConstraint(
+                condition=Q(revision_number__gte=1),
+                name="appointment_series_revision_number_positive",
+            ),
+            models.CheckConstraint(
+                condition=Q(end_date__gte=models.F("start_date")),
+                name="appointment_series_revision_dates_order",
+            ),
+            models.CheckConstraint(
+                condition=Q(effective_from__gte=models.F("start_date"))
+                & Q(effective_from__lte=models.F("end_date")),
+                name="appointment_series_revision_effective_range",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type="legacy_import",
+                        actor__isnull=True,
+                        actor_role_snapshot="legacy",
+                        decided_at__isnull=True,
+                    )
+                    | (
+                        ~Q(event_type="legacy_import")
+                        & Q(
+                            actor__isnull=False,
+                            actor_role_snapshot__in=["director", "administrator"],
+                            decided_at__isnull=False,
+                        )
+                        & ~Q(reason="")
+                    )
+                ),
+                name="appointment_series_revision_actor_event",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type__in=["created", "legacy_import"],
+                        revision_number=1,
+                        supersedes__isnull=True,
+                    )
+                    | Q(
+                        event_type="future_composition",
+                        revision_number__gte=2,
+                        supersedes__isnull=False,
+                    )
+                ),
+                name="appointment_series_revision_chain_event",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type="legacy_import",
+                        provenance_kind__in=[
+                            "legacy_reconstructed",
+                            "legacy_unknown",
+                        ],
+                    )
+                    | (
+                        ~Q(event_type="legacy_import")
+                        & Q(provenance_kind="native")
+                    )
+                ),
+                name="appointment_series_revision_provenance",
+            ),
+            models.CheckConstraint(
+                condition=Q(materialization_mode="create_appointments")
+                | Q(session_type="group"),
+                name="series_revision_join_requires_group",
+            ),
+            models.CheckConstraint(
+                condition=Q(allow_unpaid_reserve=False)
+                | Q(default_appointment_status="reserved"),
+                name="series_revision_unpaid_requires_reserved",
+            ),
+            models.CheckConstraint(
+                condition=Q(
+                    materialization_mode="create_appointments",
+                )
+                | Q(allow_unpaid_reserve=False),
+                name="series_revision_join_requires_funding",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        allow_unpaid_reserve=False,
+                        allow_outside_availability=False,
+                    )
+                    | ~Q(override_reason="")
+                ),
+                name="series_revision_override_reason_required",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["series", "-revision_number"]),
+            models.Index(fields=["series", "effective_from", "-revision_number"]),
+            models.Index(fields=["actor", "-created_at"]),
+        ]
+
+    def clean(self) -> None:
+        self.reason = (self.reason or "").strip()
+        self.override_reason = (self.override_reason or "").strip()
+        errors: dict[str, str] = {}
+        if self.event_type != self.EventType.LEGACY_IMPORT and len(self.reason) < 5:
+            errors["reason"] = "Укажите содержательное основание (минимум 5 символов)."
+        if self.supersedes_id and self.supersedes.series_id != self.series_id:
+            errors["supersedes"] = "Предыдущая редакция должна относиться к той же серии."
+        if (
+            self.supersedes_id
+            and self.supersedes.revision_number + 1 != self.revision_number
+        ):
+            errors["revision_number"] = (
+                "Номер редакции должен непосредственно продолжать предыдущую."
+            )
+        if (
+            self.allow_unpaid_reserve or self.allow_outside_availability
+        ) and not self.override_reason:
+            errors["override_reason"] = "Укажите основание для исключения."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Редакцию серии нельзя изменять. Создайте новую редакцию.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Редакцию серии нельзя удалить.")
+
+    def __str__(self) -> str:
+        return f"{self.series} / редакция {self.revision_number}"
+
+
+class AppointmentSeriesMaterializationRun(TimeStampedModel):
+    class Mode(models.TextChoices):
+        INITIAL = "initial", "Первый запуск"
+        MISSING_ONLY = "missing_only", "Только даты без истории"
+        RETRY_SKIPPED = "retry_skipped", "Повторить пропущенные даты"
+        LEGACY_IMPORT = "legacy_import", "Перенесено из прежней модели"
+
+    class ActorRole(models.TextChoices):
+        DIRECTOR = "director", "Руководитель"
+        ADMINISTRATOR = "administrator", "Администратор"
+        LEGACY = "legacy", "Автор неизвестен"
+
+    series = models.ForeignKey(
+        AppointmentSeries,
+        verbose_name="серия",
+        on_delete=models.PROTECT,
+        related_name="materialization_runs",
+    )
+    revision = models.ForeignKey(
+        AppointmentSeriesRevision,
+        verbose_name="редакция",
+        on_delete=models.PROTECT,
+        related_name="materialization_runs",
+    )
+    operation_key = models.UUIDField(
+        "ключ операции",
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+    )
+    fingerprint = models.CharField("отпечаток запуска", max_length=64)
+    mode = models.CharField("режим запуска", max_length=30, choices=Mode.choices)
+    date_from = models.DateField("дата с")
+    date_to = models.DateField("дата по")
+    expected_result_count = models.PositiveIntegerField(
+        "ожидается результатов",
+        default=0,
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="запустил",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="appointment_series_materialization_runs",
+    )
+    actor_role_snapshot = models.CharField(
+        "роль на момент запуска",
+        max_length=20,
+        choices=ActorRole.choices,
+    )
+    reason = models.TextField("основание", blank=True)
+    started_at = models.DateTimeField("время запуска", default=timezone.now, db_index=True)
+
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        verbose_name = "запуск материализации серии"
+        verbose_name_plural = "запуски материализации серий"
+        ordering = ["series_id", "-started_at", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["revision"],
+                condition=Q(mode__in=["initial", "legacy_import"]),
+                name="unique_series_revision_initial_run",
+            ),
+            models.CheckConstraint(
+                condition=Q(date_to__gte=models.F("date_from")),
+                name="series_materialization_run_dates_order",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        mode="legacy_import",
+                        actor__isnull=True,
+                        actor_role_snapshot="legacy",
+                    )
+                    | (
+                        ~Q(mode="legacy_import")
+                        & Q(
+                            actor__isnull=False,
+                            actor_role_snapshot__in=["director", "administrator"],
+                        )
+                    )
+                ),
+                name="series_materialization_run_actor_mode",
+            ),
+            models.CheckConstraint(
+                condition=~Q(mode="retry_skipped") | ~Q(reason=""),
+                name="series_retry_run_reason_required",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["series", "-started_at"]),
+            models.Index(fields=["revision", "-started_at"]),
+        ]
+
+    def clean(self) -> None:
+        self.reason = (self.reason or "").strip()
+        errors: dict[str, str] = {}
+        if self.revision_id and self.series_id and self.revision.series_id != self.series_id:
+            errors["revision"] = "Редакция должна относиться к выбранной серии."
+        if self.revision_id and (
+            self.date_from < max(self.revision.start_date, self.revision.effective_from)
+            or self.date_to > self.revision.end_date
+        ):
+            errors["date_from"] = "Диапазон запуска должен находиться внутри периода редакции."
+        if self.mode == self.Mode.RETRY_SKIPPED and len(self.reason) < 5:
+            errors["reason"] = "Для повторного запуска укажите основание (минимум 5 символов)."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Запуск материализации нельзя изменять.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Запуск материализации нельзя удалить.")
+
+    def __str__(self) -> str:
+        return f"{self.series} / {self.get_mode_display()} / {self.started_at:%d.%m.%Y %H:%M}"
+
+
+class AppointmentSeriesMaterializationRunEvent(TimeStampedModel):
+    class EventType(models.TextChoices):
+        RESUMED = "resumed", "Продолжен"
+        INTERRUPTED = "interrupted", "Прерван"
+        COMPLETED = "completed", "Завершен"
+
+    run = models.ForeignKey(
+        AppointmentSeriesMaterializationRun,
+        verbose_name="запуск",
+        on_delete=models.PROTECT,
+        related_name="events",
+    )
+    event_number = models.PositiveIntegerField("номер события")
+    event_type = models.CharField("событие", max_length=20, choices=EventType.choices)
+    result_count = models.PositiveIntegerField("результатов всего", default=0)
+    created_count = models.PositiveIntegerField("создано", default=0)
+    joined_count = models.PositiveIntegerField("присоединено", default=0)
+    skipped_count = models.PositiveIntegerField("пропущено", default=0)
+    unchanged_count = models.PositiveIntegerField("без изменений", default=0)
+    reason = models.TextField("причина", blank=True)
+    occurred_at = models.DateTimeField("время события", default=timezone.now, db_index=True)
+
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        verbose_name = "событие запуска серии"
+        verbose_name_plural = "события запусков серий"
+        ordering = ["run_id", "occurred_at", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["run", "event_number"],
+                name="unique_series_run_event_number",
+            ),
+            models.UniqueConstraint(
+                fields=["run"],
+                condition=Q(event_type="completed"),
+                name="unique_series_run_completed_event",
+            ),
+            models.CheckConstraint(
+                condition=Q(event_number__gte=1),
+                name="series_run_event_number_positive",
+            ),
+            models.CheckConstraint(
+                condition=~Q(event_type="interrupted") | ~Q(reason=""),
+                name="series_run_interrupted_reason_required",
+            ),
+            models.CheckConstraint(
+                condition=Q(
+                    result_count=models.F("created_count")
+                    + models.F("joined_count")
+                    + models.F("skipped_count")
+                    + models.F("unchanged_count")
+                ),
+                name="series_run_event_counts_match_total",
+            ),
+        ]
+        indexes = [models.Index(fields=["run", "-occurred_at"])]
+
+    def clean(self) -> None:
+        self.reason = (self.reason or "").strip()
+        errors: dict[str, str] = {}
+        if self.event_type == self.EventType.INTERRUPTED and len(self.reason) < 5:
+            errors["reason"] = (
+                "Для прерванного запуска укажите причину (минимум 5 символов)."
+            )
+        expected_total = (
+            self.created_count
+            + self.joined_count
+            + self.skipped_count
+            + self.unchanged_count
+        )
+        if self.result_count != expected_total:
+            errors["result_count"] = (
+                "Общее количество не совпадает с суммой результатов."
+            )
+        if self.event_type == self.EventType.COMPLETED and self.run_id:
+            actual = dict(
+                self.run.results.values("outcome")
+                .annotate(count=models.Count("pk"))
+                .values_list("outcome", "count")
+            )
+            actual_total = sum(actual.values())
+            if (
+                actual_total != self.run.expected_result_count
+                or self.result_count != actual_total
+                or self.created_count
+                != actual.get(AppointmentSeriesOccurrence.Outcome.CREATED, 0)
+                or self.joined_count
+                != actual.get(AppointmentSeriesOccurrence.Outcome.JOINED, 0)
+                or self.skipped_count
+                != actual.get(AppointmentSeriesOccurrence.Outcome.SKIPPED, 0)
+                or self.unchanged_count
+                != actual.get(AppointmentSeriesOccurrence.Outcome.UNCHANGED, 0)
+            ):
+                errors["result_count"] = (
+                    "Итоговые счетчики запуска не совпадают с сохраненными результатами."
+                )
+        if self.run_id and self.event_number:
+            previous = (
+                type(self)
+                .objects.filter(run_id=self.run_id)
+                .order_by("-event_number")
+                .first()
+            )
+            if previous is None:
+                if self.event_number != 1:
+                    errors["event_number"] = "Первое событие должно иметь номер 1."
+                if self.event_type == self.EventType.RESUMED:
+                    errors["event_type"] = "Продолжить можно только прерванный запуск."
+            else:
+                if previous.event_type == self.EventType.COMPLETED:
+                    errors["event_type"] = "Завершенный запуск не принимает новые события."
+                if self.event_number != previous.event_number + 1:
+                    errors["event_number"] = (
+                        "Номер события должен непосредственно продолжать журнал запуска."
+                    )
+                if (
+                    self.event_type == self.EventType.RESUMED
+                    and previous.event_type != self.EventType.INTERRUPTED
+                ):
+                    errors["event_type"] = "Продолжить можно только прерванный запуск."
+                if (
+                    self.event_type in {
+                        self.EventType.INTERRUPTED,
+                        self.EventType.COMPLETED,
+                    }
+                    and previous.event_type != self.EventType.RESUMED
+                ):
+                    errors["event_type"] = (
+                        "После прерывания сначала зафиксируйте продолжение запуска."
+                    )
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Событие запуска серии нельзя изменять.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Событие запуска серии нельзя удалить.")
+
+    def __str__(self) -> str:
+        return f"{self.run} / {self.get_event_type_display()}"
 
 
 class Appointment(TimeStampedModel):
@@ -3719,6 +4255,154 @@ class AppointmentSeriesStaffAssignment(TimeStampedModel):
         super().save(*args, **kwargs)
 
 
+class AppointmentSeriesRevisionParticipant(TimeStampedModel):
+    revision = models.ForeignKey(
+        AppointmentSeriesRevision,
+        verbose_name="редакция серии",
+        on_delete=models.PROTECT,
+        related_name="participants",
+    )
+    child = models.ForeignKey(
+        Child,
+        verbose_name="получатель",
+        on_delete=models.PROTECT,
+        related_name="appointment_series_revision_memberships",
+    )
+    program_block = models.ForeignKey(
+        ProgramBlock,
+        verbose_name="каскад",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="series_revision_memberships",
+    )
+    billing_account = models.ForeignKey(
+        BalanceAccount,
+        verbose_name="счет оплаты",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="series_revision_memberships",
+    )
+    position = models.PositiveIntegerField("порядок", default=1)
+
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        verbose_name = "участник редакции серии"
+        verbose_name_plural = "участники редакций серий"
+        ordering = ["revision", "position", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["revision", "child"],
+                name="unique_series_revision_child",
+            ),
+            models.UniqueConstraint(
+                fields=["revision", "position"],
+                name="unique_series_revision_participant_position",
+            ),
+            models.CheckConstraint(
+                condition=Q(position__gte=1),
+                name="series_revision_participant_position_positive",
+            ),
+        ]
+        indexes = [models.Index(fields=["revision", "position"])]
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.program_block_id:
+            if self.child_id and self.program_block.program.child_id != self.child_id:
+                errors["program_block"] = "Каскад должен принадлежать получателю редакции."
+            if self.revision_id and self.program_block.service_id != self.revision.service_id:
+                errors["program_block"] = "Каскад должен соответствовать услуге редакции."
+        if self.billing_account_id:
+            if self.child_id and self.billing_account.child_id != self.child_id:
+                errors["billing_account"] = "Счет должен принадлежать получателю редакции."
+            if self.revision_id and not self.billing_account.can_pay_for(
+                self.revision.service
+            ):
+                errors["billing_account"] = "Счет не подходит для услуги редакции."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Снимок участника редакции нельзя изменять.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Снимок участника редакции нельзя удалить.")
+
+    def __str__(self) -> str:
+        return f"{self.revision} / {self.child}"
+
+
+class AppointmentSeriesRevisionStaffAssignment(TimeStampedModel):
+    revision = models.ForeignKey(
+        AppointmentSeriesRevision,
+        verbose_name="редакция серии",
+        on_delete=models.PROTECT,
+        related_name="staff_assignments",
+    )
+    staff_member = models.ForeignKey(
+        StaffMember,
+        verbose_name="специалист",
+        on_delete=models.PROTECT,
+        related_name="appointment_series_revision_assignments",
+    )
+    role = models.CharField(
+        "роль",
+        max_length=30,
+        choices=AppointmentSeriesStaffAssignment.Role.choices,
+        default=AppointmentSeriesStaffAssignment.Role.PRIMARY,
+    )
+    override_availability = models.BooleanField("назначать вне графика", default=False)
+    override_reason = models.TextField("основание выхода вне графика", blank=True)
+
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        verbose_name = "назначение специалиста редакции серии"
+        verbose_name_plural = "назначения специалистов редакций серий"
+        ordering = ["revision", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["revision", "staff_member"],
+                name="unique_series_revision_staff",
+            ),
+            models.UniqueConstraint(
+                fields=["revision"],
+                condition=Q(role="primary"),
+                name="unique_series_revision_primary_staff",
+            ),
+            models.CheckConstraint(
+                condition=Q(override_availability=False) | ~Q(override_reason=""),
+                name="series_revision_staff_override_reason",
+            ),
+        ]
+        indexes = [models.Index(fields=["revision", "role"])]
+
+    def clean(self) -> None:
+        self.override_reason = (self.override_reason or "").strip()
+        if self.override_availability and not self.override_reason:
+            raise ValidationError(
+                {"override_reason": "Укажите основание назначения вне графика."}
+            )
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Снимок назначения редакции нельзя изменять.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Снимок назначения редакции нельзя удалить.")
+
+    def __str__(self) -> str:
+        return f"{self.revision} / {self.staff_member}"
+
+
 class AppointmentSeriesOccurrence(TimeStampedModel):
     class Outcome(models.TextChoices):
         CREATED = "created", "Создано"
@@ -3736,7 +4420,7 @@ class AppointmentSeriesOccurrence(TimeStampedModel):
     appointment = models.ForeignKey(
         Appointment,
         verbose_name="занятие",
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="series_occurrences",
@@ -3824,6 +4508,252 @@ class AppointmentSeriesOccurrence(TimeStampedModel):
 
     def delete(self, *args: object, **kwargs: object) -> None:
         raise ValidationError("Результат даты серии нельзя удалить.")
+
+
+class AppointmentSeriesMaterializationResult(TimeStampedModel):
+    class ProvenanceKind(models.TextChoices):
+        NATIVE = "native", "Зафиксировано системой"
+        LEGACY_RECONSTRUCTED = "legacy_reconstructed", "Восстановлено и сверено"
+        LEGACY_UNKNOWN = "legacy_unknown", "Историческая точность неизвестна"
+
+    series = models.ForeignKey(
+        AppointmentSeries,
+        verbose_name="серия",
+        on_delete=models.PROTECT,
+        related_name="materialization_results",
+    )
+    revision = models.ForeignKey(
+        AppointmentSeriesRevision,
+        verbose_name="редакция",
+        on_delete=models.PROTECT,
+        related_name="materialization_results",
+    )
+    run = models.ForeignKey(
+        AppointmentSeriesMaterializationRun,
+        verbose_name="запуск",
+        on_delete=models.PROTECT,
+        related_name="results",
+    )
+    scheduled_starts_at = models.DateTimeField("плановое начало")
+    scheduled_date = models.DateField("локальная дата занятия")
+    attempt_number = models.PositiveIntegerField("номер попытки")
+    provenance_kind = models.CharField(
+        "происхождение данных",
+        max_length=30,
+        choices=ProvenanceKind.choices,
+        default=ProvenanceKind.NATIVE,
+    )
+    appointment = models.ForeignKey(
+        Appointment,
+        verbose_name="занятие",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="series_materialization_results",
+    )
+    appointment_participant = models.ForeignKey(
+        AppointmentParticipant,
+        verbose_name="участник занятия",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="series_materialization_results",
+    )
+    outcome = models.CharField(
+        "результат",
+        max_length=20,
+        choices=AppointmentSeriesOccurrence.Outcome.choices,
+    )
+    reason_code = models.CharField("код причины", max_length=50, blank=True)
+    reason = models.TextField("причина", blank=True)
+    supersedes = models.ForeignKey(
+        "self",
+        verbose_name="предыдущая попытка",
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name="superseded_by",
+    )
+    compatibility_occurrence = models.OneToOneField(
+        AppointmentSeriesOccurrence,
+        verbose_name="совместимый результат первой попытки",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="materialization_result",
+    )
+
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        verbose_name = "результат запуска серии"
+        verbose_name_plural = "результаты запусков серий"
+        ordering = ["series", "scheduled_starts_at", "attempt_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["series", "scheduled_starts_at", "attempt_number"],
+                name="unique_series_materialization_attempt",
+            ),
+            models.UniqueConstraint(
+                fields=["run", "scheduled_starts_at"],
+                name="unique_series_run_scheduled_result",
+            ),
+            models.UniqueConstraint(
+                fields=["supersedes"],
+                condition=Q(supersedes__isnull=False),
+                name="unique_series_result_successor",
+            ),
+            models.CheckConstraint(
+                condition=Q(attempt_number__gte=1),
+                name="series_materialization_attempt_positive",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        attempt_number=1,
+                        supersedes__isnull=True,
+                    )
+                    & ~Q(outcome="unchanged")
+                    | Q(attempt_number__gte=2, supersedes__isnull=False)
+                ),
+                name="series_result_attempt_chain",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        outcome="joined",
+                        appointment__isnull=False,
+                        appointment_participant__isnull=False,
+                    )
+                    | Q(
+                        outcome="created",
+                        appointment__isnull=False,
+                        appointment_participant__isnull=True,
+                    )
+                    | Q(
+                        outcome="created",
+                        provenance_kind__in=[
+                            "legacy_reconstructed",
+                            "legacy_unknown",
+                        ],
+                        appointment__isnull=True,
+                        appointment_participant__isnull=True,
+                    )
+                    | Q(
+                        outcome__in=["skipped", "unchanged"],
+                        appointment__isnull=True,
+                        appointment_participant__isnull=True,
+                    )
+                ),
+                name="series_result_outcome_references",
+            ),
+            models.CheckConstraint(
+                condition=Q(compatibility_occurrence__isnull=True) | Q(attempt_number=1),
+                name="series_result_compatibility_is_first",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(provenance_kind="native")
+                    | Q(
+                        compatibility_occurrence__isnull=False,
+                        provenance_kind__in=[
+                            "legacy_reconstructed",
+                            "legacy_unknown",
+                        ],
+                    )
+                ),
+                name="series_result_provenance_has_source",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["series", "scheduled_starts_at", "-attempt_number"]
+            ),
+            models.Index(fields=["appointment", "series"]),
+            models.Index(fields=["run", "outcome"]),
+        ]
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.revision_id and self.series_id and self.revision.series_id != self.series_id:
+            errors["revision"] = "Редакция должна относиться к выбранной серии."
+        if self.run_id and self.series_id and self.run.series_id != self.series_id:
+            errors["run"] = "Запуск должен относиться к выбранной серии."
+        if self.run_id and self.revision_id and self.run.revision_id != self.revision_id:
+            errors["run"] = "Запуск должен относиться к выбранной редакции."
+        if self.supersedes_id:
+            previous = self.supersedes
+            if (
+                previous.series_id != self.series_id
+                or previous.revision_id != self.revision_id
+                or previous.scheduled_starts_at != self.scheduled_starts_at
+                or previous.scheduled_date != self.scheduled_date
+                or previous.attempt_number + 1 != self.attempt_number
+            ):
+                errors["supersedes"] = (
+                    "Предыдущий результат должен быть попыткой той же даты и серии."
+                )
+        if self.scheduled_starts_at and self.scheduled_date:
+            local_date = timezone.localtime(self.scheduled_starts_at).date()
+            if local_date != self.scheduled_date:
+                errors["scheduled_date"] = "Локальная дата не совпадает со временем результата."
+        if self.run_id and self.scheduled_date and not (
+            self.run.date_from <= self.scheduled_date <= self.run.date_to
+        ):
+            errors["scheduled_date"] = "Результат должен находиться в диапазоне запуска."
+        if self.revision_id and self.scheduled_date and not (
+            max(self.revision.start_date, self.revision.effective_from)
+            <= self.scheduled_date
+            <= self.revision.end_date
+        ):
+            errors["scheduled_date"] = "Результат должен находиться в периоде редакции."
+        if self.compatibility_occurrence_id:
+            occurrence = self.compatibility_occurrence
+            if (
+                occurrence.series_id != self.series_id
+                or occurrence.scheduled_starts_at != self.scheduled_starts_at
+                or occurrence.appointment_id != self.appointment_id
+                or occurrence.appointment_participant_id
+                != self.appointment_participant_id
+                or occurrence.outcome != self.outcome
+                or occurrence.reason_code != self.reason_code
+                or occurrence.reason != self.reason
+            ):
+                errors["compatibility_occurrence"] = (
+                    "Совместимый occurrence должен точно совпадать с результатом первой попытки."
+                )
+        if self.run_id and self.run.events.filter(
+            event_type=AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
+        ).exists():
+            errors["run"] = "Завершенный запуск не принимает новые результаты."
+        if self.run_id and self.run.results.count() >= self.run.expected_result_count:
+            errors["run"] = "Количество результатов запуска превышает ожидаемое."
+        if (
+            self.appointment_participant_id
+            and self.appointment_id
+            and self.appointment_participant.appointment_id != self.appointment_id
+        ):
+            errors["appointment_participant"] = (
+                "Участник результата должен принадлежать выбранному занятию."
+            )
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Результат запуска серии нельзя изменять.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Результат запуска серии нельзя удалить.")
+
+    def __str__(self) -> str:
+        local_start = timezone.localtime(self.scheduled_starts_at)
+        return (
+            f"{self.series} / {local_start:%d.%m.%Y %H:%M} / "
+            f"попытка {self.attempt_number}"
+        )
 
 
 def room_usage_counts(appointment_qs: QuerySet[Appointment]) -> tuple[int, int]:

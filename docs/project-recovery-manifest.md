@@ -63,7 +63,7 @@
 | `docs/58-grant-plan-versioning-contract.md` | Реализованный срез: типизированные редакции квот и распределений, director-only write-path, legacy backfill и payroll provenance. |
 | `docs/59-grant-fixed-compensation-and-donor-report-snapshot-contract.md` | Реализованный эпик 59: payroll-бюджет, fixed/per-session policy, фиксированная оплата проекта и закрытый донорский снимок. |
 | `docs/60-private-artifact-storage-and-donor-submission-contract.md` | Реализованный срез 59B-2: private storage, append-only сдачи/выдачи, integrity и backup/restore v2; там же production-блокеры. |
-| `docs/61-group-program-series-lifecycle-contract.md` | Активный доменный контракт: 61A фиксированной серии и 61B join-existing реализованы; далее 61C-61D. |
+| `docs/61-group-program-series-lifecycle-contract.md` | Активный доменный контракт: 61A-61B реализованы; 61C детализирован на revision/run, единый materializer, будущий состав и явные повтор/отмену; далее 61D. |
 | `docs/decisions/ADR-001-*.md` | Django/PostgreSQL/local-first. |
 | `docs/decisions/ADR-002-*.md` | Балансовые счета и ledger. |
 | `docs/decisions/ADR-003-*.md` | Полномочия и ручные решения. |
@@ -72,6 +72,7 @@
 | `docs/decisions/ADR-006-*.md` | Типизированные редакции грантового плана с устойчивой текущей проекцией. |
 | `docs/decisions/ADR-007-*.md` | Принятое расширение общего payroll, budget provenance и неизменяемые снимки внутренней сверки проекта. |
 | `docs/decisions/ADR-008-*.md` | Отдельное private content-addressed/write-once хранилище вне Caddy/media и server-mediated access. |
+| `docs/decisions/ADR-009-*.md` | Устойчивый корень серии, типизированные редакции и append-only запуски materialization. |
 | `docs/interviews/*.md` | Первичные интервью; читать при спорном требовании. |
 | `docs/PRODUCTION_DEPLOYMENT.md` | Развертывание и эксплуатация production. |
 | `docs/current-state.md` | Компактная текущая контрольная точка. |
