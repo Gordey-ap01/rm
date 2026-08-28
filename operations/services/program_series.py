@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from hashlib import sha256
+from itertools import pairwise
 from typing import Any
 from uuid import UUID
 
@@ -76,6 +79,37 @@ class GroupSeriesCreateResult:
     reused_series: bool = False
 
 
+@dataclass(frozen=True)
+class GroupJoinCandidate:
+    appointment: Appointment
+    ready: bool
+    reason_code: str = ""
+    reason: str = ""
+    recipient_count_after: int = 0
+    staff_count: int = 0
+
+
+@dataclass(frozen=True)
+class GroupJoinPreview:
+    block: ProgramBlock
+    candidates: tuple[GroupJoinCandidate, ...]
+    planned_remaining: int
+    funded_remaining: int
+
+    @property
+    def ready_count(self) -> int:
+        return sum(item.ready for item in self.candidates)
+
+
+@dataclass(frozen=True)
+class GroupJoinCreateResult:
+    series: AppointmentSeries
+    joined_count: int
+    skipped_count: int
+    unchanged_count: int
+    reused_series: bool = False
+
+
 class _SkipOccurrence(Exception):
     def __init__(self, code: str, reason: str):
         super().__init__(reason)
@@ -90,6 +124,16 @@ class _BlockCapacity:
     funded_remaining: int | None
 
 
+def _operation_fingerprint(payload: dict[str, Any]) -> str:
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def _unique_in_input_order(items: Iterable[Any]) -> tuple[Any, ...]:
     result = []
     seen_pks = set()
@@ -98,6 +142,50 @@ def _unique_in_input_order(items: Iterable[Any]) -> tuple[Any, ...]:
             result.append(item)
             seen_pks.add(item.pk)
     return tuple(result)
+
+
+def _group_series_fingerprint(preview: GroupSeriesPreview) -> str:
+    return _operation_fingerprint(
+        {
+            "kind": AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS,
+            "blocks": [block.pk for block in preview.blocks],
+            "staff": [staff.pk for staff in preview.staff_members],
+            "room": preview.room.pk,
+            "title": preview.title,
+            "start_date": preview.start_date.isoformat(),
+            "end_date": preview.end_date.isoformat(),
+            "weekdays": list(preview.weekdays),
+            "start_time": preview.start_time.isoformat(),
+            "duration_minutes": preview.duration_minutes,
+            "status": preview.default_appointment_status,
+            "allow_unpaid_reserve": preview.allow_unpaid_reserve,
+            "allow_outside_availability": preview.allow_outside_availability,
+            "override_reason": preview.override_reason,
+        }
+    )
+
+
+def _group_join_fingerprint(
+    block: ProgramBlock,
+    appointments: Iterable[Appointment],
+) -> str:
+    snapshots = sorted(
+        (
+            {
+                "id": int(appointment.pk),
+                "starts_at": appointment.starts_at.isoformat(),
+            }
+            for appointment in appointments
+        ),
+        key=lambda item: (item["starts_at"], item["id"]),
+    )
+    return _operation_fingerprint(
+        {
+            "kind": AppointmentSeries.MaterializationMode.JOIN_EXISTING,
+            "block": block.pk,
+            "appointments": snapshots,
+        }
+    )
 
 
 def _local_datetime(day: date, clock: time) -> datetime:
@@ -413,8 +501,20 @@ def _create_series_definition(
     *,
     operation_key: UUID,
 ) -> tuple[AppointmentSeries, bool]:
+    fingerprint = _group_series_fingerprint(preview)
     existing = AppointmentSeries.objects.filter(operation_key=operation_key).first()
     if existing:
+        if (
+            existing.materialization_mode
+            != AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS
+            or (
+                existing.operation_fingerprint
+                and existing.operation_fingerprint != fingerprint
+            )
+        ):
+            raise ValidationError(
+                "Ключ операции уже использован для другого состава серии."
+            )
         return existing, True
 
     primary_block = preview.blocks[0]
@@ -433,6 +533,8 @@ def _create_series_definition(
         time=preview.start_time,
         duration_minutes=preview.duration_minutes,
         session_type=Appointment.SessionType.GROUP,
+        materialization_mode=AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS,
+        operation_fingerprint=fingerprint,
         default_appointment_status=preview.default_appointment_status,
         allow_unpaid_reserve=preview.allow_unpaid_reserve,
         allow_outside_availability=preview.allow_outside_availability,
@@ -682,6 +784,11 @@ def materialize_group_series(
         raise ValidationError("Создавать занятия можно только для активной серии.")
     if series.session_type != Appointment.SessionType.GROUP:
         raise ValidationError("Этот сервис предназначен для групповой серии.")
+    if (
+        series.materialization_mode
+        != AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS
+    ):
+        raise ValidationError("Эта серия присоединяет к существующим занятиям.")
 
     created_count = 0
     skipped_count = 0
@@ -716,10 +823,22 @@ def create_group_series(
 ) -> GroupSeriesCreateResult:
     try:
         series, reused = _create_series_definition(preview, operation_key=operation_key)
-    except IntegrityError:
+    except IntegrityError as exc:
         series = AppointmentSeries.objects.filter(operation_key=operation_key).first()
         if series is None:
             raise
+        fingerprint = _group_series_fingerprint(preview)
+        if (
+            series.materialization_mode
+            != AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS
+            or (
+                series.operation_fingerprint
+                and series.operation_fingerprint != fingerprint
+            )
+        ):
+            raise ValidationError(
+                "Ключ операции уже использован для другого состава серии."
+            ) from exc
         reused = True
     result = materialize_group_series(series, actor=actor)
     return GroupSeriesCreateResult(
@@ -727,5 +846,515 @@ def create_group_series(
         created_count=result.created_count,
         skipped_count=result.skipped_count,
         unchanged_count=result.unchanged_count,
+        reused_series=reused,
+    )
+
+
+_JOINABLE_GROUP_STATUSES = {
+    Appointment.Status.PROPOSED,
+    Appointment.Status.CONFIRMED,
+    Appointment.Status.RESERVED,
+}
+_MAX_JOIN_CANDIDATES = 500
+_MAX_JOIN_SELECTION = 200
+
+
+def _appointment_children(appointment: Appointment) -> list[Any]:
+    prefetched = getattr(appointment, "_prefetched_objects_cache", {}).get(
+        "participants"
+    )
+    participants = (
+        list(prefetched)
+        if prefetched is not None
+        else list(appointment.participants.select_related("child").order_by("pk"))
+    )
+    if participants:
+        return [participant.child for participant in participants]
+    return [appointment.child]
+
+
+def _appointment_staff_members(appointment: Appointment) -> list[StaffMember]:
+    prefetched = getattr(appointment, "_prefetched_objects_cache", {}).get(
+        "staff_assignments"
+    )
+    assignments = (
+        list(prefetched)
+        if prefetched is not None
+        else list(
+            appointment.staff_assignments.select_related("staff_member").order_by("pk")
+        )
+    )
+    if assignments:
+        return [assignment.staff_member for assignment in assignments]
+    return [appointment.staff_member]
+
+
+def _group_join_candidate(
+    block: ProgramBlock,
+    appointment: Appointment,
+    *,
+    planned_remaining: int,
+    funded_remaining: int,
+) -> GroupJoinCandidate:
+    child = block.program.child
+    existing_children = _appointment_children(appointment)
+    existing_staff = _appointment_staff_members(appointment)
+    recipient_count_after = len({item.pk for item in [*existing_children, child]})
+    staff_count = len({item.pk for item in existing_staff})
+
+    def blocked(code: str, reason: str) -> GroupJoinCandidate:
+        return GroupJoinCandidate(
+            appointment=appointment,
+            ready=False,
+            reason_code=code,
+            reason=reason,
+            recipient_count_after=recipient_count_after,
+            staff_count=staff_count,
+        )
+
+    if appointment.session_type != Appointment.SessionType.GROUP:
+        return blocked("not_group", "Занятие больше не является групповым.")
+    if appointment.status not in _JOINABLE_GROUP_STATUSES:
+        return blocked("status", "Статус занятия не допускает присоединение.")
+    if appointment.service_id != block.service_id:
+        return blocked("service", "Услуга занятия не соответствует каскаду.")
+    if appointment.starts_at <= timezone.now():
+        return blocked("not_future", "Присоединять можно только к будущему занятию.")
+    if appointment.room_id is None:
+        return blocked("room_missing", "У группового занятия не выбран кабинет.")
+    if not appointment.room.is_active:
+        return blocked("room_inactive", "Кабинет занятия неактивен.")
+    if any(existing.pk == child.pk for existing in existing_children):
+        return blocked("already_participant", "Получатель уже участвует в занятии.")
+
+    on_date = timezone.localtime(appointment.starts_at).date()
+    program_reason = program_wizard.program_availability_reason(block, on_date=on_date)
+    if program_reason:
+        return blocked("program_unavailable", f"Программа недоступна: {program_reason}.")
+    account_reason = program_wizard.account_availability_reason(
+        block.balance_account,
+        block.service,
+        on_date=on_date,
+    )
+    if account_reason:
+        return blocked("funding_unavailable", f"Оплата недоступна: {account_reason}.")
+    if planned_remaining <= 0:
+        return blocked("plan_limit", "План каскада исчерпан.")
+    if funded_remaining <= 0:
+        return blocked("funding_limit", "Доступная оплата каскада исчерпана.")
+
+    child_report = scheduling.find_overlaps(
+        appointment.starts_at,
+        appointment.ends_at,
+        children=[child],
+        staff_members=[],
+        exclude_pk=appointment.pk,
+    )
+    if child_report.child_conflict:
+        local_start = timezone.localtime(child_report.child_conflict.starts_at)
+        return blocked(
+            "recipient_conflict",
+            f"У получателя уже есть занятие {local_start:%d.%m.%Y %H:%M}.",
+        )
+
+    room_report = scheduling.find_overlaps(
+        appointment.starts_at,
+        appointment.ends_at,
+        children=[*existing_children, child],
+        staff_members=existing_staff,
+        room=appointment.room,
+        exclude_pk=appointment.pk,
+    )
+    room_reasons = room_report.room_limit_reasons or {}
+    recipient_count_after = int(
+        room_reasons.get("recipient_total", recipient_count_after)
+    )
+    staff_count = int(room_reasons.get("staff_total", staff_count))
+    if room_report.room_over_limit:
+        return GroupJoinCandidate(
+            appointment=appointment,
+            ready=False,
+            reason_code="capacity",
+            reason=(
+                "Ограничение кабинета: "
+                + schedule_writes.room_limit_message(
+                    appointment.room,
+                    {"room_limit_reasons": room_reasons},
+                )
+                + "."
+            ),
+            recipient_count_after=recipient_count_after,
+            staff_count=staff_count,
+        )
+    return GroupJoinCandidate(
+        appointment=appointment,
+        ready=True,
+        recipient_count_after=recipient_count_after,
+        staff_count=staff_count,
+    )
+
+
+def preview_group_joins(
+    *,
+    block: ProgramBlock,
+    date_from: date,
+    date_to: date,
+    appointments: Iterable[Appointment] | None = None,
+) -> GroupJoinPreview:
+    errors: list[str] = []
+    today = timezone.localdate()
+    if date_from < today:
+        errors.append("Период поиска не может начинаться в прошлом.")
+    if date_to < date_from:
+        errors.append("Дата окончания не может быть раньше даты начала.")
+    if date_to - date_from > timedelta(days=366):
+        errors.append("Период поиска не может превышать 366 дней.")
+    if block.status in {ProgramBlock.Status.COMPLETED, ProgramBlock.Status.CANCELLED}:
+        errors.append("Завершенный или отмененный каскад нельзя присоединять к группам.")
+    if errors:
+        raise ValidationError(errors)
+
+    if appointments is None:
+        queryset = (
+            Appointment.objects.select_related(
+                "child",
+                "service",
+                "staff_member",
+                "room",
+            )
+            .prefetch_related(
+                "participants__child",
+                "staff_assignments__staff_member",
+            )
+            .filter(
+                service=block.service,
+                session_type=Appointment.SessionType.GROUP,
+                status__in=_JOINABLE_GROUP_STATUSES,
+                starts_at__gt=timezone.now(),
+                starts_at__date__gte=date_from,
+                starts_at__date__lte=date_to,
+            )
+            .order_by("starts_at", "pk")
+        )
+        candidate_appointments = list(queryset[: _MAX_JOIN_CANDIDATES + 1])
+    else:
+        candidate_appointments = sorted(
+            _unique_in_input_order(appointments),
+            key=lambda item: (item.starts_at, item.pk),
+        )
+    if len(candidate_appointments) > _MAX_JOIN_CANDIDATES:
+        raise ValidationError(
+            "Найдено слишком много групповых занятий. Сократите период поиска."
+        )
+
+    planned_remaining = max(block.planned_sessions - block.scheduled_count, 0)
+    funded_remaining = program_wizard.funded_sessions_remaining(block)
+    candidates = tuple(
+        _group_join_candidate(
+            block,
+            appointment,
+            planned_remaining=planned_remaining,
+            funded_remaining=funded_remaining,
+        )
+        for appointment in candidate_appointments
+    )
+    return GroupJoinPreview(
+        block=block,
+        candidates=candidates,
+        planned_remaining=planned_remaining,
+        funded_remaining=funded_remaining,
+    )
+
+
+def _validate_join_selection(appointments: Iterable[Appointment]) -> tuple[Appointment, ...]:
+    ordered = tuple(
+        sorted(
+            _unique_in_input_order(appointments),
+            key=lambda item: (item.starts_at, item.pk),
+        )
+    )
+    if not ordered:
+        raise ValidationError("Выберите хотя бы одно групповое занятие.")
+    if len(ordered) > _MAX_JOIN_SELECTION:
+        raise ValidationError(
+            f"За одну операцию можно выбрать не более {_MAX_JOIN_SELECTION} занятий."
+        )
+    for previous, current in pairwise(ordered):
+        if current.starts_at < previous.ends_at:
+            raise ValidationError(
+                "Выбранные групповые занятия пересекаются между собой."
+            )
+    return ordered
+
+
+def _validate_reused_join_series(
+    series: AppointmentSeries,
+    *,
+    fingerprint: str,
+) -> None:
+    if (
+        series.materialization_mode
+        != AppointmentSeries.MaterializationMode.JOIN_EXISTING
+        or series.operation_fingerprint != fingerprint
+    ):
+        raise ValidationError(
+            "Ключ операции уже использован для другого набора групповых занятий."
+        )
+
+
+@transaction.atomic
+def _create_join_series_definition(
+    block: ProgramBlock,
+    appointments: tuple[Appointment, ...],
+    *,
+    operation_key: UUID,
+) -> tuple[AppointmentSeries, bool]:
+    fingerprint = _group_join_fingerprint(block, appointments)
+    existing = AppointmentSeries.objects.filter(operation_key=operation_key).first()
+    if existing:
+        _validate_reused_join_series(existing, fingerprint=fingerprint)
+        return existing, True
+
+    first = appointments[0]
+    local_starts = [timezone.localtime(item.starts_at) for item in appointments]
+    series = AppointmentSeries(
+        operation_key=operation_key,
+        operation_fingerprint=fingerprint,
+        materialization_mode=AppointmentSeries.MaterializationMode.JOIN_EXISTING,
+        child=block.program.child,
+        service=block.service,
+        staff_member=first.staff_member,
+        room=first.room,
+        program_block=block,
+        title=f"{block.service.name}: присоединение {block.program.child}"[:200],
+        start_date=min(item.date() for item in local_starts),
+        end_date=max(item.date() for item in local_starts),
+        days_of_week=_days_of_week_value(item.weekday() for item in local_starts),
+        time=local_starts[0].time().replace(tzinfo=None),
+        duration_minutes=first.duration_minutes,
+        session_type=Appointment.SessionType.GROUP,
+        default_appointment_status=first.status,
+        status=AppointmentSeries.Status.ACTIVE,
+    )
+    series.full_clean()
+    series.save()
+    AppointmentSeriesParticipant.objects.create(
+        series=series,
+        child=block.program.child,
+        program_block=block,
+        billing_account=block.balance_account,
+        position=1,
+    )
+    return series, False
+
+
+def _join_one_appointment(
+    series: AppointmentSeries,
+    appointment: Appointment,
+    *,
+    actor: Any,
+) -> tuple[AppointmentSeriesOccurrence, bool]:
+    expected_starts_at = appointment.starts_at
+    try:
+        with transaction.atomic():
+            locked_series = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
+            existing = AppointmentSeriesOccurrence.objects.filter(
+                series=locked_series,
+                scheduled_starts_at=expected_starts_at,
+            ).first()
+            if existing:
+                return existing, False
+            if (
+                locked_series.materialization_mode
+                != AppointmentSeries.MaterializationMode.JOIN_EXISTING
+            ):
+                raise _SkipOccurrence("series_mode", "Серия не предназначена для присоединения.")
+
+            room_id = (
+                Appointment.objects.filter(pk=appointment.pk)
+                .values_list("room_id", flat=True)
+                .first()
+            )
+            if room_id is None:
+                raise _SkipOccurrence(
+                    "target_missing",
+                    "Групповое занятие удалено или осталось без кабинета.",
+                )
+            with schedule_writes.lock_schedule_write(
+                appointment_id=appointment.pk,
+                room_ids=[room_id],
+            ) as locked:
+                target = locked.appointment
+                if target is None:
+                    raise _SkipOccurrence("target_missing", "Групповое занятие удалено.")
+                if target.starts_at != expected_starts_at:
+                    raise _SkipOccurrence(
+                        "target_changed",
+                        "Дата или время группового занятия изменились после выбора.",
+                    )
+
+                memberships = list(
+                    locked_series.default_participants.select_related(
+                        "child",
+                        "program_block",
+                        "billing_account",
+                    )
+                )
+                if len(memberships) != 1 or not memberships[0].program_block_id:
+                    raise _SkipOccurrence(
+                        "series_composition",
+                        "Состав серии присоединения поврежден.",
+                    )
+                membership = memberships[0]
+                block = (
+                    ProgramBlock.objects.select_for_update(of=("self",))
+                    .select_related("program__child", "service", "balance_account")
+                    .get(pk=membership.program_block_id)
+                )
+                block.program = TreatmentProgram.objects.select_for_update().get(
+                    pk=block.program_id
+                )
+                if block.program.child_id != membership.child_id:
+                    raise _SkipOccurrence(
+                        "series_composition",
+                        "Каскад больше не принадлежит получателю серии.",
+                    )
+                if membership.billing_account_id != block.balance_account_id:
+                    raise _SkipOccurrence(
+                        "funding_changed",
+                        "Счет каскада изменился после выбора групповых занятий.",
+                    )
+                if block.balance_account_id:
+                    block.balance_account = BalanceAccount.all_objects.select_for_update().get(
+                        pk=block.balance_account_id
+                    )
+
+                candidate = _group_join_candidate(
+                    block,
+                    target,
+                    planned_remaining=max(
+                        block.planned_sessions - block.scheduled_count,
+                        0,
+                    ),
+                    funded_remaining=program_wizard.funded_sessions_remaining(
+                        block,
+                        on_date=timezone.localtime(target.starts_at).date(),
+                    ),
+                )
+                if not candidate.ready:
+                    raise _SkipOccurrence(candidate.reason_code, candidate.reason)
+
+                room = locked.room_for(target.room_id)
+                schedule_writes.ensure_room_capacity(
+                    starts_at=target.starts_at,
+                    ends_at=target.ends_at,
+                    children=[*_appointment_children(target), membership.child],
+                    staff_members=_appointment_staff_members(target),
+                    room=room,
+                    status=target.status,
+                    exclude_pk=target.pk,
+                )
+                participant = AppointmentParticipant.objects.create(
+                    appointment=target,
+                    child=membership.child,
+                    billing_account=block.balance_account,
+                    billing_decision=Appointment.BillingDecision.UNDECIDED,
+                    price_snapshot=target.service.default_price,
+                    program_block=block,
+                    starts_at_snapshot=target.starts_at,
+                    ends_at_snapshot=target.ends_at,
+                    appointment_status=target.status,
+                    admin_note="Присоединено мастером групповых занятий.",
+                )
+                if block.status == ProgramBlock.Status.PLANNED:
+                    ProgramBlock.objects.filter(pk=block.pk).update(
+                        status=ProgramBlock.Status.SCHEDULED,
+                        updated_at=timezone.now(),
+                    )
+                return (
+                    AppointmentSeriesOccurrence.objects.create(
+                        series=locked_series,
+                        scheduled_starts_at=target.starts_at,
+                        appointment=target,
+                        appointment_participant=participant,
+                        outcome=AppointmentSeriesOccurrence.Outcome.JOINED,
+                        created_by=actor if getattr(actor, "pk", None) else None,
+                    ),
+                    True,
+                )
+    except _SkipOccurrence as exc:
+        return _record_skipped(
+            series,
+            expected_starts_at,
+            code=exc.code,
+            reason=exc.reason,
+            actor=actor,
+        )
+    except Appointment.DoesNotExist:
+        return _record_skipped(
+            series,
+            expected_starts_at,
+            code="target_missing",
+            reason="Групповое занятие было удалено во время присоединения.",
+            actor=actor,
+        )
+    except (ValidationError, IntegrityError) as exc:
+        return _record_skipped(
+            series,
+            expected_starts_at,
+            code="stale_conflict",
+            reason=(
+                "Расписание изменилось во время присоединения: "
+                + "; ".join(exc.messages)
+                if isinstance(exc, ValidationError)
+                else "Расписание изменилось во время присоединения; занятие безопасно пропущено."
+            ),
+            actor=actor,
+        )
+
+
+def join_program_block_to_groups(
+    *,
+    block: ProgramBlock,
+    appointments: Iterable[Appointment],
+    operation_key: UUID,
+    actor: Any = None,
+) -> GroupJoinCreateResult:
+    selected = _validate_join_selection(appointments)
+    try:
+        series, reused = _create_join_series_definition(
+            block,
+            selected,
+            operation_key=operation_key,
+        )
+    except IntegrityError:
+        series = AppointmentSeries.objects.filter(operation_key=operation_key).first()
+        if series is None:
+            raise
+        _validate_reused_join_series(
+            series,
+            fingerprint=_group_join_fingerprint(
+                block,
+                selected,
+            ),
+        )
+        reused = True
+
+    joined_count = 0
+    skipped_count = 0
+    unchanged_count = 0
+    for appointment in selected:
+        occurrence, created = _join_one_appointment(series, appointment, actor=actor)
+        if not created:
+            unchanged_count += 1
+        elif occurrence.outcome == AppointmentSeriesOccurrence.Outcome.JOINED:
+            joined_count += 1
+        else:
+            skipped_count += 1
+    return GroupJoinCreateResult(
+        series=series,
+        joined_count=joined_count,
+        skipped_count=skipped_count,
+        unchanged_count=unchanged_count,
         reused_series=reused,
     )

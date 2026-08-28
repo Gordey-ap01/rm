@@ -13,14 +13,20 @@
 
 <section class="detail-grid">
   <article class="panel">
-    <h2>Параметры серии</h2>
+    <h2>{% if series.materialization_mode == 'join_existing' %}Параметры операции{% else %}Параметры серии{% endif %}</h2>
     <dl class="detail-list">
       <div><dt>Период</dt><dd>{{ series.start_date|date:"d.m.Y" }}-{{ series.end_date|date:"d.m.Y" }}</dd></div>
-      <div><dt>Повторение</dt><dd>{{ series.days_of_week }} в {{ series.time|time:"H:i" }}</dd></div>
-      <div><dt>Длительность</dt><dd>{{ series.duration_minutes }} мин.</dd></div>
-      <div><dt>Кабинет</dt><dd>{{ series.room }}</dd></div>
-      <div><dt>Статус занятий</dt><dd>{{ series.get_default_appointment_status_display }}</dd></div>
-      <div><dt>Исключения</dt><dd>{% if series.override_reason %}{{ series.override_reason }}{% else %}нет{% endif %}</dd></div>
+      <div><dt>Режим</dt><dd>{{ series.get_materialization_mode_display }}</dd></div>
+      {% if series.materialization_mode == 'join_existing' %}
+        <div><dt>Обработано занятий</dt><dd>{{ occurrences|length }}</dd></div>
+        <div><dt>Фактические данные</dt><dd>Время, кабинет и специалисты сохранены в каждом групповом занятии.</dd></div>
+      {% else %}
+        <div><dt>Повторение</dt><dd>{{ series.days_of_week }} в {{ series.time|time:"H:i" }}</dd></div>
+        <div><dt>Длительность</dt><dd>{{ series.duration_minutes }} мин.</dd></div>
+        <div><dt>Кабинет</dt><dd>{{ series.room }}</dd></div>
+        <div><dt>Статус занятий</dt><dd>{{ series.get_default_appointment_status_display }}</dd></div>
+        <div><dt>Исключения</dt><dd>{% if series.override_reason %}{{ series.override_reason }}{% else %}нет{% endif %}</dd></div>
+      {% endif %}
     </dl>
   </article>
 
@@ -41,9 +47,13 @@
       </table>
     </div>
     <h3 class="h6 mt-3">Специалисты</h3>
-    <ul class="mb-0">
-      {% for assignment in staff_assignments %}<li>{{ assignment.staff_member }} · {{ assignment.get_role_display }}</li>{% endfor %}
-    </ul>
+    {% if series.materialization_mode == 'join_existing' %}
+      <p class="muted mb-0">Состав специалистов не менялся и указан в каждом групповом занятии.</p>
+    {% else %}
+      <ul class="mb-0">
+        {% for assignment in staff_assignments %}<li>{{ assignment.staff_member }} · {{ assignment.get_role_display }}</li>{% endfor %}
+      </ul>
+    {% endif %}
   </article>
 </section>
 

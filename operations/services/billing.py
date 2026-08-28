@@ -421,6 +421,12 @@ def _record_balance_transfer(
     key = _as_idempotency_key(idempotency_key)
 
     with transaction.atomic():
+        if program_block is not None:
+            program_block = (
+                ProgramBlock.objects.select_related("program", "service")
+                .select_for_update()
+                .get(pk=program_block.pk)
+            )
         locked_from, locked_to = _locked_transfer_accounts(from_account, to_account)
         existing = BalanceTransfer.objects.select_related(
             "from_account", "to_account", "program_block"
@@ -444,11 +450,6 @@ def _record_balance_transfer(
             raise ValueError("Недостаточно средств на исходном счете.")
 
         if program_block is not None:
-            program_block = (
-                ProgramBlock.objects.select_related("program", "service")
-                .select_for_update()
-                .get(pk=program_block.pk)
-            )
             if program_block.program.child_id != locked_to.child_id:
                 raise ValueError("Каскад и целевой счёт должны относиться к одному получателю.")
             if (
@@ -557,9 +558,7 @@ def convert_money_to_sessions(
     if sessions is None or sessions <= 0 or sessions != sessions.to_integral_value():
         raise ValueError("Для конвертации укажите целое положительное количество занятий.")
     with transaction.atomic():
-        # All transfer paths lock accounts first, then the optional cascade.
-        # This prevents a direct transfer and a conversion from deadlocking.
-        locked_from, locked_to = _locked_transfer_accounts(from_account, to_account)
+        # Program operations use one global lock order: cascade, then accounts.
         locked_block = (
             ProgramBlock.objects.select_related("program", "service")
             .select_for_update()
@@ -568,13 +567,13 @@ def convert_money_to_sessions(
         rate = locked_block.service.default_price
         if rate is None or rate <= 0:
             raise ValueError("Для конвертации у услуги каскада должна быть положительная цена.")
-        if locked_from.unit != BalanceAccount.Unit.MONEY:
+        if from_account.unit != BalanceAccount.Unit.MONEY:
             raise ValueError("Исходный счёт конвертации должен быть в рублях.")
-        if locked_to.unit != BalanceAccount.Unit.SESSIONS:
+        if to_account.unit != BalanceAccount.Unit.SESSIONS:
             raise ValueError("Целевой счёт конвертации должен быть в занятиях.")
         return _record_balance_transfer(
-            from_account=locked_from,
-            to_account=locked_to,
+            from_account=from_account,
+            to_account=to_account,
             program_block=locked_block,
             operation_kind=BalanceTransfer.OperationKind.MONEY_TO_SESSIONS,
             amount_from=sessions * rate,

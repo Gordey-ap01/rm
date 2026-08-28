@@ -1164,6 +1164,7 @@ class AppointmentSeriesAdmin(admin.ModelAdmin):
     list_display = (
         "title",
         "session_type",
+        "materialization_mode",
         "child",
         "service",
         "staff_member",
@@ -1179,9 +1180,15 @@ class AppointmentSeriesAdmin(admin.ModelAdmin):
         "service__name",
         "staff_member__full_name",
     )
-    list_filter = ("status", "session_type", "service", "staff_member")
+    list_filter = (
+        "status",
+        "session_type",
+        "materialization_mode",
+        "service",
+        "staff_member",
+    )
     autocomplete_fields = ("child", "service", "staff_member", "room", "program_block")
-    readonly_fields = ("operation_key",)
+    readonly_fields = ("operation_key", "operation_fingerprint")
     inlines = (
         AppointmentSeriesParticipantInline,
         AppointmentSeriesStaffAssignmentInline,

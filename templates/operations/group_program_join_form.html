@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Присоединить к группам{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Присоединить к группам</h1>
+    <p>{{ program_block.program.child }} · {{ program_block.service }} · каскад {{ program_block.number }}. {{ program_block.title }}</p>
+  </div>
+  <a class="button-link secondary" href="{{ cancel_url }}"><i class="bi bi-arrow-left"></i> Назад</a>
+</section>
+
+<form method="post" class="wizard-form-stack">
+  {% csrf_token %}
+  {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+  {% if form.non_field_errors %}<div class="form-error">{{ form.non_field_errors }}</div>{% endif %}
+
+  <section class="panel">
+    <div class="form-grid">
+      <label class="field">
+        <span>{{ form.date_from.label }}</span>
+        {{ form.date_from }}
+        {% if form.date_from.errors %}<span class="form-error">{{ form.date_from.errors }}</span>{% endif %}
+      </label>
+      <label class="field">
+        <span>{{ form.date_to.label }}</span>
+        {{ form.date_to }}
+        {% if form.date_to.errors %}<span class="form-error">{{ form.date_to.errors }}</span>{% endif %}
+      </label>
+      <div class="field align-self-end">
+        <button type="submit" name="action" value="search"><i class="bi bi-search"></i> Найти группы</button>
+      </div>
+    </div>
+  </section>
+
+  {% if preview %}
+    <section class="panel">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+          <h2 class="h6 mb-1">Будущие групповые занятия</h2>
+          <p class="muted mb-0">Готово: {{ preview.ready_count }}. Доступно по плану: {{ preview.planned_remaining }}, по оплате: {{ preview.funded_remaining }}.</p>
+        </div>
+      </div>
+      {% if form.appointments.errors %}<div class="form-error mb-3">{{ form.appointments.errors }}</div>{% endif %}
+      <div class="table-responsive program-wizard-table-wrap">
+        <table class="table table-sm mb-0 program-wizard-table">
+          <thead>
+            <tr><th aria-label="Выбрать"></th><th>Дата</th><th>Группа</th><th>Кабинет</th><th>После присоединения</th><th>Проверка</th>
+          </thead>
+          <tbody>
+            {% for candidate in preview.candidates %}
+              <tr>
+                <td data-label="Выбрать">
+                  <input
+                    type="checkbox"
+                    name="appointments"
+                    value="{{ candidate.appointment.pk }}"
+                    aria-label="Выбрать занятие {{ candidate.appointment.starts_at|date:'d.m.Y H:i' }}"
+                    {% if candidate.appointment.pk in selected_ids %}checked{% endif %}
+                    {% if not candidate.ready %}disabled{% endif %}
+                  >
+                </td>
+                <td data-label="Дата">{{ candidate.appointment.starts_at|date:"d.m.Y H:i" }}-{{ candidate.appointment.ends_at|date:"H:i" }}</td>
+                <td data-label="Группа"><a href="{% url 'appointment_detail' candidate.appointment.pk %}">{{ candidate.appointment.title|default:candidate.appointment.service }}</a></td>
+                <td data-label="Кабинет">{{ candidate.appointment.room }}</td>
+                <td data-label="После присоединения">{{ candidate.recipient_count_after }} получ. / {{ candidate.staff_count }} спец.</td>
+                <td data-label="Проверка">
+                  {% if candidate.ready %}
+                    <span class="status-pill balance-ok">готово</span>
+                  {% else %}
+                    <span class="status-pill balance-warning">{{ candidate.reason }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="6" class="muted">В этом периоде нет будущих групповых занятий по услуге.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if preview.ready_count %}
+        <div class="form-actions mt-3">
+          <button type="submit" name="action" value="join"><i class="bi bi-person-plus"></i> Присоединить к выбранным</button>
+          <a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
+</form>
+{% endblock %}

@@ -505,6 +505,23 @@ class AppointmentForm(forms.ModelForm):
             self.add_error(
                 "program_block", "Блок программы должен соответствовать выбранной услуге."
             )
+        if self.instance.pk:
+            selected_child_ids = {selected.pk for selected in children}
+            protected_participants = list(
+                self.instance.participants.filter(
+                    series_join_occurrences__isnull=False,
+                )
+                .exclude(child_id__in=selected_child_ids)
+                .select_related("child")
+                .distinct()
+            )
+            if protected_participants:
+                names = ", ".join(str(item.child) for item in protected_participants)
+                self.add_error(
+                    "participants",
+                    "Нельзя удалить получателя, присоединенного через серию: "
+                    f"{names}. История присоединения неизменяема.",
+                )
         return cleaned
 
     def _sync_participants(self, appointment: Appointment) -> None:
@@ -2165,6 +2182,89 @@ class GroupProgramSeriesForm(forms.Form):
                 "primary_staff_member",
                 "Основной специалист должен входить в состав серии.",
             )
+        return cleaned
+
+
+class GroupProgramJoinForm(forms.Form):
+    operation_key = forms.UUIDField(widget=forms.HiddenInput)
+    date_from = forms.DateField(label="Начало поиска", widget=DATE_INPUT)
+    date_to = forms.DateField(label="Конец поиска", widget=DATE_INPUT)
+    appointments = forms.ModelMultipleChoiceField(
+        label="Групповые занятия",
+        queryset=Appointment.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
+
+    def __init__(self, *args, block: ProgramBlock, **kwargs):
+        self.block = block
+        super().__init__(*args, **kwargs)
+        self.fields["appointments"].queryset = (
+            Appointment.objects.select_related(
+                "child",
+                "service",
+                "staff_member",
+                "room",
+            )
+            .prefetch_related(
+                "participants__child",
+                "staff_assignments__staff_member",
+            )
+            .filter(
+                service=block.service,
+                session_type=Appointment.SessionType.GROUP,
+                status__in=[
+                    Appointment.Status.PROPOSED,
+                    Appointment.Status.CONFIRMED,
+                    Appointment.Status.RESERVED,
+                ],
+                starts_at__gt=timezone.now(),
+            )
+            .order_by("starts_at", "pk")
+        )
+
+        today = timezone.localdate()
+        date_from = max(block.program.starts_on or today, today)
+        date_to = date_from + timedelta(days=60)
+        if block.program.ends_on and block.program.ends_on >= date_from:
+            date_to = min(date_to, block.program.ends_on)
+        self.initial.setdefault("operation_key", uuid4())
+        self.initial.setdefault("date_from", date_from)
+        self.initial.setdefault("date_to", date_to)
+
+    def clean(self):
+        cleaned = super().clean()
+        date_from = cleaned.get("date_from")
+        date_to = cleaned.get("date_to")
+        appointments = list(cleaned.get("appointments") or [])
+        today = timezone.localdate()
+
+        if self.block.status in {
+            ProgramBlock.Status.COMPLETED,
+            ProgramBlock.Status.CANCELLED,
+        }:
+            raise forms.ValidationError(
+                "Завершенный или отмененный каскад нельзя присоединять к группам."
+            )
+        if self.block.program.status != TreatmentProgram.Status.ACTIVE:
+            raise forms.ValidationError(
+                "Присоединять к группам можно только активную программу."
+            )
+        if date_from and date_from < today:
+            self.add_error("date_from", "Период поиска не может начинаться в прошлом.")
+        if date_from and date_to and date_to < date_from:
+            self.add_error("date_to", "Дата окончания не может быть раньше даты начала.")
+        if date_from and date_to and date_to - date_from > timedelta(days=366):
+            self.add_error("date_to", "Период поиска не может превышать 366 дней.")
+        if date_from and date_to:
+            for appointment in appointments:
+                appointment_date = timezone.localtime(appointment.starts_at).date()
+                if not date_from <= appointment_date <= date_to:
+                    self.add_error(
+                        "appointments",
+                        "Одно из выбранных занятий находится вне периода поиска.",
+                    )
+                    break
         return cleaned
 
 

@@ -111,6 +111,7 @@ from .payments import payment_create
 from .programs import (
     appointment_series_detail,
     program_block_create,
+    program_block_group_join,
     program_block_group_series_create,
     program_block_schedule_wizard,
     program_block_transfer_funds,
@@ -303,6 +304,7 @@ __all__ = [
     "payment_create",
     "payroll_sheet_detail",
     "program_block_create",
+    "program_block_group_join",
     "program_block_group_series_create",
     "program_block_schedule_wizard",
     "program_block_transfer_funds",

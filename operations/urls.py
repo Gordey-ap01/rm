@@ -321,6 +321,11 @@ urlpatterns = [
         name="program_block_group_series_create",
     ),
     path(
+        "program-blocks/<int:block_id>/join-groups/",
+        views.program_block_group_join,
+        name="program_block_group_join",
+    ),
+    path(
         "appointment-series/<int:series_id>/",
         views.appointment_series_detail,
         name="appointment_series_detail",

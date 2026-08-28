@@ -2806,6 +2806,10 @@ class AppointmentSeries(TimeStampedModel):
         COMPLETED = "completed", "Завершена"
         CANCELLED = "cancelled", "Отменена"
 
+    class MaterializationMode(models.TextChoices):
+        CREATE_APPOINTMENTS = "create_appointments", "Создавать занятия"
+        JOIN_EXISTING = "join_existing", "Присоединять к существующим"
+
     child = models.ForeignKey(
         Child,
         verbose_name="получатель",
@@ -2848,6 +2852,18 @@ class AppointmentSeries(TimeStampedModel):
         unique=True,
         editable=False,
     )
+    materialization_mode = models.CharField(
+        "режим серии",
+        max_length=30,
+        choices=MaterializationMode.choices,
+        default=MaterializationMode.CREATE_APPOINTMENTS,
+    )
+    operation_fingerprint = models.CharField(
+        "отпечаток операции",
+        max_length=64,
+        blank=True,
+        editable=False,
+    )
     default_appointment_status = models.CharField(
         "статус создаваемых занятий",
         max_length=30,
@@ -2873,6 +2889,15 @@ class AppointmentSeries(TimeStampedModel):
         verbose_name = "серия занятий"
         verbose_name_plural = "серии занятий"
         ordering = ["start_date", "time"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(materialization_mode="create_appointments")
+                    | Q(session_type="group")
+                ),
+                name="join_existing_requires_group_series",
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.title
@@ -2890,6 +2915,20 @@ class AppointmentSeries(TimeStampedModel):
         errors: dict[str, str] = {}
         if self.start_date and self.end_date and self.end_date < self.start_date:
             errors["end_date"] = "Дата окончания не может быть раньше даты начала."
+        if (
+            self.materialization_mode == self.MaterializationMode.JOIN_EXISTING
+            and self.session_type != "group"
+        ):
+            errors["session_type"] = (
+                "Присоединять получателя можно только к групповым занятиям."
+            )
+        if (
+            self.materialization_mode == self.MaterializationMode.JOIN_EXISTING
+            and self.allow_unpaid_reserve
+        ):
+            errors["allow_unpaid_reserve"] = (
+                "Присоединение к существующему занятию требует доступной оплаты."
+            )
         if self.allow_unpaid_reserve and self.default_appointment_status != "reserved":
             errors["default_appointment_status"] = (
                 "Занятия сверх оплаты должны создаваться со статусом «Бронь»."
@@ -2922,6 +2961,8 @@ class AppointmentSeries(TimeStampedModel):
         """
         if self.status != self.Status.ACTIVE:
             raise ValidationError("Создавать занятия можно только для активной серии.")
+        if self.materialization_mode != self.MaterializationMode.CREATE_APPOINTMENTS:
+            raise ValidationError("Эта серия не создает новые занятия.")
         if self.session_type == "group":
             raise ValidationError(
                 "Групповая серия создается сервисом групповых программ."
@@ -3700,6 +3741,14 @@ class AppointmentSeriesOccurrence(TimeStampedModel):
         blank=True,
         related_name="series_occurrences",
     )
+    appointment_participant = models.ForeignKey(
+        AppointmentParticipant,
+        verbose_name="участник занятия",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="series_join_occurrences",
+    )
     outcome = models.CharField("результат", max_length=20, choices=Outcome.choices)
     reason_code = models.CharField("код причины", max_length=50, blank=True)
     reason = models.TextField("причина", blank=True)
@@ -3721,6 +3770,20 @@ class AppointmentSeriesOccurrence(TimeStampedModel):
                 fields=["series", "scheduled_starts_at"],
                 name="unique_appointment_series_occurrence",
             ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        outcome="joined",
+                        appointment__isnull=False,
+                        appointment_participant__isnull=False,
+                    )
+                    | (
+                        ~Q(outcome="joined")
+                        & Q(appointment_participant__isnull=True)
+                    )
+                ),
+                name="joined_occurrence_requires_participant",
+            ),
         ]
         indexes = [
             models.Index(fields=["appointment", "series"]),
@@ -3735,6 +3798,29 @@ class AppointmentSeriesOccurrence(TimeStampedModel):
             raise ValidationError("Результат даты серии неизменяем.")
         self.full_clean()
         super().save(*args, **kwargs)
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.outcome == self.Outcome.JOINED:
+            if not self.appointment_id:
+                errors["appointment"] = "Для присоединения нужно групповое занятие."
+            if not self.appointment_participant_id:
+                errors["appointment_participant"] = (
+                    "Для присоединения нужен фактический участник."
+                )
+            elif (
+                self.appointment_id
+                and self.appointment_participant.appointment_id != self.appointment_id
+            ):
+                errors["appointment_participant"] = (
+                    "Участник должен относиться к этому же занятию."
+                )
+        elif self.appointment_participant_id:
+            errors["appointment_participant"] = (
+                "Участник занятия указывается только для исхода «Присоединено»."
+            )
+        if errors:
+            raise ValidationError(errors)
 
     def delete(self, *args: object, **kwargs: object) -> None:
         raise ValidationError("Результат даты серии нельзя удалить.")

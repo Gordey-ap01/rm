@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from operations.forms import (
+    GroupProgramJoinForm,
     GroupProgramSeriesForm,
     ProgramBlockForm,
     ProgramBlockScheduleWizardForm,
@@ -682,6 +683,118 @@ def _group_series_preview_from_form(form: GroupProgramSeriesForm):
         allow_unpaid_reserve=data["allow_unpaid_reserve"],
         allow_outside_availability=data["allow_outside_availability"],
         override_reason=data["override_reason"],
+    )
+
+
+@admin_required
+def program_block_group_join(request, block_id: int):
+    block = _program_block_or_404(block_id)
+    preview = None
+    selected_ids = {
+        int(value)
+        for value in request.POST.getlist("appointments")
+        if str(value).isdigit()
+    }
+    if request.method == "POST":
+        form = GroupProgramJoinForm(request.POST, block=block)
+        if form.is_valid():
+            data = form.cleaned_data
+            try:
+                preview = program_series.preview_group_joins(
+                    block=block,
+                    date_from=data["date_from"],
+                    date_to=data["date_to"],
+                )
+            except ValidationError as exc:
+                form.add_error(None, exc)
+            else:
+                if request.POST.get("action") == "join":
+                    selected = list(data["appointments"])
+                    if not selected:
+                        form.add_error("appointments", "Выберите хотя бы одно занятие.")
+                    else:
+                        try:
+                            selected_preview = program_series.preview_group_joins(
+                                block=block,
+                                date_from=data["date_from"],
+                                date_to=data["date_to"],
+                                appointments=selected,
+                            )
+                            operation_exists = AppointmentSeries.objects.filter(
+                                operation_key=data["operation_key"]
+                            ).exists()
+                            blocked = [
+                                candidate
+                                for candidate in selected_preview.candidates
+                                if not candidate.ready
+                            ]
+                            available_count = min(
+                                selected_preview.planned_remaining,
+                                selected_preview.funded_remaining,
+                            )
+                            if blocked and not operation_exists:
+                                reasons = "; ".join(
+                                    candidate.reason for candidate in blocked[:3]
+                                )
+                                raise ValidationError(
+                                    "Выбранные занятия больше не готовы: " + reasons
+                                )
+                            if len(selected) > available_count and not operation_exists:
+                                raise ValidationError(
+                                    "Выбрано больше занятий, чем доступно по плану и оплате."
+                                )
+                            result = program_series.join_program_block_to_groups(
+                                block=block,
+                                appointments=selected,
+                                operation_key=data["operation_key"],
+                                actor=request.user,
+                            )
+                        except ValidationError as exc:
+                            form.add_error("appointments", exc)
+                        else:
+                            if result.joined_count:
+                                messages.success(
+                                    request,
+                                    f"Получатель присоединен к занятиям: "
+                                    f"{result.joined_count}. Пропущено: "
+                                    f"{result.skipped_count}.",
+                                )
+                            elif result.skipped_count:
+                                messages.warning(
+                                    request,
+                                    "Новые присоединения не созданы: выбранные занятия "
+                                    "изменились или больше не готовы.",
+                                )
+                            if result.reused_series:
+                                messages.info(
+                                    request,
+                                    "Повторный запрос распознан без создания дублей.",
+                                )
+                            return redirect(
+                                "appointment_series_detail",
+                                series_id=result.series.pk,
+                            )
+    else:
+        form = GroupProgramJoinForm(block=block)
+        try:
+            preview = program_series.preview_group_joins(
+                block=block,
+                date_from=form.initial["date_from"],
+                date_to=form.initial["date_to"],
+            )
+        except ValidationError as exc:
+            messages.warning(request, "; ".join(exc.messages))
+
+    return render(
+        request,
+        "operations/group_program_join_form.html",
+        {
+            "program_block": block,
+            "form": form,
+            "preview": preview,
+            "selected_ids": selected_ids,
+            "cancel_url": reverse("recipient_detail", args=[block.program.child_id]),
+        },
     )
 
 

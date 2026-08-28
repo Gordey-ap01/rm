@@ -6,12 +6,14 @@ from decimal import Decimal
 from queue import Queue
 from threading import Barrier, Thread
 from unittest import skipUnless
+from unittest.mock import patch
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError, close_old_connections, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
+from django.db.models.deletion import ProtectedError
 from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -32,7 +34,7 @@ from operations.models import (
     StaffMember,
     TreatmentProgram,
 )
-from operations.services import program_series, program_wizard
+from operations.services import billing as billing_svc, program_series, program_wizard
 
 User = get_user_model()
 
@@ -634,6 +636,392 @@ class GroupProgramSeriesTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
 
+class GroupProgramJoinTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_user(
+            "group-join-admin",
+            password="x",
+            is_staff=True,
+            is_superuser=True,
+        )
+        cls.specialist_user = User.objects.create_user("group-join-specialist", password="x")
+        cls.children = [
+            Child.objects.create(last_name="Join", first_name=f"Child {index}")
+            for index in range(1, 4)
+        ]
+        cls.service = Service.objects.create(
+            name="Join group service",
+            code="JOIN-GROUP-SERVICE",
+            default_duration_minutes=45,
+            default_price=Decimal("900"),
+        )
+        cls.other_service = Service.objects.create(
+            name="Other join service",
+            code="OTHER-JOIN-SERVICE",
+            default_duration_minutes=45,
+        )
+        cls.staff = StaffMember.objects.create(
+            user=cls.specialist_user,
+            full_name="Join group specialist",
+        )
+        cls.room = Room.objects.create(
+            name="Join group room",
+            allow_group_sessions=True,
+            limit_staff_count=True,
+            max_staff_count=2,
+            limit_recipient_count=True,
+            max_recipient_count=4,
+        )
+        cls.other_room = Room.objects.create(
+            name="Join conflict room",
+            allow_group_sessions=True,
+            max_staff_count=2,
+            max_recipient_count=4,
+        )
+        cls.funding = FundingSource.objects.create(
+            name="Join group funding",
+            source_type=FundingSource.SourceType.PERSONAL,
+        )
+        cls.account = BalanceAccount.objects.create(
+            child=cls.children[2],
+            funding_source=cls.funding,
+            unit=BalanceAccount.Unit.SESSIONS,
+            service_scope=BalanceAccount.ServiceScope.SPECIFIC_SERVICE,
+            service=cls.service,
+            initial_amount=Decimal("5"),
+        )
+        cls.program = TreatmentProgram.objects.create(
+            child=cls.children[2],
+            title="Join group program",
+            status=TreatmentProgram.Status.ACTIVE,
+        )
+        cls.block = ProgramBlock.objects.create(
+            program=cls.program,
+            number=1,
+            title="Join group block",
+            service=cls.service,
+            staff_member=cls.staff,
+            planned_sessions=4,
+            balance_account=cls.account,
+        )
+
+    def setUp(self):
+        self.client.force_login(self.admin)
+        self.day = timezone.localdate() + timedelta(days=12)
+
+    def create_target(self, *, day=None, hour=10, service=None, room=None):
+        starts_at = _local(day or self.day, time(hour, 0))
+        appointment = Appointment.objects.create(
+            child=self.children[0],
+            staff_member=self.staff,
+            service=service or self.service,
+            room=room or self.room,
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(minutes=45),
+            session_type=Appointment.SessionType.GROUP,
+            title="Existing join group",
+            status=Appointment.Status.CONFIRMED,
+        )
+        AppointmentParticipant.objects.create(
+            appointment=appointment,
+            child=self.children[1],
+            starts_at_snapshot=appointment.starts_at,
+            ends_at_snapshot=appointment.ends_at,
+            appointment_status=appointment.status,
+        )
+        return appointment
+
+    def payload(self, appointment, *, operation_key=None, action="join"):
+        return {
+            "operation_key": str(operation_key or uuid4()),
+            "date_from": self.day.isoformat(),
+            "date_to": (self.day + timedelta(days=2)).isoformat(),
+            "appointments": [str(appointment.pk)],
+            "action": action,
+        }
+
+    def test_preview_and_join_preserve_participant_program_data_without_ledger(self):
+        target = self.create_target()
+        preview = program_series.preview_group_joins(
+            block=self.block,
+            date_from=self.day,
+            date_to=self.day,
+        )
+
+        self.assertEqual(preview.ready_count, 1)
+        self.assertEqual(preview.candidates[0].recipient_count_after, 3)
+        result = program_series.join_program_block_to_groups(
+            block=self.block,
+            appointments=[target],
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+
+        self.assertEqual(result.joined_count, 1)
+        self.assertEqual(result.skipped_count, 0)
+        participant = target.participants.get(child=self.children[2])
+        self.assertEqual(participant.program_block, self.block)
+        self.assertEqual(participant.billing_account, self.account)
+        self.assertEqual(participant.sequence_number, 1)
+        self.assertEqual(participant.billing_decision, Appointment.BillingDecision.UNDECIDED)
+        self.assertFalse(LedgerEntry.objects.filter(appointment_participant=participant).exists())
+        self.assertEqual(
+            result.series.materialization_mode,
+            AppointmentSeries.MaterializationMode.JOIN_EXISTING,
+        )
+        self.assertEqual(len(result.series.operation_fingerprint), 64)
+        self.assertEqual(result.series.default_participants.count(), 1)
+        self.assertEqual(result.series.default_staff_assignments.count(), 0)
+        occurrence = result.series.occurrences.get()
+        self.assertEqual(occurrence.outcome, AppointmentSeriesOccurrence.Outcome.JOINED)
+        self.assertEqual(occurrence.appointment, target)
+        self.assertEqual(occurrence.appointment_participant, participant)
+        with self.assertRaises(ProtectedError):
+            participant.delete()
+
+        local_start = timezone.localtime(target.starts_at)
+        edit_response = self.client.post(
+            reverse("appointment_edit", args=[target.pk]),
+            {
+                "child": self.children[0].pk,
+                "participants": [self.children[0].pk, self.children[1].pk],
+                "service": self.service.pk,
+                "staff_member": self.staff.pk,
+                "staff_members": [self.staff.pk],
+                "room": self.room.pk,
+                "session_type": Appointment.SessionType.GROUP,
+                "status": Appointment.Status.CONFIRMED,
+                "date": local_start.date().isoformat(),
+                "time": local_start.strftime("%H:%M"),
+                "duration_minutes": "45",
+            },
+        )
+        self.assertEqual(edit_response.status_code, 200)
+        self.assertContains(edit_response, "История присоединения неизменяема")
+        self.assertTrue(target.participants.filter(pk=participant.pk).exists())
+
+    def test_repeat_is_idempotent_and_changed_payload_is_rejected(self):
+        first = self.create_target()
+        second = self.create_target(day=self.day + timedelta(days=1))
+        operation_key = uuid4()
+
+        initial = program_series.join_program_block_to_groups(
+            block=self.block,
+            appointments=[first],
+            operation_key=operation_key,
+        )
+        repeated = program_series.join_program_block_to_groups(
+            block=self.block,
+            appointments=[first],
+            operation_key=operation_key,
+        )
+
+        self.assertEqual(initial.joined_count, 1)
+        self.assertTrue(repeated.reused_series)
+        self.assertEqual(repeated.unchanged_count, 1)
+        self.assertEqual(first.participants.filter(child=self.children[2]).count(), 1)
+        with self.assertRaisesMessage(ValidationError, "другого набора"):
+            program_series.join_program_block_to_groups(
+                block=self.block,
+                appointments=[second],
+                operation_key=operation_key,
+            )
+
+    def test_preview_blocks_capacity_recipient_conflict_and_missing_funding(self):
+        target = self.create_target()
+        self.room.max_recipient_count = 2
+        self.room.save(update_fields=["max_recipient_count", "updated_at"])
+
+        capacity_preview = program_series.preview_group_joins(
+            block=self.block,
+            date_from=self.day,
+            date_to=self.day,
+        )
+        self.assertEqual(capacity_preview.candidates[0].reason_code, "capacity")
+
+        self.room.max_recipient_count = 4
+        self.room.save(update_fields=["max_recipient_count", "updated_at"])
+        conflict_report = program_series.scheduling.ConflictReport(
+            child_conflict=target,
+            staff_conflict=None,
+            room_conflict=None,
+        )
+        with patch.object(
+            program_series.scheduling,
+            "find_overlaps",
+            return_value=conflict_report,
+        ):
+            conflict_preview = program_series.preview_group_joins(
+                block=self.block,
+                date_from=self.day,
+                date_to=self.day,
+            )
+        self.assertEqual(conflict_preview.candidates[0].reason_code, "recipient_conflict")
+
+        self.account.initial_amount = Decimal("0")
+        self.account.save(update_fields=["initial_amount", "updated_at"])
+        funding_preview = program_series.preview_group_joins(
+            block=self.block,
+            date_from=self.day,
+            date_to=self.day,
+        )
+        self.assertEqual(funding_preview.candidates[0].reason_code, "funding_limit")
+
+    def test_join_fails_closed_when_block_account_changes_after_selection(self):
+        target = self.create_target()
+        series, _ = program_series._create_join_series_definition(
+            self.block,
+            (target,),
+            operation_key=uuid4(),
+        )
+        replacement = BalanceAccount.objects.create(
+            child=self.children[2],
+            funding_source=self.funding,
+            unit=BalanceAccount.Unit.SESSIONS,
+            service_scope=BalanceAccount.ServiceScope.SPECIFIC_SERVICE,
+            service=self.service,
+            initial_amount=Decimal("5"),
+        )
+        self.block.balance_account = replacement
+        self.block.save(update_fields=["balance_account", "updated_at"])
+
+        occurrence, created = program_series._join_one_appointment(
+            series,
+            target,
+            actor=self.admin,
+        )
+
+        self.assertTrue(created)
+        self.assertEqual(occurrence.outcome, AppointmentSeriesOccurrence.Outcome.SKIPPED)
+        self.assertEqual(occurrence.reason_code, "funding_changed")
+        self.assertFalse(target.participants.filter(child=self.children[2]).exists())
+
+    def test_operation_key_rejects_same_appointment_after_time_change(self):
+        target = self.create_target()
+        operation_key = uuid4()
+        program_series._create_join_series_definition(
+            self.block,
+            (target,),
+            operation_key=operation_key,
+        )
+        moved_start = target.starts_at + timedelta(hours=1)
+        Appointment.objects.filter(pk=target.pk).update(
+            starts_at=moved_start,
+            ends_at=moved_start + timedelta(minutes=45),
+        )
+        target.refresh_from_db()
+
+        with self.assertRaisesMessage(ValidationError, "другого набора"):
+            program_series.join_program_block_to_groups(
+                block=self.block,
+                appointments=[target],
+                operation_key=operation_key,
+            )
+        self.assertFalse(target.participants.filter(child=self.children[2]).exists())
+
+    def test_join_view_search_apply_detail_and_permissions(self):
+        target = self.create_target()
+        operation_key = uuid4()
+        url = reverse("program_block_group_join", args=[self.block.pk])
+
+        search_response = self.client.post(
+            url,
+            self.payload(target, operation_key=operation_key, action="search"),
+        )
+        self.assertEqual(search_response.status_code, 200)
+        self.assertContains(search_response, "Existing join group")
+        self.assertContains(search_response, "готово")
+
+        join_response = self.client.post(
+            url,
+            self.payload(target, operation_key=operation_key),
+        )
+        series = AppointmentSeries.objects.get(operation_key=operation_key)
+        self.assertRedirects(
+            join_response,
+            reverse("appointment_series_detail", args=[series.pk]),
+        )
+        detail = self.client.get(reverse("appointment_series_detail", args=[series.pk]))
+        self.assertContains(detail, "Присоединять к существующим")
+        self.assertContains(detail, "Фактические данные")
+        self.assertContains(detail, self.children[2].full_name)
+        self.assertContains(detail, "Присоединено")
+
+        repeat_response = self.client.post(
+            url,
+            self.payload(target, operation_key=operation_key),
+            follow=True,
+        )
+        self.assertContains(
+            repeat_response,
+            "Повторный запрос распознан без создания дублей",
+        )
+        self.assertEqual(target.participants.filter(child=self.children[2]).count(), 1)
+
+        self.client.logout()
+        self.client.force_login(self.specialist_user)
+        self.assertEqual(self.client.get(url).status_code, 403)
+
+    def test_join_existing_mode_requires_group_and_available_funding(self):
+        series = AppointmentSeries(
+            child=self.children[2],
+            service=self.service,
+            staff_member=self.staff,
+            room=self.room,
+            program_block=self.block,
+            title="Invalid join series",
+            start_date=self.day,
+            end_date=self.day,
+            days_of_week="ПН",
+            time=time(10, 0),
+            duration_minutes=45,
+            session_type=Appointment.SessionType.INDIVIDUAL,
+            materialization_mode=AppointmentSeries.MaterializationMode.JOIN_EXISTING,
+        )
+        with self.assertRaisesMessage(ValidationError, "только к групповым"):
+            series.full_clean()
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "DB-ограничение истории присоединения проверяется только на PostgreSQL.",
+    )
+    def test_database_rejects_joined_occurrence_without_participant(self):
+        target = self.create_target()
+        series, _ = program_series._create_join_series_definition(
+            self.block,
+            (target,),
+            operation_key=uuid4(),
+        )
+
+        with self.assertRaises(DatabaseError), transaction.atomic():
+            AppointmentSeriesOccurrence.objects.bulk_create(
+                [
+                    AppointmentSeriesOccurrence(
+                        series=series,
+                        scheduled_starts_at=target.starts_at,
+                        appointment=target,
+                        outcome=AppointmentSeriesOccurrence.Outcome.JOINED,
+                    )
+                ]
+            )
+
+        other_target = self.create_target(day=self.day + timedelta(days=1))
+        unrelated_participant = other_target.primary_participant
+        with self.assertRaises(DatabaseError), transaction.atomic():
+            AppointmentSeriesOccurrence.objects.bulk_create(
+                [
+                    AppointmentSeriesOccurrence(
+                        series=series,
+                        scheduled_starts_at=target.starts_at,
+                        appointment=target,
+                        appointment_participant=unrelated_participant,
+                        outcome=AppointmentSeriesOccurrence.Outcome.JOINED,
+                    )
+                ]
+            )
+
+
 class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
     def setUp(self):
         self.children = [
@@ -658,6 +1046,7 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
         funding = FundingSource.objects.create(
             name="Concurrent group funding",
             source_type=FundingSource.SourceType.PERSONAL,
+            transfer_policy=FundingSource.TransferPolicy.WITHIN_CHILD,
         )
         self.blocks = []
         for position, child in enumerate(self.children, start=1):
@@ -686,6 +1075,67 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
                 )
             )
         self.day = timezone.localdate() + timedelta(days=20)
+
+    def _create_join_target(self, *, hour=12):
+        starts_at = _local(self.day, time(hour, 0))
+        return Appointment.objects.create(
+            child=self.children[0],
+            staff_member=self.staff_members[0],
+            service=self.service,
+            room=self.room,
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(minutes=30),
+            session_type=Appointment.SessionType.GROUP,
+            title="Concurrent existing group",
+            status=Appointment.Status.CONFIRMED,
+        )
+
+    def _join_in_thread(self, block_id, appointment_id, operation_key, barrier, outcomes):
+        close_old_connections()
+        try:
+            block = ProgramBlock.objects.select_related(
+                "program__child",
+                "service",
+                "staff_member",
+                "balance_account",
+            ).get(pk=block_id)
+            appointment = Appointment.objects.select_related(
+                "child",
+                "service",
+                "staff_member",
+                "room",
+            ).get(pk=appointment_id)
+            barrier.wait(timeout=10)
+            result = program_series.join_program_block_to_groups(
+                block=block,
+                appointments=[appointment],
+                operation_key=operation_key,
+            )
+        except BaseException as exc:
+            outcomes.put(exc)
+        else:
+            outcomes.put(
+                (result.joined_count, result.skipped_count, result.unchanged_count)
+            )
+        finally:
+            connection.close()
+
+    def _run_competing_joins(self, specs):
+        barrier = Barrier(2)
+        outcomes = Queue()
+        threads = [
+            Thread(
+                target=self._join_in_thread,
+                args=(*spec, barrier, outcomes),
+            )
+            for spec in specs
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        return [outcomes.get_nowait() for _ in range(2)]
 
     def _preview_from_database(self, block_ids=None, staff_id=None):
         block_ids = block_ids or [block.pk for block in self.blocks[:2]]
@@ -845,6 +1295,153 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
         series = AppointmentSeries.objects.get(operation_key=operation_key)
         self.assertEqual(series.occurrences.count(), 1)
         self.assertEqual(Appointment.objects.filter(series=series).count(), 1)
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Конкурентное присоединение к последнему месту проверяется только на PostgreSQL.",
+    )
+    def test_competing_group_joins_cannot_take_the_same_last_room_place(self):
+        target = self._create_join_target()
+
+        results = self._run_competing_joins(
+            [
+                (self.blocks[1].pk, target.pk, uuid4()),
+                (self.blocks[2].pk, target.pk, uuid4()),
+            ]
+        )
+
+        self.assertTrue(all(isinstance(item, tuple) for item in results), results)
+        self.assertEqual(sorted(results), [(0, 1, 0), (1, 0, 0)])
+        self.assertEqual(target.participants.count(), 2)
+        self.assertEqual(
+            AppointmentSeriesOccurrence.objects.filter(
+                appointment=target,
+                outcome=AppointmentSeriesOccurrence.Outcome.JOINED,
+            ).count(),
+            1,
+        )
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Идемпотентность присоединения проверяется только на PostgreSQL.",
+    )
+    def test_concurrent_same_join_operation_key_creates_one_participant(self):
+        target = self._create_join_target()
+        operation_key = uuid4()
+
+        results = self._run_competing_joins(
+            [
+                (self.blocks[1].pk, target.pk, operation_key),
+                (self.blocks[1].pk, target.pk, operation_key),
+            ]
+        )
+
+        self.assertTrue(all(isinstance(item, tuple) for item in results), results)
+        self.assertEqual(sorted(results), [(0, 0, 1), (1, 0, 0)])
+        self.assertEqual(
+            target.participants.filter(child=self.children[1]).count(),
+            1,
+        )
+        series = AppointmentSeries.objects.get(operation_key=operation_key)
+        self.assertEqual(series.occurrences.count(), 1)
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Конкурентный лимит оплаты присоединений проверяется только на PostgreSQL.",
+    )
+    def test_shared_last_funded_session_allows_only_one_join(self):
+        first_target = self._create_join_target(hour=12)
+        second_target = self._create_join_target(hour=13)
+        block = self.blocks[1]
+        block.balance_account.initial_amount = Decimal("1")
+        block.balance_account.save(update_fields=["initial_amount", "updated_at"])
+
+        results = self._run_competing_joins(
+            [
+                (block.pk, first_target.pk, uuid4()),
+                (block.pk, second_target.pk, uuid4()),
+            ]
+        )
+
+        self.assertTrue(all(isinstance(item, tuple) for item in results), results)
+        self.assertEqual(sorted(results), [(0, 1, 0), (1, 0, 0)])
+        joined = AppointmentParticipant.objects.filter(
+            program_block=block,
+            child=self.children[1],
+        )
+        self.assertEqual(joined.count(), 1)
+        self.assertEqual(joined.get().sequence_number, 1)
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Порядок блокировок присоединения и переноса проверяется только на PostgreSQL.",
+    )
+    def test_join_and_block_transfer_complete_without_deadlock(self):
+        target = self._create_join_target()
+        block = self.blocks[1]
+        source = BalanceAccount.objects.create(
+            child=self.children[1],
+            funding_source=block.balance_account.funding_source,
+            unit=BalanceAccount.Unit.SESSIONS,
+            service_scope=BalanceAccount.ServiceScope.ANY,
+            initial_amount=Decimal("2"),
+        )
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def join_group():
+            close_old_connections()
+            try:
+                selected_block = ProgramBlock.objects.select_related(
+                    "program__child", "service", "balance_account"
+                ).get(pk=block.pk)
+                selected_target = Appointment.objects.select_related(
+                    "child", "service", "staff_member", "room"
+                ).get(pk=target.pk)
+                barrier.wait(timeout=10)
+                result = program_series.join_program_block_to_groups(
+                    block=selected_block,
+                    appointments=[selected_target],
+                    operation_key=uuid4(),
+                )
+                outcomes.put(("join", result.joined_count))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        def transfer_funds():
+            close_old_connections()
+            try:
+                selected_block = ProgramBlock.objects.get(pk=block.pk)
+                from_account = BalanceAccount.objects.get(pk=source.pk)
+                to_account = BalanceAccount.objects.get(pk=block.balance_account_id)
+                barrier.wait(timeout=10)
+                transfer = billing_svc.record_balance_transfer(
+                    from_account=from_account,
+                    to_account=to_account,
+                    amount=Decimal("1"),
+                    reason="Concurrent transfer while joining a group.",
+                    program_block=selected_block,
+                    idempotency_key=uuid4(),
+                )
+                outcomes.put(("transfer", transfer.pk))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        threads = [Thread(target=join_group), Thread(target=transfer_funds)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        results = [outcomes.get_nowait() for _ in range(2)]
+        self.assertTrue(all(isinstance(item, tuple) for item in results), results)
+        self.assertEqual({item[0] for item in results}, {"join", "transfer"})
+        self.assertEqual(target.participants.filter(child=self.children[1]).count(), 1)
 
 
 class ProgramWizardPostgreSQLConcurrencyTests(TransactionTestCase):
@@ -1103,5 +1700,55 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
         with self.assertRaisesMessage(
             RuntimeError,
             "Cannot reverse group program series migration while new series history exists",
+        ):
+            executor.migrate(target_before)
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Защита отката истории присоединения проверяется на PostgreSQL.",
+    )
+    def test_join_series_history_blocks_reverse_migration(self):
+        target_before = [("operations", "0055_group_program_series")]
+        target_after = [("operations", "0056_group_series_join_mode")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_before)
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+        apps = executor.loader.project_state(target_after).apps
+        child_model = apps.get_model("operations", "Child")
+        staff_model = apps.get_model("operations", "StaffMember")
+        service_model = apps.get_model("operations", "Service")
+        room_model = apps.get_model("operations", "Room")
+        series_model = apps.get_model("operations", "AppointmentSeries")
+
+        child = child_model.objects.create(last_name="Join", first_name="History")
+        staff = staff_model.objects.create(full_name="Join migration staff")
+        service = service_model.objects.create(
+            name="Join migration service",
+            code="JOIN-MIGRATION",
+        )
+        room = room_model.objects.create(name="Join migration room")
+        day = timezone.localdate() + timedelta(days=30)
+        series_model.objects.create(
+            child=child,
+            service=service,
+            staff_member=staff,
+            room=room,
+            title="Join migration history",
+            start_date=day,
+            end_date=day,
+            days_of_week="ПН",
+            time=time(10, 0),
+            duration_minutes=30,
+            session_type="group",
+            materialization_mode="join_existing",
+            status="active",
+        )
+
+        executor = MigrationExecutor(connection)
+        with self.assertRaisesMessage(
+            RuntimeError,
+            "Cannot reverse group-series join mode while joined history exists",
         ):
             executor.migrate(target_before)
