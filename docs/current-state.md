@@ -12,8 +12,8 @@ append-only run/result, сверяемый legacy backfill, PostgreSQL guards и
 materializer индивидуальных/групповых/create/join серий. 61C-3 реализован и
 локально принят: атомарная редакция только будущего состава. Следующий кодовый
 подсрез - 61C-4: expand-gate `0060` и `missing_only` реализованы и локально
-приняты; expand `0061` неизменяемых целей retry реализован. Следующий подсрез -
-исполнение `retry_skipped`, затем stop/cancel/withdraw и 61D UI.
+приняты; expand `0061` и сервисное исполнение `retry_skipped` реализованы и
+локально приняты. Следующий подсрез - stop/cancel/withdraw, затем рабочий 61D UI.
 Production preflight, health, проверяемый backup/restore, цельная
 browser-приемка рабочих ролей, persisted transfer/conversion и приемка
 грантового отчета завершены. Безопасный жизненный цикл грантового плана по
@@ -91,9 +91,26 @@ MVCC-временем данных и цепочкой исправлений. 5
   точную вершину цепочки и эффективный `skipped`, число целей сверяется с
   `expected_result_count`. PostgreSQL блокирует изменение/удаление цели, чужое
   продолжение зарезервированной вершины и reverse после появления данных;
-  ORM-проверки сохраняют цепочку и reservation на SQLite. Точное межстрочное
-  равенство количества на SQLite станет обязанностью единого атомарного сервиса;
-  до него доступного write-path команды нет.
+  ORM-проверки сохраняют цепочку и reservation на SQLite.
+- `materialize_retry_skipped_series` в одной транзакции принимает run и полный
+  набор frozen targets, а затем атомарно исполняет каждую дату общим
+  индивидуальным/групповым materializer. Старый compatibility occurrence не
+  меняется: результатом становится новая попытка `created` либо `skipped` со
+  ссылкой `supersedes`. Новый run выбирает immutable-редакцию, применимую ко
+  всему диапазону, и не пересекает следующую границу редакции. Повтор того же
+  ключа воспроизводит или продолжает run; новый ключ не ветвит зарезервированную
+  цепочку, а принятый retry имеет приоритет над новым `missing_only`.
+- Аварийное возобновление использует сохраненные targets и revision даже после
+  новой текущей редакции, смены роли того же actor и остановки серии. Успешный
+  result принимает только Appointment той же серии, даты, услуги и типа;
+  чужой Appointment отклоняется до записи immutable-истории.
+- Приемка исполнения `retry_skipped`: весь `test_program_series.py` прошел на
+  SQLite `62 passed, 29 skipped` и PostgreSQL 17 `91 passed`; включая
+  `skipped -> unchanged -> created`, повторный `skipped`, individual/group,
+  применимую историческую редакцию, fault recovery, same-key/different-key
+  PostgreSQL races и приоритет над `missing_only`. Миграция для сервисного
+  подсреза не требуется. Полный актуальный SQLite regression:
+  `906 passed, 72 skipped`; пропуски относятся к PostgreSQL-only контрактам.
 - Приемка frozen retry targets `0061`: весь `test_program_series.py` прошел на
   SQLite `54 passed, 27 skipped` и PostgreSQL 17 `81 passed`. Отдельно проверены
   fail-closed preflight старых retry runs, deferred count, immutable/reverse
@@ -464,10 +481,9 @@ MVCC-временем данных и цепочкой исправлений. 5
 
 ## Следующая работа
 
-1. Реализовать исполнение 61C-4a2 `retry_skipped` поверх frozen targets `0061`;
-   после этого 61C-4b-d
-   stop/cancel/withdraw без изменения фактов прошлого.
-2. Закрыть 61D: паузу/отмену, переходы программы/каскада, registry,
+1. Реализовать 61C-4b-d stop/cancel/withdraw без изменения фактов прошлого и
+   подключить retry/cancel к рабочему интерфейсу администратора.
+2. Закрыть 61D: паузу/завершение, переходы программы/каскада, registry,
    руководительские отчеты и полную ролевую приемку серий.
 3. Перед production migration chain `0048-0061` выполнить backup v2, `--strict`
    preflight, временно закрыть грантовые записи и подготовить совместимый
@@ -497,7 +513,7 @@ MVCC-временем данных и цепочкой исправлений. 5
 Критические зоны до рабочего production-контура:
 
 - завершенная матрица ролей во всех управленческих действиях;
-- остаток 61C-4 и 61D: retry/cancel и полный жизненный цикл серий;
+- остаток 61C-4 и 61D: cancel/withdraw, UI retry и полный жизненный цикл серий;
 - production policy и внешняя защита приватных артефактов 59B-2;
 - policy возвратов и обратной конвертации;
 - offsite backup, monitoring/alerting и реальный SMTP;
