@@ -157,6 +157,14 @@ checksum. Общий host `flock` не дает запустить backup, resto
 `fsync` файлов, временного каталога и каталога backup. Не удалять `.partial-*`
 вручную во время работающего backup.
 
+Не ослабляйте права `BACKUP_DIR`: рекомендуемый режим каталога - `0700` под
+оператором. Скрипты сами запускают отдельный одноразовый `archive-maintenance`
+как root с read-only bind mount, без production secrets, сети и live volumes.
+Распаковкой/recovery занимается сетево изолированный `volume-init`, имеющий
+только необходимые media/private volumes; он нормализует private-права до
+`0700/0600` и передает staged-файлы `rehab:rehab`. Постоянный сервис `web`
+работает как `rehab` и не видит host backup-каталог.
+
 Если процесс или сервер оборвался и остался `.backup-in-progress`, не запускайте
 новый backup, deploy, migration или restore. Выполните повторяемое восстановление
 исходного состояния web и очистку только неопубликованных каталогов:

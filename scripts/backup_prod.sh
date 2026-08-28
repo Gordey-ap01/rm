@@ -41,10 +41,10 @@ BACKUP_MOUNT_PATH="$(compose_host_path "$BACKUP_DIR")"
 recover_backup() {
   assert_no_incomplete_restore
   local state web_was_running
-  production_compose run --rm --no-deps web \
+  production_compose run --rm --no-deps --user rehab:rehab volume-init \
     python /app/scripts/restore_files.py adopt-backup-state || \
     production_fail "No valid incomplete backup state exists."
-  state="$(production_compose run --rm --no-deps web \
+  state="$(production_compose run --rm --no-deps --user rehab:rehab volume-init \
     cat /app/private-artifacts/.backup-in-progress)" || \
     production_fail "No incomplete backup state exists."
   web_was_running="$(printf '%s\n' "$state" | \
@@ -61,9 +61,9 @@ recover_backup() {
   find "$BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d \
     -name '.partial-*' -exec rm -rf -- {} +
   production_compose run --rm --no-deps \
-    -v "$BACKUP_MOUNT_PATH:/backup-host" web \
+    -v "$BACKUP_MOUNT_PATH:/backup-host:ro" archive-maintenance \
     python /app/scripts/fsync_backup.py root
-  production_compose run --rm --no-deps web \
+  production_compose run --rm --no-deps --user rehab:rehab volume-init \
     python /app/scripts/restore_files.py remove-backup-state
   printf 'Incomplete backup recovered.\n'
 }
@@ -100,7 +100,7 @@ backup_state_injection=()
 if [[ "$BACKUP_TEST_FAIL_AFTER_STATE_TEMP" == "1" ]]; then
   backup_state_injection=(--inject-before-publish)
 fi
-production_compose run --rm --no-deps web \
+production_compose run --rm --no-deps --user rehab:rehab volume-init \
   python /app/scripts/restore_files.py write-backup-state \
     --web-was-running "$web_was_running" "${backup_state_injection[@]}"
 backup_state_written=true
@@ -122,7 +122,7 @@ cleanup_partial() {
       recovered=true
     fi
     if [[ "$recovered" == true ]]; then
-      production_compose run --rm --no-deps web \
+      production_compose run --rm --no-deps --user rehab:rehab volume-init \
         python /app/scripts/restore_files.py remove-backup-state \
         > /dev/null 2>&1 || true
     else
@@ -152,7 +152,7 @@ DATABASE_SIZE_BYTES="$(
   "Database exceeds BACKUP_MAX_DATABASE_BYTES."
 
 mapfile -t SOURCE_BYTES < <(
-  production_compose run --rm --no-deps web sh -ec \
+  production_compose run --rm --no-deps --user rehab:rehab volume-init sh -ec \
     "du -sb /app/media /app/private-artifacts | awk '{print \$1}'"
 )
 [[ "${#SOURCE_BYTES[@]}" -eq 2 \
@@ -167,7 +167,7 @@ RESERVE_BYTES=$((REQUIRED_BYTES / 20))
 (( RESERVE_BYTES >= 268435456 )) || RESERVE_BYTES=268435456
 BACKUP_CAPACITY="$(
   production_compose run --rm --no-deps \
-    -v "$BACKUP_MOUNT_PATH:/backup-host" web \
+    -v "$BACKUP_MOUNT_PATH:/backup-host:ro" archive-maintenance \
     python /app/scripts/fsync_backup.py capacity \
     | tail -n 1 | tr -d '\r'
 )"
@@ -193,10 +193,11 @@ production_compose exec -T db pg_dump --format=custom \
 [[ -s "$DB_ARCHIVE" ]] || production_fail "Database archive is empty."
 production_compose exec -T db pg_restore --list < "$DB_ARCHIVE" > /dev/null
 
-production_compose run --rm --no-deps web tar -C /app -czf - media > "$MEDIA_ARCHIVE"
+production_compose run --rm --no-deps --user rehab:rehab volume-init \
+  tar -C /app -czf - media > "$MEDIA_ARCHIVE"
 [[ -s "$MEDIA_ARCHIVE" ]] || production_fail "Media archive is empty."
 tar -tzf "$MEDIA_ARCHIVE" > /dev/null
-production_compose run --rm --no-deps web \
+production_compose run --rm --no-deps --user rehab:rehab volume-init \
   tar -C /app \
     --exclude='private-artifacts/.staging' \
     --exclude='private-artifacts/.restore-*' \
@@ -218,12 +219,12 @@ tar -tzf "$PRIVATE_ARCHIVE" > /dev/null
 )
 
 production_compose run --rm --no-deps \
-  -v "$BACKUP_MOUNT_PATH:/backup-host" web \
+  -v "$BACKUP_MOUNT_PATH:/backup-host:ro" archive-maintenance \
   python /app/scripts/fsync_backup.py tree "$TMP_BASENAME"
 mv -- "$TMP_DIR" "$FINAL_DIR"
 TMP_DIR=""
 production_compose run --rm --no-deps \
-  -v "$BACKUP_MOUNT_PATH:/backup-host" web \
+  -v "$BACKUP_MOUNT_PATH:/backup-host:ro" archive-maintenance \
   python /app/scripts/fsync_backup.py root
 
 if [[ "$web_was_running" == true ]]; then
@@ -231,7 +232,7 @@ if [[ "$web_was_running" == true ]]; then
   wait_for_production_web_health || production_fail \
     "Web did not become healthy after backup."
 fi
-production_compose run --rm --no-deps web \
+production_compose run --rm --no-deps --user rehab:rehab volume-init \
   python /app/scripts/restore_files.py remove-backup-state
 backup_state_written=false
 web_stopped=false
@@ -243,7 +244,7 @@ if (( RETENTION_DAYS > 0 )); then
     -exec rm -rf -- {} +
 fi
 production_compose run --rm --no-deps \
-  -v "$BACKUP_MOUNT_PATH:/backup-host" web \
+  -v "$BACKUP_MOUNT_PATH:/backup-host:ro" archive-maintenance \
   python /app/scripts/fsync_backup.py root
 
 printf 'Verified backup created: %s\n' "$FINAL_DIR"

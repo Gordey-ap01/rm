@@ -256,8 +256,9 @@ MVCC-временем данных и цепочкой исправлений. 5
   БД: все экраны ответили `200`, browser console/page errors и HTTP `4xx`/`5xx`
   отсутствовали, desktop и mobile screenshots проверены визуально. Временные
   данные, settings и процесс удалены после запуска.
-- Graphify code index инкрементально обновлен без LLM/API key: `6731` nodes,
-  `31647` edges и `354` communities; срез 59B-2 и restore role/lock включены.
+- Graphify code index инкрементально обновлен без LLM/API key: `6732` nodes,
+  `31648` edges и `353` communities; срез 59B-2 и изолированные
+  backup/restore maintenance services включены.
   Семантический слой
   измененных документов не пересоздавался и не блокирует кодовый граф.
 - 59A-1 focused SQLite: `152 passed, 15 skipped`; полный SQLite regression:
@@ -338,13 +339,20 @@ MVCC-временем данных и цепочкой исправлений. 5
 - Production Compose разделяет migration/restore owner (`POSTGRES_USER`) и
   ограниченную runtime-роль (`POSTGRES_RUNTIME_USER`). Миграции и grants
   выполняет одноразовый `migration` service; web не владеет DB/schema,
-  не имеет DDL/role membership и технически проходит role guard.
-- Disposable Linux restore drill v2 повторно прошел 2026-08-28: exact private
+  не имеет DDL/role membership и технически проходит role guard. Root-доступ к
+  operator-owned `0700` backup вынесен в сетево изолированный
+  `archive-maintenance` без production secrets и live volumes. Изолированный
+  `volume-init` имеет только media/private volumes для подготовки и recovery;
+  web остается non-root.
+- Полный локальный Docker restore drill v2 повторно прошел 2026-08-28: exact private
   bytes, поврежденный backup отклонен, abrupt backup/recovery и fault injection
   после DB/file cutover с повторным обрывом
   самого recovery не помешали вернуть исходные DB/media/private; опасный v1 не
   изменил live-данные. Durable `fsync` markers, temp-only recovery и fail-closed
-  отказ на неизвестном `.restore-*` не удаляют rollback при обрыве. Неудачный
+  отказ на неизвестном `.restore-*` не удаляют rollback при обрыве. Обрыв между
+  root-распаковкой и передачей владельца оставляет проверяемый root-owned partial,
+  который штатный recovery удаляет; private staged/live modes нормализуются до
+  `0700/0600`. Неудачный
   deploy после запуска новой web-версии оставляет web/Caddy закрытыми. Новая генерация
   запускается только через restore Compose override, проходит `candidate` web
   health-check и durable `validated` до открытия Caddy и удаления старой.

@@ -50,12 +50,14 @@ esac
 production_compose exec -T db pg_restore --list < "$BACKUP_PATH/db.dump" > /dev/null
 tar -tzf "$BACKUP_PATH/media.tar.gz" > /dev/null
 BACKUP_MOUNT_PATH="$(compose_host_path "$BACKUP_PATH")"
-production_compose run --rm --no-deps -v "$BACKUP_MOUNT_PATH:/backup:ro" web \
+production_compose run --rm --no-deps \
+  -v "$BACKUP_MOUNT_PATH:/backup:ro" archive-maintenance \
   python manage.py validate_backup_archive /backup/media.tar.gz --root media \
     --max-uncompressed-bytes "$MAX_ARCHIVE_BYTES"
 if [[ "$FORMAT" == "rm-backup-v2" ]]; then
   tar -tzf "$BACKUP_PATH/private-artifacts.tar.gz" > /dev/null
-  production_compose run --rm --no-deps -v "$BACKUP_MOUNT_PATH:/backup:ro" web \
+  production_compose run --rm --no-deps \
+    -v "$BACKUP_MOUNT_PATH:/backup:ro" archive-maintenance \
     python manage.py validate_backup_archive \
       /backup/private-artifacts.tar.gz --root private-artifacts \
       --max-uncompressed-bytes "$MAX_ARCHIVE_BYTES"

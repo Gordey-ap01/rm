@@ -185,6 +185,14 @@ marker. Валидный fsynced `.backup-in-progress.tmp`, оставшийся
 atomic rename, принимается recovery; некорректный marker сохраняется для разбора.
 Новый backup, restore, deploy и migration до recovery блокируются.
 
+Операторский backup-каталог может и должен оставаться `0700`. Для его чтения
+отдельный `archive-maintenance` запускается как root с read-only bind mount, без
+production secrets, сети и live volumes. Распаковку и recovery выполняет
+отдельный `volume-init` без сети/секретов, но с необходимыми media/private
+volumes. Private staged-дерево принудительно получает `0700/0600`, media —
+`0755/0644`, и до candidate оба дерева передаются `rehab:rehab`. Постоянный
+web-процесс не получает root и не имеет прямого bind mount к backup-каталогу.
+
 Проверка и restore сохраняют совместимость с v1 только после доказательства,
 что staged-БД не содержит submission-строк. V1 с такими строками
 останавливается без изменения live-БД/private root и не запускает web. V2

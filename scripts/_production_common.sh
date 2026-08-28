@@ -144,7 +144,7 @@ wait_for_production_web_health() {
 }
 
 assert_no_incomplete_maintenance() {
-  if ! production_compose run --rm --no-deps web sh -ec '
+  if ! production_compose run --rm --no-deps --user rehab:rehab volume-init sh -ec '
     for path in \
       /app/media/.restore-new \
       /app/media/.restore-old \
@@ -167,7 +167,7 @@ assert_no_incomplete_maintenance() {
 }
 
 assert_no_incomplete_backup() {
-  if ! production_compose run --rm --no-deps web sh -ec '
+  if ! production_compose run --rm --no-deps --user rehab:rehab volume-init sh -ec '
     test ! -e /app/private-artifacts/.backup-in-progress
     test ! -e /app/private-artifacts/.backup-in-progress.tmp
   '; then
@@ -176,7 +176,7 @@ assert_no_incomplete_backup() {
 }
 
 assert_no_incomplete_restore() {
-  if ! production_compose run --rm --no-deps web sh -ec '
+  if ! production_compose run --rm --no-deps --user rehab:rehab volume-init sh -ec '
     for path in \
       /app/media/.restore-new \
       /app/media/.restore-old \

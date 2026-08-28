@@ -65,6 +65,16 @@ production-контур.
 - Ошибка deploy после начала изменения release не пытается автоматически
   переоткрыть непроверенную версию: web и Caddy остаются остановленными.
 
+### Дополнение 2026-08-28
+
+- Backup-каталог остается закрытым для посторонних (`0700`). Одноразовый
+  `archive-maintenance` получает root только с read-only backup bind, без
+  production secrets, сети и live volumes. Сетево изолированный `volume-init`
+  имеет только media/private volumes для распаковки и повторяемого recovery
+  root-owned partial; private staged modes нормализуются до `0700/0600`, после
+  чего деревья переходят к `rehab:rehab`. Постоянный web остается non-root и не
+  монтирует host backup-каталог.
+
 ## Альтернативы
 
 ### Сохранить файл в обычном `MEDIA_ROOT`

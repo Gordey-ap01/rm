@@ -134,6 +134,13 @@ S3/offsite copy также оставлена отдельным контрак�
 - `backup_prod.sh`, `verify_backup_prod.sh`, `restore_prod.sh` и
   `production_preflight.sh` работают с `.env.production` без её выполнения
   через shell. Restore намеренно требует `--confirm` и абсолютный путь.
+- Операторский `BACKUP_DIR` сохраняет права `0700`. Отдельный одноразовый
+  `archive-maintenance` запускается как root только с read-only backup bind,
+  без production secrets, сети и live volumes. Файловый `volume-init` также не
+  имеет сети/секретов и получает RW только media/private volumes для подготовки
+  или recovery staged-каталогов; перед candidate staged-файлы нормализуются до
+  `0755/0644` для media и `0700/0600` для private, затем передаются
+  `rehab:rehab`. Постоянный `web` и его health-check работают не от root.
 - Compose имеет отдельный one-shot `migration` service с DB owner и web с
   ограниченной runtime-ролью. Команда grants убирает DDL/ownership,
   database `TEMPORARY`, запись в `django_migrations`, `UPDATE/DELETE/TRUNCATE`
@@ -147,8 +154,8 @@ S3/offsite copy также оставлена отдельным контрак�
   `pyproject.toml` и `requirements.txt`, а также отдельный Docker restore-drill.
   Drill создает DB, media и private submission, проверяет отказ
   поврежденного архива и опасного v1, abrupt backup с durable recovery,
-  temp-only markers, неизвестный `.restore-*`, аварийно прерывает restore после
-  DB/file cutover, прерывает первый recovery и deploy после старта web,
+  temp-only markers, неизвестный `.restore-*`, root-owned partial extraction,
+  аварийно прерывает restore после DB/file cutover, первый recovery и deploy после старта web,
   доказывает повторяемое восстановление исходной генерации, изоляцию candidate
   за остановленным Caddy, fail-closed deploy, а затем exact DB+media+private restore.
 - В Docker build context исключены локальные `.env`, данные, media, документы и

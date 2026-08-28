@@ -310,8 +310,8 @@
     "semantic_hash": "f47cf0ba83eb5e6334f751fe855fd1f1"
   },
   "scripts/backup_prod.sh": {
-    "mtime": 1787882766.9773364,
-    "ast_hash": "0082be49f9dca2f7a7bdfc17f05c3001",
+    "mtime": 1787887042.7509189,
+    "ast_hash": "f13663d69c0b1890c34ba16bd4235c2c",
     "semantic_hash": ""
   },
   "scripts/build_demo.py": {
@@ -390,8 +390,8 @@
     "semantic_hash": "4670d49ca1e8eacfe5a14cf9d7757e40"
   },
   "compose.prod.yaml": {
-    "mtime": 1786424324.6889791,
-    "ast_hash": "82abb3a1cb930bfaa1c2c28106beb025",
+    "mtime": 1787887021.7206128,
+    "ast_hash": "bf781d086e75095ab8ccf905faac2e47",
     "semantic_hash": ""
   },
   "compose.yaml": {
@@ -440,8 +440,8 @@
     "semantic_hash": "e92ba1abfa0f52e6b1b5fcc1b1efbf95"
   },
   "docs/PRODUCTION_DEPLOYMENT.md": {
-    "mtime": 1787885279.2930212,
-    "ast_hash": "8fe16ebacbbbc07fd10488ad1408e767",
+    "mtime": 1787887155.0201843,
+    "ast_hash": "61b72dea7c611746373d503e8c039977",
     "semantic_hash": ""
   },
   "docs/REMOTE_SMARTPHONE_ACCESS.md": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1787885243.4037633,
-    "ast_hash": "073740ef8a1e6b2376a4c2dc357854ff",
+    "mtime": 1787888458.05455,
+    "ast_hash": "d4e3457d0baf9f4403ccd9cdab6d007d",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -1550,8 +1550,8 @@
     "semantic_hash": ""
   },
   "scripts/_production_common.sh": {
-    "mtime": 1786424538.488962,
-    "ast_hash": "24d2ed0ce0a527292e6c4508134a8753",
+    "mtime": 1787887021.7219303,
+    "ast_hash": "80dedfcd019e99cfa134daeb8b822484",
     "semantic_hash": ""
   },
   "scripts/production_preflight.sh": {
@@ -1560,18 +1560,18 @@
     "semantic_hash": ""
   },
   "scripts/restore_drill_ci.sh": {
-    "mtime": 1787882879.081697,
-    "ast_hash": "95186c72bc6cc675f3de094852e3083f",
+    "mtime": 1787887185.0585146,
+    "ast_hash": "d358f6859d7a4a6f9b85c8b9555643f8",
     "semantic_hash": ""
   },
   "scripts/restore_prod.sh": {
-    "mtime": 1787882777.1475909,
-    "ast_hash": "5383716c24d286d919c3f2da64e210e2",
+    "mtime": 1787887714.0458744,
+    "ast_hash": "3c62d7151f50330489eb9d15e27380de",
     "semantic_hash": ""
   },
   "scripts/verify_backup_prod.sh": {
-    "mtime": 1786420998.1862335,
-    "ast_hash": "a39564b56c9db7cba5f9bc01d7a5c4a7",
+    "mtime": 1787887049.9936616,
+    "ast_hash": "04b229ff8144088ee9077cc355e5bb3a",
     "semantic_hash": ""
   },
   "scripts/verify_dependency_manifests.py": {
@@ -1580,8 +1580,8 @@
     "semantic_hash": ""
   },
   "docs/54-production-preflight-contract.md": {
-    "mtime": 1787885257.5728517,
-    "ast_hash": "89c4a25046a6a695ae6ae0c9ab468ed5",
+    "mtime": 1787887155.018605,
+    "ast_hash": "c24c10bd361c1c69e1f5500d62429a2b",
     "semantic_hash": ""
   },
   "operations/migrations/0047_persisted_balance_transfer.py": {
@@ -1730,13 +1730,13 @@
     "semantic_hash": ""
   },
   "operations/checks.py": {
-    "mtime": 1785575460.3236995,
-    "ast_hash": "2b330647c6d2a49534bae9b7c7227e65",
+    "mtime": 1787885454.3322036,
+    "ast_hash": "2c2e4fcc7f967c6c3620df3fc034efae",
     "semantic_hash": ""
   },
   "operations/management/commands/assert_legacy_backup_has_no_donor_submissions.py": {
-    "mtime": 1785577540.0572333,
-    "ast_hash": "7492440e77e568d81cbdbde4717b3e0f",
+    "mtime": 1787885486.1658719,
+    "ast_hash": "2bc0699f974f940df091354ac69465cb",
     "semantic_hash": ""
   },
   "operations/management/commands/assert_runtime_database_role_is_restricted.py": {
@@ -1745,8 +1745,8 @@
     "semantic_hash": ""
   },
   "operations/management/commands/audit_donor_report_submissions.py": {
-    "mtime": 1785576159.63161,
-    "ast_hash": "8cbc4f1631cb20fbb1e6722a297f5e17",
+    "mtime": 1787885454.3396845,
+    "ast_hash": "927fa27fbfbc04b72dcfe9dcdc0334e2",
     "semantic_hash": ""
   },
   "operations/management/commands/validate_backup_archive.py": {
@@ -1775,13 +1775,13 @@
     "semantic_hash": ""
   },
   "docs/60-private-artifact-storage-and-donor-submission-contract.md": {
-    "mtime": 1787885271.14832,
-    "ast_hash": "5671ad2891e87911365aeab4427d4f2d",
+    "mtime": 1787887155.019602,
+    "ast_hash": "3a5ce0734677781752211ba12447a4f2",
     "semantic_hash": ""
   },
   "docs/decisions/ADR-008-private-content-addressed-artifact-storage.md": {
-    "mtime": 1787885287.5631704,
-    "ast_hash": "52f5e80e6dd6f8a5ff80be4c6add93f0",
+    "mtime": 1787887155.0217028,
+    "ast_hash": "a18edb6d11ca1198eead8300d4e3d6ff",
     "semantic_hash": ""
   },
   "operations/management/commands/configure_runtime_database_role.py": {

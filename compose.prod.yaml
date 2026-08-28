@@ -3,9 +3,17 @@ services:
     build: .
     user: "0:0"
     command: sh -ec "chown -R rehab:rehab /app/media /app/private-artifacts"
+    network_mode: "none"
     volumes:
       - media-data:/app/media
       - private-artifact-data:/app/private-artifacts
+    restart: "no"
+
+  archive-maintenance:
+    build: .
+    user: "0:0"
+    command: ["true"]
+    network_mode: "none"
     restart: "no"
 
   caddy:

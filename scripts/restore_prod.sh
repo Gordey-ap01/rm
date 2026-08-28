@@ -41,6 +41,7 @@ for fault_variable in \
   RESTORE_TEST_FAIL_AFTER_DATABASE_SWITCH \
   RESTORE_TEST_FAIL_AFTER_FILE_SWITCH \
   RESTORE_TEST_FAIL_AFTER_CANDIDATE_HEALTH \
+  RESTORE_TEST_FAIL_AFTER_ARCHIVE_EXTRACT \
   RESTORE_TEST_FAIL_AFTER_STATE_TEMP \
   RESTORE_TEST_FAIL_DURING_FILE_ROLLBACK; do
   fault_value="${!fault_variable:-0}"
@@ -59,7 +60,8 @@ WEB_WAS_RUNNING="false"
 RESTORE_STATUS="preparing"
 
 restore_state_exists() {
-  production_compose run --rm --no-deps web test -f "$RESTORE_STATE_PATH" \
+  production_compose run --rm --no-deps --user rehab:rehab volume-init \
+    test -f "$RESTORE_STATE_PATH" \
     > /dev/null 2>&1
 }
 
@@ -70,8 +72,8 @@ write_restore_state() {
      && "${RESTORE_TEST_FAIL_AFTER_STATE_TEMP:-0}" == "1" ]]; then
     injection_argument=(--inject-before-publish)
   fi
-  production_compose run --rm --no-deps \
-    web python /app/scripts/restore_files.py write-state \
+  production_compose run --rm --no-deps --user rehab:rehab \
+    volume-init python /app/scripts/restore_files.py write-state \
       --staged-db "$STAGED_DB" \
       --rollback-db "$ROLLBACK_DB" \
       --caddy-was-running "$CADDY_WAS_RUNNING" \
@@ -87,7 +89,8 @@ state_value() {
 
 load_restore_state() {
   local state
-  state="$(production_compose run --rm --no-deps web cat "$RESTORE_STATE_PATH")"
+  state="$(production_compose run --rm --no-deps --user rehab:rehab \
+    volume-init cat "$RESTORE_STATE_PATH")"
   STAGED_DB="$(state_value "$state" STAGED_DB)"
   ROLLBACK_DB="$(state_value "$state" ROLLBACK_DB)"
   CADDY_WAS_RUNNING="$(state_value "$state" CADDY_WAS_RUNNING)"
@@ -161,23 +164,29 @@ rollback_file_roots() {
   if [[ "${RESTORE_TEST_FAIL_DURING_FILE_ROLLBACK:-0}" == "1" ]]; then
     inject_argument=(--inject-after-copy)
   fi
-  production_compose run --rm --no-deps web \
+  production_compose run --rm --no-deps volume-init \
     python /app/scripts/restore_files.py rollback-root \
       --root /app/media "${inject_argument[@]}"
-  production_compose run --rm --no-deps web \
+  production_compose run --rm --no-deps volume-init \
     python /app/scripts/restore_files.py rollback-root \
       --root /app/private-artifacts
+  production_compose run --rm --no-deps volume-init sh -ec '
+    set -eu
+    chown -R rehab:rehab /app/media /app/private-artifacts
+    find /app/private-artifacts -type d -exec chmod 0700 {} +
+    find /app/private-artifacts -type f -exec chmod 0600 {} +
+  '
 }
 
 cleanup_restore_roots() {
-  production_compose run --rm --no-deps web \
+  production_compose run --rm --no-deps volume-init \
     python /app/scripts/restore_files.py cleanup-root --root /app/media
-  production_compose run --rm --no-deps web \
+  production_compose run --rm --no-deps volume-init \
     python /app/scripts/restore_files.py cleanup-root --root /app/private-artifacts
 }
 
 remove_restore_state() {
-  production_compose run --rm --no-deps web \
+  production_compose run --rm --no-deps --user rehab:rehab volume-init \
     python /app/scripts/restore_files.py remove-state
 }
 
@@ -218,7 +227,7 @@ start_and_validate_candidate() {
 }
 
 recover_incomplete_restore() {
-  production_compose run --rm --no-deps web \
+  production_compose run --rm --no-deps --user rehab:rehab volume-init \
     python /app/scripts/restore_files.py adopt-state || \
     production_fail "No valid incomplete restore state exists."
   restore_state_exists || production_fail "No incomplete restore state exists."
@@ -278,7 +287,8 @@ restore_cleanup() {
 trap restore_cleanup EXIT
 
 MEDIA_CAPACITY="$(
-  production_compose run --rm --no-deps -v "$BACKUP_MOUNT_PATH:/backup:ro" web \
+  production_compose run --rm --no-deps \
+    -v "$BACKUP_MOUNT_PATH:/backup:ro" archive-maintenance \
     python manage.py validate_backup_archive /backup/media.tar.gz --root media \
       --max-uncompressed-bytes "$MAX_ARCHIVE_BYTES" --print-capacity \
     | tail -n 1 | tr -d '\r'
@@ -288,7 +298,8 @@ PRIVATE_BYTES=0
 PRIVATE_INODES=0
 if [[ "$FORMAT" == "rm-backup-v2" ]]; then
   PRIVATE_CAPACITY="$(
-    production_compose run --rm --no-deps -v "$BACKUP_MOUNT_PATH:/backup:ro" web \
+    production_compose run --rm --no-deps \
+      -v "$BACKUP_MOUNT_PATH:/backup:ro" archive-maintenance \
       python manage.py validate_backup_archive \
         /backup/private-artifacts.tar.gz --root private-artifacts \
         --max-uncompressed-bytes "$MAX_ARCHIVE_BYTES" --print-capacity \
@@ -327,12 +338,12 @@ DATABASE_MIN_FREE_INODES="$(environment_value RESTORE_DATABASE_MIN_FREE_INODES |
 [[ "$DATABASE_MIN_FREE_INODES" =~ ^[1-9][0-9]*$ ]] || \
   production_fail "RESTORE_DATABASE_MIN_FREE_INODES must be a positive integer."
 
-production_compose run --rm --no-deps \
+production_compose run --rm --no-deps --user rehab:rehab \
   -e RESTORE_MEDIA_BYTES="$MEDIA_BYTES" \
   -e RESTORE_PRIVATE_BYTES="$PRIVATE_BYTES" \
   -e RESTORE_MEDIA_INODES="$MEDIA_INODES" \
   -e RESTORE_PRIVATE_INODES="$PRIVATE_INODES" \
-  web python -c '
+  volume-init python -c '
 import os
 
 requirements = {}
@@ -403,23 +414,51 @@ production_compose exec -T db pg_restore \
   --username "$POSTGRES_USER" --dbname "$STAGED_DB" \
   < "$BACKUP_PATH/db.dump"
 
-production_compose run --rm --no-deps -v "$BACKUP_MOUNT_PATH:/backup:ro" web sh -ec '
+production_compose run --rm --no-deps \
+  -e RESTORE_TEST_FAIL_AFTER_ARCHIVE_EXTRACT="${RESTORE_TEST_FAIL_AFTER_ARCHIVE_EXTRACT:-0}" \
+  -v "$BACKUP_MOUNT_PATH:/backup:ro" volume-init sh -ec '
   set -eu
   rm -rf -- /app/media/.restore-new /app/private-artifacts/.restore-new
-  mkdir -p /app/media/.restore-new /app/private-artifacts/.restore-new/private-artifacts
+  install -d -m 0755 /app/media/.restore-new
   tar --no-same-owner --no-same-permissions \
     -xzf /backup/media.tar.gz -C /app/media/.restore-new
   test -d /app/media/.restore-new/media
+  if [ "$RESTORE_TEST_FAIL_AFTER_ARCHIVE_EXTRACT" = 1 ]; then
+    echo "Injected failure after archive extraction." >&2
+    exit 91
+  fi
+  find /app/media/.restore-new -type d -exec chmod 0755 {} +
+  find /app/media/.restore-new -type f -exec chmod 0644 {} +
+  chown -R rehab:rehab /app/media/.restore-new
 '
 if [[ "$FORMAT" == "rm-backup-v2" ]]; then
-  production_compose run --rm --no-deps -v "$BACKUP_MOUNT_PATH:/backup:ro" web sh -ec '
+  production_compose run --rm --no-deps \
+    -v "$BACKUP_MOUNT_PATH:/backup:ro" volume-init sh -ec '
     set -eu
-    rm -rf -- /app/private-artifacts/.restore-new/private-artifacts
+    umask 077
+    install -d -m 0700 /app/private-artifacts/.restore-new
     tar --no-same-owner --no-same-permissions \
       -xzf /backup/private-artifacts.tar.gz \
       -C /app/private-artifacts/.restore-new
     test -d /app/private-artifacts/.restore-new/private-artifacts
+    find /app/private-artifacts/.restore-new -type d -exec chmod 0700 {} +
+    find /app/private-artifacts/.restore-new -type f -exec chmod 0600 {} +
+    chown -R rehab:rehab /app/private-artifacts/.restore-new
+    if find /app/private-artifacts/.restore-new -type d ! -perm 0700 \
+         -print -quit | grep -q .; then
+      echo "Private restore directory permissions are unsafe." >&2
+      exit 1
+    fi
+    if find /app/private-artifacts/.restore-new -type f ! -perm 0600 \
+         -print -quit | grep -q .; then
+      echo "Private restore file permissions are unsafe." >&2
+      exit 1
+    fi
   '
+else
+  production_compose run --rm --no-deps volume-init \
+    install -d -o rehab -g rehab -m 0700 \
+      /app/private-artifacts/.restore-new/private-artifacts
 fi
 
 production_compose run --rm --no-deps \
@@ -464,10 +503,10 @@ if [[ "${RESTORE_TEST_FAIL_AFTER_DATABASE_SWITCH:-0}" == "1" ]]; then
   production_fail "Injected failure after database switch."
 fi
 
-production_compose run --rm --no-deps web \
+production_compose run --rm --no-deps --user rehab:rehab volume-init \
   python /app/scripts/restore_files.py switch-root \
     --root /app/media --new-relative .restore-new/media
-production_compose run --rm --no-deps web \
+production_compose run --rm --no-deps --user rehab:rehab volume-init \
   python /app/scripts/restore_files.py switch-root \
     --root /app/private-artifacts \
     --new-relative .restore-new/private-artifacts

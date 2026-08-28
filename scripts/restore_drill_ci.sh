@@ -28,6 +28,10 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p -- "$BACKUP_DIR"
+[[ "$(stat -c '%a' "$DRILL_ROOT")" == "700" ]] || production_fail \
+  "Restore drill root must preserve operator-only permissions."
+[[ "$(stat -c '%a' "$BACKUP_DIR")" == "700" ]] || production_fail \
+  "Restore drill backup directory must preserve operator-only permissions."
 cat > "$ENV_ARGUMENT" <<EOF
 APP_DOMAIN=restore-drill.test
 DJANGO_SECRET_KEY=restore-drill-secret-not-production
@@ -86,10 +90,24 @@ wait_for_web() {
 }
 
 services_started=true
-production_compose up -d --build db redis web caddy
+production_compose build
+production_compose up -d db redis web caddy
 wait_for_web
 production_service_running caddy || production_fail \
   "Caddy did not start during restore drill."
+production_compose run --rm --no-deps archive-maintenance sh -ec '
+  test "$(id -u)" = 0
+  test -z "${DATABASE_PASSWORD:-}"
+  app_device=$(stat -c %d /app)
+  test "$(stat -c %d /app/media)" = "$app_device"
+  test "$(stat -c %d /app/private-artifacts)" = "$app_device"
+  test "$(awk "NR > 1 { count++ } END { print count + 0 }" /proc/net/route)" = 0
+'
+production_compose run --rm --no-deps volume-init sh -ec '
+  test "$(id -u)" = 0
+  test -z "${DATABASE_PASSWORD:-}"
+  test "$(awk "NR > 1 { count++ } END { print count + 0 }" /proc/net/route)" = 0
+'
 production_compose exec -T web \
   python manage.py assert_runtime_database_role_is_restricted
 if production_compose exec -T web python manage.py shell -c \
@@ -206,6 +224,23 @@ wait_for_web
 production_service_running caddy || production_fail \
   "Caddy was not preserved after temp-only restore recovery."
 
+if RESTORE_TEST_FAIL_AFTER_ARCHIVE_EXTRACT=1 \
+  ENV_FILE="$ENV_FILE" bash "$SCRIPT_DIR/restore_prod.sh" --confirm "$BACKUP_PATH"; then
+  production_fail "Restore archive-extraction fault injection did not stop."
+fi
+production_compose run --rm --no-deps volume-init sh -ec '
+  test -d /app/media/.restore-new
+  find /app/media/.restore-new -user root -type f -print -quit | grep -q .
+'
+ENV_FILE="$ENV_FILE" bash "$SCRIPT_DIR/restore_prod.sh" --recover --confirm
+wait_for_web
+production_service_running caddy || production_fail \
+  "Caddy was not preserved after root-owned staging recovery."
+production_compose run --rm --no-deps volume-init sh -ec '
+  test ! -e /app/media/.restore-new
+  test ! -e /app/private-artifacts/.restore-new
+'
+
 CORRUPT_PATH="$DRILL_ROOT/corrupt-backup"
 cp -a -- "$BACKUP_PATH" "$CORRUPT_PATH"
 printf x >> "$CORRUPT_PATH/db.dump"
@@ -273,6 +308,16 @@ wait_for_web
 production_compose exec -T web python manage.py shell -c \
   "from django.contrib.auth import get_user_model; from operations.models import DonorReportSubmission; from operations.services.private_artifacts import read_verified_artifact; User = get_user_model(); assert User.objects.filter(username='restore-drill-before').exists(); assert not User.objects.filter(username='restore-drill-after').exists(); submission=DonorReportSubmission.objects.get(); payload=read_verified_artifact(storage_key=submission.storage_key, expected_size=submission.file_size, expected_sha256=submission.file_sha256, expected_content_type=submission.content_type); assert b'restore-drill-before' in payload"
 production_compose exec -T web sh -ec 'test "$(cat /app/media/restore-drill.txt)" = before'
+production_compose run --rm --no-deps --user rehab:rehab volume-init sh -ec '
+  if find /app/private-artifacts -mindepth 1 -type d ! -perm 0700 \
+       -print -quit | grep -q .; then
+    exit 1
+  fi
+  if find /app/private-artifacts -mindepth 1 -type f ! -perm 0600 \
+       -print -quit | grep -q .; then
+    exit 1
+  fi
+'
 
 V1_PATH="$DRILL_ROOT/v1-with-submission"
 cp -a -- "$BACKUP_PATH" "$V1_PATH"
