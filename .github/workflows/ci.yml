@@ -54,24 +54,28 @@ jobs:
           python manage.py makemigrations --check --dry-run
 
       - name: Lint Python
-        run: python -m ruff check operations rehab_center
+        run: >-
+          python -m ruff check operations rehab_center
+          scripts/restore_files.py scripts/fsync_backup.py scripts/migrate_prod.py
 
       - name: Verify production dependency manifests
         run: python scripts/verify_dependency_manifests.py
 
       - name: Validate production scripts and Compose config
         run: |
-          bash -n scripts/_production_common.sh scripts/backup_prod.sh scripts/verify_backup_prod.sh scripts/restore_prod.sh scripts/production_preflight.sh scripts/restore_drill_ci.sh
+          bash -n scripts/_production_common.sh scripts/backup_prod.sh scripts/verify_backup_prod.sh scripts/restore_prod.sh scripts/production_preflight.sh scripts/restore_drill_ci.sh scripts/deploy_prod.sh
           cp .env.production.example .env.production
           trap 'rm -f .env.production .env.preflight-ci' EXIT
           cp .env.production.example .env.preflight-ci
           sed -i 's/CHANGE_ME_LONG_RANDOM_SECRET/preflight-ci-secret-not-for-production/' .env.preflight-ci
           sed -i 's/CHANGE_ME_LONG_DATABASE_PASSWORD/preflight-ci-password-not-for-production/' .env.preflight-ci
+          sed -i 's/CHANGE_ME_LONG_RUNTIME_DATABASE_PASSWORD/preflight-ci-runtime-password-not-for-production/' .env.preflight-ci
           sed -i 's/CHANGE_ME_SMTP_PASSWORD/preflight-ci-smtp-password-not-for-production/' .env.preflight-ci
           sed -i 's/rm.example.ru/preflight-ci.test/g' .env.preflight-ci
           sed -i 's/smtp.example.ru/smtp.preflight-ci.test/' .env.preflight-ci
           sed -i 's/no-reply@example.ru/no-reply@preflight-ci.test/g' .env.preflight-ci
           docker compose --env-file .env.preflight-ci -f compose.prod.yaml config --quiet
+          docker compose --env-file .env.preflight-ci -f compose.prod.yaml -f compose.restore.yaml config --quiet
           bash scripts/production_preflight.sh --config-only --env-file .env.preflight-ci
 
       - name: Prove production backup and restore drill

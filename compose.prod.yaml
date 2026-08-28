@@ -1,4 +1,13 @@
 services:
+  volume-init:
+    build: .
+    user: "0:0"
+    command: sh -ec "chown -R rehab:rehab /app/media /app/private-artifacts"
+    volumes:
+      - media-data:/app/media
+      - private-artifact-data:/app/private-artifacts
+    restart: "no"
+
   caddy:
     image: caddy:2.9-alpine
     restart: unless-stopped
@@ -20,18 +29,32 @@ services:
     build: .
     restart: unless-stopped
     command: >
-      sh -c "python manage.py migrate &&
+      sh -ec "if test -e /app/private-artifacts/.restore-in-progress;
+             then grep -q '^STATUS=validated$' /app/private-artifacts/.restore-in-progress ||
+             { test \"$$RESTORE_CANDIDATE_START\" = '1' &&
+               grep -q '^STATUS=candidate$' /app/private-artifacts/.restore-in-progress; } ||
+             { echo 'Incomplete restore detected; web startup is blocked.' >&2; exit 1; }; fi;
              python manage.py collectstatic --noinput &&
              gunicorn rehab_center.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 90"
     env_file:
       - .env.production
     environment:
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB}
+      DATABASE_USER: ${POSTGRES_RUNTIME_USER}
+      DATABASE_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD}
+      RESTORE_CANDIDATE_START: "0"
     volumes:
       - media-data:/app/media
+      - private-artifact-data:/app/private-artifacts
     depends_on:
+      volume-init:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
+      migration:
+        condition: service_completed_successfully
       redis:
         condition: service_started
     healthcheck:
@@ -41,6 +64,31 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  migration:
+    build: .
+    user: "0:0"
+    restart: "no"
+    command: python /app/scripts/migrate_prod.py
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB}
+      DATABASE_USER: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - media-data:/app/media
+      - private-artifact-data:/app/private-artifacts
+      - ./.runtime:/app/.runtime
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   db:
     image: postgres:17
@@ -64,5 +112,6 @@ services:
 volumes:
   postgres-data:
   media-data:
+  private-artifact-data:
   caddy-data:
   caddy-config:

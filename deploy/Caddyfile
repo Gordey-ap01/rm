@@ -7,6 +7,11 @@
 		Referrer-Policy strict-origin-when-cross-origin
 	}
 
+	@donorReportSubmission path_regexp donorReportSubmission ^/grants/report-snapshots/[0-9]+/submissions/add/$
+	request_body @donorReportSubmission {
+		max_size 27MB
+	}
+
 	handle_path /media/* {
 		root * /srv/media
 		file_server

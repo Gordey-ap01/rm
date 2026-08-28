@@ -12,7 +12,13 @@ RUN pip install --no-cache-dir --upgrade pip
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+RUN groupadd --system rehab && useradd --system --gid rehab --home /app rehab
+
+COPY --chown=rehab:rehab . .
+RUN mkdir -p /app/media /app/private-artifacts /app/staticfiles \
+    && chown -R rehab:rehab /app
+
+USER rehab
 
 EXPOSE 8000
 

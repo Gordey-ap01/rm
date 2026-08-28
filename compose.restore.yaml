@@ -1,0 +1,4 @@
+services:
+  web:
+    environment:
+      RESTORE_CANDIDATE_START: "1"
