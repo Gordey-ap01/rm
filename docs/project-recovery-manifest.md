@@ -1,6 +1,6 @@
 # Манифест восстановления проекта
 
-Дата актуализации: 2026-07-26
+Дата актуализации: 2026-08-28
 
 Назначение: минимальная точка входа после потери сессии. Манифест не
 пересказывает проект, а указывает источники истины и порядок чтения.
@@ -61,7 +61,8 @@
 | `docs/56-persisted-balance-transfer-conversion-contract.md` | Реализованный срез: immutable transfer, `money -> sessions`, PostgreSQL-сериализация и browser-приемка. |
 | `docs/57-grant-management-report-acceptance-contract.md` | Реализованный отчетный срез: роли, периодные ledger-балансы, раздельные единицы, квоты, архив и безопасный CSV; также границы будущих опасных миграций грантов. |
 | `docs/58-grant-plan-versioning-contract.md` | Реализованный срез: типизированные редакции квот и распределений, director-only write-path, legacy backfill и payroll provenance. |
-| `docs/59-grant-fixed-compensation-and-donor-report-snapshot-contract.md` | Принятый следующий контракт: payroll-бюджет, fixed/per-session policy, фиксированная оплата проекта, закрытый снимок и append-only сдачи. |
+| `docs/59-grant-fixed-compensation-and-donor-report-snapshot-contract.md` | Реализованный эпик 59: payroll-бюджет, fixed/per-session policy, фиксированная оплата проекта и закрытый донорский снимок. |
+| `docs/60-private-artifact-storage-and-donor-submission-contract.md` | Реализованный срез 59B-2: private storage, append-only сдачи/выдачи, integrity и backup/restore v2; там же production-блокеры. |
 | `docs/decisions/ADR-001-*.md` | Django/PostgreSQL/local-first. |
 | `docs/decisions/ADR-002-*.md` | Балансовые счета и ledger. |
 | `docs/decisions/ADR-003-*.md` | Полномочия и ручные решения. |
@@ -69,6 +70,7 @@
 | `docs/decisions/ADR-005-*.md` | Блокировка строки кабинета для настраиваемой вместимости. |
 | `docs/decisions/ADR-006-*.md` | Типизированные редакции грантового плана с устойчивой текущей проекцией. |
 | `docs/decisions/ADR-007-*.md` | Принятое расширение общего payroll, budget provenance и неизменяемые снимки внутренней сверки проекта. |
+| `docs/decisions/ADR-008-*.md` | Отдельное private content-addressed/write-once хранилище вне Caddy/media и server-mediated access. |
 | `docs/interviews/*.md` | Первичные интервью; читать при спорном требовании. |
 | `docs/PRODUCTION_DEPLOYMENT.md` | Развертывание и эксплуатация production. |
 | `docs/current-state.md` | Компактная текущая контрольная точка. |

@@ -1,6 +1,6 @@
 # Текущее состояние проекта
 
-Дата контрольной точки: 2026-07-29
+Дата контрольной точки: 2026-08-28
 
 ## Активный этап
 
@@ -18,9 +18,10 @@ browser-приемка рабочих ролей, persisted transfer/conversion 
 browser-приемку ролей и PostgreSQL 17 migration/trigger/concurrency gate;
 59A принят. 59B-1/`0053` реализован и принят локально/CI: закрытая внутренняя
 сверка сохраняется неизменяемым обезличенным снимком с проверяемыми hash,
-MVCC-временем данных и цепочкой исправлений. 59B-2 с фактом сдачи конкретного
-файла не начат до готовности приватного storage; параллельно нужны решения по
-внешней эксплуатации.
+MVCC-временем данных и цепочкой исправлений. 59B-2/`0054` реализован и
+локально принят: фактически переданный файл хранится в отдельном
+приватном write-once контуре, а его версии и выдачи фиксируются append-only.
+Перед production остаются эксплуатационные решения раздела 10 контракта 60.
 
 Цель этапа: ожидающие согласования и финансовые решения разделены по ролям,
 а руководитель имеет окончательный приоритет в управленческих областях без
@@ -255,9 +256,10 @@ MVCC-временем данных и цепочкой исправлений. 5
   БД: все экраны ответили `200`, browser console/page errors и HTTP `4xx`/`5xx`
   отсутствовали, desktop и mobile screenshots проверены визуально. Временные
   данные, settings и процесс удалены после запуска.
-- Graphify code index инкрементально обновлен без LLM/API key: `6486` nodes,
-  `30036` edges, built from commit `4d356c6f`; срез 59B-1 включен.
-  Семантический слой документов не пересоздавался и не блокирует кодовый граф.
+- Graphify code index инкрементально обновлен без LLM/API key: `6731` nodes,
+  `31647` edges и `354` communities; срез 59B-2 и restore role/lock включены.
+  Семантический слой
+  измененных документов не пересоздавался и не блокирует кодовый граф.
 - 59A-1 focused SQLite: `152 passed, 15 skipped`; полный SQLite regression:
   `787 passed, 24 skipped`. Пропуски относятся к PostgreSQL-only проверкам.
   Ruff, Django system check, migration dry-run и `git diff --check` прошли.
@@ -309,18 +311,65 @@ MVCC-временем данных и цепочкой исправлений. 5
   PostgreSQL 17 migration chain до `0053`, Django/migration checks, Ruff,
   dependency manifests, Compose/preflight, Linux restore-drill и полный pytest
   (`859 passed`) за `8m27s`.
+- 59B-2 добавил `DonorReportSubmission` и
+  `DonorReportSubmissionAccess`, migration `0054`, private content-addressed
+  storage вне `MEDIA_ROOT`, director-only write-path, отдельное
+  download-permission администратора и проверяемые exact bytes.
+- Append-only цепочка сериализуется через изменяемый `DonorReport`: runtime
+  сохраняет `SELECT/INSERT` истории без `UPDATE/DELETE/TRUNCATE`, `TEMPORARY`, записи в
+  `django_migrations`, DDL/ownership или role memberships. Service и trigger
+  проверены реальным подключением ограниченной роли. `EXECUTE` на функции схемы
+  отозван у `PUBLIC` и runtime, кроме трех явно перечисленных validation helpers,
+  необходимых trigger-контракту.
+- Audit-события дают неизменяемую прикладную атрибуцию, но не
+  криптографическую non-repudiation: компрометация runtime SQL может дописать
+  событие с существующим actor. До отдельного подписанного writer-контура
+  runtime credentials и web-процесс являются явно зафиксированной
+  доверительной границей.
+- Backup format v2 архивирует DB, media и private artifacts в одном
+  окне остановки writers, хранит размер БД и включает metadata в
+  checksum. Backup/restore/deploy/migration защищены общим host `flock`, а
+  backup публикуется после `fsync` и отклоняет незавершенный restore. Durable
+  backup marker и `backup_prod.sh --recover` возвращают исходное состояние web,
+  удаляют только неопубликованный partial и требуют health-check. Restore до
+  остановки web проверяет tar safety, размер, bytes/inodes томов и
+  PostgreSQL, а затем валидирует staged-БД/private root. Recovery валидирует и
+  принимает fsynced `.tmp` marker после обрыва между записью и atomic rename.
+- Production Compose разделяет migration/restore owner (`POSTGRES_USER`) и
+  ограниченную runtime-роль (`POSTGRES_RUNTIME_USER`). Миграции и grants
+  выполняет одноразовый `migration` service; web не владеет DB/schema,
+  не имеет DDL/role membership и технически проходит role guard.
+- Disposable Linux restore drill v2 повторно прошел 2026-08-28: exact private
+  bytes, поврежденный backup отклонен, abrupt backup/recovery и fault injection
+  после DB/file cutover с повторным обрывом
+  самого recovery не помешали вернуть исходные DB/media/private; опасный v1 не
+  изменил live-данные. Durable `fsync` markers, temp-only recovery и fail-closed
+  отказ на неизвестном `.restore-*` не удаляют rollback при обрыве. Неудачный
+  deploy после запуска новой web-версии оставляет web/Caddy закрытыми. Новая генерация
+  запускается только через restore Compose override, проходит `candidate` web
+  health-check и durable `validated` до открытия Caddy и удаления старой.
+  Docker sentinel подтвердил, что private-данные не попадают в image; web работает
+  не от root.
+- Focused 59B-2: SQLite `20 passed, 8 skipped`, PostgreSQL 17 `28 passed`
+  без пропусков. Полный SQLite regression после финального hardening:
+  `844 passed, 43 skipped`; пропуски относятся к PostgreSQL-only контрактам.
+- Browser-приемка на обезличенной PostgreSQL-БД прошла замену
+  PDF, историю №1/№2, private download и access event. Desktop и
+  `390px` не имеют page overflow, browser console чиста; матрица ролей
+  дополнительно закреплена view-тестами.
 
 ## Следующая работа
 
 1. Выбрать владельца и поставщиков для offsite backup, monitoring/alerting и
    реального SMTP; хранить секреты только вне Git. Включить branch protection
    после согласования репозитория.
-2. 59B-2 с фактом сдачи файла начинать только после готовности приватного
-   storage и принятого retention/access contract.
-3. Перед production migration chain `0048-0053` выполнить backup, `--strict`
+2. Закрыть production-допуск 59B-2: retention/legal hold,
+   шифрование диска и offsite backup, malware policy, задать вне Git
+   раздельные DB credentials и выполнить реальный production restore drill v2.
+3. Перед production migration chain `0048-0054` выполнить backup v2, `--strict`
    preflight, временно закрыть грантовые записи и подготовить совместимый
-   rollback-релиз. После появления первого снимка `0053` не откатывается:
-   rollback оставляет additive schema и историю, как требует контракт 59B.
+   rollback-релиз. После появления истории `0053`/`0054` не откатываются:
+   rollback сохраняет additive schema, private volume и immutable-историю.
 4. Отдельно согласовать policy возвратов и обратной конвертации до реализации.
 5. Перед пилотом проверить mobile-кабинет на физическом телефоне и провести
    обезличенные рабочие сценарии центра.
@@ -335,18 +384,19 @@ MVCC-временем данных и цепочкой исправлений. 5
 - переносы и цепочки плотного расписания;
 - participant-level billing, ledger, financial-integrity и persisted transfer/conversion;
 - принятый грантовый отчет, табели и payroll;
+- неизменяемые донорские снимки, фактические сдачи и приватные выдачи;
 - расходы, договоры, шаблоны, акты и согласия;
 - импорт сертификатов, связь с балансом и безопасный preflight.
 
 Критические зоны до рабочего production-контура:
 
 - завершенная матрица ролей во всех управленческих действиях;
-- приватное хранение и журнал фактически переданных файлов 59B-2;
+- production policy и внешняя защита приватных артефактов 59B-2;
 - policy возвратов и обратной конвертации;
 - offsite backup, monitoring/alerting и реальный SMTP;
 - регулярный targeted browser smoke и приемка на физическом телефоне;
 - приемка на реальных обезличенных сценариях центра;
-- production cutover migration chain `0048-0053` после backup/preflight.
+- production cutover migration chain `0048-0054` после backup v2/preflight.
 
 ## Риски и запреты
 
@@ -357,8 +407,11 @@ MVCC-временем данных и цепочкой исправлений. 5
 - Не откатывать `0053` после появления снимков: reverse намеренно блокируется,
   production rollback выполняется совместимым приложением без удаления
   immutable-истории.
-- До production отделить runtime DB-role от migration owner: runtime не должен
-  иметь DDL, право отключать triggers или заменять защитные функции `0053`.
+- Не откатывать `0054` после первой сдачи; совместимый rollback обязан
+  сохранить таблицы, private volume и backup format v2.
+- Не объединять разделенные runtime/migration DB-роли: runtime не имеет
+  DDL, role membership, право отключать triggers или заменять защитные
+  функции `0053`/`0054`; live preflight технически это проверяет.
 - Не хранить API-ключи, пароли, production-конфиги и реальные ПДн в Git.
 - Не считать SQLite test suite доказательством PostgreSQL concurrency.
 - Не возвращаться к очередным микросрезам документов/сертификатов без

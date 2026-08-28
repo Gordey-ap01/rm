@@ -55,10 +55,10 @@ view/URLconf и PostgreSQL 17 `pg_dump -Fc`/`pg_restore --list`:
 | --- | --- |
 | Health | Ответ не требует логина и не содержит версии, секретов, PII, имени БД или stack trace. |
 | DB health | Недоступная БД даёт `503`, а не ложный `200`. |
-| Backup | В итоговом каталоге либо есть проверяемые DB+media+manifest вместе, либо нет ничего. |
-| Archive | `db.dump` имеет custom format и проходит `pg_restore --list`; `media.tar.gz` проходит `tar -tzf`. |
+| Backup | В итоговом каталоге либо есть проверяемые DB+media+private+manifest вместе, либо нет ничего. |
+| Archive | `db.dump` имеет custom format и проходит `pg_restore --list`; media/private tar проходят gzip и path/member safety. |
 | Integrity | Restore и verify сверяют checksum до любого разрушительного действия. |
-| Restore | Без точного `--confirm` и абсолютного validated path скрипт завершается до остановки web/изменения DB/media. |
+| Restore | Без точного `--confirm` и абсолютного validated path скрипт завершается до остановки web/изменения DB/media/private. |
 | Secrets | Скрипты не печатают значения `.env.production`; файлы backup создаются с ограниченными правами. |
 | SMTP | Preflight только открывает и закрывает SMTP connection, не отправляя получателям тестовое письмо. |
 
@@ -69,12 +69,13 @@ view/URLconf и PostgreSQL 17 `pg_dump -Fc`/`pg_restore --list`:
 ```text
 db.dump          PostgreSQL custom archive (`pg_dump -Fc`)
 media.tar.gz     каталог /app/media
-SHA256SUMS       sha256 для обоих файлов
-metadata.env     timestamp, format, application revision; без секретов
+private-artifacts.tar.gz  каталог /app/private-artifacts без staging
+SHA256SUMS       sha256 для трех архивов и metadata
+metadata.env     timestamp, format v2, application revision, размер БД; без секретов
 ```
 
 Набор создаётся в sibling temporary directory с `umask 077`; только после
-проверки обоих архивов, checksum и metadata он переименовывается в конечный
+проверки всех архивов, checksum и metadata он переименовывается в конечный
 timestamp. Retention удаляет только полные старые каталоги внутри
 валидированного `BACKUP_DIR`.
 
@@ -88,11 +89,26 @@ timestamp. Retention удаляет только полные старые ка�
 3. проверить каталог backup отдельной `verify_backup_prod.sh`;
 4. зафиксировать причину и ответственного вне Git.
 
-Скрипт проверяет checksum и оба архива, останавливает только web, создаёт
-чистую БД, выполняет `pg_restore --no-owner --no-privileges`, заменяет media,
-запускает web и требует последующего `production_preflight.sh`. Ошибка не
-переходит к следующему шагу: нет «best effort» восстановления и нет rollback
-поверх уже восстановленной DB.
+Общий host-level `flock` исключает параллельные backup/restore/deploy/migration.
+Backup отказывается работать при следах незавершенного restore и публикуется
+только после `fsync` набора и родительского каталога. Restore
+проверяет checksum, безопасную структуру архивов, распакованный размер,
+bytes/inodes файловых томов и PostgreSQL, затем останавливает writers и
+Caddy. Dump восстанавливается
+в отдельную staged-БД с `--no-owner --no-privileges`; миграции и сверка
+staged private root проходят до изменения live-БД. Cutover переименовывает БД
+транзакционно. Marker и file transitions фиксируются через `fsync`, а
+старые DB/media/private удерживаются до strict scan, запуска candidate web
+и успешного health-check. Caddy открывается только после durable-перехода
+marker в состояние `validated`. Если процесс оборвался после `fsync` временного
+marker, но до atomic rename, recovery сначала валидирует и принимает `.tmp`;
+неизвестный или некорректный control-state останавливает операцию без cleanup.
+
+Maintenance marker блокирует автоматический запуск web после ошибки или
+перезагрузки. Команда `scripts/restore_prod.sh --recover --confirm` возвращает
+старую согласованную генерацию, если cutover не был принят, либо завершает
+cleanup уже проверенной новой генерации. Ошибка не переходит к следующему
+шагу и не открывает пользователям смешанное состояние.
 
 Restore проводится сначала только на disposable staging/restore-drill
 окружении. Production restore требует отдельного согласования руководителя.
@@ -118,15 +134,28 @@ S3/offsite copy также оставлена отдельным контрак�
 - `backup_prod.sh`, `verify_backup_prod.sh`, `restore_prod.sh` и
   `production_preflight.sh` работают с `.env.production` без её выполнения
   через shell. Restore намеренно требует `--confirm` и абсолютный путь.
+- Compose имеет отдельный one-shot `migration` service с DB owner и web с
+  ограниченной runtime-ролью. Команда grants убирает DDL/ownership,
+  database `TEMPORARY`, запись в `django_migrations`, `UPDATE/DELETE/TRUNCATE`
+  неизменяемой истории, а preflight проверяет append-contract, роль, role
+  memberships и владение функциями. `EXECUTE` у `PUBLIC` и runtime отозван для
+  всех application functions, кроме фиксированного allowlist из трех trigger
+  validation helpers. Штатный `deploy_prod.sh --confirm` выполняет миграции под
+  тем же maintenance lock; после изменения release любая ошибка оставляет web и
+  Caddy остановленными до явного исправления.
 - CI проверяет Bash syntax, Compose config, отсутствие drift между
   `pyproject.toml` и `requirements.txt`, а также отдельный Docker restore-drill.
-  Drill создаёт данные и media, сохраняет backup, проверяет отказ повреждённого
-  архива, меняет данные и доказывает восстановление исходных DB+media.
+  Drill создает DB, media и private submission, проверяет отказ
+  поврежденного архива и опасного v1, abrupt backup с durable recovery,
+  temp-only markers, неизвестный `.restore-*`, аварийно прерывает restore после
+  DB/file cutover, прерывает первый recovery и deploy после старта web,
+  доказывает повторяемое восстановление исходной генерации, изоляцию candidate
+  за остановленным Caddy, fail-closed deploy, а затем exact DB+media+private restore.
 - В Docker build context исключены локальные `.env`, данные, media, документы и
   Graphify-артефакты. Это не заменяет offsite backup, но исключает их случайное
   включение в production image.
 
-Локальный disposable drill успешно выполнен 2026-07-26. Реальные SMTP и
+Расширенный локальный disposable drill повторно успешно выполнен 2026-08-28. Реальные SMTP и
 внешний monitoring не выполнялись: для них требуются выбранный провайдер,
 ответственный и секреты вне Git.
 
@@ -136,22 +165,25 @@ S3/offsite copy также оставлена отдельным контрак�
    при ошибке подключения; оба ответа покрыты Django tests.
 2. `compose.prod.yaml` имеет web healthcheck; Caddy зависит от health web, не
    от простого процесса Gunicorn.
-3. Backup-script имеет bash syntax test и disposable drill: DB archive и media
-   archive проверяются средствами PostgreSQL/tar до публикации.
+3. Backup-script имеет bash syntax test и disposable drill: DB, media и
+   private archive проверяются до публикации единого набора.
 4. Restore-script без `--confirm`, с bad checksum и с relative path отказывает
-   до любого compose stop/restore; success drill выполняется только в
-   disposable окружении.
+   до любого compose stop/restore; disposable drill также проверяет staged-БД,
+   maintenance marker, rollback после fault injection и recovery опасного v1.
 5. Preflight определяет DEBUG/default placeholder/неполный SMTP/неверный
-   compose config как ошибку; с полностью настроенным ephemeral окружением
-   проходит `check --deploy`, DB и health.
+   compose config как ошибку. При включенной сдаче он дополнительно запрещает
+   runtime DB owner/DDL-role; с ограниченной ролью выполняет
+   `check --deploy --fail-level WARNING`,
+   integrity scan, DB, SMTP и health.
 6. CI, полный pytest и `docker compose config` проходят. Реальный SMTP и
    внешний monitoring проверяются только после выдачи production access.
 
 ## Опасные точки миграции
 
 Изменений схемы и миграций нет. Самая опасная операция — не кодовая миграция,
-а restore. Поэтому он не доступен из web UI, не вызывается CI, не имеет
+а restore. Поэтому он не доступен из web UI, не имеет
 автоматического расписания и требует отдельного explicit command.
+CI вызывает только изолированный fault-drill на disposable Compose volumes.
 
 ## Параллельная работа
 
