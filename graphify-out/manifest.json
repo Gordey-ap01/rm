@@ -105,8 +105,8 @@
     "semantic_hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
   "operations/models.py": {
-    "mtime": 1787924275.3072984,
-    "ast_hash": "d4e487a8c18bf1f0c5953b578719411d",
+    "mtime": 1787932868.3634646,
+    "ast_hash": "db83632db2dca509d7fe2b00bfe7458b",
     "semantic_hash": ""
   },
   "operations/services/__init__.py": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "docs/current-state.md": {
-    "mtime": 1787932501.0637062,
-    "ast_hash": "cda59a601cca0e322c788488733be2ef",
+    "mtime": 1787933392.515478,
+    "ast_hash": "081cd3a279a0ae131ef678516c5ceff9",
     "semantic_hash": ""
   },
   "docs/interviews/interview-director-2026-06-23.md": {
@@ -820,8 +820,8 @@
     "semantic_hash": ""
   },
   "docs/project-recovery-manifest.md": {
-    "mtime": 1787930601.9406488,
-    "ast_hash": "883373ccddceaa526066f047c264f292",
+    "mtime": 1787933372.5029602,
+    "ast_hash": "9755f2a8f6caaeae39ee2b53ee6f21cd",
     "semantic_hash": ""
   },
   "templates/operations/funding_source_list.html": {
@@ -1830,13 +1830,13 @@
     "semantic_hash": ""
   },
   "operations/tests/test_program_series.py": {
-    "mtime": 1787932138.7493923,
-    "ast_hash": "ffc9f97ab8b2da395ffb5a02745de6e9",
+    "mtime": 1787933691.34457,
+    "ast_hash": "3e96b642802066ce6fd69dca32229f0f",
     "semantic_hash": ""
   },
   "docs/61-group-program-series-lifecycle-contract.md": {
-    "mtime": 1787931278.4545603,
-    "ast_hash": "dd2079df82a1257ceca626f68ef33a62",
+    "mtime": 1787933372.5024529,
+    "ast_hash": "d8551f2cc2bfc2160ed89c6ccbe7ff07",
     "semantic_hash": ""
   },
   "templates/operations/appointment_series_detail.html": {
@@ -1882,6 +1882,11 @@
   "docs/decisions/ADR-009-appointment-series-revisions-and-runs.md": {
     "mtime": 1787927274.8214688,
     "ast_hash": "6c24465cfa03716aee55bb15c8c01b02",
+    "semantic_hash": ""
+  },
+  "operations/migrations/0060_series_cross_revision_attempt_guards.py": {
+    "mtime": 1787933691.3425686,
+    "ast_hash": "f4f94f7737256077fef5359273dad9f2",
     "semantic_hash": ""
   }
 }
