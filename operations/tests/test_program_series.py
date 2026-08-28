@@ -563,6 +563,343 @@ class GroupProgramSeriesTests(TestCase):
         with self.assertRaisesMessage(ValidationError, "явного режима materialization"):
             program_series.materialize_group_series(series, actor=self.admin)
 
+    def test_missing_only_materializes_absent_dates_and_replays_completed_run(self):
+        series, _ = program_series._create_series_definition(
+            self.preview(),
+            operation_key=uuid4(),
+        )
+        series_revisions.ensure_initial_revision(series, actor=self.admin)
+        self.flush_pending_revision_composition_constraints()
+        operation_key = uuid4()
+
+        applied = program_series.materialize_missing_series(
+            series,
+            operation_key=operation_key,
+            actor=self.admin,
+        )
+        repeated = program_series.materialize_missing_series(
+            series,
+            operation_key=operation_key,
+            actor=self.admin,
+        )
+        series.status = AppointmentSeries.Status.CANCELLED
+        series.save(update_fields=["status", "updated_at"])
+        replayed_after_status_change = program_series.materialize_missing_series(
+            series,
+            operation_key=operation_key,
+            actor=self.admin,
+        )
+
+        self.assertEqual(applied.created_count, 2)
+        self.assertEqual(applied.skipped_count, 0)
+        self.assertEqual(applied.unchanged_count, 0)
+        self.assertFalse(applied.reused_run)
+        self.assertTrue(repeated.reused_run)
+        self.assertTrue(replayed_after_status_change.reused_run)
+        self.assertEqual(repeated.run.pk, applied.run.pk)
+        self.assertEqual(replayed_after_status_change.run.pk, applied.run.pk)
+        self.assertEqual(repeated.created_count, 2)
+        self.assertEqual(applied.run.mode, AppointmentSeriesMaterializationRun.Mode.MISSING_ONLY)
+        self.assertEqual(applied.run.expected_result_count, 2)
+        self.assertEqual(
+            list(applied.run.results.values_list("attempt_number", flat=True)),
+            [1, 1],
+        )
+        self.assertEqual(
+            list(applied.run.events.values_list("event_type", flat=True)),
+            [AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED],
+        )
+        self.assertEqual(Appointment.objects.filter(series=series).count(), 2)
+        self.assertEqual(series.occurrences.count(), 2)
+        with self.assertRaisesMessage(ValidationError, "другой операции"):
+            program_series.materialize_missing_series(
+                series,
+                operation_key=operation_key,
+                actor=self.admin,
+                reason="Другой смысл того же ключа запуска.",
+            )
+
+    def test_missing_only_records_cross_revision_history_as_unchanged(self):
+        applied = program_series.create_group_series(
+            self.preview(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = applied.series
+        series.refresh_from_db()
+        self.flush_pending_revision_composition_constraints()
+        previous = series.current_revision
+        appointment_ids = list(
+            Appointment.objects.filter(series=series)
+            .order_by("pk")
+            .values_list("pk", flat=True)
+        )
+        revision = series_revisions.revise_future_composition(
+            series,
+            expected_revision_id=previous.pk,
+            effective_from=self.end_date,
+            participants=[
+                series_revisions.SeriesParticipantInput(
+                    child_id=self.child1.pk,
+                    program_block_id=self.block1.pk,
+                    billing_account_id=self.account1.pk,
+                    position=1,
+                ),
+                series_revisions.SeriesParticipantInput(
+                    child_id=self.child2.pk,
+                    program_block_id=self.block2.pk,
+                    billing_account_id=self.account2.pk,
+                    position=2,
+                ),
+            ],
+            staff_assignments=[
+                series_revisions.SeriesStaffInput(
+                    staff_member_id=self.staff1.pk,
+                    role=AppointmentSeriesStaffAssignment.Role.PRIMARY,
+                ),
+                series_revisions.SeriesStaffInput(
+                    staff_member_id=self.staff2.pk,
+                    role=AppointmentSeriesStaffAssignment.Role.ASSISTANT,
+                ),
+            ],
+            actor=self.admin,
+            reason="Новая редакция будущего состава для проверки истории.",
+        )
+        self.flush_pending_revision_composition_constraints()
+
+        result = program_series.materialize_missing_series(
+            series,
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+
+        self.assertEqual(result.created_count, 0)
+        self.assertEqual(result.skipped_count, 0)
+        self.assertEqual(result.unchanged_count, 1)
+        unchanged = result.run.results.select_related("supersedes").get()
+        self.assertEqual(unchanged.revision_id, revision.pk)
+        self.assertEqual(unchanged.attempt_number, 2)
+        self.assertEqual(
+            unchanged.outcome,
+            AppointmentSeriesOccurrence.Outcome.UNCHANGED,
+        )
+        self.assertEqual(unchanged.reason_code, "existing_history")
+        self.assertIsNotNone(unchanged.supersedes_id)
+        self.assertEqual(unchanged.supersedes.revision_id, previous.pk)
+        self.assertIsNone(unchanged.appointment_id)
+        self.assertIsNone(unchanged.compatibility_occurrence_id)
+        self.assertEqual(
+            list(
+                Appointment.objects.filter(series=series)
+                .order_by("pk")
+                .values_list("pk", flat=True)
+            ),
+            appointment_ids,
+        )
+
+    def test_missing_only_resumes_interrupted_run_without_duplicates(self):
+        series, _ = program_series._create_series_definition(
+            self.preview(),
+            operation_key=uuid4(),
+        )
+        series_revisions.ensure_initial_revision(series, actor=self.admin)
+        self.flush_pending_revision_composition_constraints()
+        operation_key = uuid4()
+        original = program_series._materialize_missing_date
+        call_count = 0
+
+        def fail_on_second_date(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 2:
+                raise RuntimeError("fault injection after first durable date")
+            return original(*args, **kwargs)
+
+        with patch(
+            "operations.services.program_series._materialize_missing_date",
+            side_effect=fail_on_second_date,
+        ), self.assertRaisesMessage(RuntimeError, "fault injection"):
+            program_series.materialize_missing_series(
+                series,
+                operation_key=operation_key,
+                actor=self.admin,
+            )
+
+        run = AppointmentSeriesMaterializationRun.objects.get(
+            operation_key=operation_key
+        )
+        self.assertEqual(run.results.count(), 1)
+        interrupted = run.events.get()
+        self.assertEqual(
+            interrupted.event_type,
+            AppointmentSeriesMaterializationRunEvent.EventType.INTERRUPTED,
+        )
+        self.assertEqual(interrupted.result_count, 1)
+        self.assertEqual(interrupted.created_count, 1)
+
+        series.refresh_from_db()
+        previous_revision = series.current_revision
+        next_revision = series_revisions.revise_future_composition(
+            series,
+            expected_revision_id=previous_revision.pk,
+            effective_from=self.end_date,
+            participants=[
+                series_revisions.SeriesParticipantInput(
+                    child_id=self.child1.pk,
+                    program_block_id=self.block1.pk,
+                    billing_account_id=self.account1.pk,
+                    position=1,
+                ),
+                series_revisions.SeriesParticipantInput(
+                    child_id=self.child2.pk,
+                    program_block_id=self.block2.pk,
+                    billing_account_id=self.account2.pk,
+                    position=2,
+                ),
+            ],
+            staff_assignments=[
+                series_revisions.SeriesStaffInput(
+                    staff_member_id=self.staff1.pk,
+                    role=AppointmentSeriesStaffAssignment.Role.PRIMARY,
+                ),
+                series_revisions.SeriesStaffInput(
+                    staff_member_id=self.staff2.pk,
+                    role=AppointmentSeriesStaffAssignment.Role.ASSISTANT,
+                ),
+            ],
+            actor=self.admin,
+            reason="Новая редакция создана после принятия прерванного запуска.",
+        )
+        self.flush_pending_revision_composition_constraints()
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "ранее принятый пересекающийся запуск",
+        ):
+            program_series.materialize_missing_series(
+                series,
+                operation_key=uuid4(),
+                actor=self.admin,
+            )
+
+        recovered = program_series.materialize_missing_series(
+            series,
+            operation_key=operation_key,
+            actor=self.admin,
+        )
+
+        self.assertTrue(recovered.reused_run)
+        self.assertEqual(recovered.run.pk, run.pk)
+        self.assertEqual(recovered.run.revision_id, previous_revision.pk)
+        series.refresh_from_db()
+        self.assertEqual(series.current_revision_id, next_revision.pk)
+        self.assertEqual(recovered.created_count, 2)
+        self.assertEqual(run.results.count(), 2)
+        self.assertEqual(Appointment.objects.filter(series=series).count(), 2)
+        self.assertEqual(
+            list(run.events.order_by("event_number").values_list("event_type", flat=True)),
+            [
+                AppointmentSeriesMaterializationRunEvent.EventType.INTERRUPTED,
+                AppointmentSeriesMaterializationRunEvent.EventType.RESUMED,
+                AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED,
+            ],
+        )
+        newer_run = program_series.materialize_missing_series(
+            series,
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        self.assertEqual(newer_run.run.revision_id, next_revision.pk)
+        self.assertEqual(newer_run.unchanged_count, 1)
+        self.assertEqual(Appointment.objects.filter(series=series).count(), 2)
+
+    def test_interrupted_run_rejects_results_until_explicit_resume(self):
+        applied = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = applied.series
+        series.refresh_from_db()
+        starts_at = _local(self.start_date, time(10, 0))
+        run, _ = series_revisions.get_or_create_missing_run(
+            series,
+            series.current_revision,
+            operation_key=uuid4(),
+            actor=self.admin,
+            date_from=self.start_date,
+            date_to=self.start_date,
+            expected_result_count=1,
+        )
+        series_revisions.interrupt_run(
+            run,
+            reason="Проверка запрета записи до явного возобновления.",
+        )
+
+        with self.assertRaisesMessage(ValidationError, "явно возобновить"):
+            series_revisions.record_unchanged_result(
+                run,
+                scheduled_starts_at=starts_at,
+            )
+
+        previous = series.materialization_results.get(
+            scheduled_starts_at=starts_at,
+            attempt_number=1,
+        )
+        forbidden = AppointmentSeriesMaterializationResult(
+            series=series,
+            revision=series.current_revision,
+            run=run,
+            scheduled_starts_at=starts_at,
+            scheduled_date=self.start_date,
+            attempt_number=2,
+            provenance_kind=(
+                AppointmentSeriesMaterializationResult.ProvenanceKind.NATIVE
+            ),
+            outcome=AppointmentSeriesOccurrence.Outcome.UNCHANGED,
+            reason_code="forbidden_while_interrupted",
+            reason="Запись не должна пройти до возобновления.",
+            supersedes=previous,
+        )
+        with self.assertRaisesMessage(ValidationError, "явно возобновить"):
+            forbidden.save()
+
+        self.assertFalse(run.results.exists())
+
+    def test_missing_only_replay_survives_actor_role_promotion(self):
+        operator = User.objects.create_user(
+            "missing-role-change-operator",
+            password="x",
+            is_staff=True,
+        )
+        series, _ = program_series._create_series_definition(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+        )
+        series_revisions.ensure_initial_revision(series, actor=operator)
+        self.flush_pending_revision_composition_constraints()
+        operation_key = uuid4()
+        applied = program_series.materialize_missing_series(
+            series,
+            operation_key=operation_key,
+            actor=operator,
+        )
+        operator.is_superuser = True
+        operator.save(update_fields=["is_superuser"])
+
+        repeated = program_series.materialize_missing_series(
+            series,
+            operation_key=operation_key,
+            actor=operator,
+        )
+
+        self.assertTrue(repeated.reused_run)
+        self.assertEqual(repeated.run.pk, applied.run.pk)
+        self.assertEqual(
+            applied.run.actor_role_snapshot,
+            AppointmentSeriesMaterializationRun.ActorRole.ADMINISTRATOR,
+        )
+
     def test_future_group_revision_rejects_incomplete_composition_atomically(self):
         applied = program_series.create_group_series(
             self.preview(),
@@ -2206,6 +2543,50 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
             duration_minutes=30,
         )
 
+    def _create_unmaterialized_series(self):
+        series, _ = program_series._create_series_definition(
+            self._preview_from_database(),
+            operation_key=uuid4(),
+        )
+        series_revisions.ensure_initial_revision(series, actor=self.admin)
+        return series
+
+    def _run_competing_missing(self, series_id, operation_keys):
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def run(operation_key):
+            close_old_connections()
+            try:
+                series = AppointmentSeries.objects.get(pk=series_id)
+                barrier.wait(timeout=10)
+                result = program_series.materialize_missing_series(
+                    series,
+                    operation_key=operation_key,
+                    actor=self.admin,
+                )
+            except BaseException as exc:
+                outcomes.put(exc)
+            else:
+                outcomes.put(
+                    (
+                        result.run.pk,
+                        result.created_count,
+                        result.unchanged_count,
+                        result.reused_run,
+                    )
+                )
+            finally:
+                connection.close()
+
+        threads = [Thread(target=run, args=(key,)) for key in operation_keys]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        return [outcomes.get_nowait() for _ in range(2)]
+
     @skipUnless(
         connection.vendor == "postgresql",
         "Конкурентное создание серий проверяется только на PostgreSQL.",
@@ -2341,6 +2722,172 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
         series = AppointmentSeries.objects.get(operation_key=operation_key)
         self.assertEqual(series.occurrences.count(), 1)
         self.assertEqual(Appointment.objects.filter(series=series).count(), 1)
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Конкурентный missing_only проверяется только на PostgreSQL.",
+    )
+    def test_concurrent_missing_only_same_key_reuses_one_run(self):
+        series = self._create_unmaterialized_series()
+        operation_key = uuid4()
+
+        results = self._run_competing_missing(
+            series.pk,
+            [operation_key, operation_key],
+        )
+
+        self.assertTrue(all(isinstance(item, tuple) for item in results), results)
+        self.assertEqual(len({item[0] for item in results}), 1)
+        self.assertEqual(
+            sorted((item[1], item[2], item[3]) for item in results),
+            [(1, 0, False), (1, 0, True)],
+        )
+        self.assertEqual(series.materialization_runs.count(), 1)
+        run = series.materialization_runs.get()
+        self.assertEqual(run.results.count(), 1)
+        self.assertEqual(run.events.count(), 1)
+        self.assertEqual(series.occurrences.count(), 1)
+        self.assertEqual(Appointment.objects.filter(series=series).count(), 1)
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Конкурентные missing_only runs проверяются только на PostgreSQL.",
+    )
+    def test_concurrent_missing_only_runs_form_one_attempt_chain(self):
+        series = self._create_unmaterialized_series()
+
+        results = self._run_competing_missing(
+            series.pk,
+            [uuid4(), uuid4()],
+        )
+
+        self.assertTrue(all(isinstance(item, tuple) for item in results), results)
+        self.assertEqual(
+            sorted((item[1], item[2]) for item in results),
+            [(0, 1), (1, 0)],
+        )
+        self.assertEqual(series.materialization_runs.count(), 2)
+        self.assertEqual(series.occurrences.count(), 1)
+        self.assertEqual(Appointment.objects.filter(series=series).count(), 1)
+        self.assertEqual(
+            list(
+                series.materialization_results.order_by("attempt_number").values_list(
+                    "attempt_number",
+                    "outcome",
+                )
+            ),
+            [
+                (1, AppointmentSeriesOccurrence.Outcome.CREATED),
+                (2, AppointmentSeriesOccurrence.Outcome.UNCHANGED),
+            ],
+        )
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Гонка interrupt и missing_only writer проверяется только на PostgreSQL.",
+    )
+    def test_interrupt_and_missing_writer_leave_consistent_event_counts(self):
+        series = self._create_unmaterialized_series()
+        series.refresh_from_db()
+        operation_key = uuid4()
+        run, _ = series_revisions.get_or_create_missing_run(
+            series,
+            series.current_revision,
+            operation_key=operation_key,
+            actor=self.admin,
+            date_from=self.day,
+            date_to=self.day,
+            expected_result_count=1,
+        )
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def write_result():
+            close_old_connections()
+            try:
+                selected_series = AppointmentSeries.objects.get(pk=series.pk)
+                selected_revision = AppointmentSeriesRevision.objects.get(
+                    pk=run.revision_id
+                )
+                selected_run = AppointmentSeriesMaterializationRun.objects.get(
+                    pk=run.pk
+                )
+                barrier.wait(timeout=10)
+                program_series._materialize_missing_date(
+                    selected_series,
+                    selected_revision,
+                    selected_run,
+                    _local(self.day, time(10, 0)),
+                    actor=self.admin,
+                )
+            except BaseException as exc:
+                outcomes.put(exc)
+            else:
+                outcomes.put(("writer", "recorded"))
+            finally:
+                connection.close()
+
+        def interrupt():
+            close_old_connections()
+            try:
+                selected_run = AppointmentSeriesMaterializationRun.objects.get(
+                    pk=run.pk
+                )
+                barrier.wait(timeout=10)
+                event = series_revisions.interrupt_run(
+                    selected_run,
+                    reason="Конкурентная остановка активного missing_only writer.",
+                )
+            except BaseException as exc:
+                outcomes.put(exc)
+            else:
+                outcomes.put(("interrupt", event.result_count))
+            finally:
+                connection.close()
+
+        threads = [Thread(target=write_result), Thread(target=interrupt)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        results = [outcomes.get_nowait() for _ in range(2)]
+        self.assertTrue(
+            all(isinstance(item, tuple | ValidationError) for item in results),
+            results,
+        )
+        run.refresh_from_db()
+        interrupted = run.events.get()
+        self.assertEqual(
+            interrupted.event_type,
+            AppointmentSeriesMaterializationRunEvent.EventType.INTERRUPTED,
+        )
+        self.assertEqual(interrupted.result_count, run.results.count())
+        self.assertEqual(
+            Appointment.objects.filter(series=series).count(),
+            run.results.filter(
+                outcome=AppointmentSeriesOccurrence.Outcome.CREATED
+            ).count(),
+        )
+
+        recovered = program_series.materialize_missing_series(
+            series,
+            operation_key=operation_key,
+            actor=self.admin,
+        )
+
+        self.assertEqual(recovered.created_count, 1)
+        self.assertEqual(run.results.count(), 1)
+        self.assertEqual(Appointment.objects.filter(series=series).count(), 1)
+        self.assertEqual(
+            list(run.events.order_by("event_number").values_list("event_type", flat=True)),
+            [
+                AppointmentSeriesMaterializationRunEvent.EventType.INTERRUPTED,
+                AppointmentSeriesMaterializationRunEvent.EventType.RESUMED,
+                AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED,
+            ],
+        )
 
     @skipUnless(
         connection.vendor == "postgresql",

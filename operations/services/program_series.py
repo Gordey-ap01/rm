@@ -20,6 +20,8 @@ from operations.models import (
     Appointment,
     AppointmentParticipant,
     AppointmentSeries,
+    AppointmentSeriesMaterializationRun,
+    AppointmentSeriesMaterializationRunEvent,
     AppointmentSeriesOccurrence,
     AppointmentSeriesParticipant,
     AppointmentSeriesRevision,
@@ -86,6 +88,17 @@ class SeriesMaterializationResult:
     created_count: int
     skipped_count: int
     unchanged_count: int
+
+
+@dataclass(frozen=True)
+class SeriesMaterializationRunResult:
+    series: AppointmentSeries
+    run: AppointmentSeriesMaterializationRun
+    created_count: int
+    joined_count: int
+    skipped_count: int
+    unchanged_count: int
+    reused_run: bool = False
 
 
 @dataclass(frozen=True)
@@ -723,11 +736,17 @@ def _materialize_individual_date(
     starts_at: datetime,
     *,
     actor: Any,
+    require_current_projection: bool = True,
 ) -> tuple[AppointmentSeriesOccurrence, bool]:
     try:
         with transaction.atomic():
             locked_series = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
-            series_revisions.assert_current_projection(locked_series, revision)
+            if require_current_projection:
+                series_revisions.assert_current_projection(locked_series, revision)
+            elif revision.series_id != locked_series.pk:
+                raise series_revisions.SeriesRevisionMismatch(
+                    "Редакция не относится к принятому запуску серии."
+                )
             existing = AppointmentSeriesOccurrence.objects.filter(
                 series=locked_series,
                 scheduled_starts_at=starts_at,
@@ -950,11 +969,17 @@ def _materialize_one_date(
     starts_at: datetime,
     *,
     actor: Any,
+    require_current_projection: bool = True,
 ) -> tuple[AppointmentSeriesOccurrence, bool]:
     try:
         with transaction.atomic():
             locked_series = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
-            series_revisions.assert_current_projection(locked_series, revision)
+            if require_current_projection:
+                series_revisions.assert_current_projection(locked_series, revision)
+            elif revision.series_id != locked_series.pk:
+                raise series_revisions.SeriesRevisionMismatch(
+                    "Редакция не относится к принятому запуску серии."
+                )
             existing = AppointmentSeriesOccurrence.objects.filter(
                 series=locked_series,
                 scheduled_starts_at=starts_at,
@@ -1238,6 +1263,218 @@ def materialize_group_series(
         skipped_count=skipped_count,
         unchanged_count=unchanged_count,
     )
+
+
+def _missing_run_result(
+    series: AppointmentSeries,
+    run: AppointmentSeriesMaterializationRun,
+    *,
+    reused_run: bool,
+) -> SeriesMaterializationRunResult:
+    completed = run.events.filter(
+        event_type=AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
+    ).first()
+    if completed is None:
+        raise ValidationError("Запуск дат без истории еще не завершен.")
+    return SeriesMaterializationRunResult(
+        series=series,
+        run=run,
+        created_count=completed.created_count,
+        joined_count=completed.joined_count,
+        skipped_count=completed.skipped_count,
+        unchanged_count=completed.unchanged_count,
+        reused_run=reused_run,
+    )
+
+
+@transaction.atomic
+def _materialize_missing_date(
+    series: AppointmentSeries,
+    revision: AppointmentSeriesRevision,
+    run: AppointmentSeriesMaterializationRun,
+    starts_at: datetime,
+    *,
+    actor: Any,
+):
+    locked_series = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
+    scheduled_date = timezone.localtime(starts_at).date()
+    if (
+        run.series_id != locked_series.pk
+        or run.revision_id != revision.pk
+        or revision.series_id != locked_series.pk
+        or not (run.date_from <= scheduled_date <= run.date_to)
+    ):
+        raise series_revisions.SeriesRevisionMismatch(
+            "Дата не относится к принятому диапазону и редакции запуска."
+        )
+    existing = run.results.filter(scheduled_starts_at=starts_at).first()
+    if existing:
+        return existing
+    if locked_series.materialization_results.filter(
+        scheduled_starts_at=starts_at
+    ).exists():
+        return series_revisions.record_unchanged_result(
+            run,
+            scheduled_starts_at=starts_at,
+        )
+    if locked_series.occurrences.filter(scheduled_starts_at=starts_at).exists():
+        raise ValidationError(
+            "У даты есть legacy occurrence без канонического результата; "
+            "до запуска требуется сверяемый backfill."
+        )
+
+    if revision.session_type == Appointment.SessionType.INDIVIDUAL:
+        occurrence, _ = _materialize_individual_date(
+            locked_series,
+            revision,
+            starts_at,
+            actor=actor,
+            require_current_projection=False,
+        )
+    elif revision.session_type == Appointment.SessionType.GROUP:
+        occurrence, _ = _materialize_one_date(
+            locked_series,
+            revision,
+            starts_at,
+            actor=actor,
+            require_current_projection=False,
+        )
+    else:
+        raise ValidationError("Редакция серии содержит неизвестный тип занятия.")
+    return series_revisions.record_compatibility_result(run, occurrence)
+
+
+def materialize_missing_series(
+    series: AppointmentSeries,
+    *,
+    operation_key: UUID,
+    actor: Any,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    reason: str = "",
+) -> SeriesMaterializationRunResult:
+    series_revisions.require_operator_role(actor)
+    run = series_revisions.get_existing_missing_run(
+        series,
+        operation_key=operation_key,
+        actor=actor,
+        date_from=date_from,
+        date_to=date_to,
+        reason=reason,
+    )
+    created = False
+    if run is not None:
+        current = run.series
+        revision = run.revision
+        resolved_from = run.date_from
+        resolved_to = run.date_to
+    else:
+        current = (
+            AppointmentSeries.objects.select_related("current_revision")
+            .filter(pk=series.pk)
+            .first()
+        )
+        if current is None:
+            raise ValidationError("Серия не найдена.")
+        if current.status != AppointmentSeries.Status.ACTIVE:
+            raise ValidationError("Дополнять расписание можно только для активной серии.")
+        if (
+            current.materialization_mode
+            != AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS
+        ):
+            raise ValidationError(
+                "Режим missing_only для join-серии требует явного списка целевых занятий."
+            )
+        revision = current.current_revision
+        if revision is None:
+            raise ValidationError(
+                "До запуска дат без истории серия должна иметь каноническую редакцию."
+            )
+        lower_bound = max(revision.start_date, revision.effective_from)
+        resolved_from = max(date_from or lower_bound, lower_bound)
+        resolved_to = min(date_to or revision.end_date, revision.end_date)
+        if resolved_to < resolved_from:
+            raise ValidationError("В выбранном диапазоне нет дат текущей редакции.")
+
+    if (
+        revision.materialization_mode
+        != AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS
+    ):
+        raise ValidationError(
+            "Режим missing_only для join-серии требует явного списка целевых занятий."
+        )
+    starts = [
+        starts_at
+        for starts_at in _candidate_starts(
+            resolved_from,
+            resolved_to,
+            (
+                AppointmentSeries.DAY_MAP[token.strip().upper()]
+                for token in revision.days_of_week.split(",")
+            ),
+            revision.time,
+        )
+        if resolved_from <= timezone.localtime(starts_at).date() <= resolved_to
+    ]
+    if not starts:
+        raise ValidationError("В выбранном диапазоне нет дат расписания серии.")
+
+    if run is None:
+        run, created = series_revisions.get_or_create_missing_run(
+            current,
+            revision,
+            operation_key=operation_key,
+            actor=actor,
+            date_from=resolved_from,
+            date_to=resolved_to,
+            expected_result_count=len(starts),
+            reason=reason,
+        )
+    elif run.expected_result_count != len(starts):
+        raise ValidationError(
+            "Сохраненный запуск не совпадает с расписанием immutable-редакции."
+        )
+    completed = run.events.filter(
+        event_type=AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
+    ).first()
+    if completed:
+        return _missing_run_result(current, run, reused_run=not created)
+
+    try:
+        resumed_or_completed = series_revisions.resume_run(run)
+        if (
+            resumed_or_completed
+            and resumed_or_completed.event_type
+            == AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
+        ):
+            return _missing_run_result(current, run, reused_run=not created)
+        for starts_at in starts:
+            _materialize_missing_date(
+                current,
+                revision,
+                run,
+                starts_at,
+                actor=actor,
+            )
+        series_revisions.complete_run(run)
+    except Exception as exc:
+        try:
+            event = series_revisions.interrupt_run(
+                run,
+                reason=(
+                    "Выполнение запуска прервано после ошибки "
+                    f"{type(exc).__name__}."
+                ),
+            )
+        except Exception as audit_exc:
+            raise audit_exc from exc
+        if (
+            event.event_type
+            == AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
+        ):
+            return _missing_run_result(current, run, reused_run=not created)
+        raise
+    return _missing_run_result(current, run, reused_run=not created)
 
 
 def create_group_series(

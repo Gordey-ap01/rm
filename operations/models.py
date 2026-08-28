@@ -4653,10 +4653,21 @@ class AppointmentSeriesMaterializationResult(TimeStampedModel):
                 errors["compatibility_occurrence"] = (
                     "Совместимый occurrence должен точно совпадать с результатом первой попытки."
                 )
-        if self.run_id and self.run.events.filter(
-            event_type=AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
-        ).exists():
+        latest_run_event = (
+            self.run.events.order_by("-event_number").first()
+            if self.run_id
+            else None
+        )
+        if latest_run_event and latest_run_event.event_type == (
+            AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
+        ):
             errors["run"] = "Завершенный запуск не принимает новые результаты."
+        elif latest_run_event and latest_run_event.event_type == (
+            AppointmentSeriesMaterializationRunEvent.EventType.INTERRUPTED
+        ):
+            errors["run"] = (
+                "Прерванный запуск нужно явно возобновить до записи результатов."
+            )
         if self.run_id and self.run.results.count() >= self.run.expected_result_count:
             errors["run"] = "Количество результатов запуска превышает ожидаемое."
         if (

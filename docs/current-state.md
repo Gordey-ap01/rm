@@ -11,8 +11,8 @@
 append-only run/result, сверяемый legacy backfill, PostgreSQL guards и единый
 materializer индивидуальных/групповых/create/join серий. 61C-3 реализован и
 локально принят: атомарная редакция только будущего состава. Следующий кодовый
-подсрез - 61C-4 retry/cancel; его expand-gate `0060` локально принят, но
-`missing_only`/retry service еще не завершен. Затем 61D UI/жизненный цикл.
+подсрез - 61C-4: expand-gate `0060` и `missing_only` реализованы и локально
+приняты; следующий режим `retry_skipped`, затем stop/cancel/withdraw и 61D UI.
 Production preflight, health, проверяемый backup/restore, цельная
 browser-приемка рабочих ролей, persisted transfer/conversion и приемка
 грантового отчета завершены. Безопасный жизненный цикл грантового плана по
@@ -58,7 +58,7 @@ MVCC-временем данных и цепочкой исправлений. 5
   вместимость под установленным lock-order.
 - Legacy occurrence нельзя ошибочно перемаркировать как native между expand и
   backfill. Полностью покрытый legacy-run переигрывается идемпотентно; для
-  непокрытых дат требуется будущий `missing_only` режим 61C-4.
+  непокрытых дат реализован явный `missing_only` режим 61C-4a.
 - Историческая группа с одним участником сохраняется и читается без создания
   новых занятий; новая native-группа по-прежнему требует минимум двух.
 - Runtime DB-role получила только `SELECT/INSERT` на семь append-only таблиц
@@ -78,8 +78,19 @@ MVCC-временем данных и цепочкой исправлений. 5
 - Expand-gate 61C-4a1 `0060` разрешает цепочке попыток одной даты переходить
   только к той же или более новой редакции. Reverse блокируется после первого
   cross-revision result; чистая PostgreSQL-цепочка `0001-0060` и весь migration
-  class серий (`7 passed`) прошли. Пользовательское поведение `missing_only`
-  этим gate еще не считается реализованным.
+  class серий (`7 passed`) прошли.
+- `missing_only` создает новый append-only run по текущей редакции, записывает
+  отсутствующие даты единым индивидуальным/групповым materializer, а даты с
+  историей фиксирует новой попыткой `unchanged` без изменения Appointment.
+  Повтор того же ключа возвращает сохраненный run даже после смены статуса или
+  текущей редакции; принятый незавершенный диапазон продолжается по сохраненному
+  immutable-снимку, а пересекающийся run новой редакции до этого не принимается.
+  После `interrupted` SQLite и PostgreSQL запрещают новый result до `resumed`.
+- Приемка 61C-4a `missing_only`: весь `test_program_series.py` на SQLite
+  `53 passed, 23 skipped`, PostgreSQL 17 `76 passed`; включая fault recovery,
+  смену редакции/роли/статуса и race-тесты same-key, different-key и
+  interrupt-vs-writer. Полный SQLite regression: `897 passed, 66 skipped`.
+  Django check, Ruff и `makemigrations --check` прошли.
 - Приемка 61C-3: весь `test_program_series.py` на SQLite `48 passed, 19 skipped`,
   PostgreSQL 17 `67 passed`; Django check, Ruff, `makemigrations --check` и
   `git diff --check` прошли. Миграция для этого подсреза не требуется.
@@ -439,9 +450,8 @@ MVCC-временем данных и цепочкой исправлений. 5
 
 ## Следующая работа
 
-1. Завершить 61C-4a: `missing_only` с durable run events, затем
-   `retry_skipped`; после этого 61C-4b-d stop/cancel/withdraw без изменения
-   фактов прошлого.
+1. Реализовать 61C-4a2 `retry_skipped`; после этого 61C-4b-d
+   stop/cancel/withdraw без изменения фактов прошлого.
 2. Закрыть 61D: паузу/отмену, переходы программы/каскада, registry,
    руководительские отчеты и полную ролевую приемку серий.
 3. Перед production migration chain `0048-0060` выполнить backup v2, `--strict`
@@ -472,7 +482,7 @@ MVCC-временем данных и цепочкой исправлений. 5
 Критические зоны до рабочего production-контура:
 
 - завершенная матрица ролей во всех управленческих действиях;
-- 61C-4 и 61D: retry/cancel и полный жизненный цикл серий;
+- остаток 61C-4 и 61D: retry/cancel и полный жизненный цикл серий;
 - production policy и внешняя защита приватных артефактов 59B-2;
 - policy возвратов и обратной конвертации;
 - offsite backup, monitoring/alerting и реальный SMTP;

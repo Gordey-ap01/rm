@@ -7,7 +7,7 @@ import json
 from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -655,11 +655,338 @@ def get_or_create_initial_run(
     return run, True
 
 
+def _missing_run_payload(
+    series: AppointmentSeries,
+    revision: AppointmentSeriesRevision,
+    *,
+    actor: Any,
+    date_from: date,
+    date_to: date,
+    expected_result_count: int,
+    reason: str,
+) -> dict[str, Any]:
+    return {
+        "series_id": series.pk,
+        "revision_id": revision.pk,
+        "revision_fingerprint": revision.fingerprint,
+        "mode": AppointmentSeriesMaterializationRun.Mode.MISSING_ONLY,
+        "date_from": date_from,
+        "date_to": date_to,
+        "expected_result_count": expected_result_count,
+        "actor_id": actor.pk,
+        "reason": reason,
+        "target_appointment_ids": [],
+    }
+
+
+def _missing_run_reason(reason: str) -> str:
+    return (reason or "").strip() or "Материализация дат серии без истории."
+
+
+def get_existing_missing_run(
+    series: AppointmentSeries,
+    *,
+    operation_key: UUID,
+    actor: Any,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    reason: str = "",
+) -> AppointmentSeriesMaterializationRun | None:
+    require_operator_role(actor)
+    existing = (
+        AppointmentSeriesMaterializationRun.objects.select_related(
+            "series",
+            "revision",
+        )
+        .filter(operation_key=operation_key)
+        .first()
+    )
+    if existing is None:
+        return None
+
+    normalized_reason = _missing_run_reason(reason)
+    revision = existing.revision
+    lower_bound = max(revision.start_date, revision.effective_from)
+    requested_from = (
+        max(date_from, lower_bound) if date_from is not None else existing.date_from
+    )
+    requested_to = (
+        min(date_to, revision.end_date) if date_to is not None else existing.date_to
+    )
+    payload = _missing_run_payload(
+        existing.series,
+        revision,
+        actor=actor,
+        date_from=existing.date_from,
+        date_to=existing.date_to,
+        expected_result_count=existing.expected_result_count,
+        reason=normalized_reason,
+    )
+    if (
+        existing.series_id != series.pk
+        or existing.revision.series_id != series.pk
+        or existing.mode != AppointmentSeriesMaterializationRun.Mode.MISSING_ONLY
+        or existing.actor_id != actor.pk
+        or existing.reason != normalized_reason
+        or requested_from != existing.date_from
+        or requested_to != existing.date_to
+        or existing.fingerprint != canonical_fingerprint(payload)
+    ):
+        raise ValidationError(
+            "Ключ запуска уже использован для другой операции материализации."
+        )
+    return existing
+
+
+@transaction.atomic
+def get_or_create_missing_run(
+    series: AppointmentSeries,
+    revision: AppointmentSeriesRevision,
+    *,
+    operation_key: UUID,
+    actor: Any,
+    date_from: date,
+    date_to: date,
+    expected_result_count: int,
+    reason: str = "",
+) -> tuple[AppointmentSeriesMaterializationRun, bool]:
+    role = require_operator_role(actor)
+    reason = _missing_run_reason(reason)
+    if expected_result_count < 1:
+        raise ValidationError("Запуск должен содержать хотя бы одну дату расписания.")
+
+    locked = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
+    lower_bound = max(revision.start_date, revision.effective_from)
+    if date_from < lower_bound or date_to > revision.end_date or date_to < date_from:
+        raise ValidationError("Диапазон запуска выходит за период текущей редакции.")
+
+    payload = _missing_run_payload(
+        locked,
+        revision,
+        actor=actor,
+        date_from=date_from,
+        date_to=date_to,
+        expected_result_count=expected_result_count,
+        reason=reason,
+    )
+    fingerprint = canonical_fingerprint(payload)
+    existing = AppointmentSeriesMaterializationRun.objects.filter(
+        operation_key=operation_key
+    ).first()
+    if existing:
+        if (
+            existing.series_id != locked.pk
+            or existing.revision_id != revision.pk
+            or existing.mode != AppointmentSeriesMaterializationRun.Mode.MISSING_ONLY
+            or existing.fingerprint != fingerprint
+        ):
+            raise ValidationError(
+                "Ключ запуска уже использован для другой операции материализации."
+            )
+        return existing, False
+    if locked.status != AppointmentSeries.Status.ACTIVE:
+        raise ValidationError("Дополнять расписание можно только для активной серии.")
+    if locked.current_revision_id != revision.pk or revision.series_id != locked.pk:
+        raise SeriesRevisionMismatch(
+            "Запуск дат без истории должен использовать текущую редакцию серии."
+        )
+    assert_current_projection(locked, revision)
+    unfinished_older_run = (
+        AppointmentSeriesMaterializationRun.objects.filter(
+            series=locked,
+            revision__revision_number__lt=revision.revision_number,
+            date_from__lte=date_to,
+            date_to__gte=date_from,
+        )
+        .exclude(
+            events__event_type=(
+                AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
+            )
+        )
+        .order_by("revision__revision_number", "started_at", "pk")
+        .first()
+    )
+    if unfinished_older_run:
+        raise ValidationError(
+            "Сначала завершите ранее принятый пересекающийся запуск редакции "
+            f"№{unfinished_older_run.revision.revision_number}."
+        )
+
+    try:
+        with transaction.atomic():
+            run = AppointmentSeriesMaterializationRun.objects.create(
+                series=locked,
+                revision=revision,
+                operation_key=operation_key,
+                fingerprint=fingerprint,
+                mode=AppointmentSeriesMaterializationRun.Mode.MISSING_ONLY,
+                date_from=date_from,
+                date_to=date_to,
+                expected_result_count=expected_result_count,
+                actor=actor,
+                actor_role_snapshot=role,
+                reason=reason,
+            )
+    except IntegrityError as exc:
+        existing = AppointmentSeriesMaterializationRun.objects.filter(
+            operation_key=operation_key
+        ).first()
+        if (
+            existing
+            and existing.series_id == locked.pk
+            and existing.revision_id == revision.pk
+            and existing.mode
+            == AppointmentSeriesMaterializationRun.Mode.MISSING_ONLY
+            and existing.fingerprint == fingerprint
+        ):
+            return existing, False
+        raise ValidationError(
+            "Запуск дат без истории уже создан конкурентным запросом с другим составом."
+        ) from exc
+    return run, True
+
+
+def _run_outcomes(
+    run: AppointmentSeriesMaterializationRun,
+) -> Counter[str]:
+    return Counter(run.results.values_list("outcome", flat=True))
+
+
+def _run_event_counts(
+    run: AppointmentSeriesMaterializationRun,
+) -> dict[str, int]:
+    outcomes = _run_outcomes(run)
+    return {
+        "result_count": sum(outcomes.values()),
+        "created_count": outcomes[AppointmentSeriesOccurrence.Outcome.CREATED],
+        "joined_count": outcomes[AppointmentSeriesOccurrence.Outcome.JOINED],
+        "skipped_count": outcomes[AppointmentSeriesOccurrence.Outcome.SKIPPED],
+        "unchanged_count": outcomes[AppointmentSeriesOccurrence.Outcome.UNCHANGED],
+    }
+
+
+def _assert_run_accepts_results(
+    run: AppointmentSeriesMaterializationRun,
+) -> None:
+    latest = run.events.order_by("-event_number").first()
+    if latest is None or latest.event_type == (
+        AppointmentSeriesMaterializationRunEvent.EventType.RESUMED
+    ):
+        return
+    if latest.event_type == (
+        AppointmentSeriesMaterializationRunEvent.EventType.INTERRUPTED
+    ):
+        raise ValidationError(
+            "Прерванный запуск нужно явно возобновить до записи результатов."
+        )
+    raise ValidationError("Завершенный запуск не принимает новые результаты.")
+
+
+@transaction.atomic
+def resume_run(
+    run: AppointmentSeriesMaterializationRun,
+) -> AppointmentSeriesMaterializationRunEvent | None:
+    locked_run = AppointmentSeriesMaterializationRun.objects.select_for_update().get(
+        pk=run.pk
+    )
+    latest = locked_run.events.order_by("-event_number").first()
+    if latest is None or latest.event_type in {
+        AppointmentSeriesMaterializationRunEvent.EventType.RESUMED,
+        AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED,
+    }:
+        return latest
+    return AppointmentSeriesMaterializationRunEvent.objects.create(
+        run=locked_run,
+        event_number=latest.event_number + 1,
+        event_type=AppointmentSeriesMaterializationRunEvent.EventType.RESUMED,
+        **_run_event_counts(locked_run),
+    )
+
+
+@transaction.atomic
+def interrupt_run(
+    run: AppointmentSeriesMaterializationRun,
+    *,
+    reason: str,
+) -> AppointmentSeriesMaterializationRunEvent:
+    locked_run = AppointmentSeriesMaterializationRun.objects.select_for_update().get(
+        pk=run.pk
+    )
+    latest = locked_run.events.order_by("-event_number").first()
+    if latest and latest.event_type in {
+        AppointmentSeriesMaterializationRunEvent.EventType.INTERRUPTED,
+        AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED,
+    }:
+        return latest
+    normalized_reason = (reason or "").strip()
+    if len(normalized_reason) < 5:
+        normalized_reason = "Выполнение запуска прервано ошибкой."
+    return AppointmentSeriesMaterializationRunEvent.objects.create(
+        run=locked_run,
+        event_number=(latest.event_number if latest else 0) + 1,
+        event_type=AppointmentSeriesMaterializationRunEvent.EventType.INTERRUPTED,
+        reason=normalized_reason,
+        **_run_event_counts(locked_run),
+    )
+
+
+@transaction.atomic
+def record_unchanged_result(
+    run: AppointmentSeriesMaterializationRun,
+    *,
+    scheduled_starts_at: datetime,
+) -> AppointmentSeriesMaterializationResult:
+    AppointmentSeries.objects.select_for_update().get(pk=run.series_id)
+    locked_run = AppointmentSeriesMaterializationRun.objects.select_for_update().get(
+        pk=run.pk
+    )
+    existing = AppointmentSeriesMaterializationResult.objects.filter(
+        run=locked_run,
+        scheduled_starts_at=scheduled_starts_at,
+    ).first()
+    if existing:
+        return existing
+    _assert_run_accepts_results(locked_run)
+
+    previous = (
+        AppointmentSeriesMaterializationResult.objects.select_related("revision")
+        .filter(
+            series_id=locked_run.series_id,
+            scheduled_starts_at=scheduled_starts_at,
+        )
+        .order_by("-attempt_number", "-pk")
+        .first()
+    )
+    if previous is None:
+        raise ValidationError("Для даты без истории нельзя записать исход «без изменений».")
+    if previous.revision.revision_number > locked_run.revision.revision_number:
+        raise SeriesRevisionMismatch(
+            "Новая попытка не может продолжать результат более новой редакции."
+        )
+    return AppointmentSeriesMaterializationResult.objects.create(
+        series_id=locked_run.series_id,
+        revision_id=locked_run.revision_id,
+        run=locked_run,
+        scheduled_starts_at=scheduled_starts_at,
+        scheduled_date=timezone.localtime(scheduled_starts_at).date(),
+        attempt_number=previous.attempt_number + 1,
+        provenance_kind=AppointmentSeriesMaterializationResult.ProvenanceKind.NATIVE,
+        outcome=AppointmentSeriesOccurrence.Outcome.UNCHANGED,
+        reason_code="existing_history",
+        reason=(
+            "Дата уже имеет неизменяемый результат; занятие и предыдущий исход "
+            "оставлены без изменений."
+        ),
+        supersedes=previous,
+    )
+
+
 @transaction.atomic
 def record_compatibility_result(
     run: AppointmentSeriesMaterializationRun,
     occurrence: AppointmentSeriesOccurrence,
 ) -> AppointmentSeriesMaterializationResult:
+    AppointmentSeries.objects.select_for_update().get(pk=run.series_id)
     locked_run = AppointmentSeriesMaterializationRun.objects.select_for_update().get(
         pk=run.pk
     )
@@ -683,10 +1010,7 @@ def record_compatibility_result(
                 "Существующий результат запуска не совпадает с immutable occurrence."
             )
         return existing
-    if locked_run.events.filter(
-        event_type=AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
-    ).exists():
-        raise ValidationError("Завершенный запуск не принимает новые результаты.")
+    _assert_run_accepts_results(locked_run)
     return AppointmentSeriesMaterializationResult.objects.create(
         series_id=locked_run.series_id,
         revision_id=locked_run.revision_id,
@@ -716,7 +1040,7 @@ def complete_run(
     ).first()
     if completed:
         return completed
-    outcomes = Counter(locked_run.results.values_list("outcome", flat=True))
+    outcomes = _run_outcomes(locked_run)
     result_count = sum(outcomes.values())
     if result_count != locked_run.expected_result_count:
         raise ValidationError(
