@@ -1031,6 +1031,524 @@ class GroupProgramSeriesTests(TestCase):
         )
         self.assertEqual(retry_result.supersedes_id, chain_head.pk)
 
+
+    def test_retry_skipped_uses_frozen_unchanged_chain_and_replays(self):
+        conflict_start = _local(self.start_date, time(10, 0))
+        conflict = Appointment.objects.create(
+            child=self.child1,
+            staff_member=self.staff1,
+            service=self.service,
+            starts_at=conflict_start,
+            ends_at=conflict_start + timedelta(minutes=45),
+            status=Appointment.Status.CONFIRMED,
+        )
+        initial = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = initial.series
+        skipped = series.materialization_results.get(
+            outcome=AppointmentSeriesOccurrence.Outcome.SKIPPED
+        )
+        missing = program_series.materialize_missing_series(
+            series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            date_from=self.start_date,
+            date_to=self.start_date,
+        )
+        chain_head = missing.run.results.get()
+        self.assertEqual(
+            chain_head.outcome,
+            AppointmentSeriesOccurrence.Outcome.UNCHANGED,
+        )
+
+        conflict.status = Appointment.Status.CANCELLED
+        conflict.save(update_fields=["status", "updated_at"])
+        operation_key = uuid4()
+        applied = program_series.materialize_retry_skipped_series(
+            series,
+            operation_key=operation_key,
+            actor=self.admin,
+            reason="Конфликт расписания устранен администратором.",
+            date_from=self.start_date,
+            date_to=self.start_date,
+        )
+        replayed = program_series.materialize_retry_skipped_series(
+            series,
+            operation_key=operation_key,
+            actor=self.admin,
+            reason="Конфликт расписания устранен администратором.",
+            date_from=self.start_date,
+            date_to=self.start_date,
+        )
+
+        self.assertEqual(applied.created_count, 1)
+        self.assertEqual(applied.skipped_count, 0)
+        self.assertFalse(applied.reused_run)
+        self.assertTrue(replayed.reused_run)
+        self.assertEqual(replayed.run.pk, applied.run.pk)
+        target = applied.run.retry_targets.get()
+        result = applied.run.results.get()
+        self.assertEqual(target.chain_head_result_id, chain_head.pk)
+        self.assertEqual(target.effective_skipped_result_id, skipped.pk)
+        self.assertEqual(result.supersedes_id, chain_head.pk)
+        self.assertEqual(result.attempt_number, 3)
+        self.assertEqual(result.outcome, AppointmentSeriesOccurrence.Outcome.CREATED)
+        self.assertIsNotNone(result.appointment_id)
+        self.assertEqual(series.occurrences.count(), 1)
+        self.assertEqual(
+            series.occurrences.get().outcome,
+            AppointmentSeriesOccurrence.Outcome.SKIPPED,
+        )
+        self.assertEqual(Appointment.objects.filter(series=series).count(), 1)
+        self.assertEqual(
+            list(applied.run.events.order_by("event_number").values_list("event_type", flat=True)),
+            [AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED],
+        )
+        with self.assertRaisesMessage(ValidationError, "другой операции"):
+            program_series.materialize_retry_skipped_series(
+                series,
+                operation_key=operation_key,
+                actor=self.admin,
+                reason="То же значение ключа, но другое основание повторения.",
+                date_from=self.start_date,
+                date_to=self.start_date,
+            )
+
+    def test_new_retry_uses_revision_applicable_to_historical_date(self):
+        conflict_start = _local(self.start_date, time(10, 0))
+        conflict = Appointment.objects.create(
+            child=self.child1,
+            staff_member=self.staff1,
+            service=self.service,
+            starts_at=conflict_start,
+            ends_at=conflict_start + timedelta(minutes=45),
+            status=Appointment.Status.CONFIRMED,
+        )
+        initial = program_series.create_group_series(
+            self.preview(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = initial.series
+        series.refresh_from_db()
+        self.flush_pending_revision_composition_constraints()
+        historical_revision = series.current_revision
+        current_revision = series_revisions.revise_future_composition(
+            series,
+            expected_revision_id=historical_revision.pk,
+            effective_from=self.end_date,
+            participants=[
+                series_revisions.SeriesParticipantInput(
+                    child_id=self.child1.pk,
+                    program_block_id=self.block1.pk,
+                    billing_account_id=self.account1.pk,
+                    position=1,
+                ),
+                series_revisions.SeriesParticipantInput(
+                    child_id=self.child2.pk,
+                    program_block_id=self.block2.pk,
+                    billing_account_id=self.account2.pk,
+                    position=2,
+                ),
+            ],
+            staff_assignments=[
+                series_revisions.SeriesStaffInput(
+                    staff_member_id=self.staff1.pk,
+                    role=AppointmentSeriesStaffAssignment.Role.PRIMARY,
+                ),
+                series_revisions.SeriesStaffInput(
+                    staff_member_id=self.staff2.pk,
+                    role=AppointmentSeriesStaffAssignment.Role.ASSISTANT,
+                ),
+            ],
+            actor=self.admin,
+            reason="Новая редакция после исторического пропуска.",
+        )
+        self.flush_pending_revision_composition_constraints()
+        conflict.status = Appointment.Status.CANCELLED
+        conflict.save(update_fields=["status", "updated_at"])
+
+        retried = program_series.materialize_retry_skipped_series(
+            series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Повтор даты до границы новой редакции.",
+            date_from=self.start_date,
+            date_to=self.start_date,
+        )
+
+        self.assertEqual(retried.created_count, 1)
+        self.assertEqual(retried.run.revision_id, historical_revision.pk)
+        series.refresh_from_db()
+        self.assertEqual(series.current_revision_id, current_revision.pk)
+        self.assertEqual(retried.run.results.get().attempt_number, 2)
+
+        with self.assertRaisesMessage(ValidationError, "не может выходить"):
+            program_series.materialize_retry_skipped_series(
+                series,
+                operation_key=uuid4(),
+                actor=self.admin,
+                reason="Диапазон не должен пересекать две редакции.",
+                date_from=self.start_date,
+                date_to=self.end_date,
+            )
+
+    def test_retry_skipped_can_remain_skipped_then_succeed_later(self):
+        conflict_start = _local(self.start_date, time(10, 0))
+        conflict = Appointment.objects.create(
+            child=self.child1,
+            staff_member=self.staff1,
+            service=self.service,
+            starts_at=conflict_start,
+            ends_at=conflict_start + timedelta(minutes=45),
+            status=Appointment.Status.CONFIRMED,
+        )
+        initial = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+
+        still_skipped = program_series.materialize_retry_skipped_series(
+            initial.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Повторная проверка конфликта расписания.",
+        )
+        self.assertEqual(still_skipped.skipped_count, 1)
+        second_attempt = still_skipped.run.results.get()
+        self.assertEqual(second_attempt.attempt_number, 2)
+        self.assertEqual(
+            second_attempt.outcome,
+            AppointmentSeriesOccurrence.Outcome.SKIPPED,
+        )
+
+        conflict.status = Appointment.Status.CANCELLED
+        conflict.save(update_fields=["status", "updated_at"])
+        succeeded = program_series.materialize_retry_skipped_series(
+            initial.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Конфликт устранен перед следующим повтором.",
+        )
+
+        self.assertEqual(succeeded.created_count, 1)
+        third_attempt = succeeded.run.results.get()
+        self.assertEqual(third_attempt.attempt_number, 3)
+        self.assertEqual(third_attempt.supersedes_id, second_attempt.pk)
+        self.assertEqual(
+            third_attempt.outcome,
+            AppointmentSeriesOccurrence.Outcome.CREATED,
+        )
+
+    def test_retry_skipped_rejects_range_without_skipped_history(self):
+        initial = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+
+        with self.assertRaisesMessage(ValidationError, "нет дат"):
+            program_series.materialize_retry_skipped_series(
+                initial.series,
+                operation_key=uuid4(),
+                actor=self.admin,
+                reason="Проверка диапазона без пропущенных дат.",
+            )
+
+        self.assertFalse(
+            initial.series.materialization_runs.filter(
+                mode=AppointmentSeriesMaterializationRun.Mode.RETRY_SKIPPED
+            ).exists()
+        )
+
+    def test_accepted_retry_target_has_priority_over_new_missing_run(self):
+        conflict_start = _local(self.start_date, time(10, 0))
+        Appointment.objects.create(
+            child=self.child1,
+            staff_member=self.staff1,
+            service=self.service,
+            starts_at=conflict_start,
+            ends_at=conflict_start + timedelta(minutes=45),
+            status=Appointment.Status.CONFIRMED,
+        )
+        initial = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = initial.series
+        series.refresh_from_db()
+        retry_run, created = series_revisions.get_or_create_retry_run(
+            series,
+            series.current_revision,
+            operation_key=uuid4(),
+            actor=self.admin,
+            date_from=self.start_date,
+            date_to=self.start_date,
+            reason="Принятый повтор должен получить приоритет исполнения.",
+        )
+        self.assertTrue(created)
+        self.assertEqual(retry_run.retry_targets.count(), 1)
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Сначала завершите принятый повтор",
+        ):
+            program_series.materialize_missing_series(
+                series,
+                operation_key=uuid4(),
+                actor=self.admin,
+                date_from=self.start_date,
+                date_to=self.start_date,
+            )
+
+        self.assertFalse(retry_run.results.exists())
+        self.assertFalse(retry_run.events.exists())
+
+    def test_retry_result_rejects_appointment_outside_frozen_target(self):
+        conflict_start = _local(self.start_date, time(10, 0))
+        Appointment.objects.create(
+            child=self.child1,
+            staff_member=self.staff1,
+            service=self.service,
+            starts_at=conflict_start,
+            ends_at=conflict_start + timedelta(minutes=45),
+            status=Appointment.Status.CONFIRMED,
+        )
+        initial = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = initial.series
+        series.refresh_from_db()
+        retry_run, _ = series_revisions.get_or_create_retry_run(
+            series,
+            series.current_revision,
+            operation_key=uuid4(),
+            actor=self.admin,
+            date_from=self.start_date,
+            date_to=self.start_date,
+            reason="Проверка принадлежности созданного занятия retry-цели.",
+        )
+        target = retry_run.retry_targets.get()
+        foreign_appointment = Appointment.objects.create(
+            child=self.child2,
+            staff_member=self.staff2,
+            service=self.service,
+            starts_at=conflict_start + timedelta(hours=2),
+            ends_at=conflict_start + timedelta(hours=2, minutes=45),
+            status=Appointment.Status.CANCELLED,
+        )
+
+        with self.assertRaisesMessage(
+            series_revisions.SeriesRetryMismatch,
+            "не относится к серии",
+        ):
+            series_revisions.record_retry_result(
+                retry_run,
+                target,
+                appointment=foreign_appointment,
+                outcome=AppointmentSeriesOccurrence.Outcome.CREATED,
+            )
+
+        self.assertFalse(retry_run.results.exists())
+
+    def test_retry_skipped_resumes_frozen_targets_after_partial_failure(self):
+        starts = [
+            _local(self.start_date, time(10, 0)),
+            _local(self.end_date, time(10, 0)),
+        ]
+        conflicts = [
+            Appointment.objects.create(
+                child=self.child1,
+                staff_member=self.staff1,
+                service=self.service,
+                starts_at=starts_at,
+                ends_at=starts_at + timedelta(minutes=45),
+                status=Appointment.Status.CONFIRMED,
+            )
+            for starts_at in starts
+        ]
+        initial = program_series.create_group_series(
+            self.preview(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        self.assertEqual(initial.skipped_count, 2)
+        for conflict in conflicts:
+            conflict.status = Appointment.Status.CANCELLED
+            conflict.save(update_fields=["status", "updated_at"])
+
+        operator = User.objects.create_user(
+            "retry-resume-role-operator",
+            password="x",
+            is_staff=True,
+        )
+        operation_key = uuid4()
+        original = program_series._materialize_retry_date
+        call_count = 0
+
+        def fail_on_second_target(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 2:
+                raise RuntimeError("fault injection after first retry target")
+            return original(*args, **kwargs)
+
+        with (
+            patch(
+                "operations.services.program_series._materialize_retry_date",
+                side_effect=fail_on_second_target,
+            ),
+            self.assertRaisesMessage(RuntimeError, "fault injection"),
+        ):
+            program_series.materialize_retry_skipped_series(
+                initial.series,
+                operation_key=operation_key,
+                actor=operator,
+                reason="Повтор двух дат после устранения конфликтов.",
+            )
+
+        run = AppointmentSeriesMaterializationRun.objects.get(operation_key=operation_key)
+        self.assertEqual(run.retry_targets.count(), 2)
+        self.assertEqual(run.results.count(), 1)
+        self.assertEqual(Appointment.objects.filter(series=initial.series).count(), 1)
+        interrupted = run.events.get()
+        self.assertEqual(
+            interrupted.event_type,
+            AppointmentSeriesMaterializationRunEvent.EventType.INTERRUPTED,
+        )
+        self.assertEqual(interrupted.result_count, 1)
+
+        initial.series.refresh_from_db()
+        self.flush_pending_revision_composition_constraints()
+        accepted_revision = initial.series.current_revision
+        next_revision = series_revisions.revise_future_composition(
+            initial.series,
+            expected_revision_id=accepted_revision.pk,
+            effective_from=self.end_date,
+            participants=[
+                series_revisions.SeriesParticipantInput(
+                    child_id=self.child1.pk,
+                    program_block_id=self.block1.pk,
+                    billing_account_id=self.account1.pk,
+                    position=1,
+                ),
+                series_revisions.SeriesParticipantInput(
+                    child_id=self.child2.pk,
+                    program_block_id=self.block2.pk,
+                    billing_account_id=self.account2.pk,
+                    position=2,
+                ),
+            ],
+            staff_assignments=[
+                series_revisions.SeriesStaffInput(
+                    staff_member_id=self.staff1.pk,
+                    role=AppointmentSeriesStaffAssignment.Role.PRIMARY,
+                ),
+                series_revisions.SeriesStaffInput(
+                    staff_member_id=self.staff2.pk,
+                    role=AppointmentSeriesStaffAssignment.Role.ASSISTANT,
+                ),
+            ],
+            actor=self.admin,
+            reason="Новая редакция после принятия прерванного retry-run.",
+        )
+        self.flush_pending_revision_composition_constraints()
+        operator.is_superuser = True
+        operator.save(update_fields=["is_superuser"])
+        initial.series.status = AppointmentSeries.Status.CANCELLED
+        initial.series.save(update_fields=["status", "updated_at"])
+        recovered = program_series.materialize_retry_skipped_series(
+            initial.series,
+            operation_key=operation_key,
+            actor=operator,
+            reason="Повтор двух дат после устранения конфликтов.",
+        )
+
+        self.assertTrue(recovered.reused_run)
+        self.assertEqual(recovered.run.pk, run.pk)
+        self.assertEqual(recovered.run.revision_id, accepted_revision.pk)
+        self.assertEqual(
+            recovered.run.actor_role_snapshot,
+            AppointmentSeriesMaterializationRun.ActorRole.ADMINISTRATOR,
+        )
+        initial.series.refresh_from_db()
+        self.assertEqual(initial.series.current_revision_id, next_revision.pk)
+        self.assertEqual(initial.series.status, AppointmentSeries.Status.CANCELLED)
+        self.assertEqual(recovered.created_count, 2)
+        self.assertEqual(run.results.count(), 2)
+        self.assertEqual(Appointment.objects.filter(series=initial.series).count(), 2)
+        self.assertEqual(
+            list(run.events.order_by("event_number").values_list("event_type", flat=True)),
+            [
+                AppointmentSeriesMaterializationRunEvent.EventType.INTERRUPTED,
+                AppointmentSeriesMaterializationRunEvent.EventType.RESUMED,
+                AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED,
+            ],
+        )
+
+    def test_retry_skipped_materializes_individual_series(self):
+        day_token = next(
+            token
+            for token, weekday in AppointmentSeries.DAY_MAP.items()
+            if weekday == self.start_date.weekday()
+        )
+        series = AppointmentSeries.objects.create(
+            child=self.child1,
+            service=self.service,
+            staff_member=self.staff1,
+            room=self.room,
+            program_block=self.block1,
+            title="Индивидуальная серия для повторения",
+            start_date=self.start_date,
+            end_date=self.start_date,
+            days_of_week=day_token,
+            time=time(10, 0),
+            duration_minutes=45,
+            session_type=Appointment.SessionType.INDIVIDUAL,
+            default_appointment_status=Appointment.Status.PROPOSED,
+            status=AppointmentSeries.Status.ACTIVE,
+        )
+        starts_at = _local(self.start_date, time(10, 0))
+        conflict = Appointment.objects.create(
+            child=self.child1,
+            staff_member=self.staff1,
+            service=self.service,
+            room=self.room,
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(minutes=45),
+            status=Appointment.Status.CONFIRMED,
+        )
+        initial = program_series.materialize_individual_series(
+            series,
+            actor=self.admin,
+        )
+        self.assertEqual(initial.skipped_count, 1)
+
+        conflict.status = Appointment.Status.CANCELLED
+        conflict.save(update_fields=["status", "updated_at"])
+        retried = program_series.materialize_retry_skipped_series(
+            series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Освобождено время индивидуального специалиста.",
+        )
+
+        self.assertEqual(retried.created_count, 1)
+        result = retried.run.results.get()
+        self.assertEqual(result.outcome, AppointmentSeriesOccurrence.Outcome.CREATED)
+        self.assertEqual(result.appointment.session_type, Appointment.SessionType.INDIVIDUAL)
+        self.assertEqual(series.occurrences.count(), 1)
+        self.assertEqual(
+            series.occurrences.get().outcome,
+            AppointmentSeriesOccurrence.Outcome.SKIPPED,
+        )
     def test_future_group_revision_rejects_incomplete_composition_atomically(self):
         applied = program_series.create_group_series(
             self.preview(),
@@ -2718,6 +3236,63 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
         self.assertTrue(all(not thread.is_alive() for thread in threads))
         return [outcomes.get_nowait() for _ in range(2)]
 
+
+    def _create_retryable_skipped_series(self):
+        starts_at = _local(self.day, time(10, 0))
+        conflict = Appointment.objects.create(
+            child=self.children[0],
+            staff_member=self.staff_members[0],
+            service=self.service,
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(minutes=30),
+            status=Appointment.Status.CONFIRMED,
+        )
+        result = program_series.create_group_series(
+            self._preview_from_database(),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        self.assertEqual(result.skipped_count, 1)
+        conflict.status = Appointment.Status.CANCELLED
+        conflict.save(update_fields=["status", "updated_at"])
+        return result.series
+
+    def _run_competing_retry(self, series_id, operation_keys):
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def run(operation_key):
+            close_old_connections()
+            try:
+                series = AppointmentSeries.objects.get(pk=series_id)
+                barrier.wait(timeout=10)
+                result = program_series.materialize_retry_skipped_series(
+                    series,
+                    operation_key=operation_key,
+                    actor=self.admin,
+                    reason="Конкурентный повтор освобожденной даты серии.",
+                )
+            except BaseException as exc:
+                outcomes.put(exc)
+            else:
+                outcomes.put(
+                    (
+                        result.run.pk,
+                        result.created_count,
+                        result.skipped_count,
+                        result.reused_run,
+                    )
+                )
+            finally:
+                connection.close()
+
+        threads = [Thread(target=run, args=(key,)) for key in operation_keys]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        return [outcomes.get_nowait() for _ in range(2)]
     @skipUnless(
         connection.vendor == "postgresql",
         "Конкурентное создание серий проверяется только на PostgreSQL.",
@@ -2913,6 +3488,58 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
             ],
         )
 
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Конкурентный retry_skipped проверяется только на PostgreSQL.",
+    )
+    def test_concurrent_retry_skipped_same_key_reuses_one_frozen_run(self):
+        series = self._create_retryable_skipped_series()
+        operation_key = uuid4()
+
+        results = self._run_competing_retry(
+            series.pk,
+            [operation_key, operation_key],
+        )
+
+        self.assertTrue(all(isinstance(item, tuple) for item in results), results)
+        self.assertEqual(len({item[0] for item in results}), 1)
+        self.assertEqual(
+            sorted((item[1], item[2], item[3]) for item in results),
+            [(1, 0, False), (1, 0, True)],
+        )
+        retry_runs = series.materialization_runs.filter(
+            mode=AppointmentSeriesMaterializationRun.Mode.RETRY_SKIPPED
+        )
+        self.assertEqual(retry_runs.count(), 1)
+        run = retry_runs.get()
+        self.assertEqual(run.retry_targets.count(), 1)
+        self.assertEqual(run.results.count(), 1)
+        self.assertEqual(Appointment.objects.filter(series=series).count(), 1)
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Конкурентные retry_skipped runs проверяются только на PostgreSQL.",
+    )
+    def test_concurrent_retry_skipped_different_keys_cannot_branch_history(self):
+        series = self._create_retryable_skipped_series()
+
+        results = self._run_competing_retry(
+            series.pk,
+            [uuid4(), uuid4()],
+        )
+
+        successes = [item for item in results if isinstance(item, tuple)]
+        failures = [item for item in results if isinstance(item, ValidationError)]
+        self.assertEqual(len(successes), 1, results)
+        self.assertEqual(len(failures), 1, results)
+        self.assertEqual(successes[0][1:3], (1, 0))
+        retry_runs = series.materialization_runs.filter(
+            mode=AppointmentSeriesMaterializationRun.Mode.RETRY_SKIPPED
+        )
+        self.assertEqual(retry_runs.count(), 1)
+        self.assertEqual(series.materialization_results.count(), 2)
+        self.assertEqual(Appointment.objects.filter(series=series).count(), 1)
     @skipUnless(
         connection.vendor == "postgresql",
         "Гонка interrupt и missing_only writer проверяется только на PostgreSQL.",

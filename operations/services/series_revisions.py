@@ -7,7 +7,7 @@ import json
 from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -16,12 +16,14 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from operations.models import (
+    Appointment,
     AppointmentSeries,
     AppointmentSeriesMaterializationResult,
     AppointmentSeriesMaterializationRun,
     AppointmentSeriesMaterializationRunEvent,
     AppointmentSeriesOccurrence,
     AppointmentSeriesParticipant,
+    AppointmentSeriesRetryTarget,
     AppointmentSeriesRevision,
     AppointmentSeriesRevisionParticipant,
     AppointmentSeriesRevisionStaffAssignment,
@@ -32,12 +34,17 @@ from operations.models import (
     Room,
     StaffMember,
     TreatmentProgram,
+    normalize_immutable_reason,
 )
 from operations.services.authority import AuthorityRole, authority_role
 
 
 class SeriesRevisionMismatch(ValidationError):
     """The mutable root projection no longer matches its immutable revision."""
+class SeriesRetryMismatch(ValidationError):
+    """A frozen retry target no longer matches the append-only result chain."""
+
+
 
 
 @dataclass(frozen=True)
@@ -54,6 +61,14 @@ class SeriesStaffInput:
     role: str
     override_availability: bool = False
     override_reason: str = ""
+@dataclass(frozen=True)
+class _RetryCandidate:
+    scheduled_starts_at: datetime
+    scheduled_date: date
+    chain_head: AppointmentSeriesMaterializationResult
+    effective_skipped: AppointmentSeriesMaterializationResult
+
+
 
 
 def canonical_fingerprint(payload: dict[str, Any]) -> str:
@@ -798,11 +813,7 @@ def get_or_create_missing_run(
             date_from__lte=date_to,
             date_to__gte=date_from,
         )
-        .exclude(
-            events__event_type=(
-                AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
-            )
-        )
+        .exclude(events__event_type=(AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED))
         .order_by("revision__revision_number", "started_at", "pk")
         .first()
     )
@@ -810,6 +821,24 @@ def get_or_create_missing_run(
         raise ValidationError(
             "Сначала завершите ранее принятый пересекающийся запуск редакции "
             f"№{unfinished_older_run.revision.revision_number}."
+        )
+    unfinished_retry_target = (
+        AppointmentSeriesRetryTarget.objects.filter(
+            run__series=locked,
+            scheduled_date__gte=date_from,
+            scheduled_date__lte=date_to,
+        )
+        .exclude(
+            run__events__event_type=(AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED)
+        )
+        .select_related("run")
+        .order_by("scheduled_starts_at", "pk")
+        .first()
+    )
+    if unfinished_retry_target:
+        raise ValidationError(
+            "Сначала завершите принятый повтор пропущенной даты "
+            f"{unfinished_retry_target.run.operation_key}."
         )
 
     try:
@@ -835,8 +864,7 @@ def get_or_create_missing_run(
             existing
             and existing.series_id == locked.pk
             and existing.revision_id == revision.pk
-            and existing.mode
-            == AppointmentSeriesMaterializationRun.Mode.MISSING_ONLY
+            and existing.mode == AppointmentSeriesMaterializationRun.Mode.MISSING_ONLY
             and existing.fingerprint == fingerprint
         ):
             return existing, False
@@ -844,6 +872,505 @@ def get_or_create_missing_run(
             "Запуск дат без истории уже создан конкурентным запросом с другим составом."
         ) from exc
     return run, True
+
+
+def _retry_run_reason(reason: str) -> str:
+    return normalize_immutable_reason(reason)
+
+
+def _retry_targets_payload(
+    targets: Iterable[AppointmentSeriesRetryTarget | _RetryCandidate],
+) -> list[dict[str, Any]]:
+    payload = []
+    for target in targets:
+        if isinstance(target, AppointmentSeriesRetryTarget):
+            chain_head_id = target.chain_head_result_id
+            effective_skipped_id = target.effective_skipped_result_id
+        else:
+            chain_head_id = target.chain_head.pk
+            effective_skipped_id = target.effective_skipped.pk
+        payload.append(
+            {
+                "scheduled_starts_at": target.scheduled_starts_at.isoformat(),
+                "chain_head_result_id": chain_head_id,
+                "effective_skipped_result_id": effective_skipped_id,
+            }
+        )
+    return sorted(payload, key=lambda item: item["scheduled_starts_at"])
+
+
+def _retry_run_payload(
+    series: AppointmentSeries,
+    revision: AppointmentSeriesRevision,
+    *,
+    actor: Any,
+    date_from: date,
+    date_to: date,
+    reason: str,
+    targets: Iterable[AppointmentSeriesRetryTarget | _RetryCandidate],
+) -> dict[str, Any]:
+    target_payload = _retry_targets_payload(targets)
+    return {
+        "series_id": series.pk,
+        "revision_id": revision.pk,
+        "revision_fingerprint": revision.fingerprint,
+        "mode": AppointmentSeriesMaterializationRun.Mode.RETRY_SKIPPED,
+        "date_from": date_from,
+        "date_to": date_to,
+        "expected_result_count": len(target_payload),
+        "actor_id": actor.pk,
+        "reason": reason,
+        "targets": target_payload,
+    }
+
+
+def _validate_existing_retry_run(
+    existing: AppointmentSeriesMaterializationRun,
+    series: AppointmentSeries,
+    *,
+    actor: Any,
+    date_from: date | None,
+    date_to: date | None,
+    reason: str,
+) -> AppointmentSeriesMaterializationRun:
+    revision = existing.revision
+    lower_bound = max(revision.start_date, revision.effective_from)
+    requested_from = (
+        max(date_from, lower_bound) if date_from is not None else existing.date_from
+    )
+    requested_to = (
+        min(date_to, revision.end_date) if date_to is not None else existing.date_to
+    )
+    targets = list(
+        existing.retry_targets.select_related(
+            "chain_head_result",
+            "effective_skipped_result",
+        ).order_by("scheduled_starts_at", "pk")
+    )
+    payload = _retry_run_payload(
+        existing.series,
+        revision,
+        actor=actor,
+        date_from=existing.date_from,
+        date_to=existing.date_to,
+        reason=reason,
+        targets=targets,
+    )
+    if (
+        existing.series_id != series.pk
+        or revision.series_id != series.pk
+        or existing.mode != AppointmentSeriesMaterializationRun.Mode.RETRY_SKIPPED
+        or existing.actor_id != actor.pk
+        or existing.reason != reason
+        or requested_from != existing.date_from
+        or requested_to != existing.date_to
+        or len(targets) != existing.expected_result_count
+        or existing.fingerprint != canonical_fingerprint(payload)
+    ):
+        raise ValidationError(
+            "Ключ запуска уже использован для другой операции повторения пропущенных дат."
+        )
+    return existing
+
+
+def get_existing_retry_run(
+    series: AppointmentSeries,
+    *,
+    operation_key: UUID,
+    actor: Any,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    reason: str,
+) -> AppointmentSeriesMaterializationRun | None:
+    require_operator_role(actor)
+    normalized_reason = _retry_run_reason(reason)
+    existing = (
+        AppointmentSeriesMaterializationRun.objects.select_related(
+            "series",
+            "revision",
+        )
+        .filter(operation_key=operation_key)
+        .first()
+    )
+    if existing is None:
+        return None
+    return _validate_existing_retry_run(
+        existing,
+        series,
+        actor=actor,
+        date_from=date_from,
+        date_to=date_to,
+        reason=normalized_reason,
+    )
+
+
+def resolve_retry_revision_range(
+    series: AppointmentSeries,
+    *,
+    date_from: date | None,
+    date_to: date | None,
+) -> tuple[AppointmentSeriesRevision, date, date]:
+    revisions = list(
+        series.revisions.order_by("effective_from", "revision_number", "pk")
+    )
+    if not revisions or not series.current_revision_id:
+        raise ValidationError(
+            "До повторного запуска серия должна иметь каноническую редакцию."
+        )
+
+    if date_from is None and date_to is None:
+        revision = next(
+            (item for item in revisions if item.pk == series.current_revision_id),
+            None,
+        )
+    else:
+        selector = date_from or date_to
+        revision = next(
+            (
+                item
+                for item in reversed(revisions)
+                if item.effective_from <= selector <= item.end_date
+                and item.start_date <= selector
+            ),
+            None,
+        )
+    if revision is None:
+        raise ValidationError(
+            "Для выбранной даты не найдена применимая редакция серии."
+        )
+
+    next_effective_from = next(
+        (
+            item.effective_from
+            for item in revisions
+            if item.effective_from > revision.effective_from
+        ),
+        None,
+    )
+    lower_bound = max(revision.start_date, revision.effective_from)
+    upper_bound = revision.end_date
+    if next_effective_from is not None:
+        upper_bound = min(upper_bound, next_effective_from - timedelta(days=1))
+    resolved_from = date_from or lower_bound
+    resolved_to = date_to or upper_bound
+    if (
+        resolved_from < lower_bound
+        or resolved_to > upper_bound
+        or resolved_to < resolved_from
+    ):
+        raise ValidationError(
+            "Один повторный запуск не может выходить за период применимой редакции."
+        )
+    return revision, resolved_from, resolved_to
+
+
+def _retry_candidates(
+    series: AppointmentSeries,
+    revision: AppointmentSeriesRevision,
+    *,
+    date_from: date,
+    date_to: date,
+) -> list[_RetryCandidate]:
+    results = list(
+        AppointmentSeriesMaterializationResult.objects.select_for_update(of=("self",))
+        .select_related("revision")
+        .filter(
+            series=series,
+            scheduled_date__gte=date_from,
+            scheduled_date__lte=date_to,
+        )
+        .order_by("scheduled_starts_at", "attempt_number", "pk")
+    )
+    by_id = {result.pk: result for result in results}
+    superseded_ids = {
+        result.supersedes_id for result in results if result.supersedes_id is not None
+    }
+    heads = [result for result in results if result.pk not in superseded_ids]
+    candidates = []
+    for head in heads:
+        if head.revision.revision_number > revision.revision_number:
+            raise SeriesRevisionMismatch(
+                "Повтор не может продолжать результат более новой редакции серии."
+            )
+        effective = head
+        visited: set[int] = set()
+        while effective.outcome == AppointmentSeriesOccurrence.Outcome.UNCHANGED:
+            if effective.pk in visited or effective.supersedes_id not in by_id:
+                raise SeriesRetryMismatch(
+                    "Цепочка попыток даты повреждена и не может быть безопасно повторена."
+                )
+            visited.add(effective.pk)
+            effective = by_id[effective.supersedes_id]
+        if effective.outcome != AppointmentSeriesOccurrence.Outcome.SKIPPED:
+            continue
+        candidates.append(
+            _RetryCandidate(
+                scheduled_starts_at=head.scheduled_starts_at,
+                scheduled_date=head.scheduled_date,
+                chain_head=head,
+                effective_skipped=effective,
+            )
+        )
+    return sorted(candidates, key=lambda item: item.scheduled_starts_at)
+
+
+@transaction.atomic
+def get_or_create_retry_run(
+    series: AppointmentSeries,
+    revision: AppointmentSeriesRevision,
+    *,
+    operation_key: UUID,
+    actor: Any,
+    date_from: date,
+    date_to: date,
+    reason: str,
+) -> tuple[AppointmentSeriesMaterializationRun, bool]:
+    role = require_operator_role(actor)
+    reason = _retry_run_reason(reason)
+    locked = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
+
+    existing = (
+        AppointmentSeriesMaterializationRun.objects.select_related(
+            "series",
+            "revision",
+        )
+        .filter(operation_key=operation_key)
+        .first()
+    )
+    if existing:
+        return (
+            _validate_existing_retry_run(
+                existing,
+                locked,
+                actor=actor,
+                date_from=date_from,
+                date_to=date_to,
+                reason=reason,
+            ),
+            False,
+        )
+
+    if locked.status != AppointmentSeries.Status.ACTIVE:
+        raise ValidationError("Повторять пропущенные даты можно только для активной серии.")
+    applicable_revision, resolved_from, resolved_to = resolve_retry_revision_range(
+        locked,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    if (
+        applicable_revision.pk != revision.pk
+        or revision.series_id != locked.pk
+        or resolved_from != date_from
+        or resolved_to != date_to
+    ):
+        raise SeriesRevisionMismatch(
+            "Новый повторный запуск должен использовать редакцию, применимую ко всему диапазону."
+        )
+    if revision.materialization_mode != (
+        AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS
+    ):
+        raise ValidationError(
+            "Повтор пропущенных дат поддерживается только для создания занятий."
+        )
+    current_revision = AppointmentSeriesRevision.objects.get(pk=locked.current_revision_id)
+    assert_current_projection(locked, current_revision)
+
+    unfinished_older_run = (
+        AppointmentSeriesMaterializationRun.objects.filter(
+            series=locked,
+            revision__revision_number__lt=revision.revision_number,
+            date_from__lte=date_to,
+            date_to__gte=date_from,
+        )
+        .exclude(
+            events__event_type=(
+                AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
+            )
+        )
+        .order_by("revision__revision_number", "started_at", "pk")
+        .first()
+    )
+    if unfinished_older_run:
+        raise ValidationError(
+            "Сначала завершите ранее принятый пересекающийся запуск редакции "
+            f"№{unfinished_older_run.revision.revision_number}."
+        )
+
+    candidates = _retry_candidates(
+        locked,
+        revision,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    if not candidates:
+        raise ValidationError(
+            "В выбранном диапазоне нет дат с последним эффективным исходом skipped."
+        )
+    reserved_head = (
+        AppointmentSeriesRetryTarget.objects.filter(
+            chain_head_result_id__in=[item.chain_head.pk for item in candidates]
+        )
+        .select_related("run")
+        .first()
+    )
+    if reserved_head:
+        raise ValidationError(
+            "Одна из пропущенных дат уже закреплена за принятым повторным запуском "
+            f"{reserved_head.run.operation_key}."
+        )
+
+    payload = _retry_run_payload(
+        locked,
+        revision,
+        actor=actor,
+        date_from=date_from,
+        date_to=date_to,
+        reason=reason,
+        targets=candidates,
+    )
+    fingerprint = canonical_fingerprint(payload)
+    try:
+        with transaction.atomic():
+            run = AppointmentSeriesMaterializationRun.objects.create(
+                series=locked,
+                revision=revision,
+                operation_key=operation_key,
+                fingerprint=fingerprint,
+                mode=AppointmentSeriesMaterializationRun.Mode.RETRY_SKIPPED,
+                date_from=date_from,
+                date_to=date_to,
+                expected_result_count=len(candidates),
+                actor=actor,
+                actor_role_snapshot=role,
+                reason=reason,
+            )
+            for candidate in candidates:
+                AppointmentSeriesRetryTarget.objects.create(
+                    run=run,
+                    scheduled_starts_at=candidate.scheduled_starts_at,
+                    scheduled_date=candidate.scheduled_date,
+                    chain_head_result=candidate.chain_head,
+                    effective_skipped_result=candidate.effective_skipped,
+                )
+            if run.retry_targets.count() != run.expected_result_count:
+                raise ValidationError("Набор целей повторного запуска сохранен не полностью.")
+    except IntegrityError as exc:
+        existing = (
+            AppointmentSeriesMaterializationRun.objects.select_related(
+                "series",
+                "revision",
+            )
+            .filter(operation_key=operation_key)
+            .first()
+        )
+        if existing:
+            return (
+                _validate_existing_retry_run(
+                    existing,
+                    locked,
+                    actor=actor,
+                    date_from=date_from,
+                    date_to=date_to,
+                    reason=reason,
+                ),
+                False,
+            )
+        raise SeriesRetryMismatch(
+            "Цепочка пропущенной даты изменилась во время принятия повторного запуска."
+        ) from exc
+    return run, True
+
+
+@transaction.atomic
+def record_retry_result(
+    run: AppointmentSeriesMaterializationRun,
+    target: AppointmentSeriesRetryTarget,
+    *,
+    appointment: Appointment | None,
+    outcome: str,
+    reason_code: str = "",
+    reason: str = "",
+) -> AppointmentSeriesMaterializationResult:
+    AppointmentSeries.objects.select_for_update().get(pk=run.series_id)
+    locked_run = AppointmentSeriesMaterializationRun.objects.select_for_update().get(
+        pk=run.pk
+    )
+    locked_target = (
+        AppointmentSeriesRetryTarget.objects.select_for_update()
+        .select_related("chain_head_result", "effective_skipped_result")
+        .get(pk=target.pk)
+    )
+    existing = locked_run.results.filter(
+        scheduled_starts_at=locked_target.scheduled_starts_at
+    ).first()
+    if existing:
+        if (
+            existing.supersedes_id != locked_target.chain_head_result_id
+            or existing.appointment_id != getattr(appointment, "pk", None)
+            or existing.outcome != outcome
+            or existing.reason_code != reason_code
+            or existing.reason != reason
+            or existing.outcome
+            not in {
+                AppointmentSeriesOccurrence.Outcome.CREATED,
+                AppointmentSeriesOccurrence.Outcome.SKIPPED,
+            }
+        ):
+            raise SeriesRetryMismatch(
+                "Сохраненный результат не совпадает с зафиксированной целью повторного запуска."
+            )
+        return existing
+    _assert_run_accepts_results(locked_run)
+    if (
+        locked_run.mode != AppointmentSeriesMaterializationRun.Mode.RETRY_SKIPPED
+        or locked_target.run_id != locked_run.pk
+        or outcome
+        not in {
+            AppointmentSeriesOccurrence.Outcome.CREATED,
+            AppointmentSeriesOccurrence.Outcome.SKIPPED,
+        }
+        or (outcome == AppointmentSeriesOccurrence.Outcome.CREATED) != bool(appointment)
+    ):
+        raise SeriesRetryMismatch(
+            "Результат не соответствует контракту зафиксированной retry-цели."
+        )
+    if appointment and (
+        appointment.series_id != locked_run.series_id
+        or appointment.starts_at != locked_target.scheduled_starts_at
+        or appointment.service_id != locked_run.revision.service_id
+        or appointment.session_type != locked_run.revision.session_type
+    ):
+        raise SeriesRetryMismatch(
+            "Созданное занятие не относится к серии, времени, услуге и типу retry-цели."
+        )
+
+    chain_head = AppointmentSeriesMaterializationResult.objects.select_for_update().get(
+        pk=locked_target.chain_head_result_id
+    )
+    if chain_head.superseded_by.exists():
+        raise SeriesRetryMismatch("Зафиксированная вершина цепочки уже продолжена другой попыткой.")
+    try:
+        with transaction.atomic():
+            return AppointmentSeriesMaterializationResult.objects.create(
+                series_id=locked_run.series_id,
+                revision_id=locked_run.revision_id,
+                run=locked_run,
+                scheduled_starts_at=locked_target.scheduled_starts_at,
+                scheduled_date=locked_target.scheduled_date,
+                attempt_number=chain_head.attempt_number + 1,
+                provenance_kind=(
+                    AppointmentSeriesMaterializationResult.ProvenanceKind.NATIVE
+                ),
+                appointment=appointment,
+                outcome=outcome,
+                reason_code=reason_code,
+                reason=reason,
+                supersedes=chain_head,
+            )
+    except (IntegrityError, ValidationError) as exc:
+        raise SeriesRetryMismatch(
+            "Не удалось линейно продолжить зафиксированную цепочку повторного запуска."
+        ) from exc
 
 
 def _run_outcomes(

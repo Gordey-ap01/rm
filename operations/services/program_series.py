@@ -20,10 +20,12 @@ from operations.models import (
     Appointment,
     AppointmentParticipant,
     AppointmentSeries,
+    AppointmentSeriesMaterializationResult,
     AppointmentSeriesMaterializationRun,
     AppointmentSeriesMaterializationRunEvent,
     AppointmentSeriesOccurrence,
     AppointmentSeriesParticipant,
+    AppointmentSeriesRetryTarget,
     AppointmentSeriesRevision,
     AppointmentSeriesStaffAssignment,
     AppointmentStaffAssignment,
@@ -660,6 +662,27 @@ def _record_skipped(
         },
     )
     return occurrence, created
+def _record_retry_skipped(
+    run: AppointmentSeriesMaterializationRun,
+    target: AppointmentSeriesRetryTarget,
+    *,
+    code: str,
+    reason: str,
+) -> tuple[AppointmentSeriesMaterializationResult, bool]:
+    existing = run.results.filter(scheduled_starts_at=target.scheduled_starts_at).first()
+    if existing:
+        return existing, False
+    result = series_revisions.record_retry_result(
+        run,
+        target,
+        appointment=None,
+        outcome=AppointmentSeriesOccurrence.Outcome.SKIPPED,
+        reason_code=code,
+        reason=reason,
+    )
+    return result, True
+
+
 
 
 @transaction.atomic
@@ -737,7 +760,16 @@ def _materialize_individual_date(
     *,
     actor: Any,
     require_current_projection: bool = True,
-) -> tuple[AppointmentSeriesOccurrence, bool]:
+    retry_run: AppointmentSeriesMaterializationRun | None = None,
+    retry_target: AppointmentSeriesRetryTarget | None = None,
+) -> tuple[
+    AppointmentSeriesOccurrence | AppointmentSeriesMaterializationResult,
+    bool,
+]:
+    if (retry_run is None) != (retry_target is None):
+        raise series_revisions.SeriesRetryMismatch(
+            "Retry-run и его зафиксированная цель должны передаваться вместе."
+        )
     try:
         with transaction.atomic():
             locked_series = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
@@ -747,10 +779,14 @@ def _materialize_individual_date(
                 raise series_revisions.SeriesRevisionMismatch(
                     "Редакция не относится к принятому запуску серии."
                 )
-            existing = AppointmentSeriesOccurrence.objects.filter(
-                series=locked_series,
-                scheduled_starts_at=starts_at,
-            ).first()
+            existing = (
+                retry_run.results.filter(scheduled_starts_at=starts_at).first()
+                if retry_run
+                else AppointmentSeriesOccurrence.objects.filter(
+                    series=locked_series,
+                    scheduled_starts_at=starts_at,
+                ).first()
+            )
             if existing:
                 return existing, False
 
@@ -762,9 +798,7 @@ def _materialize_individual_date(
                     "billing_account",
                 )
             )
-            assignments = list(
-                revision.staff_assignments.select_related("staff_member")
-            )
+            assignments = list(revision.staff_assignments.select_related("staff_member"))
             if len(participants) != 1 or len(assignments) != 1:
                 raise series_revisions.SeriesRevisionMismatch(
                     "Снимок индивидуальной редакции поврежден."
@@ -798,10 +832,8 @@ def _materialize_individual_date(
                             "Счет каскада изменился после фиксации редакции серии.",
                         )
                     if participant.billing_account_id:
-                        block.balance_account = (
-                            BalanceAccount.all_objects.select_for_update().get(
-                                pk=participant.billing_account_id
-                            )
+                        block.balance_account = BalanceAccount.all_objects.select_for_update().get(
+                            pk=participant.billing_account_id
                         )
                     limit_reason = _block_limit_reason(
                         [block],
@@ -812,10 +844,8 @@ def _materialize_individual_date(
                     if limit_reason:
                         raise _SkipOccurrence(*limit_reason)
 
-                assignment.staff_member = (
-                    StaffMember.all_objects.select_for_update().get(
-                        pk=assignment.staff_member_id
-                    )
+                assignment.staff_member = StaffMember.all_objects.select_for_update().get(
+                    pk=assignment.staff_member_id
                 )
                 ends_at = starts_at + timedelta(minutes=revision.duration_minutes)
                 report = scheduling.find_overlaps(
@@ -862,9 +892,7 @@ def _materialize_individual_date(
                     program_block=block,
                     staff_availability_override=assignment.override_availability,
                     staff_availability_override_reason=(
-                        assignment.override_reason
-                        if assignment.override_availability
-                        else ""
+                        assignment.override_reason if assignment.override_availability else ""
                     ),
                     admin_note="Создано единым materializer серии.",
                 )
@@ -872,6 +900,16 @@ def _materialize_individual_date(
                     ProgramBlock.objects.filter(pk=block.pk).update(
                         status=ProgramBlock.Status.SCHEDULED,
                         updated_at=timezone.now(),
+                    )
+                if retry_run and retry_target:
+                    return (
+                        series_revisions.record_retry_result(
+                            retry_run,
+                            retry_target,
+                            appointment=appointment,
+                            outcome=AppointmentSeriesOccurrence.Outcome.CREATED,
+                        ),
+                        True,
                     )
                 return (
                     AppointmentSeriesOccurrence.objects.create(
@@ -884,6 +922,13 @@ def _materialize_individual_date(
                     True,
                 )
     except _SkipOccurrence as exc:
+        if retry_run and retry_target:
+            return _record_retry_skipped(
+                retry_run,
+                retry_target,
+                code=exc.code,
+                reason=exc.reason,
+            )
         return _record_skipped(
             series,
             starts_at,
@@ -891,18 +936,30 @@ def _materialize_individual_date(
             reason=exc.reason,
             actor=actor,
         )
-    except series_revisions.SeriesRevisionMismatch:
+    except (
+        series_revisions.SeriesRevisionMismatch,
+        series_revisions.SeriesRetryMismatch,
+    ):
         raise
     except (ValidationError, IntegrityError) as exc:
+        code = "stale_conflict"
+        reason = (
+            "Расписание изменилось во время создания: " + "; ".join(exc.messages)
+            if isinstance(exc, ValidationError)
+            else "Расписание изменилось во время создания; дата безопасно пропущена."
+        )
+        if retry_run and retry_target:
+            return _record_retry_skipped(
+                retry_run,
+                retry_target,
+                code=code,
+                reason=reason,
+            )
         return _record_skipped(
             series,
             starts_at,
-            code="stale_conflict",
-            reason=(
-                "Расписание изменилось во время создания: " + "; ".join(exc.messages)
-                if isinstance(exc, ValidationError)
-                else "Расписание изменилось во время создания; дата безопасно пропущена."
-            ),
+            code=code,
+            reason=reason,
             actor=actor,
         )
 
@@ -970,7 +1027,16 @@ def _materialize_one_date(
     *,
     actor: Any,
     require_current_projection: bool = True,
-) -> tuple[AppointmentSeriesOccurrence, bool]:
+    retry_run: AppointmentSeriesMaterializationRun | None = None,
+    retry_target: AppointmentSeriesRetryTarget | None = None,
+) -> tuple[
+    AppointmentSeriesOccurrence | AppointmentSeriesMaterializationResult,
+    bool,
+]:
+    if (retry_run is None) != (retry_target is None):
+        raise series_revisions.SeriesRetryMismatch(
+            "Retry-run и его зафиксированная цель должны передаваться вместе."
+        )
     try:
         with transaction.atomic():
             locked_series = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
@@ -980,10 +1046,14 @@ def _materialize_one_date(
                 raise series_revisions.SeriesRevisionMismatch(
                     "Редакция не относится к принятому запуску серии."
                 )
-            existing = AppointmentSeriesOccurrence.objects.filter(
-                series=locked_series,
-                scheduled_starts_at=starts_at,
-            ).first()
+            existing = (
+                retry_run.results.filter(scheduled_starts_at=starts_at).first()
+                if retry_run
+                else AppointmentSeriesOccurrence.objects.filter(
+                    series=locked_series,
+                    scheduled_starts_at=starts_at,
+                ).first()
+            )
             if existing:
                 return existing, False
 
@@ -995,9 +1065,7 @@ def _materialize_one_date(
                 ).order_by("position", "pk")
             )
             assignments = list(
-                revision.staff_assignments.select_related("staff_member").order_by(
-                    "pk"
-                )
+                revision.staff_assignments.select_related("staff_member").order_by("pk")
             )
             primary_assignments = [
                 assignment
@@ -1017,7 +1085,8 @@ def _materialize_one_date(
             with schedule_writes.lock_schedule_write(room_ids=[room_id]) as locked:
                 room = locked.room_for(room_id)
                 block_ids = sorted(
-                    participant.program_block_id for participant in participants
+                    participant.program_block_id
+                    for participant in participants
                     if participant.program_block_id
                 )
                 locked_blocks = list(
@@ -1027,7 +1096,9 @@ def _materialize_one_date(
                     .order_by("pk")
                 )
                 blocks_by_id = {block.pk: block for block in locked_blocks}
-                blocks = [blocks_by_id[participant.program_block_id] for participant in participants]
+                blocks = [
+                    blocks_by_id[participant.program_block_id] for participant in participants
+                ]
                 program_ids = sorted({block.program_id for block in blocks})
                 locked_programs = {
                     program.pk: program
@@ -1073,9 +1144,7 @@ def _materialize_one_date(
                 if limit_reason:
                     raise _SkipOccurrence(*limit_reason)
 
-                staff_ids = sorted(
-                    {assignment.staff_member_id for assignment in assignments}
-                )
+                staff_ids = sorted({assignment.staff_member_id for assignment in assignments})
                 locked_staff = {
                     staff.pk: staff
                     for staff in StaffMember.all_objects.select_for_update()
@@ -1133,9 +1202,7 @@ def _materialize_one_date(
                     program_block=primary.program_block,
                     staff_availability_override=primary_staff.override_availability,
                     staff_availability_override_reason=(
-                        primary_staff.override_reason
-                        if primary_staff.override_availability
-                        else ""
+                        primary_staff.override_reason if primary_staff.override_availability else ""
                     ),
                     admin_note="Создано из групповой серии программы.",
                 )
@@ -1169,6 +1236,16 @@ def _materialize_one_date(
                             status=ProgramBlock.Status.SCHEDULED,
                             updated_at=timezone.now(),
                         )
+                if retry_run and retry_target:
+                    return (
+                        series_revisions.record_retry_result(
+                            retry_run,
+                            retry_target,
+                            appointment=appointment,
+                            outcome=AppointmentSeriesOccurrence.Outcome.CREATED,
+                        ),
+                        True,
+                    )
                 return (
                     AppointmentSeriesOccurrence.objects.create(
                         series=locked_series,
@@ -1180,6 +1257,13 @@ def _materialize_one_date(
                     True,
                 )
     except _SkipOccurrence as exc:
+        if retry_run and retry_target:
+            return _record_retry_skipped(
+                retry_run,
+                retry_target,
+                code=exc.code,
+                reason=exc.reason,
+            )
         return _record_skipped(
             series,
             starts_at,
@@ -1187,16 +1271,30 @@ def _materialize_one_date(
             reason=exc.reason,
             actor=actor,
         )
-    except series_revisions.SeriesRevisionMismatch:
+    except (
+        series_revisions.SeriesRevisionMismatch,
+        series_revisions.SeriesRetryMismatch,
+    ):
         raise
     except (ValidationError, IntegrityError) as exc:
+        code = "stale_conflict"
+        reason = (
+            "Расписание изменилось во время создания: " + "; ".join(exc.messages)
+            if isinstance(exc, ValidationError)
+            else "Расписание изменилось во время создания; дата безопасно пропущена."
+        )
+        if retry_run and retry_target:
+            return _record_retry_skipped(
+                retry_run,
+                retry_target,
+                code=code,
+                reason=reason,
+            )
         return _record_skipped(
             series,
             starts_at,
-            code="stale_conflict",
-            reason="Расписание изменилось во время создания: " + "; ".join(exc.messages)
-            if isinstance(exc, ValidationError)
-            else "Расписание изменилось во время создания; дата безопасно пропущена.",
+            code=code,
+            reason=reason,
             actor=actor,
         )
 
@@ -1265,7 +1363,7 @@ def materialize_group_series(
     )
 
 
-def _missing_run_result(
+def _materialization_run_result(
     series: AppointmentSeries,
     run: AppointmentSeriesMaterializationRun,
     *,
@@ -1396,10 +1494,7 @@ def materialize_missing_series(
         if resolved_to < resolved_from:
             raise ValidationError("В выбранном диапазоне нет дат текущей редакции.")
 
-    if (
-        revision.materialization_mode
-        != AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS
-    ):
+    if revision.materialization_mode != AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS:
         raise ValidationError(
             "Режим missing_only для join-серии требует явного списка целевых занятий."
         )
@@ -1431,14 +1526,12 @@ def materialize_missing_series(
             reason=reason,
         )
     elif run.expected_result_count != len(starts):
-        raise ValidationError(
-            "Сохраненный запуск не совпадает с расписанием immutable-редакции."
-        )
+        raise ValidationError("Сохраненный запуск не совпадает с расписанием immutable-редакции.")
     completed = run.events.filter(
         event_type=AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
     ).first()
     if completed:
-        return _missing_run_result(current, run, reused_run=not created)
+        return _materialization_run_result(current, run, reused_run=not created)
 
     try:
         resumed_or_completed = series_revisions.resume_run(run)
@@ -1447,7 +1540,7 @@ def materialize_missing_series(
             and resumed_or_completed.event_type
             == AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
         ):
-            return _missing_run_result(current, run, reused_run=not created)
+            return _materialization_run_result(current, run, reused_run=not created)
         for starts_at in starts:
             _materialize_missing_date(
                 current,
@@ -1461,20 +1554,184 @@ def materialize_missing_series(
         try:
             event = series_revisions.interrupt_run(
                 run,
+                reason=("Выполнение запуска прервано после ошибки " f"{type(exc).__name__}."),
+            )
+        except Exception as audit_exc:
+            raise audit_exc from exc
+        if event.event_type == AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED:
+            return _materialization_run_result(current, run, reused_run=not created)
+        raise
+    return _materialization_run_result(current, run, reused_run=not created)
+
+
+@transaction.atomic
+def _materialize_retry_date(
+    series: AppointmentSeries,
+    revision: AppointmentSeriesRevision,
+    run: AppointmentSeriesMaterializationRun,
+    target: AppointmentSeriesRetryTarget,
+    *,
+    actor: Any,
+) -> AppointmentSeriesMaterializationResult:
+    locked_series = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
+    locked_run = AppointmentSeriesMaterializationRun.objects.select_for_update().get(
+        pk=run.pk
+    )
+    locked_target = (
+        AppointmentSeriesRetryTarget.objects.select_for_update()
+        .select_related("chain_head_result", "effective_skipped_result")
+        .get(pk=target.pk)
+    )
+    if (
+        locked_run.series_id != locked_series.pk
+        or locked_run.revision_id != revision.pk
+        or revision.series_id != locked_series.pk
+        or locked_run.mode != AppointmentSeriesMaterializationRun.Mode.RETRY_SKIPPED
+        or locked_target.run_id != locked_run.pk
+    ):
+        raise series_revisions.SeriesRetryMismatch(
+            "Retry-цель не относится к принятому запуску и редакции серии."
+        )
+    existing = locked_run.results.filter(
+        scheduled_starts_at=locked_target.scheduled_starts_at
+    ).first()
+    if existing:
+        return existing
+
+    if revision.session_type == Appointment.SessionType.INDIVIDUAL:
+        result, _ = _materialize_individual_date(
+            locked_series,
+            revision,
+            locked_target.scheduled_starts_at,
+            actor=actor,
+            require_current_projection=False,
+            retry_run=locked_run,
+            retry_target=locked_target,
+        )
+    elif revision.session_type == Appointment.SessionType.GROUP:
+        result, _ = _materialize_one_date(
+            locked_series,
+            revision,
+            locked_target.scheduled_starts_at,
+            actor=actor,
+            require_current_projection=False,
+            retry_run=locked_run,
+            retry_target=locked_target,
+        )
+    else:
+        raise ValidationError("Редакция серии содержит неизвестный тип занятия.")
+    if not isinstance(result, AppointmentSeriesMaterializationResult):
+        raise series_revisions.SeriesRetryMismatch(
+            "Повторный запуск не записал канонический результат попытки."
+        )
+    return result
+
+
+def materialize_retry_skipped_series(
+    series: AppointmentSeries,
+    *,
+    operation_key: UUID,
+    actor: Any,
+    reason: str,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> SeriesMaterializationRunResult:
+    series_revisions.require_operator_role(actor)
+    run = series_revisions.get_existing_retry_run(
+        series,
+        operation_key=operation_key,
+        actor=actor,
+        date_from=date_from,
+        date_to=date_to,
+        reason=reason,
+    )
+    created = False
+    if run is not None:
+        current = run.series
+        revision = run.revision
+    else:
+        current = (
+            AppointmentSeries.objects.select_related("current_revision")
+            .filter(pk=series.pk)
+            .first()
+        )
+        if current is None:
+            raise ValidationError("Серия не найдена.")
+        if current.status != AppointmentSeries.Status.ACTIVE:
+            raise ValidationError(
+                "Повторять пропущенные даты можно только для активной серии."
+            )
+        if current.materialization_mode != (
+            AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS
+        ):
+            raise ValidationError(
+                "Повтор пропущенных дат поддерживается только для создания занятий."
+            )
+        revision, resolved_from, resolved_to = series_revisions.resolve_retry_revision_range(
+            current,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        run, created = series_revisions.get_or_create_retry_run(
+            current,
+            revision,
+            operation_key=operation_key,
+            actor=actor,
+            date_from=resolved_from,
+            date_to=resolved_to,
+            reason=reason,
+        )
+
+    targets = list(
+        run.retry_targets.select_related(
+            "chain_head_result",
+            "effective_skipped_result",
+        ).order_by("scheduled_starts_at", "pk")
+    )
+    if len(targets) != run.expected_result_count:
+        raise series_revisions.SeriesRetryMismatch(
+            "Сохраненный набор retry-целей не совпадает с ожидаемым количеством."
+        )
+    completed = run.events.filter(
+        event_type=AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
+    ).first()
+    if completed:
+        return _materialization_run_result(current, run, reused_run=not created)
+
+    try:
+        resumed_or_completed = series_revisions.resume_run(run)
+        if (
+            resumed_or_completed
+            and resumed_or_completed.event_type
+            == AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
+        ):
+            return _materialization_run_result(current, run, reused_run=not created)
+        for target in targets:
+            _materialize_retry_date(
+                current,
+                revision,
+                run,
+                target,
+                actor=actor,
+            )
+        series_revisions.complete_run(run)
+    except Exception as exc:
+        try:
+            event = series_revisions.interrupt_run(
+                run,
                 reason=(
-                    "Выполнение запуска прервано после ошибки "
+                    "Выполнение retry_skipped прервано после ошибки "
                     f"{type(exc).__name__}."
                 ),
             )
         except Exception as audit_exc:
             raise audit_exc from exc
-        if (
-            event.event_type
-            == AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
+        if event.event_type == (
+            AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
         ):
-            return _missing_run_result(current, run, reused_run=not created)
+            return _materialization_run_result(current, run, reused_run=not created)
         raise
-    return _missing_run_result(current, run, reused_run=not created)
+    return _materialization_run_result(current, run, reused_run=not created)
 
 
 def create_group_series(
