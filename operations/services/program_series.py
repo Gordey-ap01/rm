@@ -789,6 +789,7 @@ def _materialize_individual_date(
             )
             if existing:
                 return existing, False
+            series_revisions.assert_materialization_not_stopped(locked_series)
 
             participants = list(
                 revision.participants.select_related(
@@ -937,6 +938,7 @@ def _materialize_individual_date(
             actor=actor,
         )
     except (
+        series_revisions.SeriesMaterializationStopped,
         series_revisions.SeriesRevisionMismatch,
         series_revisions.SeriesRetryMismatch,
     ):
@@ -970,8 +972,6 @@ def materialize_individual_series(
     actor: Any,
 ) -> SeriesMaterializationResult:
     series_revisions.require_operator_role(actor)
-    if series.status != AppointmentSeries.Status.ACTIVE:
-        raise ValidationError("Создавать занятия можно только для активной серии.")
     revision = _ensure_individual_revision(series, actor=actor)
     if revision.event_type == AppointmentSeriesRevision.EventType.FUTURE_COMPOSITION:
         raise ValidationError(
@@ -993,6 +993,12 @@ def materialize_individual_series(
         actor=actor,
         expected_result_count=len(starts),
     )
+    resumed_or_completed = series_revisions.resume_run(run)
+    was_resumed = bool(
+        resumed_or_completed
+        and resumed_or_completed.event_type
+        == AppointmentSeriesMaterializationRunEvent.EventType.RESUMED
+    )
     created_count = 0
     skipped_count = 0
     unchanged_count = 0
@@ -1011,7 +1017,11 @@ def materialize_individual_series(
             created_count += 1
         else:
             skipped_count += 1
-    series_revisions.complete_run(run)
+    completed_event = series_revisions.complete_run(run)
+    if was_resumed:
+        created_count = completed_event.created_count
+        skipped_count = completed_event.skipped_count
+        unchanged_count = completed_event.unchanged_count
     return SeriesMaterializationResult(
         series=series,
         created_count=created_count,
@@ -1056,6 +1066,7 @@ def _materialize_one_date(
             )
             if existing:
                 return existing, False
+            series_revisions.assert_materialization_not_stopped(locked_series)
 
             participants = list(
                 revision.participants.select_related(
@@ -1272,6 +1283,7 @@ def _materialize_one_date(
             actor=actor,
         )
     except (
+        series_revisions.SeriesMaterializationStopped,
         series_revisions.SeriesRevisionMismatch,
         series_revisions.SeriesRetryMismatch,
     ):
@@ -1305,8 +1317,6 @@ def materialize_group_series(
     actor: Any = None,
 ) -> GroupSeriesCreateResult:
     series_revisions.require_operator_role(actor)
-    if series.status != AppointmentSeries.Status.ACTIVE:
-        raise ValidationError("Создавать занятия можно только для активной серии.")
     if series.session_type != Appointment.SessionType.GROUP:
         raise ValidationError("Этот сервис предназначен для групповой серии.")
     if (
@@ -1315,9 +1325,6 @@ def materialize_group_series(
     ):
         raise ValidationError("Эта серия присоединяет к существующим занятиям.")
 
-    created_count = 0
-    skipped_count = 0
-    unchanged_count = 0
     revision, _ = series_revisions.ensure_initial_revision(series, actor=actor)
     if revision.event_type == AppointmentSeriesRevision.EventType.FUTURE_COMPOSITION:
         raise ValidationError(
@@ -1339,6 +1346,15 @@ def materialize_group_series(
         actor=actor,
         expected_result_count=len(starts),
     )
+    resumed_or_completed = series_revisions.resume_run(run)
+    was_resumed = bool(
+        resumed_or_completed
+        and resumed_or_completed.event_type
+        == AppointmentSeriesMaterializationRunEvent.EventType.RESUMED
+    )
+    created_count = 0
+    skipped_count = 0
+    unchanged_count = 0
     for starts_at in starts:
         with transaction.atomic():
             occurrence, created = _materialize_one_date(
@@ -1354,7 +1370,11 @@ def materialize_group_series(
             created_count += 1
         else:
             skipped_count += 1
-    series_revisions.complete_run(run)
+    completed_event = series_revisions.complete_run(run)
+    if was_resumed:
+        created_count = completed_event.created_count
+        skipped_count = completed_event.skipped_count
+        unchanged_count = completed_event.unchanged_count
     return GroupSeriesCreateResult(
         series=series,
         created_count=created_count,
@@ -1408,6 +1428,7 @@ def _materialize_missing_date(
     existing = run.results.filter(scheduled_starts_at=starts_at).first()
     if existing:
         return existing
+    series_revisions.assert_materialization_not_stopped(locked_series)
     if locked_series.materialization_results.filter(
         scheduled_starts_at=starts_at
     ).exists():
@@ -1597,6 +1618,7 @@ def _materialize_retry_date(
     ).first()
     if existing:
         return existing
+    series_revisions.assert_materialization_not_stopped(locked_series)
 
     if revision.session_type == Appointment.SessionType.INDIVIDUAL:
         result, _ = _materialize_individual_date(
@@ -2086,6 +2108,7 @@ def _join_one_appointment(
             ).first()
             if existing:
                 return existing, False
+            series_revisions.assert_materialization_not_stopped(locked_series)
             if (
                 locked_series.materialization_mode
                 != AppointmentSeries.MaterializationMode.JOIN_EXISTING
@@ -2221,7 +2244,10 @@ def _join_one_appointment(
             reason=exc.reason,
             actor=actor,
         )
-    except series_revisions.SeriesRevisionMismatch:
+    except (
+        series_revisions.SeriesMaterializationStopped,
+        series_revisions.SeriesRevisionMismatch,
+    ):
         raise
     except Appointment.DoesNotExist:
         return _record_skipped(
@@ -2283,6 +2309,12 @@ def join_program_block_to_groups(
         expected_result_count=len(selected),
         target_appointment_ids=[appointment.pk for appointment in selected],
     )
+    resumed_or_completed = series_revisions.resume_run(run)
+    was_resumed = bool(
+        resumed_or_completed
+        and resumed_or_completed.event_type
+        == AppointmentSeriesMaterializationRunEvent.EventType.RESUMED
+    )
     joined_count = 0
     skipped_count = 0
     unchanged_count = 0
@@ -2301,7 +2333,11 @@ def join_program_block_to_groups(
             joined_count += 1
         else:
             skipped_count += 1
-    series_revisions.complete_run(run)
+    completed_event = series_revisions.complete_run(run)
+    if was_resumed:
+        joined_count = completed_event.joined_count
+        skipped_count = completed_event.skipped_count
+        unchanged_count = completed_event.unchanged_count
     return GroupJoinCreateResult(
         series=series,
         joined_count=joined_count,

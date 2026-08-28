@@ -4862,6 +4862,210 @@ class AppointmentSeriesRetryTarget(TimeStampedModel):
         return f"{self.run} / {local_start:%d.%m.%Y %H:%M}"
 
 
+class AppointmentSeriesLifecycleEvent(TimeStampedModel):
+    class EventType(models.TextChoices):
+        STOP_MATERIALIZATION = "stop_materialization", "Остановить новые запуски"
+        RESUME_MATERIALIZATION = "resume_materialization", "Возобновить новые запуски"
+        CANCEL_FUTURE_UNSTARTED = (
+            "cancel_future_unstarted",
+            "Отменить будущие неначавшиеся занятия",
+        )
+        WITHDRAW_FUTURE_JOINED_PARTICIPATIONS = (
+            "withdraw_future_joined_participations",
+            "Снять будущие присоединенные участия",
+        )
+
+    class ActorRole(models.TextChoices):
+        DIRECTOR = "director", "Руководитель"
+        ADMINISTRATOR = "administrator", "Администратор"
+
+    series = models.ForeignKey(
+        AppointmentSeries,
+        verbose_name="серия",
+        on_delete=models.PROTECT,
+        related_name="lifecycle_events",
+    )
+    operation_key = models.UUIDField(
+        "ключ операции",
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+    )
+    fingerprint = models.CharField("отпечаток операции", max_length=64)
+    event_type = models.CharField("событие", max_length=50, choices=EventType.choices)
+    event_number = models.PositiveIntegerField("номер события")
+    status_from = models.CharField(
+        "статус был",
+        max_length=30,
+        choices=AppointmentSeries.Status.choices,
+    )
+    status_to = models.CharField(
+        "статус стал",
+        max_length=30,
+        choices=AppointmentSeries.Status.choices,
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="действие выполнил",
+        on_delete=models.PROTECT,
+        related_name="appointment_series_lifecycle_events",
+    )
+    actor_role_snapshot = models.CharField(
+        "роль на момент действия",
+        max_length=20,
+        choices=ActorRole.choices,
+    )
+    reason = models.TextField("основание")
+    supersedes = models.ForeignKey(
+        "self",
+        verbose_name="переопределяет событие",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="superseded_by",
+    )
+    occurred_at = models.DateTimeField("время события", default=timezone.now, db_index=True)
+
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        verbose_name = "событие жизненного цикла серии"
+        verbose_name_plural = "события жизненного цикла серий"
+        ordering = ["series_id", "event_number", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["series", "event_number"],
+                name="unique_series_lifecycle_event_number",
+            ),
+            models.CheckConstraint(
+                condition=Q(event_number__gte=1),
+                name="series_lifecycle_event_number_positive",
+            ),
+            models.CheckConstraint(
+                condition=~Q(reason=""),
+                name="series_lifecycle_reason_required",
+            ),
+            models.CheckConstraint(
+                condition=Q(actor_role_snapshot__in=["director", "administrator"]),
+                name="series_lifecycle_operator_role",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        event_type="resume_materialization",
+                        status_from="cancelled",
+                        status_to="active",
+                        actor_role_snapshot="director",
+                        supersedes__isnull=False,
+                    )
+                    | Q(
+                        event_type__in=[
+                            "stop_materialization",
+                            "cancel_future_unstarted",
+                            "withdraw_future_joined_participations",
+                        ],
+                        status_from="active",
+                        status_to="cancelled",
+                        supersedes__isnull=True,
+                    )
+                ),
+                name="series_lifecycle_valid_transition",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["series", "-occurred_at"]),
+            models.Index(fields=["event_type", "-occurred_at"]),
+        ]
+
+    def clean(self) -> None:
+        self.reason = normalize_immutable_reason(self.reason)
+        errors: dict[str, str] = {}
+        if len(self.reason) < 5:
+            errors["reason"] = "Укажите основание действия не короче 5 символов."
+        if len(self.fingerprint or "") != 64:
+            errors["fingerprint"] = "Отпечаток lifecycle-операции должен быть SHA-256."
+        if (self.event_number or 0) < 1:
+            errors["event_number"] = "Номер lifecycle-события должен быть положительным."
+
+        if self.event_type == self.EventType.RESUME_MATERIALIZATION:
+            if self.actor_role_snapshot != self.ActorRole.DIRECTOR:
+                errors["actor_role_snapshot"] = (
+                    "Возобновить materialization может только руководитель."
+                )
+            if not self.supersedes_id:
+                errors["supersedes"] = "Возобновление должно ссылаться на остановившее событие."
+            elif self.supersedes.series_id != self.series_id:
+                errors["supersedes"] = "Переопределяемое событие должно относиться к той же серии."
+            elif self.supersedes.event_type == self.EventType.RESUME_MATERIALIZATION:
+                errors["supersedes"] = "Возобновление должно переопределять остановку серии."
+        elif self.supersedes_id:
+            errors["supersedes"] = "Операционная остановка начинает новую цепочку решения."
+
+        previous = None
+        if self.series_id:
+            current_status = (
+                AppointmentSeries.objects.filter(pk=self.series_id)
+                .values_list("status", flat=True)
+                .first()
+            )
+            if current_status is not None and self.status_from != current_status:
+                errors["status_from"] = (
+                    "Lifecycle-событие должно начинаться из текущего статуса серии."
+                )
+            previous = (
+                type(self)
+                .objects.filter(series_id=self.series_id)
+                .order_by("-event_number", "-pk")
+                .first()
+            )
+        if previous is None:
+            if self.event_number != 1:
+                errors["event_number"] = "Первое lifecycle-событие должно иметь номер 1."
+        else:
+            if self.event_number != previous.event_number + 1:
+                errors["event_number"] = (
+                    "Номер lifecycle-события должен непосредственно продолжать журнал."
+                )
+            if self.status_from != previous.status_to:
+                errors["status_from"] = (
+                    "Переход должен продолжать итоговый статус предыдущего события."
+                )
+            if self.occurred_at and self.occurred_at < previous.occurred_at:
+                errors["occurred_at"] = (
+                    "Время lifecycle-события не может предшествовать предыдущему событию."
+                )
+            if (
+                self.event_type == self.EventType.RESUME_MATERIALIZATION
+                and self.supersedes_id != previous.pk
+            ):
+                errors["supersedes"] = (
+                    "Возобновление должно переопределять последнее событие серии."
+                )
+            if (
+                self.event_type != self.EventType.RESUME_MATERIALIZATION
+                and self.actor_role_snapshot == self.ActorRole.ADMINISTRATOR
+                and previous.actor_role_snapshot == self.ActorRole.DIRECTOR
+            ):
+                errors["actor_role_snapshot"] = (
+                    "Администратор не может отменить последнее решение руководителя."
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Событие жизненного цикла серии нельзя изменять.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Событие жизненного цикла серии нельзя удалять.")
+
+    def __str__(self) -> str:
+        return f"{self.series} / {self.get_event_type_display()} / {self.occurred_at:%d.%m.%Y %H:%M}"
+
+
 def room_usage_counts(appointment_qs: QuerySet[Appointment]) -> tuple[int, int]:
     """Count room usage across snapshot rows plus legacy fallback appointments."""
     appointment_ids = list(appointment_qs.values_list("id", flat=True))

@@ -13,7 +13,9 @@ materializer индивидуальных/групповых/create/join сер�
 локально принят: атомарная редакция только будущего состава. Следующий кодовый
 подсрез - 61C-4: expand-gate `0060` и `missing_only` реализованы и локально
 приняты; expand `0061` и сервисное исполнение `retry_skipped` реализованы и
-локально приняты. Следующий подсрез - stop/cancel/withdraw, затем рабочий 61D UI.
+локально приняты. 61C-4b/`0062` реализует append-only stop/resume,
+директорское возобновление и продолжение принятого run. Следующий подсрез -
+61C-4c cancel, затем 61C-4d withdraw и рабочий 61D UI.
 Production preflight, health, проверяемый backup/restore, цельная
 browser-приемка рабочих ролей, persisted transfer/conversion и приемка
 грантового отчета завершены. Безопасный жизненный цикл грантового плана по
@@ -111,6 +113,19 @@ MVCC-временем данных и цепочкой исправлений. 5
   PostgreSQL races и приоритет над `missing_only`. Миграция для сервисного
   подсреза не требуется. Полный актуальный SQLite regression:
   `906 passed, 72 skipped`; пропуски относятся к PostgreSQL-only контрактам.
+- 61C-4b добавляет `AppointmentSeriesLifecycleEvent` и миграцию `0062`:
+  stop доступен администратору/руководителю, а resume только руководителю.
+  События нумеруются, неизменяемы, защищены operation key/fingerprint,
+  PostgreSQL insert/projection triggers и fail-closed reverse. Stop не меняет
+  Appointment, участия или ledger, но прерывает незавершенные runs; после
+  директорского resume тот же run продолжает только отсутствующие результаты.
+  Повтор завершенной исходной операции остается идемпотентным даже после stop.
+- Приемка 61C-4b: `test_program_series.py` прошел на SQLite `72 passed,
+  32 skipped` и PostgreSQL 17 `104 passed`; полный SQLite regression -
+  `916 passed, 75 skipped`. Ruff, Django check, migration dry-run и
+  `git diff --check` прошли; полный PostgreSQL 17 regression - `991 passed`
+  без пропусков. Единственная warning относится к внешней миграции
+  `django_tasks`, не к коду проекта.
 - Приемка frozen retry targets `0061`: весь `test_program_series.py` прошел на
   SQLite `54 passed, 27 skipped` и PostgreSQL 17 `81 passed`. Отдельно проверены
   fail-closed preflight старых retry runs, deferred count, immutable/reverse
@@ -485,7 +500,7 @@ MVCC-временем данных и цепочкой исправлений. 5
    подключить retry/cancel к рабочему интерфейсу администратора.
 2. Закрыть 61D: паузу/завершение, переходы программы/каскада, registry,
    руководительские отчеты и полную ролевую приемку серий.
-3. Перед production migration chain `0048-0061` выполнить backup v2, `--strict`
+3. Перед production migration chain `0048-0062` выполнить backup v2, `--strict`
    preflight, временно закрыть грантовые записи и подготовить совместимый
    rollback-релиз. После появления истории `0053`/`0054` и series history `0055-0061`
    эти миграции не откатываются:
@@ -519,7 +534,7 @@ MVCC-временем данных и цепочкой исправлений. 5
 - offsite backup, monitoring/alerting и реальный SMTP;
 - регулярный targeted browser smoke и приемка на физическом телефоне;
 - приемка на реальных обезличенных сценариях центра;
-- production cutover migration chain `0048-0061` после backup v2/preflight.
+- production cutover migration chain `0048-0062` после backup v2/preflight.
 
 ## Риски и запреты
 

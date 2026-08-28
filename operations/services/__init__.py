@@ -27,6 +27,7 @@ from . import (
     reports,
     rescheduling_plans,
     scheduling,
+    series_lifecycle,
     time_off_decisions,
 )
 
@@ -53,5 +54,6 @@ __all__ = [
     "reports",
     "rescheduling_plans",
     "scheduling",
+    "series_lifecycle",
     "time_off_decisions",
 ]

@@ -196,8 +196,10 @@
 реализован и локально принят. До 61C-4 прежний `initial` materializer
 fail-closed отклоняет будущую редакцию. Expand-gate `0060` для forward-only
 cross-revision attempt chain и `missing_only` service локально приняты. Expand
-`0061` и сервисное исполнение `retry_skipped` локально приняты. Следующий
-продуктовый подсрез - 61C-4b-d stop/cancel/withdraw, затем рабочий 61D UI.
+`0061` и сервисное исполнение `retry_skipped` локально приняты. 61C-4b и
+аддитивная миграция `0062` реализуют append-only stop/resume с приоритетом
+руководителя и продолжением принятого run. Следующий продуктовый подсрез -
+61C-4c cancel, затем 61C-4d withdraw и рабочий 61D UI.
 
 #### 61C-1. Аддитивная модель редакций и запусков
 
@@ -372,6 +374,24 @@ cross-revision attempt chain и `missing_only` service локально прин
   роль вычисляются сервисом; anonymous/специалист не проходят service-level
   проверку. Переопределение может снова разрешить materialization, но не
   восстанавливает отмененные занятия или участия скрытым обновлением.
+
+Декомпозиция остатка 61C-4:
+
+- 61C-4b вводит append-only `AppointmentSeriesLifecycleEvent` для
+  `stop_materialization/resume_materialization`. Событие хранит operation key,
+  fingerprint, actor/роль, основание, переход статуса и ссылку `supersedes` для
+  руководительского возобновления. Проекцией разрешения новых запусков остается
+  статус корня: `active` разрешает, `cancelled` запрещает;
+- operation key разрешается до проверки изменяемого статуса. Stop и принятие
+  нового run сериализуются первым row lock корня. Каждая еще не обработанная
+  дата принятого run также сначала блокирует корень: после stop она оставляет
+  durable `interrupted`, а после отдельного директорского resume тот же run
+  продолжает только отсутствующие результаты;
+- 61C-4c добавляет нормализованные результаты `cancel_future_unstarted` и
+  отменяет только безопасно принадлежащие create-серии будущие занятия;
+- 61C-4d тем же журналом и результатами реализует
+  `withdraw_future_joined_participations`, сохраняя общий Appointment. До 4d
+  массово менять `AppointmentParticipant` из join-серии запрещено.
 
 #### Acceptance criteria 61C
 

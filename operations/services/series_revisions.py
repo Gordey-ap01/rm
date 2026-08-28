@@ -41,8 +41,22 @@ from operations.services.authority import AuthorityRole, authority_role
 
 class SeriesRevisionMismatch(ValidationError):
     """The mutable root projection no longer matches its immutable revision."""
+
+
+class SeriesMaterializationStopped(ValidationError):
+    """A lifecycle event stopped an accepted run before its next atomic result."""
+
+
 class SeriesRetryMismatch(ValidationError):
     """A frozen retry target no longer matches the append-only result chain."""
+
+
+def assert_materialization_not_stopped(series: AppointmentSeries) -> None:
+    latest_event = series.lifecycle_events.order_by("-event_number", "-pk").first()
+    if latest_event and latest_event.status_to == AppointmentSeries.Status.CANCELLED:
+        raise SeriesMaterializationStopped(
+            "Принятый запуск нельзя продолжить, пока materialization серии остановлен."
+        )
 
 
 
@@ -605,11 +619,6 @@ def get_or_create_initial_run(
     )
     fingerprint = canonical_fingerprint(payload)
     locked = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
-    if locked.status != AppointmentSeries.Status.ACTIVE:
-        raise ValidationError("Создавать занятия можно только для активной серии.")
-    if locked.current_revision_id != revision.pk or revision.series_id != locked.pk:
-        raise ValidationError("Первый запуск должен использовать текущую редакцию серии.")
-
     existing = AppointmentSeriesMaterializationRun.objects.filter(
         operation_key=operation_key
     ).first()
@@ -636,6 +645,11 @@ def get_or_create_initial_run(
         ):
             raise ValidationError("Ключ запуска уже использован для другой операции.")
         return existing, False
+    assert_materialization_not_stopped(locked)
+    if locked.status != AppointmentSeries.Status.ACTIVE:
+        raise ValidationError("Создавать занятия можно только для активной серии.")
+    if locked.current_revision_id != revision.pk or revision.series_id != locked.pk:
+        raise ValidationError("Первый запуск должен использовать текущую редакцию серии.")
     if AppointmentSeriesMaterializationRun.objects.filter(
         revision=revision,
         mode__in=[
@@ -799,6 +813,7 @@ def get_or_create_missing_run(
                 "Ключ запуска уже использован для другой операции материализации."
             )
         return existing, False
+    assert_materialization_not_stopped(locked)
     if locked.status != AppointmentSeries.Status.ACTIVE:
         raise ValidationError("Дополнять расписание можно только для активной серии.")
     if locked.current_revision_id != revision.pk or revision.series_id != locked.pk:
@@ -1150,6 +1165,7 @@ def get_or_create_retry_run(
             False,
         )
 
+    assert_materialization_not_stopped(locked)
     if locked.status != AppointmentSeries.Status.ACTIVE:
         raise ValidationError("Повторять пропущенные даты можно только для активной серии.")
     applicable_revision, resolved_from, resolved_to = resolve_retry_revision_range(
@@ -1413,14 +1429,19 @@ def _assert_run_accepts_results(
 def resume_run(
     run: AppointmentSeriesMaterializationRun,
 ) -> AppointmentSeriesMaterializationRunEvent | None:
+    locked_series = AppointmentSeries.objects.select_for_update().get(pk=run.series_id)
     locked_run = AppointmentSeriesMaterializationRun.objects.select_for_update().get(
         pk=run.pk
     )
     latest = locked_run.events.order_by("-event_number").first()
-    if latest is None or latest.event_type in {
-        AppointmentSeriesMaterializationRunEvent.EventType.RESUMED,
-        AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED,
-    }:
+    if latest and latest.event_type == (
+        AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED
+    ):
+        return latest
+    assert_materialization_not_stopped(locked_series)
+    if latest is None or latest.event_type == (
+        AppointmentSeriesMaterializationRunEvent.EventType.RESUMED
+    ):
         return latest
     return AppointmentSeriesMaterializationRunEvent.objects.create(
         run=locked_run,
@@ -1436,6 +1457,7 @@ def interrupt_run(
     *,
     reason: str,
 ) -> AppointmentSeriesMaterializationRunEvent:
+    AppointmentSeries.objects.select_for_update().get(pk=run.series_id)
     locked_run = AppointmentSeriesMaterializationRun.objects.select_for_update().get(
         pk=run.pk
     )
@@ -1559,6 +1581,7 @@ def record_compatibility_result(
 def complete_run(
     run: AppointmentSeriesMaterializationRun,
 ) -> AppointmentSeriesMaterializationRunEvent:
+    AppointmentSeries.objects.select_for_update().get(pk=run.series_id)
     locked_run = AppointmentSeriesMaterializationRun.objects.select_for_update().get(
         pk=run.pk
     )

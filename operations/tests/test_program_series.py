@@ -22,6 +22,7 @@ from operations.models import (
     Appointment,
     AppointmentParticipant,
     AppointmentSeries,
+    AppointmentSeriesLifecycleEvent,
     AppointmentSeriesMaterializationResult,
     AppointmentSeriesMaterializationRun,
     AppointmentSeriesMaterializationRunEvent,
@@ -47,6 +48,7 @@ from operations.services import (
     billing as billing_svc,
     program_series,
     program_wizard,
+    series_lifecycle,
     series_revisions,
 )
 
@@ -2632,6 +2634,477 @@ class GroupProgramSeriesTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
 
+    def test_stop_materialization_is_idempotent_and_preserves_existing_facts(self):
+        operator = User.objects.create_user(
+            "series-lifecycle-operator",
+            password="x",
+            is_staff=True,
+        )
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        participant_ids = list(appointment.participants.order_by("pk").values_list("pk", flat=True))
+        operation_key = uuid4()
+
+        stopped = series_lifecycle.stop_materialization(
+            materialized.series,
+            operation_key=operation_key,
+            actor=operator,
+            reason="Расписание серии остановлено администратором.",
+        )
+        replay = series_lifecycle.stop_materialization(
+            materialized.series,
+            operation_key=operation_key,
+            actor=operator,
+            reason="Расписание серии остановлено администратором.",
+        )
+
+        appointment.refresh_from_db()
+        self.assertEqual(stopped.series.status, AppointmentSeries.Status.CANCELLED)
+        self.assertFalse(stopped.reused_event)
+        self.assertEqual(stopped.event.event_number, 1)
+        self.assertTrue(replay.reused_event)
+        self.assertEqual(replay.event, stopped.event)
+        self.assertEqual(
+            stopped.event.actor_role_snapshot,
+            AppointmentSeriesLifecycleEvent.ActorRole.ADMINISTRATOR,
+        )
+        self.assertEqual(appointment.status, Appointment.Status.PROPOSED)
+        self.assertEqual(
+            list(appointment.participants.order_by("pk").values_list("pk", flat=True)),
+            participant_ids,
+        )
+        with self.assertRaises(series_lifecycle.SeriesLifecycleMismatch):
+            series_lifecycle.stop_materialization(
+                materialized.series,
+                operation_key=operation_key,
+                actor=operator,
+                reason="Другое основание остановки серии.",
+            )
+
+    def test_completed_initial_operation_replays_after_series_stop(self):
+        operation_key = uuid4()
+        preview = self.preview(end_date=self.start_date)
+        materialized = program_series.create_group_series(
+            preview,
+            operation_key=operation_key,
+            actor=self.admin,
+        )
+        stopped = series_lifecycle.stop_materialization(
+            materialized.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Руководитель остановил новые запуски серии.",
+        )
+
+        replay = program_series.create_group_series(
+            preview,
+            operation_key=operation_key,
+            actor=self.admin,
+        )
+
+        self.assertEqual(stopped.series.status, AppointmentSeries.Status.CANCELLED)
+        self.assertTrue(replay.reused_series)
+        self.assertEqual(replay.created_count, 0)
+        self.assertEqual(replay.skipped_count, 0)
+        self.assertEqual(replay.unchanged_count, 1)
+        self.assertEqual(replay.series.appointments.count(), 1)
+        self.assertEqual(replay.series.materialization_runs.count(), 1)
+
+    def test_director_lifecycle_decision_has_priority_over_administrator(self):
+        operator = User.objects.create_user(
+            "series-priority-operator",
+            password="x",
+            is_staff=True,
+        )
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        admin_operation_key = uuid4()
+        admin_reason = "Администратор остановил новые запуски серии."
+        stopped = series_lifecycle.stop_materialization(
+            materialized.series,
+            operation_key=admin_operation_key,
+            actor=operator,
+            reason=admin_reason,
+        )
+        resumed = series_lifecycle.resume_materialization(
+            stopped.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Руководитель возобновил новые запуски серии.",
+        )
+
+        with self.assertRaisesMessage(PermissionDenied, "решение руководителя"):
+            series_lifecycle.stop_materialization(
+                resumed.series,
+                operation_key=uuid4(),
+                actor=operator,
+                reason="Администратор повторно остановил новые запуски.",
+            )
+        replay = series_lifecycle.stop_materialization(
+            resumed.series,
+            operation_key=admin_operation_key,
+            actor=operator,
+            reason=admin_reason,
+        )
+        director_stop = series_lifecycle.stop_materialization(
+            resumed.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Руководитель снова остановил новые запуски серии.",
+        )
+
+        self.assertTrue(replay.reused_event)
+        self.assertEqual(replay.event, stopped.event)
+        self.assertEqual(replay.series.status, AppointmentSeries.Status.ACTIVE)
+        self.assertEqual(director_stop.event.event_number, 3)
+        self.assertEqual(
+            director_stop.event.actor_role_snapshot,
+            AppointmentSeriesLifecycleEvent.ActorRole.DIRECTOR,
+        )
+
+    def test_lifecycle_model_rejects_stale_status_and_event_number_gap(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        AppointmentSeries.objects.filter(pk=materialized.series.pk).update(
+            status=AppointmentSeries.Status.CANCELLED
+        )
+        with self.assertRaisesMessage(ValidationError, "текущего статуса серии"):
+            AppointmentSeriesLifecycleEvent.objects.create(
+                series=materialized.series,
+                operation_key=uuid4(),
+                fingerprint="f" * 64,
+                event_type=(
+                    AppointmentSeriesLifecycleEvent.EventType.STOP_MATERIALIZATION
+                ),
+                event_number=1,
+                status_from=AppointmentSeries.Status.ACTIVE,
+                status_to=AppointmentSeries.Status.CANCELLED,
+                actor=self.admin,
+                actor_role_snapshot=(
+                    AppointmentSeriesLifecycleEvent.ActorRole.DIRECTOR
+                ),
+                reason="Проверка stale lifecycle-статуса серии.",
+            )
+
+        another = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        stopped = series_lifecycle.stop_materialization(
+            another.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Руководитель остановил серию для проверки номера.",
+        )
+        with self.assertRaisesMessage(ValidationError, "непосредственно продолжать"):
+            AppointmentSeriesLifecycleEvent.objects.create(
+                series=stopped.series,
+                operation_key=uuid4(),
+                fingerprint="f" * 64,
+                event_type=(
+                    AppointmentSeriesLifecycleEvent.EventType.RESUME_MATERIALIZATION
+                ),
+                event_number=3,
+                status_from=AppointmentSeries.Status.CANCELLED,
+                status_to=AppointmentSeries.Status.ACTIVE,
+                actor=self.admin,
+                actor_role_snapshot=(
+                    AppointmentSeriesLifecycleEvent.ActorRole.DIRECTOR
+                ),
+                reason="Проверка пропущенного номера lifecycle-события.",
+                supersedes=stopped.event,
+            )
+
+    def test_lifecycle_model_rejects_nonlinear_supersedes_chain(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        first_stop = series_lifecycle.stop_materialization(
+            materialized.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Первая остановка серии руководителем.",
+        )
+        resumed = series_lifecycle.resume_materialization(
+            first_stop.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Возобновление серии руководителем.",
+        )
+        latest_stop = series_lifecycle.stop_materialization(
+            resumed.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Вторая остановка серии руководителем.",
+        )
+
+        with self.assertRaisesMessage(ValidationError, "последнее событие серии"):
+            AppointmentSeriesLifecycleEvent.objects.create(
+                series=latest_stop.series,
+                operation_key=uuid4(),
+                fingerprint="f" * 64,
+                event_type=(
+                    AppointmentSeriesLifecycleEvent.EventType.RESUME_MATERIALIZATION
+                ),
+                event_number=4,
+                status_from=AppointmentSeries.Status.CANCELLED,
+                status_to=AppointmentSeries.Status.ACTIVE,
+                actor=self.admin,
+                actor_role_snapshot=(
+                    AppointmentSeriesLifecycleEvent.ActorRole.DIRECTOR
+                ),
+                reason="Попытка нелинейного возобновления серии.",
+                supersedes=first_stop.event,
+            )
+
+    def test_lifecycle_stop_blocks_new_run_after_legacy_raw_reactivation(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        stopped = series_lifecycle.stop_materialization(
+            materialized.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Остановка перед проверкой raw reactivation.",
+        )
+        if connection.vendor == "postgresql":
+            with self.assertRaises(DatabaseError), transaction.atomic():
+                AppointmentSeries.objects.filter(pk=stopped.series.pk).update(
+                    status=AppointmentSeries.Status.ACTIVE
+                )
+            self.assertEqual(stopped.series.materialization_runs.count(), 1)
+            return
+
+        AppointmentSeries.objects.filter(pk=stopped.series.pk).update(
+            status=AppointmentSeries.Status.ACTIVE
+        )
+        reactivated = AppointmentSeries.objects.get(pk=stopped.series.pk)
+
+        with self.assertRaises(series_revisions.SeriesMaterializationStopped):
+            program_series.materialize_missing_series(
+                reactivated,
+                operation_key=uuid4(),
+                actor=self.admin,
+                date_from=self.start_date,
+                date_to=self.start_date,
+                reason="Новый запуск после обхода статуса.",
+            )
+        self.assertEqual(reactivated.materialization_runs.count(), 1)
+
+    def test_only_director_resumes_and_does_not_restore_cancelled_appointment(self):
+        operator = User.objects.create_user(
+            "series-resume-operator",
+            password="x",
+            is_staff=True,
+        )
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        stopped = series_lifecycle.stop_materialization(
+            materialized.series,
+            operation_key=uuid4(),
+            actor=operator,
+            reason="Операционная остановка расписания серии.",
+        )
+        appointment = materialized.series.appointments.get()
+        appointment.status = Appointment.Status.CANCELLED
+        appointment.save(update_fields=["status", "updated_at"])
+
+        with self.assertRaises(PermissionDenied):
+            series_lifecycle.resume_materialization(
+                stopped.series,
+                operation_key=uuid4(),
+                actor=operator,
+                reason="Попытка возобновить серию администратором.",
+            )
+
+        resumed = series_lifecycle.resume_materialization(
+            stopped.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Руководитель разрешил новые запуски серии.",
+        )
+
+        appointment.refresh_from_db()
+        self.assertEqual(resumed.series.status, AppointmentSeries.Status.ACTIVE)
+        self.assertEqual(resumed.event.supersedes, stopped.event)
+        self.assertEqual(resumed.event.event_number, 2)
+        self.assertEqual(
+            resumed.event.actor_role_snapshot,
+            AppointmentSeriesLifecycleEvent.ActorRole.DIRECTOR,
+        )
+        self.assertEqual(appointment.status, Appointment.Status.CANCELLED)
+
+    def test_lifecycle_event_is_immutable_through_model_and_queryset(self):
+        stopped = series_lifecycle.stop_materialization(
+            program_series.create_group_series(
+                self.preview(end_date=self.start_date),
+                operation_key=uuid4(),
+                actor=self.admin,
+            ).series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Руководитель остановил materialization серии.",
+        )
+        event = stopped.event
+        event.reason = "Попытка изменить историю lifecycle."
+
+        with self.assertRaisesMessage(ValidationError, "нельзя изменять"):
+            event.save()
+        with self.assertRaisesMessage(ValidationError, "Неизменяемую историю нельзя обновить"):
+            AppointmentSeriesLifecycleEvent.objects.filter(pk=event.pk).update(
+                reason="Обход model.save"
+            )
+        with self.assertRaisesMessage(ValidationError, "нельзя удалять"):
+            event.delete()
+
+    def test_stopped_accepted_run_resumes_with_same_run_after_director_override(self):
+        operator = User.objects.create_user(
+            "series-run-stop-operator",
+            password="x",
+            is_staff=True,
+        )
+        operation_key = uuid4()
+        preview = self.preview()
+        series, _ = program_series._create_series_definition(
+            preview,
+            operation_key=operation_key,
+        )
+        revision, _ = series_revisions.ensure_initial_revision(series, actor=self.admin)
+        starts = program_series._candidate_starts(
+            revision.start_date,
+            revision.end_date,
+            {self.start_date.weekday()},
+            revision.time,
+        )
+        run, _ = series_revisions.get_or_create_initial_run(
+            series,
+            revision,
+            operation_key=series.operation_key,
+            actor=self.admin,
+            expected_result_count=len(starts),
+        )
+
+        stopped = series_lifecycle.stop_materialization(
+            series,
+            operation_key=uuid4(),
+            actor=operator,
+            reason="Остановить принятый запуск до следующей даты.",
+        )
+        self.assertEqual(
+            run.events.get().event_type,
+            AppointmentSeriesMaterializationRunEvent.EventType.INTERRUPTED,
+        )
+        with self.assertRaises(series_revisions.SeriesMaterializationStopped):
+            program_series.materialize_group_series(series, actor=self.admin)
+
+        resumed = series_lifecycle.resume_materialization(
+            stopped.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Руководитель возобновил принятый запуск серии.",
+        )
+        result = program_series.materialize_group_series(resumed.series, actor=self.admin)
+
+        run.refresh_from_db()
+        self.assertEqual(result.created_count, len(starts))
+        self.assertEqual(run.results.count(), len(starts))
+        self.assertEqual(
+            list(run.events.order_by("event_number").values_list("event_type", flat=True)),
+            [
+                AppointmentSeriesMaterializationRunEvent.EventType.INTERRUPTED,
+                AppointmentSeriesMaterializationRunEvent.EventType.RESUMED,
+                AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED,
+            ],
+        )
+
+    @skipUnless(connection.vendor == "postgresql", "DB guard проверяется на PostgreSQL.")
+    def test_lifecycle_event_postgresql_guard_blocks_raw_update(self):
+        event = series_lifecycle.stop_materialization(
+            program_series.create_group_series(
+                self.preview(end_date=self.start_date),
+                operation_key=uuid4(),
+                actor=self.admin,
+            ).series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Проверка PostgreSQL immutable lifecycle guard.",
+        ).event
+
+        with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE operations_appointmentserieslifecycleevent "
+                "SET reason = %s WHERE id = %s",
+                ["Попытка raw update", event.pk],
+            )
+
+    @skipUnless(connection.vendor == "postgresql", "DB guard проверяется на PostgreSQL.")
+    def test_lifecycle_postgresql_guard_blocks_raw_admin_override(self):
+        operator = User.objects.create_user(
+            "series-raw-priority-operator",
+            password="x",
+            is_staff=True,
+        )
+        stopped = series_lifecycle.stop_materialization(
+            program_series.create_group_series(
+                self.preview(end_date=self.start_date),
+                operation_key=uuid4(),
+                actor=self.admin,
+            ).series,
+            operation_key=uuid4(),
+            actor=operator,
+            reason="Администратор остановил серию перед решением руководителя.",
+        )
+        resumed = series_lifecycle.resume_materialization(
+            stopped.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Руководитель возобновил серию перед raw override.",
+        )
+
+        with self.assertRaises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO operations_appointmentserieslifecycleevent (
+                    created_at, updated_at, operation_key, fingerprint, event_type,
+                    event_number, status_from, status_to, actor_role_snapshot,
+                    reason, occurred_at, actor_id, series_id, supersedes_id
+                ) VALUES (
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, %s, %s, %s,
+                    %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s, %s, NULL
+                )
+                """,
+                [
+                    str(uuid4()),
+                    "f" * 64,
+                    AppointmentSeriesLifecycleEvent.EventType.STOP_MATERIALIZATION,
+                    3,
+                    AppointmentSeries.Status.ACTIVE,
+                    AppointmentSeries.Status.CANCELLED,
+                    AppointmentSeriesLifecycleEvent.ActorRole.ADMINISTRATOR,
+                    "Попытка raw override решения руководителя.",
+                    operator.pk,
+                    resumed.series.pk,
+                ],
+            )
+
 
 class GroupProgramJoinTests(TestCase):
     @classmethod
@@ -3794,6 +4267,81 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
         self.assertTrue(all(isinstance(item, tuple) for item in results), results)
         self.assertEqual({item[0] for item in results}, {"join", "transfer"})
         self.assertEqual(target.participants.filter(child=self.children[1]).count(), 1)
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Гонка stop и принятия materialization проверяется только на PostgreSQL.",
+    )
+    def test_stop_and_new_run_have_one_linearized_outcome(self):
+        series = self._create_unmaterialized_series()
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def stop_series():
+            close_old_connections()
+            try:
+                current = AppointmentSeries.objects.get(pk=series.pk)
+                actor = User.objects.get(pk=self.admin.pk)
+                barrier.wait(timeout=10)
+                result = series_lifecycle.stop_materialization(
+                    current,
+                    operation_key=uuid4(),
+                    actor=actor,
+                    reason="Concurrent stop wins or follows accepted run.",
+                )
+                outcomes.put(("stop", result.event.pk))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        def create_run():
+            close_old_connections()
+            try:
+                current = AppointmentSeries.objects.get(pk=series.pk)
+                actor = User.objects.get(pk=self.admin.pk)
+                barrier.wait(timeout=10)
+                result = program_series.materialize_missing_series(
+                    current,
+                    operation_key=uuid4(),
+                    actor=actor,
+                )
+                outcomes.put(("run", result.run.pk))
+            except (ValidationError, series_revisions.SeriesMaterializationStopped) as exc:
+                outcomes.put(("run_rejected", type(exc).__name__))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        threads = [Thread(target=stop_series), Thread(target=create_run)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        results = [outcomes.get_nowait() for _ in range(2)]
+        self.assertTrue(all(isinstance(item, tuple) for item in results), results)
+        self.assertEqual(sum(item[0] == "stop" for item in results), 1, results)
+        self.assertEqual(
+            sum(item[0] in {"run", "run_rejected"} for item in results),
+            1,
+            results,
+        )
+
+        series.refresh_from_db()
+        event = series.lifecycle_events.get()
+        self.assertEqual(series.status, AppointmentSeries.Status.CANCELLED)
+        for run in series.materialization_runs.all():
+            self.assertLessEqual(run.started_at, event.occurred_at)
+            self.assertIn(
+                run.events.order_by("-event_number").values_list("event_type", flat=True).first(),
+                {
+                    AppointmentSeriesMaterializationRunEvent.EventType.INTERRUPTED,
+                    AppointmentSeriesMaterializationRunEvent.EventType.COMPLETED,
+                },
+            )
 
 
 class ProgramWizardPostgreSQLConcurrencyTests(TransactionTestCase):
@@ -5185,5 +5733,51 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
         with self.assertRaisesMessage(
             RuntimeError,
             "Cannot reverse group-series join mode while joined history exists",
+        ):
+            executor.migrate(target_before)
+
+    def test_lifecycle_expand_preserves_series_and_history_blocks_reverse(self):
+        target_before = [("operations", "0061_series_retry_target_expand")]
+        target_after = [("operations", "0062_series_lifecycle_event_expand")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_before)
+        old_apps = executor.loader.project_state(target_before).apps
+        with transaction.atomic():
+            series, revision, _ = self._create_native_series_history(
+                old_apps,
+                suffix="lifecycle-expand",
+            )
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+        apps = executor.loader.project_state(target_after).apps
+        series_model = apps.get_model("operations", "AppointmentSeries")
+        event_model = apps.get_model(
+            "operations",
+            "AppointmentSeriesLifecycleEvent",
+        )
+        migrated = series_model.objects.get(pk=series.pk)
+        self.assertEqual(migrated.status, "active")
+        self.assertFalse(event_model.objects.filter(series_id=series.pk).exists())
+
+        with transaction.atomic():
+            event_model.objects.create(
+                series_id=series.pk,
+                operation_key=uuid4(),
+                fingerprint="f" * 64,
+                event_type="stop_materialization",
+                event_number=1,
+                status_from="active",
+                status_to="cancelled",
+                actor_id=revision.actor_id,
+                actor_role_snapshot="director",
+                reason="Lifecycle history must survive compatible rollback.",
+            )
+            series_model.objects.filter(pk=series.pk).update(status="cancelled")
+
+        executor = MigrationExecutor(connection)
+        with self.assertRaisesMessage(
+            RuntimeError,
+            "Cannot remove series lifecycle schema while lifecycle history exists",
         ):
             executor.migrate(target_before)
