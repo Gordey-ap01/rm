@@ -130,6 +130,7 @@
               <h2>Предложенные окна</h2>
               <p>
                 Найдено {{ preview.slots|length }} из {{ preview.allowed_count }}.
+                {% if preview.limited_by_plan %}Количество ограничено планом каскада.{% endif %}
                 {% if preview.limited_by_balance %}Количество ограничено доступной оплатой.{% endif %}
                 {% if preview.missing_count %}Не хватило окон: {{ preview.missing_count }}.{% endif %}
               </p>

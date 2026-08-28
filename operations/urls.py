@@ -316,6 +316,16 @@ urlpatterns = [
         name="program_block_schedule_wizard",
     ),
     path(
+        "program-blocks/<int:block_id>/group-series/new/",
+        views.program_block_group_series_create,
+        name="program_block_group_series_create",
+    ),
+    path(
+        "appointment-series/<int:series_id>/",
+        views.appointment_series_detail,
+        name="appointment_series_detail",
+    ),
+    path(
         "program-blocks/<int:block_id>/transfer-funds/",
         views.program_block_transfer_funds,
         name="program_block_transfer_funds",

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ series.title }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>{{ series.title }}</h1>
+    <p>{{ series.service }} · {{ series.get_session_type_display }} · {{ series.get_status_display }}</p>
+  </div>
+  <a class="button-link secondary" href="{% url 'recipient_detail' series.child_id %}"><i class="bi bi-arrow-left"></i> К получателю</a>
+</section>
+
+<section class="detail-grid">
+  <article class="panel">
+    <h2>Параметры серии</h2>
+    <dl class="detail-list">
+      <div><dt>Период</dt><dd>{{ series.start_date|date:"d.m.Y" }}-{{ series.end_date|date:"d.m.Y" }}</dd></div>
+      <div><dt>Повторение</dt><dd>{{ series.days_of_week }} в {{ series.time|time:"H:i" }}</dd></div>
+      <div><dt>Длительность</dt><dd>{{ series.duration_minutes }} мин.</dd></div>
+      <div><dt>Кабинет</dt><dd>{{ series.room }}</dd></div>
+      <div><dt>Статус занятий</dt><dd>{{ series.get_default_appointment_status_display }}</dd></div>
+      <div><dt>Исключения</dt><dd>{% if series.override_reason %}{{ series.override_reason }}{% else %}нет{% endif %}</dd></div>
+    </dl>
+  </article>
+
+  <article class="panel">
+    <h2>Состав</h2>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>Получатель</th><th>Каскад</th><th>Счет</th></tr></thead>
+        <tbody>
+          {% for membership in participants %}
+            <tr>
+              <td>{{ membership.child }}</td>
+              <td>{% if membership.program_block %}{{ membership.program_block.number }}. {{ membership.program_block.title }}{% else %}<span class="muted">legacy без каскада</span>{% endif %}</td>
+              <td>{% if membership.billing_account %}{{ membership.billing_account }}{% else %}<span class="muted">не выбран</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <h3 class="h6 mt-3">Специалисты</h3>
+    <ul class="mb-0">
+      {% for assignment in staff_assignments %}<li>{{ assignment.staff_member }} · {{ assignment.get_role_display }}</li>{% endfor %}
+    </ul>
+  </article>
+</section>
+
+<section class="panel mt-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h2 class="h6 mb-0">Даты серии</h2>
+    <span class="muted">Всего: {{ occurrences|length }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead><tr><th>Дата и время</th><th>Результат</th><th>Занятие</th><th>Причина</th></tr></thead>
+      <tbody>
+        {% for occurrence in occurrences %}
+          <tr>
+            <td>{{ occurrence.scheduled_starts_at|date:"d.m.Y H:i" }}</td>
+            <td><span class="status-pill {% if occurrence.outcome == 'created' or occurrence.outcome == 'joined' %}balance-ok{% else %}balance-warning{% endif %}">{{ occurrence.get_outcome_display }}</span></td>
+            <td>{% if occurrence.appointment %}<a href="{% url 'appointment_detail' occurrence.appointment_id %}">Открыть</a>{% else %}<span class="muted">не создано</span>{% endif %}</td>
+            <td>{% if occurrence.reason %}{{ occurrence.reason }}{% else %}<span class="muted">-</span>{% endif %}</td>
+          </tr>
+        {% empty %}<tr><td colspan="4" class="muted">Даты еще не обработаны.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

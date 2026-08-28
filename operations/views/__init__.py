@@ -109,7 +109,9 @@ from .imports import (
 )
 from .payments import payment_create
 from .programs import (
+    appointment_series_detail,
     program_block_create,
+    program_block_group_series_create,
     program_block_schedule_wizard,
     program_block_transfer_funds,
     program_create,
@@ -202,6 +204,7 @@ __all__ = [
     "appointment_reschedule_plan_create",
     "appointment_reschedule_plan_detail",
     "appointment_send_confirmation",
+    "appointment_series_detail",
     "balance_account_create",
     "balance_account_delete",
     "balance_account_edit",
@@ -300,6 +303,7 @@ __all__ = [
     "payment_create",
     "payroll_sheet_detail",
     "program_block_create",
+    "program_block_group_series_create",
     "program_block_schedule_wizard",
     "program_block_transfer_funds",
     "program_create",

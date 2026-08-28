@@ -11,6 +11,9 @@ from .models import (
     AppointmentRescheduleStepDependency,
     AppointmentRoomOverride,
     AppointmentSeries,
+    AppointmentSeriesOccurrence,
+    AppointmentSeriesParticipant,
+    AppointmentSeriesStaffAssignment,
     AppointmentStaffAssignment,
     BalanceAccount,
     BalanceTransfer,
@@ -1108,10 +1111,59 @@ class ProgramBlockAdmin(admin.ModelAdmin):
     autocomplete_fields = ("program", "service", "staff_member", "balance_account")
 
 
+class AppointmentSeriesParticipantInline(admin.TabularInline):
+    model = AppointmentSeriesParticipant
+    extra = 0
+    fields = ("position", "child", "program_block", "billing_account")
+    readonly_fields = fields
+    autocomplete_fields = ("child", "program_block", "billing_account")
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+class AppointmentSeriesStaffAssignmentInline(admin.TabularInline):
+    model = AppointmentSeriesStaffAssignment
+    extra = 0
+    fields = ("staff_member", "role", "override_availability", "override_reason")
+    readonly_fields = fields
+    autocomplete_fields = ("staff_member",)
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+class AppointmentSeriesOccurrenceInline(admin.TabularInline):
+    model = AppointmentSeriesOccurrence
+    extra = 0
+    fields = (
+        "scheduled_starts_at",
+        "outcome",
+        "appointment",
+        "reason_code",
+        "reason",
+        "created_by",
+    )
+    readonly_fields = fields
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(AppointmentSeries)
 class AppointmentSeriesAdmin(admin.ModelAdmin):
     list_display = (
         "title",
+        "session_type",
         "child",
         "service",
         "staff_member",
@@ -1127,8 +1179,22 @@ class AppointmentSeriesAdmin(admin.ModelAdmin):
         "service__name",
         "staff_member__full_name",
     )
-    list_filter = ("status", "service", "staff_member")
+    list_filter = ("status", "session_type", "service", "staff_member")
     autocomplete_fields = ("child", "service", "staff_member", "room", "program_block")
+    readonly_fields = ("operation_key",)
+    inlines = (
+        AppointmentSeriesParticipantInline,
+        AppointmentSeriesStaffAssignmentInline,
+        AppointmentSeriesOccurrenceInline,
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj is None:
+            return self.readonly_fields
+        return tuple(field.name for field in obj._meta.fields)
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class AppointmentParticipantInline(admin.TabularInline):

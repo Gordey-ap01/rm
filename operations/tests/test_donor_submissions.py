@@ -945,15 +945,23 @@ class DonorReportSubmissionTests(TransactionTestCase):
     @skipUnless(connection.vendor == "postgresql", "PostgreSQL trigger contract")
     def test_empty_migration_roundtrip(self):
         executor = MigrationExecutor(connection)
-        executor.migrate([("operations", "0053_donor_report_snapshot")])
-        executor = MigrationExecutor(connection)
-        executor.migrate([("operations", "0054_donor_report_submission")])
+        latest_targets = executor.loader.graph.leaf_nodes("operations")
+        try:
+            executor.migrate([("operations", "0053_donor_report_snapshot")])
+            executor = MigrationExecutor(connection)
+            executor.migrate([("operations", "0054_donor_report_submission")])
+        finally:
+            MigrationExecutor(connection).migrate(latest_targets)
         self.assertEqual(DonorReportSubmission.objects.count(), 0)
 
     @skipUnless(connection.vendor == "postgresql", "PostgreSQL trigger contract")
     def test_reverse_migration_is_blocked_with_history(self):
         self.create_submission()
         executor = MigrationExecutor(connection)
-        with self.assertRaisesMessage(RuntimeError, "immutable history exists"):
-            executor.migrate([("operations", "0053_donor_report_snapshot")])
+        latest_targets = executor.loader.graph.leaf_nodes("operations")
+        try:
+            with self.assertRaisesMessage(RuntimeError, "immutable history exists"):
+                executor.migrate([("operations", "0053_donor_report_snapshot")])
+        finally:
+            MigrationExecutor(connection).migrate(latest_targets)
         self.assertEqual(DonorReportSubmission.objects.count(), 1)

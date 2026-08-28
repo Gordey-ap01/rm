@@ -4,9 +4,10 @@
 
 ## Активный этап
 
-Этап: приемка полномочий и финансового контура. PostgreSQL-устойчивость
-записей расписания и списаний, два доказательных среза полномочий, оба
-подэтапа A+B, payroll до факта выплаты и сквозная service-приемка завершены.
+Этап: групповые программы, каскады и серии по контракту 61.
+Срез 61A фиксированной групповой серии реализован и локально принят.
+Следующий кодовый срез - 61B, присоединение каскада к
+существующим групповым занятиям.
 Production preflight, health, проверяемый backup/restore, цельная
 browser-приемка рабочих ролей, persisted transfer/conversion и приемка
 грантового отчета завершены. Безопасный жизненный цикл грантового плана по
@@ -37,10 +38,28 @@ MVCC-временем данных и цепочкой исправлений. 5
 - `docs/57-grant-management-report-acceptance-contract.md`.
 - `docs/58-grant-plan-versioning-contract.md`.
 - `docs/59-grant-fixed-compensation-and-donor-report-snapshot-contract.md`.
+- `docs/61-group-program-series-lifecycle-contract.md`.
 - `docs/decisions/ADR-007-fixed-grant-payroll-and-immutable-donor-report-snapshots.md`.
 
 ## Что сделано в текущем срезе
 
+- Миграция `0055` добавляет нормализованный состав серии и append-only
+  `AppointmentSeriesOccurrence`, сохраняя legacy-поля и чтение старых серий.
+- Backfill останавливается на неоднозначных дублях occurrence; исторические
+  номера не перенумеровываются автоматически.
+- Администратор выбирает каскады, всех занятых специалистов, явного
+  основного специалиста, кабинет, период, частоту и статус занятий.
+- Preview/apply по каждой дате проверяет состав, вместимость, рабочие окна,
+  активность и даты программ, планы каскадов и доступную оплату.
+- Обычное планирование fail-closed без активного подходящего счета; неоплаченная
+  бронь явно создается со статусом `reserved` и основанием.
+- Apply блокирует кабинеты, каскады, программы и счета в стабильном порядке;
+  idempotency key и монотонная нумерация защищены PostgreSQL concurrency-тестами.
+- Карточка серии показывает состав, роли специалистов и исход каждой даты;
+  desktop/`390px` browser QA не выявил page overflow или console warnings/errors.
+- Финальный regression: SQLite `865 passed, 50 skipped` (PostgreSQL-only),
+  PostgreSQL 17 `915 passed` без пропусков. Одна warning относится к deprecation
+  `CheckConstraint.check` в миграции зависимости `django_tasks`, не к коду проекта.
 - Старый PRD сохранен в `docs/archive/prd/`; рабочий `docs/01-prd.md` заменен
   канонической версией с readiness matrix.
 - Зафиксирована карта полномочий руководителя и администратора.
@@ -256,11 +275,10 @@ MVCC-временем данных и цепочкой исправлений. 5
   БД: все экраны ответили `200`, browser console/page errors и HTTP `4xx`/`5xx`
   отсутствовали, desktop и mobile screenshots проверены визуально. Временные
   данные, settings и процесс удалены после запуска.
-- Graphify code index инкрементально обновлен без LLM/API key: `6732` nodes,
-  `31648` edges; community clustering пересобран, срез 59B-2 и изолированные
-  backup/restore maintenance services включены.
-  Семантический слой
-  измененных документов не пересоздавался и не блокирует кодовый граф.
+- Graphify code index структурно обновлен: `6883` nodes,
+  `32670` edges, `362` communities; модели, сервисы и UI 61A
+  находятся запросом. Семантический слой не является
+  источником истины и не блокирует кодовый граф.
 - 59A-1 focused SQLite: `152 passed, 15 skipped`; полный SQLite regression:
   `787 passed, 24 skipped`. Пропуски относятся к PostgreSQL-only проверкам.
   Ruff, Django system check, migration dry-run и `git diff --check` прошли.
@@ -372,18 +390,19 @@ MVCC-временем данных и цепочкой исправлений. 5
 
 ## Следующая работа
 
-1. Выбрать владельца и поставщиков для offsite backup, monitoring/alerting и
-   реального SMTP; хранить секреты только вне Git. Включить branch protection
-   после согласования репозитория.
-2. Закрыть production-допуск 59B-2: retention/legal hold,
-   шифрование диска и offsite backup, malware policy, задать вне Git
-   раздельные DB credentials и выполнить реальный production restore drill v2.
-3. Перед production migration chain `0048-0054` выполнить backup v2, `--strict`
+1. Реализовать 61B: подбор совместимых будущих групповых занятий, атомарный
+   join участника и occurrence `joined` с конкуренцией за последнее место.
+2. Затем закрыть 61C-61D: редакции только будущего состава, паузу/отмену,
+   переходы программы/каскада и полный UI серий.
+3. Перед production migration chain `0048-0055` выполнить backup v2, `--strict`
    preflight, временно закрыть грантовые записи и подготовить совместимый
-   rollback-релиз. После появления истории `0053`/`0054` не откатываются:
+   rollback-релиз. После появления истории `0053`/`0054` и новых occurrences `0055`
+   эти миграции не откатываются:
    rollback сохраняет additive schema, private volume и immutable-историю.
-4. Отдельно согласовать policy возвратов и обратной конвертации до реализации.
-5. Перед пилотом проверить mobile-кабинет на физическом телефоне и провести
+4. Закрыть production-допуск 59B-2: offsite backup, monitoring/alerting, реальный SMTP,
+   retention/legal hold, шифрование, malware policy и раздельные DB credentials вне Git.
+5. Отдельно согласовать policy возвратов/обратной конвертации; перед пилотом проверить
+   mobile-кабинет на физическом телефоне и провести
    обезличенные рабочие сценарии центра.
 
 ## Глобальная готовность
@@ -403,12 +422,13 @@ MVCC-временем данных и цепочкой исправлений. 5
 Критические зоны до рабочего production-контура:
 
 - завершенная матрица ролей во всех управленческих действиях;
+- 61B-61D: join-existing, редакции будущего состава и полный жизненный цикл серий;
 - production policy и внешняя защита приватных артефактов 59B-2;
 - policy возвратов и обратной конвертации;
 - offsite backup, monitoring/alerting и реальный SMTP;
 - регулярный targeted browser smoke и приемка на физическом телефоне;
 - приемка на реальных обезличенных сценариях центра;
-- production cutover migration chain `0048-0054` после backup v2/preflight.
+- production cutover migration chain `0048-0055` после backup v2/preflight.
 
 ## Риски и запреты
 

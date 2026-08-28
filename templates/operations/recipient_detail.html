@@ -240,6 +240,9 @@
                   <a class="btn btn-outline-primary btn-sm py-0" href="{% url 'program_block_schedule_wizard' block.pk %}">
                     <i class="bi bi-calendar-plus"></i> Подобрать
                   </a>
+                  <a class="btn btn-outline-primary btn-sm py-0" href="{% url 'program_block_group_series_create' block.pk %}">
+                    <i class="bi bi-people"></i> Групповая серия
+                  </a>
                   <a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'program_block_transfer_funds' block.pk %}">
                     <i class="bi bi-arrow-left-right"></i> Средства
                   </a>

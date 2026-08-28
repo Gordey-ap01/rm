@@ -1222,7 +1222,13 @@ class AppointmentParticipantProgramForm(forms.Form):
         queryset=ProgramBlock.objects.none(),
         required=False,
     )
-    sequence_number = forms.IntegerField(label="Номер", min_value=1, required=False)
+    sequence_number = forms.IntegerField(
+        label="Номер",
+        min_value=1,
+        required=False,
+        disabled=True,
+        help_text="Номер назначается системой и не переиспользуется.",
+    )
 
     def __init__(self, *args, appointment, participant=None, **kwargs):
         self.appointment = appointment
@@ -1272,10 +1278,10 @@ class AppointmentParticipantProgramForm(forms.Form):
         if participant is None:
             raise ValueError("Участник занятия не найден.")
         program_block = self.cleaned_data.get("program_block")
+        previous_block_id = participant.program_block_id
         participant.program_block = program_block
-        participant.sequence_number = (
-            self.cleaned_data.get("sequence_number") if program_block else None
-        )
+        if not program_block or program_block.pk != previous_block_id:
+            participant.sequence_number = None
         participant.save(update_fields=["program_block", "sequence_number", "updated_at"])
         if participant.child_id == self.appointment.child_id:
             Appointment.objects.filter(pk=self.appointment.pk).update(
@@ -1999,6 +2005,8 @@ class ProgramBlockScheduleWizardForm(forms.Form):
 
         if start_date and end_date and end_date < start_date:
             self.add_error("end_date", "Дата окончания не может быть раньше даты начала.")
+        if start_date and end_date and end_date - start_date > timedelta(days=366):
+            self.add_error("end_date", "Одна серия может охватывать не более 366 дней.")
         if time_from and time_until and time_until <= time_from:
             self.add_error("time_until", "Время окончания поиска должно быть позже начала.")
         if time_from and time_until and duration:
@@ -2006,6 +2014,157 @@ class ProgramBlockScheduleWizardForm(forms.Form):
             end_dt = datetime.combine(timezone.localdate(), time_until)
             if start_dt + timedelta(minutes=duration) > end_dt:
                 self.add_error("duration_minutes", "Длительность не помещается в выбранное окно.")
+        return cleaned
+
+
+class GroupProgramSeriesForm(forms.Form):
+    operation_key = forms.UUIDField(widget=forms.HiddenInput)
+    title = forms.CharField(label="Название групповой серии", max_length=200)
+    additional_blocks = forms.ModelMultipleChoiceField(
+        label="Каскады других получателей",
+        queryset=ProgramBlock.objects.none(),
+        help_text="Основной каскад уже включен. Выберите минимум еще один каскад той же услуги.",
+        widget=forms.SelectMultiple(attrs={"size": 8, "data-searchable": "off"}),
+    )
+    staff_members = forms.ModelMultipleChoiceField(
+        label="Специалисты",
+        queryset=StaffMember.objects.none(),
+        help_text="Выберите всех специалистов, которые будут заняты на серии.",
+        widget=forms.SelectMultiple(attrs={"size": 6, "data-searchable": "off"}),
+    )
+    primary_staff_member = forms.ModelChoiceField(
+        label="Основной специалист",
+        queryset=StaffMember.objects.none(),
+    )
+    room = forms.ModelChoiceField(
+        label="Кабинет",
+        queryset=Room.objects.none(),
+        empty_label=None,
+    )
+    start_date = forms.DateField(label="Начать с", widget=DATE_INPUT)
+    end_date = forms.DateField(label="Закончить до", widget=DATE_INPUT)
+    weekdays = forms.MultipleChoiceField(
+        label="Дни недели",
+        choices=WEEKDAY_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+    )
+    start_time = forms.TimeField(label="Время начала", widget=TIME_INPUT)
+    duration_minutes = forms.IntegerField(
+        label="Длительность, мин",
+        min_value=15,
+        max_value=240,
+    )
+    default_appointment_status = forms.ChoiceField(
+        label="Статус создаваемых занятий",
+        choices=(
+            (Appointment.Status.PROPOSED, "Предложено / на согласование"),
+            (Appointment.Status.RESERVED, "Бронь"),
+            (Appointment.Status.CONFIRMED, "Подтверждено"),
+        ),
+        initial=Appointment.Status.PROPOSED,
+    )
+    allow_unpaid_reserve = forms.BooleanField(
+        label="Разрешить бронь сверх доступной оплаты",
+        required=False,
+    )
+    allow_outside_availability = forms.BooleanField(
+        required=False,
+        widget=forms.HiddenInput,
+    )
+    override_reason = forms.CharField(
+        label="Основание исключения",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 3}),
+        help_text="Обязательно для неоплаченной брони или назначения вне графика.",
+    )
+
+    def __init__(self, *args, block: ProgramBlock, **kwargs):
+        self.block = block
+        super().__init__(*args, **kwargs)
+        terminal_statuses = [ProgramBlock.Status.COMPLETED, ProgramBlock.Status.CANCELLED]
+        self.fields["additional_blocks"].queryset = (
+            ProgramBlock.objects.select_related(
+                "program",
+                "program__child",
+                "service",
+                "balance_account",
+            )
+            .filter(
+                service=block.service,
+                program__status=TreatmentProgram.Status.ACTIVE,
+            )
+            .exclude(pk=block.pk)
+            .exclude(program__child=block.program.child)
+            .exclude(status__in=terminal_statuses)
+            .order_by("program__child__last_name", "program__child__first_name", "number")
+        )
+        active_staff = StaffMember.objects.filter(
+            status=StaffMember.Status.ACTIVE
+        ).order_by("full_name")
+        self.fields["staff_members"].queryset = active_staff
+        self.fields["primary_staff_member"].queryset = active_staff
+        self.fields["room"].queryset = Room.objects.filter(
+            is_active=True,
+            allow_group_sessions=True,
+        ).order_by("name")
+
+        today = timezone.localdate()
+        self.initial.setdefault("operation_key", uuid4())
+        self.initial.setdefault("title", f"{block.service.name}: групповая серия")
+        self.initial.setdefault("start_date", block.program.starts_on or today)
+        self.initial.setdefault("end_date", block.program.ends_on or today + timedelta(days=30))
+        self.initial.setdefault("weekdays", ["0", "1", "2", "3", "4"])
+        self.initial.setdefault("start_time", time(9, 0))
+        self.initial.setdefault("duration_minutes", block.service.default_duration_minutes)
+        if block.staff_member_id:
+            self.initial.setdefault("staff_members", [block.staff_member_id])
+            self.initial.setdefault("primary_staff_member", block.staff_member_id)
+
+    def selected_blocks(self) -> list[ProgramBlock]:
+        return [self.block, *list(self.cleaned_data.get("additional_blocks") or [])]
+
+    def selected_staff_members(self) -> list[StaffMember]:
+        primary = self.cleaned_data["primary_staff_member"]
+        return [
+            primary,
+            *[
+                staff
+                for staff in self.cleaned_data.get("staff_members") or []
+                if staff.pk != primary.pk
+            ],
+        ]
+
+    def clean(self):
+        cleaned = super().clean()
+        start_date = cleaned.get("start_date")
+        end_date = cleaned.get("end_date")
+        allow_unpaid = bool(cleaned.get("allow_unpaid_reserve"))
+        allow_outside = bool(cleaned.get("allow_outside_availability"))
+        status = cleaned.get("default_appointment_status")
+        reason = str(cleaned.get("override_reason") or "").strip()
+        primary_staff = cleaned.get("primary_staff_member")
+        staff_members = cleaned.get("staff_members")
+
+        if self.block.status in {ProgramBlock.Status.COMPLETED, ProgramBlock.Status.CANCELLED}:
+            raise forms.ValidationError(
+                "Завершенный или отмененный каскад нельзя включить в новую серию."
+            )
+        if start_date and start_date < timezone.localdate():
+            self.add_error("start_date", "Серия не может начинаться в прошлом.")
+        if start_date and end_date and end_date < start_date:
+            self.add_error("end_date", "Дата окончания не может быть раньше даты начала.")
+        if allow_unpaid and status != Appointment.Status.RESERVED:
+            self.add_error(
+                "default_appointment_status",
+                "Занятия сверх оплаты должны создаваться со статусом «Бронь».",
+            )
+        if (allow_unpaid or allow_outside) and not reason:
+            self.add_error("override_reason", "Укажите основание для выбранного исключения.")
+        if primary_staff and staff_members and primary_staff not in staff_members:
+            self.add_error(
+                "primary_staff_member",
+                "Основной специалист должен входить в состав серии.",
+            )
         return cleaned
 
 

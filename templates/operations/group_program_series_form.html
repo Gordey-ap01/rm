@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Новая групповая серия{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Новая групповая серия</h1>
+    <p>{{ program_block.service }} · основной каскад: {{ program_block.program.child }} / {{ program_block.number }}. {{ program_block.title }}</p>
+  </div>
+  <a class="button-link secondary" href="{{ cancel_url }}"><i class="bi bi-arrow-left"></i> Назад</a>
+</section>
+
+<section class="wizard-layout">
+  <article class="panel form-panel wizard-main">
+    <form method="post" class="wizard-form-stack">
+      {% csrf_token %}
+      {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+      {% if form.non_field_errors %}<div class="form-error">{{ form.non_field_errors }}</div>{% endif %}
+
+      <div class="wizard-step">
+        <div class="wizard-step-head"><span>01</span><h2>Состав группы</h2></div>
+        <div class="form-grid">
+          <label class="field form-wide">
+            <span>{{ form.title.label }}</span>
+            {{ form.title }}
+            {% if form.title.errors %}<span class="form-error">{{ form.title.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.additional_blocks.label }}</span>
+            {{ form.additional_blocks }}
+            <small class="muted">{{ form.additional_blocks.help_text }}</small>
+            {% if form.additional_blocks.errors %}<span class="form-error">{{ form.additional_blocks.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.staff_members.label }}</span>
+            {{ form.staff_members }}
+            <small class="muted">{{ form.staff_members.help_text }}</small>
+            {% if form.staff_members.errors %}<span class="form-error">{{ form.staff_members.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.primary_staff_member.label }}</span>
+            {{ form.primary_staff_member }}
+            {% if form.primary_staff_member.errors %}<span class="form-error">{{ form.primary_staff_member.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.room.label }}</span>
+            {{ form.room }}
+            {% if form.room.errors %}<span class="form-error">{{ form.room.errors }}</span>{% endif %}
+          </label>
+          <label class="field">
+            <span>{{ form.default_appointment_status.label }}</span>
+            {{ form.default_appointment_status }}
+            {% if form.default_appointment_status.errors %}<span class="form-error">{{ form.default_appointment_status.errors }}</span>{% endif %}
+          </label>
+        </div>
+      </div>
+
+      <div class="wizard-step">
+        <div class="wizard-step-head"><span>02</span><h2>Период и повторение</h2></div>
+        <div class="form-grid">
+          <label class="field"><span>{{ form.start_date.label }}</span>{{ form.start_date }}{% if form.start_date.errors %}<span class="form-error">{{ form.start_date.errors }}</span>{% endif %}</label>
+          <label class="field"><span>{{ form.end_date.label }}</span>{{ form.end_date }}{% if form.end_date.errors %}<span class="form-error">{{ form.end_date.errors }}</span>{% endif %}</label>
+          <label class="field"><span>{{ form.start_time.label }}</span>{{ form.start_time }}{% if form.start_time.errors %}<span class="form-error">{{ form.start_time.errors }}</span>{% endif %}</label>
+          <label class="field"><span>{{ form.duration_minutes.label }}</span>{{ form.duration_minutes }}{% if form.duration_minutes.errors %}<span class="form-error">{{ form.duration_minutes.errors }}</span>{% endif %}</label>
+          <div class="field form-wide">
+            <span>{{ form.weekdays.label }}</span>
+            <div class="weekday-picker">{{ form.weekdays }}</div>
+            {% if form.weekdays.errors %}<span class="form-error">{{ form.weekdays.errors }}</span>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="wizard-step">
+        <div class="wizard-step-head"><span>03</span><h2>Исключения</h2></div>
+        <div class="form-grid">
+          <label class="field check-field">
+            {{ form.allow_unpaid_reserve }}
+            <span>{{ form.allow_unpaid_reserve.label }}</span>
+            {% if form.allow_unpaid_reserve.errors %}<span class="form-error">{{ form.allow_unpaid_reserve.errors }}</span>{% endif %}
+          </label>
+          <label class="field form-wide">
+            <span>{{ form.override_reason.label }}</span>
+            {{ form.override_reason }}
+            <small class="muted">{{ form.override_reason.help_text }}</small>
+            {% if form.override_reason.errors %}<span class="form-error">{{ form.override_reason.errors }}</span>{% endif %}
+          </label>
+        </div>
+        <div class="hold-confirm-card">
+          <div>
+            <strong>Назначение вне рабочего графика</strong>
+            <p>Удержание разрешает только эту серию и требует основания. Постоянный график специалиста не меняется.</p>
+          </div>
+          <button type="button" class="hold-confirm-button" data-hold-submit="true" data-target-id="id_allow_outside_availability" data-hold-ms="1400">
+            <span class="hold-confirm-progress" aria-hidden="true"></span>
+            <span class="hold-confirm-label">Удерживать, чтобы разрешить выход вне графика</span>
+          </button>
+        </div>
+      </div>
+
+      {% if preview %}
+        <div class="wizard-preview">
+          <div class="wizard-preview-head">
+            <div><h2>Предварительная проверка</h2><p>Можно создать: {{ preview.ready_count }}. Пропущено: {{ preview.skipped_count }}.</p></div>
+          </div>
+          <div class="table-responsive program-wizard-table-wrap">
+            <table class="table table-sm mb-0 program-wizard-table">
+              <thead><tr><th>Дата и время</th><th>Результат</th><th>Причина</th><th>Кабинет до серии</th></tr></thead>
+              <tbody>
+                {% for item in preview.dates %}
+                  <tr>
+                    <td data-label="Дата и время">{{ item.starts_at|date:"d.m.Y H:i" }}-{{ item.ends_at|date:"H:i" }}</td>
+                    <td data-label="Результат">
+                      {% if item.ready %}<span class="status-pill balance-ok">готово</span>{% else %}<span class="status-pill balance-warning">пропуск</span>{% endif %}
+                    </td>
+                    <td data-label="Причина">{% if item.reason %}{{ item.reason }}{% else %}<span class="muted">ограничений нет</span>{% endif %}</td>
+                    <td data-label="Кабинет до серии">{{ item.room_recipient_occupancy }} получ. / {{ item.room_staff_occupancy }} спец.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="form-actions">
+        <button type="submit" name="action" value="preview"><i class="bi bi-search"></i> Проверить серию</button>
+        {% if preview and preview.ready_count %}<button type="submit" name="action" value="create"><i class="bi bi-calendar2-plus"></i> Создать серию</button>{% endif %}
+        <a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>
+      </div>
+    </form>
+  </article>
+
+  <aside class="wizard-sidebar" aria-label="Сводка групповой серии">
+    <article class="panel wizard-summary">
+      <h2>Основной каскад</h2>
+      <dl>
+        <div><dt>Получатель</dt><dd><strong>{{ program_block.program.child }}</strong></dd></div>
+        <div><dt>Услуга</dt><dd><strong>{{ program_block.service }}</strong></dd></div>
+        <div><dt>План</dt><dd><strong>{{ program_block.scheduled_count }} / {{ program_block.planned_sessions }}</strong></dd></div>
+        <div><dt>Счет</dt><dd><strong>{% if program_block.balance_account %}{{ program_block.balance_account.current_balance }} {{ program_block.balance_account.get_unit_display }}{% else %}не выбран{% endif %}</strong></dd></div>
+      </dl>
+    </article>
+  </aside>
+</section>
+{% endblock %}
+
+{% block extra_js %}<script src="{% static 'operations/hold_confirm.js' %}"></script>{% endblock %}

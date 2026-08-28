@@ -9,11 +9,19 @@ from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.utils import timezone
 
 from operations import schedule_writes
-from operations.models import Appointment, BalanceAccount, ProgramBlock, Room, StaffMember
+from operations.models import (
+    Appointment,
+    AppointmentParticipant,
+    BalanceAccount,
+    ProgramBlock,
+    Room,
+    StaffMember,
+    TreatmentProgram,
+)
 from operations.services import scheduling
 
 
@@ -36,6 +44,7 @@ class SchedulePreview:
     allowed_count: int
     funded_remaining: int | None
     slots: list[ScheduleSlot]
+    allow_unpaid_reserve: bool = False
     skipped_conflicts: int = 0
     skipped_availability: int = 0
 
@@ -45,7 +54,16 @@ class SchedulePreview:
 
     @property
     def limited_by_balance(self) -> bool:
-        return self.funded_remaining is not None and self.allowed_count < self.requested_count
+        planned_remaining = max(self.block.planned_sessions - self.block.scheduled_count, 0)
+        return self.funded_remaining is not None and self.funded_remaining < min(
+            self.requested_count,
+            planned_remaining,
+        )
+
+    @property
+    def limited_by_plan(self) -> bool:
+        planned_remaining = max(self.block.planned_sessions - self.block.scheduled_count, 0)
+        return planned_remaining < self.requested_count
 
 
 @dataclass(frozen=True)
@@ -76,17 +94,50 @@ def _iter_day_starts(day: date, start_at: time, end_at: time, duration_minutes: 
         cursor += step
 
 
-def account_session_capacity(account: BalanceAccount | None, service) -> int | None:
-    """Сколько занятий можно покрыть текущим остатком счета.
-
-    ``None`` означает, что счета нет или стоимость в рублях не задана, поэтому
-    мастер не может честно ограничить количество по деньгам.
-    """
+def account_availability_reason(
+    account: BalanceAccount | None,
+    service,
+    *,
+    on_date: date | None = None,
+) -> str:
     if account is None:
-        return None
+        return "счет оплаты не выбран"
+    if account.is_archived:
+        return "счет оплаты архивирован"
+    if account.status != BalanceAccount.Status.ACTIVE:
+        return f"счет оплаты имеет статус «{account.get_status_display()}»"
     if not account.can_pay_for(service):
+        return "счет оплаты не подходит для услуги"
+    if on_date and account.valid_from and on_date < account.valid_from:
+        return f"счет оплаты действует с {account.valid_from:%d.%m.%Y}"
+    if on_date and account.valid_until and on_date > account.valid_until:
+        return f"срок счета оплаты истек {account.valid_until:%d.%m.%Y}"
+    return ""
+
+
+def program_availability_reason(
+    block: ProgramBlock,
+    *,
+    on_date: date | None = None,
+) -> str:
+    if block.status in {ProgramBlock.Status.COMPLETED, ProgramBlock.Status.CANCELLED}:
+        return f"каскад имеет статус «{block.get_status_display()}»"
+    program = block.program
+    if program.status != TreatmentProgram.Status.ACTIVE:
+        return f"программа имеет статус «{program.get_status_display()}»"
+    if on_date and program.starts_on and on_date < program.starts_on:
+        return f"программа действует с {program.starts_on:%d.%m.%Y}"
+    if on_date and program.ends_on and on_date > program.ends_on:
+        return f"программа завершилась {program.ends_on:%d.%m.%Y}"
+    return ""
+
+
+def account_session_capacity(account: BalanceAccount | None, service) -> int:
+    """Return a fail-closed session capacity for the account's current balance."""
+    if account_availability_reason(account, service):
         return 0
 
+    assert account is not None
     balance = account.current_balance
     if balance <= 0:
         return 0
@@ -95,37 +146,74 @@ def account_session_capacity(account: BalanceAccount | None, service) -> int | N
 
     price = service.default_price
     if not price or price <= 0:
-        return None
+        return 0
     return int((balance / price).to_integral_value(rounding=ROUND_FLOOR))
 
 
-def funded_sessions_remaining(block: ProgramBlock) -> int | None:
-    capacity = account_session_capacity(block.balance_account, block.service)
-    if capacity is None:
-        return None
-
+def _account_reservations(account: BalanceAccount):
     inactive_statuses = [Appointment.Status.CANCELLED, Appointment.Status.RESCHEDULED]
-    reserved_participants_without_charge = (
-        block.appointment_participants.exclude(appointment_status__in=inactive_statuses)
+    account_match = Q(billing_account=account) | Q(
+        billing_account__isnull=True,
+        program_block__balance_account=account,
+    )
+    participants = list(
+        AppointmentParticipant.objects.filter(account_match)
+        .exclude(appointment_status__in=inactive_statuses)
+        .exclude(billing_decision=Appointment.BillingDecision.DO_NOT_CHARGE)
         .exclude(
             billing_decision=Appointment.BillingDecision.CHARGE,
-            billing_account__isnull=False,
+            billing_account=account,
         )
-        .count()
+        .select_related("appointment__service")
     )
-    legacy_appointments_without_charge = (
-        block.appointments.filter(participants__isnull=True)
+    legacy_appointments = list(
+        Appointment.objects.filter(participants__isnull=True)
+        .filter(
+            Q(billing_account=account)
+            | Q(billing_account__isnull=True, program_block__balance_account=account)
+        )
         .exclude(status__in=inactive_statuses)
+        .exclude(billing_decision=Appointment.BillingDecision.DO_NOT_CHARGE)
         .exclude(
             billing_decision=Appointment.BillingDecision.CHARGE,
-            billing_account__isnull=False,
+            billing_account=account,
         )
-        .count()
+        .select_related("service")
     )
-    return max(
-        capacity - reserved_participants_without_charge - legacy_appointments_without_charge,
-        0,
-    )
+    return participants, legacy_appointments
+
+
+def funded_sessions_remaining(
+    block: ProgramBlock,
+    *,
+    on_date: date | None = None,
+) -> int:
+    if account_availability_reason(block.balance_account, block.service, on_date=on_date):
+        return 0
+
+    account = block.balance_account
+    assert account is not None
+    capacity = account_session_capacity(account, block.service)
+    participants, legacy_appointments = _account_reservations(account)
+    if account.unit == BalanceAccount.Unit.SESSIONS:
+        return max(capacity - len(participants) - len(legacy_appointments), 0)
+
+    target_price = block.service.default_price
+    if not target_price or target_price <= 0:
+        return 0
+    reserved_amount = Decimal("0")
+    for participant in participants:
+        price = participant.price_snapshot or participant.appointment.service.default_price
+        if not price or price <= 0:
+            return 0
+        reserved_amount += price
+    for appointment in legacy_appointments:
+        price = appointment.service.default_price
+        if not price or price <= 0:
+            return 0
+        reserved_amount += price
+    available_amount = max(account.current_balance - reserved_amount, Decimal("0"))
+    return int((available_amount / target_price).to_integral_value(rounding=ROUND_FLOOR))
 
 
 def estimate_sessions_for_amount(account: BalanceAccount | None, service, amount: Decimal | None = None) -> int | None:
@@ -201,9 +289,12 @@ def suggest_program_block_slots(
     step_minutes: int = 30,
 ) -> SchedulePreview:
     funded_remaining = funded_sessions_remaining(block)
-    allowed_count = requested_count
+    planned_remaining = max(block.planned_sessions - block.scheduled_count, 0)
+    allowed_count = min(requested_count, planned_remaining)
+    if program_availability_reason(block):
+        allowed_count = 0
     if not allow_unpaid_reserve and funded_remaining is not None:
-        allowed_count = min(requested_count, funded_remaining)
+        allowed_count = min(allowed_count, funded_remaining)
 
     slots: list[ScheduleSlot] = []
     skipped_conflicts = 0
@@ -216,6 +307,7 @@ def suggest_program_block_slots(
             allowed_count=allowed_count,
             funded_remaining=funded_remaining,
             slots=[],
+            allow_unpaid_reserve=allow_unpaid_reserve,
         )
 
     staff_candidates = _ordered_staff_candidates(block, staff_member)
@@ -223,6 +315,14 @@ def suggest_program_block_slots(
 
     for day in _iter_days(date_from, date_to, weekdays):
         if day < timezone.localdate():
+            continue
+        if program_availability_reason(block, on_date=day):
+            continue
+        if not allow_unpaid_reserve and account_availability_reason(
+            block.balance_account,
+            block.service,
+            on_date=day,
+        ):
             continue
         for starts_at, ends_at in _iter_day_starts(day, time_from, time_until, duration_minutes, step_minutes):
             if _overlaps_selected_slots(starts_at, ends_at, slots):
@@ -284,6 +384,7 @@ def suggest_program_block_slots(
                     allowed_count=allowed_count,
                     funded_remaining=funded_remaining,
                     slots=slots,
+                    allow_unpaid_reserve=allow_unpaid_reserve,
                     skipped_conflicts=skipped_conflicts,
                     skipped_availability=skipped_availability,
                 )
@@ -294,6 +395,7 @@ def suggest_program_block_slots(
         allowed_count=allowed_count,
         funded_remaining=funded_remaining,
         slots=slots,
+        allow_unpaid_reserve=allow_unpaid_reserve,
         skipped_conflicts=skipped_conflicts,
         skipped_availability=skipped_availability,
     )
@@ -353,11 +455,64 @@ def create_schedule_from_preview(
     status: str = Appointment.Status.PROPOSED,
     actor: Any = None,
 ) -> ScheduleCreateResult:
+    allowed_statuses = {
+        Appointment.Status.PROPOSED,
+        Appointment.Status.RESERVED,
+        Appointment.Status.CONFIRMED,
+    }
+    if status not in allowed_statuses:
+        raise ValidationError("Для мастера выбран недопустимый статус занятия.")
+    if preview.allow_unpaid_reserve and status != Appointment.Status.RESERVED:
+        raise ValidationError("Занятия сверх оплаты должны создаваться со статусом «Бронь».")
+
     appointments: list[Appointment] = []
-    block = preview.block
     with schedule_writes.lock_schedule_write(
         room_ids=[slot.room.pk for slot in preview.slots],
     ) as locked:
+        block = (
+            ProgramBlock.objects.select_for_update(of=("self",))
+            .select_related("program__child", "service", "balance_account")
+            .get(pk=preview.block.pk)
+        )
+        block.program = TreatmentProgram.objects.select_for_update().get(
+            pk=block.program_id
+        )
+        for slot in preview.slots:
+            reason = program_availability_reason(
+                block,
+                on_date=timezone.localtime(slot.starts_at).date(),
+            )
+            if reason:
+                raise ValidationError(
+                    f"Программа изменилась: {reason}. "
+                    "Нажмите «Подобрать окна» ещё раз."
+                )
+        if len(preview.slots) > max(block.planned_sessions - block.scheduled_count, 0):
+            raise ValidationError(
+                "План каскада изменился. Нажмите «Подобрать окна» ещё раз."
+            )
+
+        if not preview.allow_unpaid_reserve:
+            if block.balance_account_id:
+                locked_account = BalanceAccount.all_objects.select_for_update().get(
+                    pk=block.balance_account_id
+                )
+                block.balance_account = locked_account
+            for slot in preview.slots:
+                reason = account_availability_reason(
+                    block.balance_account,
+                    block.service,
+                    on_date=timezone.localtime(slot.starts_at).date(),
+                )
+                if reason:
+                    raise ValidationError(
+                        f"Оплата изменилась: {reason}. Нажмите «Подобрать окна» ещё раз."
+                    )
+            if funded_sessions_remaining(block) < len(preview.slots):
+                raise ValidationError(
+                    "Доступная оплата изменилась. Нажмите «Подобрать окна» ещё раз."
+                )
+
         for slot in preview.slots:
             _validate_slot_still_free(block, slot)
             room = locked.room_for(slot.room.pk)

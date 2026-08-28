@@ -9,13 +9,20 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from operations.forms import (
+    GroupProgramSeriesForm,
     ProgramBlockForm,
     ProgramBlockScheduleWizardForm,
     ProgramFundsTransferForm,
     TreatmentProgramForm,
 )
-from operations.models import BalanceAccount, Child, ProgramBlock, TreatmentProgram
-from operations.services import billing as billing_svc, program_wizard
+from operations.models import (
+    AppointmentSeries,
+    BalanceAccount,
+    Child,
+    ProgramBlock,
+    TreatmentProgram,
+)
+from operations.services import billing as billing_svc, program_series, program_wizard
 
 from ._common import admin_required, is_admin_user
 
@@ -103,7 +110,10 @@ def program_block_wizard_attention_items(block: ProgramBlock, form, preview=None
             {
                 "tone": "info",
                 "title": "Счет оплаты не выбран",
-                "text": "Мастер подберет окна, но не сможет ограничить количество по доступной оплате.",
+                "text": (
+                    "Без счета обычное планирование не создаст окна. "
+                    "Для временной брони включите бронь сверх оплаты и укажите основание."
+                ),
             }
         )
     elif funded_remaining == 0 and not _wizard_bool_value(form, "allow_unpaid_reserve"):
@@ -653,6 +663,110 @@ def program_block_schedule_wizard(request, block_id: int):
             preview,
             reverse("recipient_detail", args=[block.program.child_id]),
         ),
+    )
+
+
+def _group_series_preview_from_form(form: GroupProgramSeriesForm):
+    data = form.cleaned_data
+    return program_series.preview_group_series(
+        blocks=form.selected_blocks(),
+        staff_members=form.selected_staff_members(),
+        room=data["room"],
+        title=data["title"],
+        start_date=data["start_date"],
+        end_date=data["end_date"],
+        weekdays={int(value) for value in data["weekdays"]},
+        start_time=data["start_time"],
+        duration_minutes=data["duration_minutes"],
+        default_appointment_status=data["default_appointment_status"],
+        allow_unpaid_reserve=data["allow_unpaid_reserve"],
+        allow_outside_availability=data["allow_outside_availability"],
+        override_reason=data["override_reason"],
+    )
+
+
+@admin_required
+def program_block_group_series_create(request, block_id: int):
+    block = _program_block_or_404(block_id)
+    preview = None
+    if request.method == "POST":
+        form = GroupProgramSeriesForm(request.POST, block=block)
+        if form.is_valid():
+            try:
+                preview = _group_series_preview_from_form(form)
+            except ValidationError as exc:
+                form.add_error(None, exc)
+            else:
+                if request.POST.get("action") == "create":
+                    if not preview.ready_count:
+                        messages.warning(
+                            request,
+                            "Нет ни одной даты, которую можно безопасно создать. Исправьте конфликты.",
+                        )
+                    else:
+                        result = program_series.create_group_series(
+                            preview,
+                            operation_key=form.cleaned_data["operation_key"],
+                            actor=request.user,
+                        )
+                        messages.success(
+                            request,
+                            f"Групповая серия создана. Занятий: {result.created_count}, "
+                            f"пропущено дат: {result.skipped_count}.",
+                        )
+                        if result.reused_series:
+                            messages.info(
+                                request,
+                                "Повторный запрос распознан: существующая серия использована без дублей.",
+                            )
+                        return redirect("appointment_series_detail", series_id=result.series.pk)
+                elif not preview.ready_count:
+                    messages.warning(
+                        request,
+                        "Все даты имеют ограничения. Причины показаны в предварительной проверке.",
+                    )
+    else:
+        form = GroupProgramSeriesForm(block=block)
+
+    return render(
+        request,
+        "operations/group_program_series_form.html",
+        {
+            "program_block": block,
+            "form": form,
+            "preview": preview,
+            "cancel_url": reverse("recipient_detail", args=[block.program.child_id]),
+        },
+    )
+
+
+@admin_required
+def appointment_series_detail(request, series_id: int):
+    series = get_object_or_404(
+        AppointmentSeries.objects.select_related(
+            "child",
+            "service",
+            "staff_member",
+            "room",
+            "program_block",
+        ).prefetch_related(
+            "default_participants__child",
+            "default_participants__program_block__program",
+            "default_participants__billing_account__funding_source",
+            "default_staff_assignments__staff_member",
+            "occurrences__appointment",
+        ),
+        pk=series_id,
+    )
+    return render(
+        request,
+        "operations/appointment_series_detail.html",
+        {
+            "series": series,
+            "participants": series.default_participants.all(),
+            "staff_assignments": series.default_staff_assignments.all(),
+            "occurrences": series.occurrences.all(),
+        },
     )
 
 

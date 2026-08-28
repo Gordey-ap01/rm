@@ -8,8 +8,8 @@ from typing import Any
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.db import models
-from django.db.models import F, Q, QuerySet, Sum
+from django.db import models, transaction
+from django.db.models import F, Max, Q, QuerySet, Sum
 from django.utils import timezone
 from django.utils.text import get_valid_filename
 from django.utils.translation import gettext_lazy as _
@@ -2833,6 +2833,40 @@ class AppointmentSeries(TimeStampedModel):
     days_of_week = models.CharField("дни недели", max_length=80, help_text="Например: ПН,СР,ПТ")
     time = models.TimeField("время")
     duration_minutes = models.PositiveIntegerField("длительность, мин")
+    session_type = models.CharField(
+        "тип занятия",
+        max_length=20,
+        choices=(
+            ("individual", "Индивидуальное"),
+            ("group", "Групповое"),
+        ),
+        default="individual",
+    )
+    operation_key = models.UUIDField(
+        "ключ операции",
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+    )
+    default_appointment_status = models.CharField(
+        "статус создаваемых занятий",
+        max_length=30,
+        choices=(
+            ("proposed", "Предложено"),
+            ("confirmed", "Согласовано"),
+            ("reserved", "Бронь"),
+        ),
+        default="proposed",
+    )
+    allow_unpaid_reserve = models.BooleanField(
+        "разрешена бронь сверх оплаты",
+        default=False,
+    )
+    allow_outside_availability = models.BooleanField(
+        "разрешено назначение вне графика",
+        default=False,
+    )
+    override_reason = models.TextField("основание исключений", blank=True)
     status = models.CharField("статус", max_length=30, choices=Status.choices, default=Status.DRAFT)
 
     class Meta:
@@ -2842,6 +2876,30 @@ class AppointmentSeries(TimeStampedModel):
 
     def __str__(self) -> str:
         return self.title
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        if self.pk and (
+            self.occurrences.exists()
+            or self.default_participants.exists()
+            or self.default_staff_assignments.exists()
+        ):
+            raise ValidationError("Серию с историей нельзя удалить; измените ее статус.")
+        super().delete(*args, **kwargs)
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            errors["end_date"] = "Дата окончания не может быть раньше даты начала."
+        if self.allow_unpaid_reserve and self.default_appointment_status != "reserved":
+            errors["default_appointment_status"] = (
+                "Занятия сверх оплаты должны создаваться со статусом «Бронь»."
+            )
+        if (
+            self.allow_unpaid_reserve or self.allow_outside_availability
+        ) and not self.override_reason.strip():
+            errors["override_reason"] = "Укажите основание для исключения."
+        if errors:
+            raise ValidationError(errors)
 
     DAY_MAP = {
         "ПН": 0,
@@ -2862,6 +2920,13 @@ class AppointmentSeries(TimeStampedModel):
 
         Returns the number of newly created appointments.
         """
+        if self.status != self.Status.ACTIVE:
+            raise ValidationError("Создавать занятия можно только для активной серии.")
+        if self.session_type == "group":
+            raise ValidationError(
+                "Групповая серия создается сервисом групповых программ."
+            )
+
         import datetime as dtmod
 
         from django.utils import timezone
@@ -2894,14 +2959,6 @@ class AppointmentSeries(TimeStampedModel):
             ends_at = starts_at + dtmod.timedelta(minutes=self.duration_minutes)
             if starts_at in overlaps:
                 continue
-            sequence_number = None
-            if self.program_block_id:
-                sequence_number = (
-                    Appointment.objects.filter(program_block=self.program_block)
-                    .exclude(status=Appointment.Status.CANCELLED)
-                    .count()
-                    + 1
-                )
             try:
                 with schedule_writes.lock_schedule_write(
                     room_ids=[self.room_id],
@@ -2925,7 +2982,6 @@ class AppointmentSeries(TimeStampedModel):
                         status=Appointment.Status.CONFIRMED,
                         series=self,
                         program_block=self.program_block,
-                        sequence_number=sequence_number,
                     )
             except ValidationError:
                 continue
@@ -3102,18 +3158,23 @@ class Appointment(TimeStampedModel):
         sync_legacy: bool = True,
         **kwargs: object,
     ) -> None:
-        if not self.pk and self.program_block_id and not self.sequence_number:
-            self.sequence_number = (
-                Appointment.objects.filter(program_block_id=self.program_block_id)
-                .exclude(status__in=[Appointment.Status.CANCELLED, Appointment.Status.RESCHEDULED])
-                .count()
-                + 1
-            )
-        if validate_schedule:
-            self.full_clean(exclude={"specialist_note"} if not self.pk else None)
-        super().save(*args, **kwargs)
-        if sync_legacy:
-            self._sync_legacy_participant_and_staff_assignment()
+        with transaction.atomic():
+            if not self.pk and self.program_block_id and not self.sequence_number:
+                ProgramBlock.objects.select_for_update().only("pk").get(
+                    pk=self.program_block_id
+                )
+                participant_max = AppointmentParticipant.objects.filter(
+                    program_block_id=self.program_block_id
+                ).aggregate(value=Max("sequence_number"))["value"]
+                legacy_max = Appointment.objects.filter(
+                    program_block_id=self.program_block_id
+                ).aggregate(value=Max("sequence_number"))["value"]
+                self.sequence_number = max(participant_max or 0, legacy_max or 0) + 1
+            if validate_schedule:
+                self.full_clean(exclude={"specialist_note"} if not self.pk else None)
+            super().save(*args, **kwargs)
+            if sync_legacy:
+                self._sync_legacy_participant_and_staff_assignment()
 
     def _validate_no_overlap(self) -> None:
         """Кросс-БД проверка отсутствия пересечений.
@@ -3361,6 +3422,19 @@ class AppointmentParticipant(TimeStampedModel):
             models.UniqueConstraint(
                 fields=["appointment", "child"], name="unique_appointment_participant_child"
             ),
+            models.UniqueConstraint(
+                fields=["program_block", "sequence_number"],
+                condition=(
+                    Q(program_block__isnull=False, sequence_number__isnull=False)
+                    & ~Q(
+                        appointment_status__in=[
+                            Appointment.Status.CANCELLED,
+                            Appointment.Status.RESCHEDULED,
+                        ]
+                    )
+                ),
+                name="unique_program_block_participant_sequence",
+            ),
         ]
         indexes = [
             models.Index(fields=["child", "starts_at_snapshot", "ends_at_snapshot"]),
@@ -3406,23 +3480,31 @@ class AppointmentParticipant(TimeStampedModel):
             )
 
     def save(self, *args: object, **kwargs: object) -> None:
-        if self.program_block_id and not self.sequence_number:
-            qs = AppointmentParticipant.objects.filter(program_block_id=self.program_block_id)
-            if self.pk:
-                qs = qs.exclude(pk=self.pk)
-            self.sequence_number = (
-                qs.exclude(
-                    appointment_status__in=[
-                        Appointment.Status.CANCELLED,
-                        Appointment.Status.RESCHEDULED,
-                    ]
-                ).count()
-                + 1
-            )
-        if not self.program_block_id:
-            self.sequence_number = None
-        self.full_clean()
-        super().save(*args, **kwargs)
+        with transaction.atomic():
+            if self.program_block_id and not self.sequence_number:
+                ProgramBlock.objects.select_for_update().only("pk").get(
+                    pk=self.program_block_id
+                )
+                qs = AppointmentParticipant.objects.filter(
+                    program_block_id=self.program_block_id
+                )
+                if self.pk:
+                    qs = qs.exclude(pk=self.pk)
+                participant_max = qs.aggregate(value=Max("sequence_number"))["value"]
+                legacy_max = Appointment.objects.filter(
+                    program_block_id=self.program_block_id
+                ).aggregate(value=Max("sequence_number"))["value"]
+                self.sequence_number = max(participant_max or 0, legacy_max or 0) + 1
+                update_fields = kwargs.get("update_fields")
+                if update_fields is not None:
+                    kwargs["update_fields"] = set(update_fields) | {"sequence_number"}
+            if not self.program_block_id:
+                self.sequence_number = None
+                update_fields = kwargs.get("update_fields")
+                if update_fields is not None:
+                    kwargs["update_fields"] = set(update_fields) | {"sequence_number"}
+            self.full_clean()
+            super().save(*args, **kwargs)
 
 
 class AppointmentStaffAssignment(TimeStampedModel):
@@ -3480,6 +3562,182 @@ class AppointmentStaffAssignment(TimeStampedModel):
             and self.ends_at_snapshot <= self.starts_at_snapshot
         ):
             raise ValidationError({"ends_at_snapshot": "Окончание должно быть позже начала."})
+
+
+class AppointmentSeriesParticipant(TimeStampedModel):
+    series = models.ForeignKey(
+        AppointmentSeries,
+        verbose_name="серия",
+        on_delete=models.CASCADE,
+        related_name="default_participants",
+    )
+    child = models.ForeignKey(
+        Child,
+        verbose_name="получатель",
+        on_delete=models.PROTECT,
+        related_name="appointment_series_memberships",
+    )
+    program_block = models.ForeignKey(
+        ProgramBlock,
+        verbose_name="каскад",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="series_memberships",
+    )
+    billing_account = models.ForeignKey(
+        BalanceAccount,
+        verbose_name="счет оплаты",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="series_memberships",
+    )
+    position = models.PositiveIntegerField("порядок", default=1)
+
+    class Meta:
+        verbose_name = "участник серии"
+        verbose_name_plural = "участники серий"
+        ordering = ["series", "position", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["series", "child"],
+                name="unique_appointment_series_child",
+            ),
+        ]
+        indexes = [models.Index(fields=["series", "position"])]
+
+    def __str__(self) -> str:
+        return f"{self.series} / {self.child}"
+
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if self.program_block_id:
+            if self.child_id and self.program_block.program.child_id != self.child_id:
+                errors["program_block"] = "Каскад должен принадлежать получателю серии."
+            if self.series_id and self.program_block.service_id != self.series.service_id:
+                errors["program_block"] = "Каскад должен соответствовать услуге серии."
+        if self.billing_account_id:
+            if self.child_id and self.billing_account.child_id != self.child_id:
+                errors["billing_account"] = "Счет должен принадлежать получателю серии."
+            if self.series_id and not self.billing_account.can_pay_for(self.series.service):
+                errors["billing_account"] = "Счет не подходит для услуги серии."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class AppointmentSeriesStaffAssignment(TimeStampedModel):
+    class Role(models.TextChoices):
+        PRIMARY = "primary", "Основной"
+        ASSISTANT = "assistant", "Ассистент"
+        SUBSTITUTE = "substitute", "Замена"
+        OBSERVER = "observer", "Наблюдатель"
+
+    series = models.ForeignKey(
+        AppointmentSeries,
+        verbose_name="серия",
+        on_delete=models.CASCADE,
+        related_name="default_staff_assignments",
+    )
+    staff_member = models.ForeignKey(
+        StaffMember,
+        verbose_name="специалист",
+        on_delete=models.PROTECT,
+        related_name="appointment_series_assignments",
+    )
+    role = models.CharField("роль", max_length=30, choices=Role.choices, default=Role.PRIMARY)
+    override_availability = models.BooleanField("назначать вне графика", default=False)
+    override_reason = models.TextField("основание выхода вне графика", blank=True)
+
+    class Meta:
+        verbose_name = "назначение специалиста серии"
+        verbose_name_plural = "назначения специалистов серий"
+        ordering = ["series", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["series", "staff_member"],
+                name="unique_appointment_series_staff",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.series} / {self.staff_member}"
+
+    def clean(self) -> None:
+        if self.override_availability and not self.override_reason.strip():
+            raise ValidationError(
+                {"override_reason": "Укажите основание назначения вне графика."}
+            )
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class AppointmentSeriesOccurrence(TimeStampedModel):
+    class Outcome(models.TextChoices):
+        CREATED = "created", "Создано"
+        JOINED = "joined", "Присоединено"
+        SKIPPED = "skipped", "Пропущено"
+        UNCHANGED = "unchanged", "Без изменений"
+
+    series = models.ForeignKey(
+        AppointmentSeries,
+        verbose_name="серия",
+        on_delete=models.CASCADE,
+        related_name="occurrences",
+    )
+    scheduled_starts_at = models.DateTimeField("плановое начало")
+    appointment = models.ForeignKey(
+        Appointment,
+        verbose_name="занятие",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="series_occurrences",
+    )
+    outcome = models.CharField("результат", max_length=20, choices=Outcome.choices)
+    reason_code = models.CharField("код причины", max_length=50, blank=True)
+    reason = models.TextField("причина", blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="создал",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="appointment_series_occurrences",
+    )
+
+    class Meta:
+        verbose_name = "результат даты серии"
+        verbose_name_plural = "результаты дат серии"
+        ordering = ["series", "scheduled_starts_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["series", "scheduled_starts_at"],
+                name="unique_appointment_series_occurrence",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["appointment", "series"]),
+        ]
+
+    def __str__(self) -> str:
+        local_start = timezone.localtime(self.scheduled_starts_at)
+        return f"{self.series} / {local_start:%d.%m.%Y %H:%M} / {self.get_outcome_display()}"
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Результат даты серии неизменяем.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Результат даты серии нельзя удалить.")
 
 
 def room_usage_counts(appointment_qs: QuerySet[Appointment]) -> tuple[int, int]:
