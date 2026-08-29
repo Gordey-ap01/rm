@@ -140,9 +140,6 @@ MVCC-временем данных и цепочкой исправлений. 5
   `88 passed, 38 skipped`, PostgreSQL `126 passed`; billing decisions
   PostgreSQL `2 passed`. Ruff, Django check, migration dry-run и независимый
   read-only review прошли без P0-P2.
-- Graphify после 61C-4c обновлен инкрементально и проверен запросом по
-  `AppointmentSeriesCancellationResult`. После временного rate limit все
-  semantic-cache misses дозаполнены; tracked-файлы не содержат LLM/API-ключей.
 - 61C-4d добавляет `AppointmentParticipant.source_participant`, participant-цель
   в `AppointmentSeriesCancellationResult` и миграцию `0064`. Withdraw проходит
   до terminal leaf join-линии, не удаляет участие и фиксирует typed outcome.
@@ -154,6 +151,9 @@ MVCC-временем данных и цепочкой исправлений. 5
   `106 passed, 42 skipped`, PostgreSQL `148 passed`. Ruff, Django check,
   migration dry-run, migration round-trip/races и два независимых read-only
   review прошли. Нового UI нет; browser acceptance перенесена в 61D.
+- Graphify после 61C-4d обновлен инкрементально и проверен запросом по
+  `withdraw_future_joined_participations` и participant lineage. Tracked-файлы
+  не содержат LLM/API-ключей.
 - Приемка frozen retry targets `0061`: весь `test_program_series.py` прошел на
   SQLite `54 passed, 27 skipped` и PostgreSQL 17 `81 passed`. Отдельно проверены
   fail-closed preflight старых retry runs, deferred count, immutable/reverse
