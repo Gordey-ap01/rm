@@ -167,6 +167,7 @@ def appointment_send_confirmation(request, pk: int):
                         status=Appointment.Status.PROPOSED,
                         allowed_from={Appointment.Status.DRAFT},
                         action="отправить согласование",
+                        target_participant_id=confirmation.participant_id,
                     )
         except appointment_svc.AppointmentStateConflict as exc:
             form.add_error(None, str(exc))

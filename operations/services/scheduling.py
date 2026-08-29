@@ -293,7 +293,9 @@ def representative_confirmation_targets(
     appointment: Appointment,
 ) -> list[RepresentativeConfirmationTarget]:
     participants = list(
-        appointment.participants.select_related("child", "child__primary_parent").order_by(
+        appointment.participants.exclude(
+            series_withdrawal_results__isnull=False,
+        ).select_related("child", "child__primary_parent").order_by(
             "starts_at_snapshot", "child__last_name", "child__first_name"
         )
     )
@@ -347,7 +349,11 @@ def representative_confirmation_targets(
 
 
 def appointment_children_for_reschedule(appointment: Appointment) -> list[Any]:
-    participants = list(appointment.participants.select_related("child").order_by("pk"))
+    participants = list(
+        appointment.participants.exclude(
+            series_withdrawal_results__isnull=False,
+        ).select_related("child").order_by("pk")
+    )
     if not participants:
         return [appointment.child]
     children = [participant.child for participant in participants]

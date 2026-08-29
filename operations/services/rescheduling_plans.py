@@ -303,7 +303,11 @@ def _skip_alternative_steps_for_source(applied_step: AppointmentRescheduleStep) 
 
 
 def _appointment_children(appointment: Appointment) -> list[Any]:
-    participants = list(appointment.participants.select_related("child").order_by("pk"))
+    participants = list(
+        appointment.participants.exclude(
+            series_withdrawal_results__isnull=False,
+        ).select_related("child").order_by("pk")
+    )
     if not participants:
         return [appointment.child]
     children = [participant.child for participant in participants]
@@ -339,7 +343,11 @@ def _appointment_staff_for_move(
 
 
 def _participant_snapshot(appointment: Appointment) -> list[dict[str, Any]]:
-    participants = list(appointment.participants.select_related("child").order_by("pk"))
+    participants = list(
+        appointment.participants.exclude(
+            series_withdrawal_results__isnull=False,
+        ).select_related("child").order_by("pk")
+    )
     if not participants:
         return [
             {
@@ -417,7 +425,9 @@ def _representative_targets(
 ) -> list[tuple[ParentGuardian, AppointmentParticipant | None]]:
     targets: list[tuple[ParentGuardian, AppointmentParticipant | None]] = []
     participants = list(
-        appointment.participants.select_related(
+        appointment.participants.exclude(
+            series_withdrawal_results__isnull=False,
+        ).select_related(
             "child", "child__primary_parent"
         ).order_by("pk")
     )

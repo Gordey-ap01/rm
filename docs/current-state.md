@@ -9,15 +9,11 @@
 61C-1 и 61C-2 реализованы и подтверждены GitHub Actions run `33182319309`:
 устойчивый корень, immutable-редакции,
 append-only run/result, сверяемый legacy backfill, PostgreSQL guards и единый
-materializer индивидуальных/групповых/create/join серий. 61C-3 реализован и
-локально принят: атомарная редакция только будущего состава. Следующий кодовый
-подсрез - 61C-4: expand-gate `0060` и `missing_only` реализованы и локально
-приняты; expand `0061` и сервисное исполнение `retry_skipped` реализованы и
-локально приняты. 61C-4b/`0062` реализует append-only stop/resume,
-директорское возобновление и продолжение принятого run. 61C-4c/`0063`
-реализует аудируемую отмену будущих неначавшихся занятий create-серии,
-сохраняет ledger и блокирует неявное повторное открытие. Следующий подсрез -
-61C-4d withdraw, затем рабочий 61D UI.
+materializer индивидуальных/групповых/create/join серий. 61C-3 и вся 61C-4
+реализованы и локально приняты: `0060`/`0061` защищают missing/retry targets,
+`0062` реализует append-only stop/resume, `0063` - аудируемую отмену будущих
+create-занятий, `0064` - безопасное снятие будущих join-участий. Общий слот,
+чужой состав и ledger сохраняются. Следующий подсрез - рабочий 61D UI.
 Production preflight, health, проверяемый backup/restore, цельная
 browser-приемка рабочих ролей, persisted transfer/conversion и приемка
 грантового отчета завершены. Безопасный жизненный цикл грантового плана по
@@ -147,6 +143,17 @@ MVCC-временем данных и цепочкой исправлений. 5
 - Graphify после 61C-4c обновлен инкрементально и проверен запросом по
   `AppointmentSeriesCancellationResult`. После временного rate limit все
   semantic-cache misses дозаполнены; tracked-файлы не содержат LLM/API-ключей.
+- 61C-4d добавляет `AppointmentParticipant.source_participant`, participant-цель
+  в `AppointmentSeriesCancellationResult` и миграцию `0064`. Withdraw проходит
+  до terminal leaf join-линии, не удаляет участие и фиксирует typed outcome.
+  Lineage, operational state после результата и terminal-leaf target защищены
+  моделью и SQLite/PostgreSQL triggers; неактивные участия исключены из
+  календаря, вместимости, табеля, подтверждений, уведомлений и новых списаний.
+- Приемка 61C-4d: полный SQLite regression `950 passed, 86 skipped`; полный
+  PostgreSQL 17 regression `1036 passed` без пропусков. Модуль серий: SQLite
+  `106 passed, 42 skipped`, PostgreSQL `148 passed`. Ruff, Django check,
+  migration dry-run, migration round-trip/races и два независимых read-only
+  review прошли. Нового UI нет; browser acceptance перенесена в 61D.
 - Приемка frozen retry targets `0061`: весь `test_program_series.py` прошел на
   SQLite `54 passed, 27 skipped` и PostgreSQL 17 `81 passed`. Отдельно проверены
   fail-closed preflight старых retry runs, deferred count, immutable/reverse
@@ -517,17 +524,18 @@ MVCC-временем данных и цепочкой исправлений. 5
 
 ## Следующая работа
 
-1. Реализовать 61C-4d withdraw без изменения общего занятия и подключить
-   retry/cancel/withdraw к рабочему интерфейсу администратора.
-2. Закрыть 61D: паузу/завершение, переходы программы/каскада, registry,
+1. Реализовать 61D: подключить retry/cancel/withdraw к рабочему интерфейсу
+   администратора и провести browser/role acceptance.
+2. Закрыть остальную 61D: паузу/завершение, переходы программы/каскада, registry,
    руководительские отчеты и полную ролевую приемку серий.
-3. Перед production migration chain `0048-0063` выполнить backup v2, `--strict`
+3. Перед production migration chain `0048-0064` выполнить backup v2, `--strict`
    preflight, временно закрыть грантовые записи и подготовить совместимый
-   rollback-релиз. После появления истории `0053`/`0054` и series history `0055-0063`
+   rollback-релиз. После появления истории `0053`/`0054` и series history `0055-0064`
    эти миграции не откатываются:
    rollback сохраняет additive schema, private volume и immutable-историю.
-4. Закрыть production-допуск 59B-2: offsite backup, monitoring/alerting, реальный SMTP,
-   retention/legal hold, шифрование, malware policy и раздельные DB credentials вне Git.
+4. Закрыть production-допуск 59B-2: transactional notification outbox перед
+   реальным SMTP, offsite backup, monitoring/alerting, retention/legal hold,
+   шифрование, malware policy и раздельные DB credentials вне Git.
 5. Отдельно согласовать policy возвратов/обратной конвертации; перед пилотом проверить
    mobile-кабинет на физическом телефоне и провести
    обезличенные рабочие сценарии центра.
@@ -549,13 +557,13 @@ MVCC-временем данных и цепочкой исправлений. 5
 Критические зоны до рабочего production-контура:
 
 - завершенная матрица ролей во всех управленческих действиях;
-- остаток 61C-4 и 61D: withdraw, UI retry/cancel и полный жизненный цикл серий;
+- 61D: UI retry/cancel/withdraw и полный жизненный цикл серий;
 - production policy и внешняя защита приватных артефактов 59B-2;
 - policy возвратов и обратной конвертации;
 - offsite backup, monitoring/alerting и реальный SMTP;
 - регулярный targeted browser smoke и приемка на физическом телефоне;
 - приемка на реальных обезличенных сценариях центра;
-- production cutover migration chain `0048-0063` после backup v2/preflight.
+- production cutover migration chain `0048-0064` после backup v2/preflight.
 
 ## Риски и запреты
 
@@ -579,6 +587,10 @@ MVCC-временем данных и цепочкой исправлений. 5
 - Не откатывать `0063` после появления cancel-result либо совместимого с ним
   lifecycle-history: rollback сохраняет immutable результаты и использует
   совместимую версию приложения.
+- Не откатывать `0064` после появления withdraw-result или participant-lineage:
+  rollback сохраняет additive schema и использует совместимую версию приложения.
+- Не включать реальный SMTP как надежный канал до transactional outbox/claim:
+  проверка typed result перед send не закрывает гонку с внешней отправкой.
 - Не объединять разделенные runtime/migration DB-роли: runtime не имеет
   DDL, role membership, право отключать triggers или заменять защитные
   функции `0053`/`0054`; live preflight технически это проверяет.

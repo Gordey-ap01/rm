@@ -45,7 +45,14 @@ def _sync_appointment_billing_summary(
 ) -> None:
     if participants is None:
         participants = list(appointment.participants.select_related("billing_account").order_by("pk"))
-    if not participants:
+    had_participant_rows = bool(participants)
+    participants = [
+        participant
+        for participant in participants
+        if participant.appointment_status
+        not in {Appointment.Status.CANCELLED, Appointment.Status.RESCHEDULED}
+    ]
+    if not participants and not had_participant_rows:
         return
     billing_decision = Appointment.BillingDecision.UNDECIDED
     billing_account = None
@@ -91,8 +98,20 @@ def _locked_participant(
         .filter(appointment=appointment)
         .order_by("pk")
     )
+    frozen_participant_ids = set(
+        AppointmentSeriesCancellationResult.objects.filter(
+            appointment_participant__in=participants,
+        ).values_list("appointment_participant_id", flat=True)
+    )
+    operational_participants = [
+        item
+        for item in participants
+        if item.appointment_status
+        not in {Appointment.Status.CANCELLED, Appointment.Status.RESCHEDULED}
+        and item.pk not in frozen_participant_ids
+    ]
     if participant is None:
-        return _single_participant_or_none(participants), participants
+        return _single_participant_or_none(operational_participants), participants
 
     for locked_participant in participants:
         if locked_participant.pk == participant.pk:
@@ -184,19 +203,38 @@ def apply_decision(
     with transaction.atomic():
         # Every standard decision locks in this order to serialize one appointment's fact.
         appointment = (
-            Appointment.objects.select_for_update().select_related("service").get(pk=appointment.pk)
+            Appointment.objects.select_for_update(of=("self",))
+            .select_related("service")
+            .get(pk=appointment.pk)
         )
+        participant, participants = _locked_participant(appointment, participant)
         if (
             decision == Appointment.BillingDecision.CHARGE
-            and AppointmentSeriesCancellationResult.objects.filter(
-                appointment=appointment,
-                outcome=AppointmentSeriesCancellationResult.Outcome.CANCELLED,
-            ).exists()
+            and participant is None
+            and participants
         ):
             raise ValueError(
-                "Нельзя списать оплату после массовой отмены будущего занятия серией."
+                "Нельзя списать оплату без доступного участника: "
+                "существующие участия неактивны или заморожены результатом серии."
             )
-        participant, participants = _locked_participant(appointment, participant)
+        blocked_by_series = AppointmentSeriesCancellationResult.objects.filter(
+            appointment=appointment,
+        ).filter(
+            Q(appointment_participant__isnull=True)
+            | Q(appointment_participant=participant)
+        )
+        if decision == Appointment.BillingDecision.CHARGE and blocked_by_series.exists():
+            raise ValueError(
+                "Нельзя списать оплату после массовой отмены, снятия участия "
+                "или иного зафиксированного результата серии."
+            )
+        if (
+            decision == Appointment.BillingDecision.CHARGE
+            and participant is not None
+            and participant.appointment_status
+            in {Appointment.Status.CANCELLED, Appointment.Status.RESCHEDULED}
+        ):
+            raise ValueError("Нельзя списать оплату за неактивное участие.")
         block_ids = {
             block_id
             for block_id in [
@@ -480,7 +518,7 @@ def _record_balance_transfer(
         if program_block is not None:
             program_block = (
                 ProgramBlock.objects.select_related("program", "service")
-                .select_for_update()
+                .select_for_update(of=("self",))
                 .get(pk=program_block.pk)
             )
         locked_from, locked_to = _locked_transfer_accounts(from_account, to_account)

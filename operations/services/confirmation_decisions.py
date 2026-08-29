@@ -69,6 +69,7 @@ def _sync_confirmation_effects(confirmation: AppointmentConfirmation) -> None:
                 status=Appointment.Status.CONFIRMED,
                 allowed_from={Appointment.Status.DRAFT, Appointment.Status.PROPOSED},
                 action="подтвердить занятие",
+                target_participant_id=confirmation.participant_id,
             )
 
 

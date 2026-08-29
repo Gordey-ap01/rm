@@ -17,6 +17,7 @@ from operations.models import (
     AppointmentSeriesCancellationResult,
     AppointmentSeriesLifecycleEvent,
     AppointmentSeriesMaterializationResult,
+    AppointmentSeriesOccurrence,
     AppointmentSeriesRevisionParticipant,
     AppointmentSeriesRevisionStaffAssignment,
     AppointmentStaffAssignment,
@@ -58,6 +59,10 @@ class SeriesCancellationResult:
             result.outcome == AppointmentSeriesCancellationResult.Outcome.CANCELLED
             for result in self.results
         )
+
+    @property
+    def withdrawn_count(self) -> int:
+        return self.cancelled_count
 
     @property
     def unchanged_count(self) -> int:
@@ -202,7 +207,11 @@ def _cancellation_results(
     event: AppointmentSeriesLifecycleEvent,
 ) -> tuple[AppointmentSeriesCancellationResult, ...]:
     return tuple(
-        event.cancellation_results.select_related("appointment").order_by(
+        event.cancellation_results.select_related(
+            "appointment",
+            "appointment_participant",
+            "source_materialization_result",
+        ).order_by(
             "appointment__starts_at",
             "appointment_id",
         )
@@ -504,6 +513,253 @@ def _lock_cancellation_financial_facts(appointments: list[Appointment]) -> None:
     )
 
 
+def _discover_participant_lineage_rows(
+    root_ids: set[int],
+) -> dict[int, dict[str, int | None]]:
+    fields = (
+        "pk",
+        "appointment_id",
+        "source_participant_id",
+    )
+    rows = {
+        row["pk"]: row
+        for row in AppointmentParticipant.objects.filter(pk__in=root_ids).values(*fields)
+    }
+    frontier = set(rows)
+    while frontier:
+        successors = list(
+            AppointmentParticipant.objects.filter(
+                source_participant_id__in=frontier
+            ).values(*fields)
+        )
+        frontier = {
+            row["pk"]
+            for row in successors
+            if row["pk"] not in rows
+        }
+        rows.update({row["pk"]: row for row in successors})
+    return rows
+
+
+def _lock_withdrawal_appointments(root_ids: set[int]) -> list[Appointment]:
+    """Lock every committed appointment in each lineage, including a racing move."""
+
+    locked_by_id: dict[int, Appointment] = {}
+    known_participant_ids: set[int] = set()
+    while True:
+        lineage_rows = _discover_participant_lineage_rows(root_ids)
+        appointment_ids = {
+            int(row["appointment_id"])
+            for row in lineage_rows.values()
+            if row["appointment_id"] is not None
+        }
+        unlocked_ids = appointment_ids - set(locked_by_id)
+        if unlocked_ids:
+            locked_by_id.update(
+                {
+                    appointment.pk: appointment
+                    for appointment in Appointment.objects.select_for_update()
+                    .filter(pk__in=unlocked_ids)
+                    .order_by("pk")
+                }
+            )
+        current_participant_ids = set(lineage_rows)
+        if current_participant_ids == known_participant_ids and not unlocked_ids:
+            break
+        known_participant_ids = current_participant_ids
+    return [locked_by_id[pk] for pk in sorted(locked_by_id)]
+
+
+def _locked_withdrawal_participants(
+    appointments: list[Appointment],
+) -> list[AppointmentParticipant]:
+    appointment_ids = [appointment.pk for appointment in appointments]
+    participants = list(
+        AppointmentParticipant.objects.select_for_update(of=("self",))
+        .select_related(
+            "appointment",
+            "appointment__service",
+        )
+        .filter(appointment_id__in=appointment_ids)
+        .order_by("appointment_id", "pk")
+    )
+    list(
+        AppointmentStaffAssignment.objects.select_for_update()
+        .filter(appointment_id__in=appointment_ids)
+        .order_by("appointment_id", "pk")
+    )
+    return participants
+
+
+def _participant_lineage(
+    source: AppointmentSeriesMaterializationResult,
+    *,
+    participants_by_id: dict[int, AppointmentParticipant],
+    successors_by_source_id: dict[int, list[AppointmentParticipant]],
+) -> tuple[list[AppointmentParticipant], str | None]:
+    root_id = source.appointment_participant_id
+    root = participants_by_id.get(root_id)
+    if root is None:
+        return [], "missing_root_participant"
+    lineage = [root]
+    seen = {root.pk}
+    current = root
+    while True:
+        successors = successors_by_source_id.get(current.pk, [])
+        if not successors:
+            return lineage, None
+        if len(successors) != 1:
+            return lineage, "branched_lineage"
+        successor = successors[0]
+        if successor.pk in seen:
+            return lineage, "cyclic_lineage"
+        seen.add(successor.pk)
+        lineage.append(successor)
+        current = successor
+
+
+def _withdrawal_decision(
+    source: AppointmentSeriesMaterializationResult,
+    lineage: list[AppointmentParticipant],
+    lineage_error: str | None,
+    *,
+    event: AppointmentSeriesLifecycleEvent,
+    foreign_owned_participant_ids: set[int],
+) -> tuple[AppointmentParticipant, str, str, str]:
+    target = lineage[-1]
+    appointment = target.appointment
+    if lineage_error:
+        return (
+            target,
+            AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW,
+            lineage_error,
+            "Линия переносов участия повреждена или неоднозначна.",
+        )
+    if source.provenance_kind == (
+        AppointmentSeriesMaterializationResult.ProvenanceKind.LEGACY_UNKNOWN
+    ):
+        return (
+            target,
+            AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW,
+            "legacy_unknown",
+            "Legacy-происхождение участия недостаточно точно для массового снятия.",
+        )
+    root = lineage[0]
+    if (
+        root.pk != source.appointment_participant_id
+        or root.appointment_id != source.appointment_id
+    ):
+        return (
+            target,
+            AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW,
+            "source_projection_changed",
+            "Канонический joined-result не совпадает с корнем линии участия.",
+        )
+    if any(
+        participant.child_id != root.child_id
+        or participant.program_block_id != root.program_block_id
+        or participant.appointment.service_id != source.revision.service_id
+        for participant in lineage
+    ):
+        return (
+            target,
+            AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW,
+            "lineage_projection_changed",
+            "Получатель, каскад или услуга изменились внутри линии переносов.",
+        )
+    membership_exists = AppointmentSeriesRevisionParticipant.objects.filter(
+        revision_id=source.revision_id,
+        child_id=target.child_id,
+        program_block_id=target.program_block_id,
+    ).exists()
+    if not membership_exists:
+        return (
+            target,
+            AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW,
+            "revision_membership_changed",
+            "Текущее участие не совпадает с получателем и каскадом редакции серии.",
+        )
+    if any(item.pk in foreign_owned_participant_ids for item in lineage):
+        return (
+            target,
+            AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW,
+            "foreign_join_owner",
+            "На эту линию участия указывает joined-result другой серии.",
+        )
+    active_lineage = [
+        participant
+        for participant in lineage
+        if participant.appointment_status in _CANCELLABLE_APPOINTMENT_STATUSES
+    ]
+    if len(active_lineage) > 1 or (active_lineage and active_lineage[0].pk != target.pk):
+        return (
+            target,
+            AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW,
+            "multiple_active_lineage_rows",
+            "В линии переносов найдено несколько активных участий.",
+        )
+    if appointment.starts_at <= event.occurred_at:
+        return (
+            target,
+            AppointmentSeriesCancellationResult.Outcome.UNCHANGED,
+            "not_future",
+            "Текущее участие уже началось или осталось в прошлом.",
+        )
+    if appointment.status in {
+        Appointment.Status.COMPLETED,
+        Appointment.Status.NO_SHOW,
+        Appointment.Status.CANCELLED,
+    }:
+        return (
+            target,
+            AppointmentSeriesCancellationResult.Outcome.UNCHANGED,
+            "terminal_appointment",
+            "Терминальный статус общего занятия не изменяется.",
+        )
+    if target.appointment_status == Appointment.Status.CANCELLED:
+        return (
+            target,
+            AppointmentSeriesCancellationResult.Outcome.UNCHANGED,
+            "already_withdrawn",
+            "Участие уже отменено; повторное изменение не требуется.",
+        )
+    if target.appointment_status == Appointment.Status.RESCHEDULED:
+        return (
+            target,
+            AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW,
+            "orphaned_reschedule",
+            "Перенесенное участие не имеет доказуемого актуального преемника.",
+        )
+    if (
+        appointment.status not in _CANCELLABLE_APPOINTMENT_STATUSES
+        or target.appointment_status not in _CANCELLABLE_APPOINTMENT_STATUSES
+    ):
+        return (
+            target,
+            AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW,
+            "unsupported_status",
+            "Статус общего занятия или участия требует ручного решения.",
+        )
+    if (
+        target.attendance_status != Appointment.AttendanceStatus.UNKNOWN
+        or target.marked_by_staff_at is not None
+        or appointment.attendance_status != Appointment.AttendanceStatus.UNKNOWN
+        or appointment.specialist_marked_at is not None
+    ):
+        return (
+            target,
+            AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW,
+            "attendance_recorded",
+            "По участию или общему занятию уже зафиксирована отметка специалиста.",
+        )
+    return (
+        target,
+        AppointmentSeriesCancellationResult.Outcome.CANCELLED,
+        "withdrawn",
+        "Будущее участие безопасно снято join-серией.",
+    )
+
+
 def _cancellation_decision(
     appointment: Appointment,
     source: AppointmentSeriesMaterializationResult | None,
@@ -776,6 +1032,199 @@ def cancel_future_unstarted(
                 outcome=outcome,
                 status_from=status_from,
                 status_to=appointment.status,
+                reason_code=reason_code,
+                reason=result_reason,
+                processed_at=max(timezone.now(), event.occurred_at),
+            )
+        )
+    return SeriesCancellationResult(
+        series=locked,
+        event=event,
+        results=tuple(results),
+        reused_event=False,
+    )
+
+
+@transaction.atomic
+def withdraw_future_joined_participations(
+    series: AppointmentSeries,
+    *,
+    operation_key: UUID,
+    actor: Any,
+    reason: str,
+) -> SeriesCancellationResult:
+    role = require_operator_role(actor)
+    reason = _normalized_reason(reason)
+    locked = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
+
+    existing = _existing_event(operation_key)
+    if existing is not None:
+        event = _validate_existing_event(
+            existing,
+            locked,
+            event_type=(
+                AppointmentSeriesLifecycleEvent.EventType.WITHDRAW_FUTURE_JOINED_PARTICIPATIONS
+            ),
+            actor=actor,
+            reason=reason,
+        )
+        return SeriesCancellationResult(
+            series=locked,
+            event=event,
+            results=_cancellation_results(event),
+            reused_event=True,
+        )
+    if locked.materialization_mode != AppointmentSeries.MaterializationMode.JOIN_EXISTING:
+        raise ValidationError(
+            "Снимать отдельные участия можно только для join-серии."
+        )
+    if locked.status not in {
+        AppointmentSeries.Status.ACTIVE,
+        AppointmentSeries.Status.CANCELLED,
+    }:
+        raise ValidationError(
+            "Снимать будущие участия можно только для активной или остановленной серии."
+        )
+
+    previous = _latest_series_event(locked)
+    _assert_decision_priority(role, previous)
+    status_from = locked.status
+    event_number = (previous.event_number if previous else 0) + 1
+    event_type = (
+        AppointmentSeriesLifecycleEvent.EventType.WITHDRAW_FUTURE_JOINED_PARTICIPATIONS
+    )
+    payload = _event_payload(
+        series_id=locked.pk,
+        event_type=event_type,
+        event_number=event_number,
+        status_from=status_from,
+        status_to=AppointmentSeries.Status.CANCELLED,
+        actor_id=actor.pk,
+        actor_role_snapshot=role,
+        reason=reason,
+        supersedes_id=None,
+    )
+    try:
+        with transaction.atomic():
+            event = AppointmentSeriesLifecycleEvent.objects.create(
+                series=locked,
+                operation_key=operation_key,
+                fingerprint=canonical_fingerprint(payload),
+                event_type=event_type,
+                event_number=event_number,
+                status_from=status_from,
+                status_to=AppointmentSeries.Status.CANCELLED,
+                actor=actor,
+                actor_role_snapshot=role,
+                reason=reason,
+            )
+    except IntegrityError:
+        existing = _existing_event(operation_key)
+        if existing is None:
+            raise
+        event = _validate_existing_event(
+            existing,
+            locked,
+            event_type=event_type,
+            actor=actor,
+            reason=reason,
+        )
+        return SeriesCancellationResult(
+            series=locked,
+            event=event,
+            results=_cancellation_results(event),
+            reused_event=True,
+        )
+
+    if locked.status != AppointmentSeries.Status.CANCELLED:
+        locked.status = AppointmentSeries.Status.CANCELLED
+        locked.save(update_fields=["status", "updated_at"])
+    _interrupt_unfinished_runs(locked)
+
+    sources = list(
+        AppointmentSeriesMaterializationResult.objects.select_related(
+            "revision",
+            "appointment",
+            "appointment_participant",
+        )
+        .filter(
+            series=locked,
+            outcome=AppointmentSeriesOccurrence.Outcome.JOINED,
+            appointment_participant__isnull=False,
+        )
+        .order_by("scheduled_starts_at", "attempt_number", "pk")
+    )
+    root_ids = {
+        source.appointment_participant_id
+        for source in sources
+        if source.appointment_participant_id is not None
+    }
+    appointments = _lock_withdrawal_appointments(root_ids)
+    participants = _locked_withdrawal_participants(appointments)
+    _lock_cancellation_financial_facts(appointments)
+
+    participants_by_id = {participant.pk: participant for participant in participants}
+    successors_by_source_id: dict[int, list[AppointmentParticipant]] = {}
+    for participant in participants:
+        if participant.source_participant_id is not None:
+            successors_by_source_id.setdefault(
+                participant.source_participant_id,
+                [],
+            ).append(participant)
+    foreign_owned_participant_ids = set(
+        AppointmentSeriesMaterializationResult.objects.filter(
+            outcome=AppointmentSeriesOccurrence.Outcome.JOINED,
+            appointment_participant_id__in=participants_by_id,
+        )
+        .exclude(series=locked)
+        .values_list("appointment_participant_id", flat=True)
+    )
+
+    results = []
+    for source in sources:
+        lineage, lineage_error = _participant_lineage(
+            source,
+            participants_by_id=participants_by_id,
+            successors_by_source_id=successors_by_source_id,
+        )
+        if not lineage:
+            raise SeriesLifecycleMismatch(
+                "Канонический joined-result потерял защищенный корень участия."
+            )
+        target, outcome, reason_code, result_reason = _withdrawal_decision(
+            source,
+            lineage,
+            lineage_error,
+            event=event,
+            foreign_owned_participant_ids=foreign_owned_participant_ids,
+        )
+        status_from = target.appointment_status
+        if outcome == AppointmentSeriesCancellationResult.Outcome.CANCELLED:
+            target.appointment_status = Appointment.Status.CANCELLED
+            target.admin_note = "\n".join(
+                part
+                for part in [
+                    target.admin_note,
+                    f"Снятие будущего участия join-серией: {reason}",
+                ]
+                if part
+            )
+            target.save(
+                update_fields=[
+                    "appointment_status",
+                    "admin_note",
+                    "updated_at",
+                ]
+            )
+        results.append(
+            AppointmentSeriesCancellationResult.objects.create(
+                lifecycle_event=event,
+                appointment=target.appointment,
+                appointment_participant=target,
+                source_materialization_result=source,
+                outcome=outcome,
+                status_from=status_from,
+                status_to=target.appointment_status,
                 reason_code=reason_code,
                 reason=result_reason,
                 processed_at=max(timezone.now(), event.occurred_at),

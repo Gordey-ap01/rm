@@ -117,11 +117,15 @@ def appointment_group_conflicts(
 
 def appointment_validation_children(appointment: Appointment):
     if appointment.pk:
+        participant_rows = list(
+            appointment.participants.select_related("child").order_by("pk")
+        )
         children = [
             participant.child
-            for participant in appointment.participants.select_related("child").order_by("pk")
+            for participant in participant_rows
+            if participant.appointment_status in ACTIVE_APPOINTMENT_STATUSES
         ]
-        if children:
+        if participant_rows:
             return children
     return [appointment.child] if appointment.child_id else []
 

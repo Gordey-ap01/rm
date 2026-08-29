@@ -137,12 +137,17 @@ def list_appointments(request, start: str = "", end: str = ""):
         }
         program_color = a.program_block.color if a.program_block_id and a.program_block.color else ""
         status_color = status_colors.get(a.status, "#3b82f6")
-        participants = list(a.participants.all())
+        participant_rows = list(a.participants.all())
+        participants = [
+            participant
+            for participant in participant_rows
+            if participant.appointment_status in ACTIVE_APPOINTMENT_STATUSES
+        ]
         staff_assignments = list(a.staff_assignments.all())
         billing_account = None
         if len(participants) == 1:
             billing_account = participants[0].billing_account
-        elif not participants:
+        elif not participant_rows:
             billing_account = a.billing_account
         account_color = billing_account.color if billing_account and billing_account.color else ""
         primary_child = participants[0].child if participants else a.child
@@ -150,7 +155,7 @@ def list_appointments(request, start: str = "", end: str = ""):
         staff_color = primary_staff.color if primary_staff and primary_staff.color else "#3b82f6"
         child_color = primary_child.color if primary_child and primary_child.color else "#00a443"
         participant_names = [participant.child.full_name for participant in participants]
-        if not participant_names and a.child_id:
+        if not participant_rows and a.child_id:
             participant_names = [a.child.full_name]
         staff_names = [assignment.staff_member.full_name for assignment in staff_assignments]
         staff_ids = [assignment.staff_member_id for assignment in staff_assignments]
@@ -182,7 +187,7 @@ def list_appointments(request, start: str = "", end: str = ""):
                     "status": a.status,
                     "statusColor": status_color,
                     "sessionType": a.session_type,
-                    "child": child_label or a.child.full_name,
+                    "child": child_label or (a.child.full_name if not participant_rows else ""),
                     "participants": participant_names,
                     "participantCount": participant_count,
                     "service": a.service.name,
@@ -257,6 +262,10 @@ def move_appointment(request, pk: int, payload: AppointmentMoveIn):
                     appointment,
                     action="перенести занятие",
                 )
+                appointment_svc.require_no_unresolved_participant_result(
+                    appointment,
+                    action="перенести занятие",
+                )
                 schedule_write_svc.ensure_room_capacity(
                     starts_at=new_start,
                     ends_at=new_end,
@@ -272,7 +281,7 @@ def move_appointment(request, pk: int, payload: AppointmentMoveIn):
                 appointment.staff_availability_override_reason = ""
                 appointment.save(validate_schedule=True, sync_legacy=False)
                 now = timezone.now()
-                appointment.participants.update(
+                appointment_svc.mutable_participant_snapshots(appointment).update(
                     starts_at_snapshot=appointment.starts_at,
                     ends_at_snapshot=appointment.ends_at,
                     appointment_status=appointment.status,

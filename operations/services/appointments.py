@@ -45,12 +45,66 @@ _OPEN_APPOINTMENT_STATUSES = {
     Appointment.Status.CONFIRMED,
     Appointment.Status.RESERVED,
 }
+_INACTIVE_PARTICIPATION_STATUSES = {
+    Appointment.Status.CANCELLED,
+    Appointment.Status.RESCHEDULED,
+}
+
+
+def operational_participants(appointment: Appointment):
+    return appointment.participants.exclude(
+        appointment_status__in=_INACTIVE_PARTICIPATION_STATUSES,
+    ).exclude(series_withdrawal_results__isnull=False)
+
+
+def mutable_participant_snapshots(appointment: Appointment):
+    return operational_participants(appointment)
+
+
+def participant_has_series_result(participant: AppointmentParticipant) -> bool:
+    return participant.series_withdrawal_results.exists()
+
+
+def participant_is_withdrawn(participant: AppointmentParticipant) -> bool:
+    return participant.series_withdrawal_results.filter(
+        outcome=AppointmentSeriesCancellationResult.Outcome.CANCELLED,
+    ).exists()
+
+
+def require_no_unresolved_participant_result(
+    appointment: Appointment,
+    *,
+    action: str,
+) -> None:
+    if AppointmentSeriesCancellationResult.objects.filter(
+        appointment_participant__appointment=appointment,
+    ).exclude(
+        outcome=AppointmentSeriesCancellationResult.Outcome.CANCELLED,
+    ).exists():
+        raise AppointmentStateConflict(
+            f"Нельзя {action}: по одному из участников зафиксирован результат серии, "
+            "требующий отдельного ручного решения."
+        )
+
+
+def participant_has_join_series_owner(participant: AppointmentParticipant) -> bool:
+    current = participant
+    seen: set[int] = set()
+    while current.pk not in seen:
+        seen.add(current.pk)
+        if current.series_materialization_results.filter(outcome="joined").exists():
+            return True
+        if current.source_participant_id is None:
+            return False
+        current = AppointmentParticipant.objects.get(pk=current.source_participant_id)
+    return True
 
 
 def require_open_appointment(appointment: Appointment, *, action: str) -> None:
     has_series_cancellation_result = (
         AppointmentSeriesCancellationResult.objects.filter(
             appointment=appointment,
+            appointment_participant__isnull=True,
         ).exists()
     )
     if (
@@ -72,6 +126,7 @@ def require_no_series_reactivation(
         requested_status != appointment.status
         and AppointmentSeriesCancellationResult.objects.filter(
             appointment=appointment,
+            appointment_participant__isnull=True,
         ).exists()
     ):
         raise AppointmentStateConflict(
@@ -109,7 +164,7 @@ def transition_locked_appointment_status(
         sync_legacy=False,
     )
     now = timezone.now()
-    AppointmentParticipant.objects.filter(appointment=appointment).update(
+    mutable_participant_snapshots(appointment).update(
         appointment_status=status,
         starts_at_snapshot=appointment.starts_at,
         ends_at_snapshot=appointment.ends_at,
@@ -150,13 +205,31 @@ def transition_appointment_status(
     status: str,
     allowed_from: set[str],
     action: str,
+    target_participant_id: int | None = None,
 ) -> Appointment:
     locked = Appointment.objects.select_for_update().get(pk=appointment.pk)
-    list(
+    participants = list(
         AppointmentParticipant.objects.select_for_update()
         .filter(appointment=locked)
         .order_by("pk")
     )
+    if target_participant_id is not None:
+        target = next(
+            (
+                participant
+                for participant in participants
+                if participant.pk == target_participant_id
+            ),
+            None,
+        )
+        if (
+            target is None
+            or target.appointment_status in _INACTIVE_PARTICIPATION_STATUSES
+            or participant_has_series_result(target)
+        ):
+            raise AppointmentStateConflict(
+                f"Нельзя {action}: адресованное участие уже неактивно."
+            )
     list(
         AppointmentStaffAssignment.objects.select_for_update()
         .filter(appointment=locked)
@@ -210,10 +283,18 @@ def require_locked_series_projection(
         )
 
 
-def _copy_rescheduled_participants(old: Appointment, new: Appointment) -> None:
-    for participant in old.participants.select_related(
-        "child", "billing_account", "program_block"
-    ).order_by("pk"):
+def _copy_rescheduled_participants(
+    old: Appointment,
+    new: Appointment,
+    participants: list[AppointmentParticipant] | None = None,
+) -> None:
+    if participants is None:
+        participants = list(
+            operational_participants(old).select_related(
+                "child", "billing_account", "program_block"
+            ).order_by("pk")
+        )
+    for participant in participants:
         AppointmentParticipant.objects.update_or_create(
             appointment=new,
             child=participant.child,
@@ -367,9 +448,13 @@ def reschedule(
             action="перенести занятие",
         )
         require_open_appointment(appointment, action="перенести занятие")
+        require_no_unresolved_participant_result(
+            appointment,
+            action="перенести занятие",
+        )
 
         participants = list(
-            appointment.participants.select_related(
+            operational_participants(appointment).select_related(
                 "child", "billing_account", "program_block"
             ).order_by("pk")
         )
@@ -403,7 +488,9 @@ def reschedule(
         appointment.status = Appointment.Status.RESCHEDULED
         appointment.save(update_fields=["status", "admin_note", "updated_at"], sync_legacy=False)
         now = timezone.now()
-        appointment.participants.update(
+        AppointmentParticipant.objects.filter(
+            pk__in=[participant.pk for participant in participants]
+        ).update(
             appointment_status=Appointment.Status.RESCHEDULED,
             starts_at_snapshot=appointment.starts_at,
             ends_at_snapshot=appointment.ends_at,
@@ -416,7 +503,7 @@ def reschedule(
             updated_at=now,
         )
 
-        new = Appointment.objects.create(
+        new = Appointment(
             child=legacy_child,
             service=appointment.service,
             staff_member=staff_member,
@@ -435,7 +522,8 @@ def reschedule(
             title=appointment.title,
             admin_note=note,
         )
-        _copy_rescheduled_participants(appointment, new)
+        new.save(sync_legacy=False)
+        _copy_rescheduled_participants(appointment, new, participants)
         _copy_rescheduled_staff_assignments(appointment, new, staff_member)
         return MoveResult(old=appointment, new=new)
 
@@ -483,12 +571,26 @@ def record_attendance(
     """
     appointment = Appointment.objects.select_for_update().get(pk=appointment.pk)
     require_open_appointment(appointment, action="отметить посещение")
-    participants = list(
+    locked_participants = list(
         AppointmentParticipant.objects.select_for_update()
         .filter(appointment=appointment)
         .order_by("pk")
     )
-    if not participants and appointment.child_id:
+    participants = [
+        participant
+        for participant in locked_participants
+        if participant.appointment_status not in _INACTIVE_PARTICIPATION_STATUSES
+        and not participant_is_withdrawn(participant)
+    ]
+    require_no_unresolved_participant_result(
+        appointment,
+        action="отметить посещение",
+    )
+    if locked_participants and not participants:
+        raise AppointmentStateConflict(
+            "Нельзя отметить посещение: у занятия нет активных участников."
+        )
+    if not locked_participants and appointment.child_id:
         participants = [
             AppointmentParticipant.objects.create(
                 appointment=appointment,
@@ -619,7 +721,7 @@ def materialize_series(series_id: int, date_from: datetime, date_to: datetime) -
 
 
 def single_participant_or_none(appointment: Appointment) -> AppointmentParticipant | None:
-    participants = list(appointment.participants.order_by("pk")[:2])
+    participants = list(operational_participants(appointment).order_by("pk")[:2])
     if len(participants) > 1:
         raise ValueError("Для группового занятия нужно выбрать конкретного участника.")
     return participants[0] if participants else None

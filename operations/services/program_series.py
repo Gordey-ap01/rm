@@ -1805,13 +1805,17 @@ def _appointment_children(appointment: Appointment) -> list[Any]:
     prefetched = getattr(appointment, "_prefetched_objects_cache", {}).get(
         "participants"
     )
-    participants = (
+    participant_rows = (
         list(prefetched)
         if prefetched is not None
         else list(appointment.participants.select_related("child").order_by("pk"))
     )
-    if participants:
-        return [participant.child for participant in participants]
+    if participant_rows:
+        return [
+            participant.child
+            for participant in participant_rows
+            if participant.appointment_status in _JOINABLE_GROUP_STATUSES
+        ]
     return [appointment.child]
 
 

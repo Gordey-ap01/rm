@@ -3623,14 +3623,22 @@ class Appointment(TimeStampedModel):
 
     def participant_label(self) -> str:
         if self.pk:
+            participants = self.participants.all()
             names = [
                 participant.child.full_name
-                for participant in self.participants.select_related("child").order_by(
-                    "starts_at_snapshot", "child__last_name", "child__first_name"
+                for participant in participants.exclude(
+                    appointment_status__in=[
+                        self.Status.CANCELLED,
+                        self.Status.RESCHEDULED,
+                    ]
                 )
+                .select_related("child")
+                .order_by("starts_at_snapshot", "child__last_name", "child__first_name")
             ]
             if names:
                 return ", ".join(names)
+            if participants.exists():
+                return "Без активных получателей"
         if self.child_id:
             return self.child.full_name
         return "Без получателя"
@@ -3787,7 +3795,14 @@ class Appointment(TimeStampedModel):
         should_sync_legacy_child = self.child_id and (
             not has_participants or participants_qs.filter(child_id=self.child_id).exists()
         )
-        if should_sync_legacy_child:
+        protected_legacy_child = bool(
+            self.child_id
+            and participants_qs.filter(
+                child_id=self.child_id,
+                series_withdrawal_results__isnull=False,
+            ).exists()
+        )
+        if should_sync_legacy_child and not protected_legacy_child:
             participant_defaults = {
                 "starts_at_snapshot": self.starts_at,
                 "ends_at_snapshot": self.ends_at,
@@ -3818,7 +3833,10 @@ class Appointment(TimeStampedModel):
                 "appointment_status": self.status,
                 "updated_at": now,
             }
-            if should_sync_legacy_child:
+            participants_qs = participants_qs.exclude(
+                series_withdrawal_results__isnull=False,
+            )
+            if should_sync_legacy_child and not protected_legacy_child:
                 participants_qs = participants_qs.exclude(child_id=self.child_id)
             participants_qs.update(**participant_updates)
 
@@ -3911,7 +3929,7 @@ class AppointmentParticipant(TimeStampedModel):
     source_participant = models.ForeignKey(
         "self",
         verbose_name="исходный участник",
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="rescheduled_to",
@@ -3948,6 +3966,11 @@ class AppointmentParticipant(TimeStampedModel):
                     )
                 ),
                 name="unique_program_block_participant_sequence",
+            ),
+            models.UniqueConstraint(
+                fields=["source_participant"],
+                condition=Q(source_participant__isnull=False),
+                name="unique_rescheduled_participant_successor",
             ),
         ]
         indexes = [
@@ -3992,9 +4015,103 @@ class AppointmentParticipant(TimeStampedModel):
             raise ValidationError(
                 {"program_block": "Блок программы должен соответствовать услуге занятия."}
             )
+        if self.source_participant_id:
+            source = self.source_participant
+            if source.series_withdrawal_results.exists():
+                raise ValidationError(
+                    {
+                        "source_participant": (
+                            "Нельзя продолжить линию участия после результата серии."
+                        )
+                    }
+                )
+            if self.pk and source.pk == self.pk:
+                raise ValidationError(
+                    {"source_participant": "Участие не может ссылаться само на себя."}
+                )
+            if source.child_id != self.child_id:
+                raise ValidationError(
+                    {"source_participant": "Перенос должен сохранять получателя."}
+                )
+            if source.program_block_id != self.program_block_id:
+                raise ValidationError(
+                    {"source_participant": "Перенос должен сохранять каскад программы."}
+                )
+            if (
+                self.appointment_id
+                and source.appointment.service_id != self.appointment.service_id
+            ):
+                raise ValidationError(
+                    {"source_participant": "Перенос должен сохранять услугу занятия."}
+                )
+            if (
+                self.appointment_id
+                and self.appointment.source_appointment_id != source.appointment_id
+            ):
+                raise ValidationError(
+                    {
+                        "source_participant": (
+                            "Исходное участие должно относиться к исходному занятию переноса."
+                        )
+                    }
+                )
 
     def save(self, *args: object, **kwargs: object) -> None:
         with transaction.atomic():
+            if self.pk:
+                original = (
+                    AppointmentParticipant.objects.filter(pk=self.pk)
+                    .values(
+                        "source_participant_id",
+                        "appointment_id",
+                        "child_id",
+                        "program_block_id",
+                        "appointment_status",
+                        "starts_at_snapshot",
+                        "ends_at_snapshot",
+                        "attendance_status",
+                        "marked_by_staff_at",
+                    )
+                    .first()
+                )
+                if original and original["source_participant_id"] != self.source_participant_id:
+                    raise ValidationError(
+                        {"source_participant": "Происхождение участия нельзя изменять."}
+                    )
+                lineage_identity_changed = bool(
+                    original
+                    and (
+                        original["appointment_id"] != self.appointment_id
+                        or original["child_id"] != self.child_id
+                        or original["program_block_id"] != self.program_block_id
+                    )
+                )
+                if lineage_identity_changed and (
+                    original["source_participant_id"] is not None
+                    or self.series_materialization_results.filter(outcome="joined").exists()
+                    or self.rescheduled_to.exists()
+                ):
+                    raise ValidationError(
+                        "Получателя, каскад и занятие в защищенной линии переносов "
+                        "нельзя изменять."
+                    )
+                operational_state_changed = bool(
+                    original
+                    and any(
+                        original[field] != getattr(self, field)
+                        for field in (
+                            "appointment_status",
+                            "starts_at_snapshot",
+                            "ends_at_snapshot",
+                            "attendance_status",
+                            "marked_by_staff_at",
+                        )
+                    )
+                )
+                if operational_state_changed and self.series_withdrawal_results.exists():
+                    raise ValidationError(
+                        "Операционное состояние участия заморожено результатом серии."
+                    )
             if self.program_block_id and not self.sequence_number:
                 ProgramBlock.objects.select_for_update().only("pk").get(
                     pk=self.program_block_id
@@ -4019,6 +4136,15 @@ class AppointmentParticipant(TimeStampedModel):
                     kwargs["update_fields"] = set(update_fields) | {"sequence_number"}
             self.full_clean()
             super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> tuple[int, dict[str, int]]:
+        if self.pk and (
+            self.source_participant_id is not None
+            or self.rescheduled_to.exists()
+            or self.series_materialization_results.filter(outcome="joined").exists()
+        ):
+            raise ValidationError("Узел линии участия нельзя физически удалить.")
+        return super().delete(*args, **kwargs)
 
 
 class AppointmentStaffAssignment(TimeStampedModel):
@@ -5089,6 +5215,14 @@ class AppointmentSeriesCancellationResult(TimeStampedModel):
         on_delete=models.PROTECT,
         related_name="series_cancellation_results",
     )
+    appointment_participant = models.ForeignKey(
+        AppointmentParticipant,
+        verbose_name="снимаемое участие",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="series_withdrawal_results",
+    )
     source_materialization_result = models.ForeignKey(
         AppointmentSeriesMaterializationResult,
         verbose_name="исходный результат создания занятия",
@@ -5146,10 +5280,23 @@ class AppointmentSeriesCancellationResult(TimeStampedModel):
                 ),
                 name="series_cancel_result_valid_transition",
             ),
+            models.CheckConstraint(
+                condition=(
+                    Q(appointment_participant__isnull=True)
+                    | Q(source_materialization_result__isnull=False)
+                ),
+                name="series_cancel_participant_requires_source",
+            ),
+            models.UniqueConstraint(
+                fields=["lifecycle_event", "source_materialization_result"],
+                condition=Q(source_materialization_result__isnull=False),
+                name="unique_series_cancel_result_source",
+            ),
         ]
         indexes = [
             models.Index(fields=["lifecycle_event", "outcome"]),
             models.Index(fields=["appointment", "-processed_at"]),
+            models.Index(fields=["appointment_participant", "-processed_at"]),
         ]
 
     def clean(self) -> None:
@@ -5159,11 +5306,12 @@ class AppointmentSeriesCancellationResult(TimeStampedModel):
             errors["reason_code"] = "Укажите типизированную причину результата отмены."
         if self.lifecycle_event_id:
             event = self.lifecycle_event
-            if event.event_type != (
-                AppointmentSeriesLifecycleEvent.EventType.CANCEL_FUTURE_UNSTARTED
-            ):
+            if event.event_type not in {
+                AppointmentSeriesLifecycleEvent.EventType.CANCEL_FUTURE_UNSTARTED,
+                AppointmentSeriesLifecycleEvent.EventType.WITHDRAW_FUTURE_JOINED_PARTICIPATIONS,
+            }:
                 errors["lifecycle_event"] = (
-                    "Результат отмены должен относиться к cancel lifecycle-событию."
+                    "Результат должен относиться к cancel или withdraw lifecycle-событию."
                 )
             if event.status_to != AppointmentSeries.Status.CANCELLED:
                 errors["lifecycle_event"] = (
@@ -5174,18 +5322,44 @@ class AppointmentSeriesCancellationResult(TimeStampedModel):
                     "Результат отмены не может предшествовать lifecycle-событию."
                 )
             if (
-                self.appointment_id
+                event.event_type
+                == AppointmentSeriesLifecycleEvent.EventType.CANCEL_FUTURE_UNSTARTED
+                and self.appointment_id
                 and not self.source_materialization_result_id
                 and event.series_id != self.appointment.series_id
             ):
                 errors["appointment"] = "Занятие должно принадлежать отменяемой серии."
+            if (
+                event.event_type
+                == AppointmentSeriesLifecycleEvent.EventType.CANCEL_FUTURE_UNSTARTED
+                and self.appointment_participant_id
+            ):
+                errors["appointment_participant"] = (
+                    "Cancel create-серии применяется ко всему занятию, а не к участию."
+                )
+            if (
+                event.event_type
+                == AppointmentSeriesLifecycleEvent.EventType.WITHDRAW_FUTURE_JOINED_PARTICIPATIONS
+                and not self.appointment_participant_id
+            ):
+                errors["appointment_participant"] = (
+                    "Withdraw join-серии должен указывать фактическое участие."
+                )
         if self.source_materialization_result_id:
             source = self.source_materialization_result
-            if source.outcome != AppointmentSeriesOccurrence.Outcome.CREATED:
+            expected_outcome = AppointmentSeriesOccurrence.Outcome.CREATED
+            is_withdraw = bool(
+                self.lifecycle_event_id
+                and self.lifecycle_event.event_type
+                == AppointmentSeriesLifecycleEvent.EventType.WITHDRAW_FUTURE_JOINED_PARTICIPATIONS
+            )
+            if is_withdraw:
+                expected_outcome = AppointmentSeriesOccurrence.Outcome.JOINED
+            if source.outcome != expected_outcome:
                 errors["source_materialization_result"] = (
-                    "Источником отмены может быть только результат создания занятия."
+                    "Источник результата не соответствует типу lifecycle-операции."
                 )
-            if source.appointment_id != self.appointment_id:
+            if not is_withdraw and source.appointment_id != self.appointment_id:
                 errors["source_materialization_result"] = (
                     "Исходный результат должен указывать на отменяемое занятие."
                 )
@@ -5193,6 +5367,42 @@ class AppointmentSeriesCancellationResult(TimeStampedModel):
                 errors["source_materialization_result"] = (
                     "Исходный результат должен принадлежать отменяемой серии."
                 )
+            if is_withdraw and self.appointment_participant_id:
+                current = self.appointment_participant
+                if current.rescheduled_to.exists():
+                    errors["appointment_participant"] = (
+                        "Withdraw-result должен указывать последний узел линии участия."
+                    )
+                seen: set[int] = set()
+                while current is not None and current.pk not in seen:
+                    if current.pk == source.appointment_participant_id:
+                        break
+                    seen.add(current.pk)
+                    current = current.source_participant
+                else:
+                    errors["source_materialization_result"] = (
+                        "Снимаемое участие должно продолжать линию исходного joined-участия."
+                    )
+                if not source.revision.participants.filter(
+                    child_id=self.appointment_participant.child_id,
+                    program_block_id=self.appointment_participant.program_block_id,
+                ).exists():
+                    errors["source_materialization_result"] = (
+                        "Получатель и каскад снимаемого участия должны входить в редакцию серии."
+                    )
+                if source.series.materialization_mode != (
+                    AppointmentSeries.MaterializationMode.JOIN_EXISTING
+                ):
+                    errors["source_materialization_result"] = (
+                        "Withdraw допускается только для join-серии."
+                    )
+        if (
+            self.appointment_participant_id
+            and self.appointment_participant.appointment_id != self.appointment_id
+        ):
+            errors["appointment_participant"] = (
+                "Снимаемое участие должно относиться к выбранному занятию."
+            )
         if self.outcome == self.Outcome.CANCELLED:
             if self.status_from not in {
                 Appointment.Status.PROPOSED,
@@ -5206,16 +5416,30 @@ class AppointmentSeriesCancellationResult(TimeStampedModel):
                 )
         elif self.status_to != self.status_from:
             errors["status_to"] = "Результат без изменения должен сохранять исходный статус."
-        if self.appointment_id:
+        if self.appointment_participant_id:
+            current_status = (
+                AppointmentParticipant.objects.filter(
+                    pk=self.appointment_participant_id
+                )
+                .values_list("appointment_status", flat=True)
+                .first()
+            )
+        elif self.appointment_id:
             current_status = (
                 Appointment.objects.filter(pk=self.appointment_id)
                 .values_list("status", flat=True)
                 .first()
             )
-            if current_status is not None and current_status != self.status_to:
-                errors["status_to"] = (
-                    "Итоговый статус результата должен совпадать с текущим статусом занятия."
-                )
+        else:
+            current_status = None
+        if (
+            (self.appointment_id or self.appointment_participant_id)
+            and current_status is not None
+            and current_status != self.status_to
+        ):
+            errors["status_to"] = (
+                "Итоговый статус результата должен совпадать с текущим статусом цели."
+            )
         if errors:
             raise ValidationError(errors)
 
@@ -5229,7 +5453,8 @@ class AppointmentSeriesCancellationResult(TimeStampedModel):
         raise ValidationError("Результат отмены занятия серии нельзя удалять.")
 
     def __str__(self) -> str:
-        return f"{self.lifecycle_event} / {self.appointment} / {self.get_outcome_display()}"
+        target = self.appointment_participant or self.appointment
+        return f"{self.lifecycle_event} / {target} / {self.get_outcome_display()}"
 
 
 def room_usage_counts(appointment_qs: QuerySet[Appointment]) -> tuple[int, int]:
@@ -5255,10 +5480,16 @@ def room_usage_counts(appointment_qs: QuerySet[Appointment]) -> tuple[int, int]:
         .distinct()
     )
 
-    appointments_with_staff_snapshots = {appointment_id for appointment_id, _ in staff_rows}
-    appointments_with_participant_snapshots = {
-        appointment_id for appointment_id, _ in participant_rows
-    }
+    appointments_with_staff_snapshots = set(
+        AppointmentStaffAssignment.objects.filter(
+            appointment_id__in=appointment_ids,
+        ).values_list("appointment_id", flat=True)
+    )
+    appointments_with_participant_snapshots = set(
+        AppointmentParticipant.objects.filter(
+            appointment_id__in=appointment_ids,
+        ).values_list("appointment_id", flat=True)
+    )
     legacy_staff_count = appointment_qs.exclude(id__in=appointments_with_staff_snapshots).count()
     legacy_recipient_count = appointment_qs.exclude(
         id__in=appointments_with_participant_snapshots

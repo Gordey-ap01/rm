@@ -16,6 +16,7 @@ from operations.models import (
     Appointment,
     AppointmentConfirmation,
     AppointmentParticipant,
+    AppointmentSeriesCancellationResult,
     AppointmentStaffAssignment,
     BalanceAccount,
     Certificate,
@@ -67,9 +68,29 @@ def tomorrow_overview(target_date: date | None = None) -> TomorrowOverview:
         Appointment.objects.all()
         .annotate(
             participant_count=Count("participants", distinct=True),
+            operational_participant_count=Count(
+                "participants",
+                filter=Q(participants__series_withdrawal_results__isnull=True)
+                & ~Q(
+                    participants__appointment_status__in=[
+                        Appointment.Status.CANCELLED,
+                        Appointment.Status.RESCHEDULED,
+                    ]
+                ),
+                distinct=True,
+            ),
             undecided_participant_count=Count(
                 "participants",
-                filter=Q(participants__billing_decision=Appointment.BillingDecision.UNDECIDED),
+                filter=Q(
+                    participants__billing_decision=Appointment.BillingDecision.UNDECIDED,
+                    participants__series_withdrawal_results__isnull=True,
+                )
+                & ~Q(
+                    participants__appointment_status__in=[
+                        Appointment.Status.CANCELLED,
+                        Appointment.Status.RESCHEDULED,
+                    ]
+                ),
                 distinct=True,
             ),
         )
@@ -82,7 +103,10 @@ def tomorrow_overview(target_date: date | None = None) -> TomorrowOverview:
                 participant_count=0,
                 billing_decision=Appointment.BillingDecision.UNDECIDED,
             )
-            | Q(participant_count__gt=0, undecided_participant_count__gt=0)
+            | Q(
+                operational_participant_count__gt=0,
+                undecided_participant_count__gt=0,
+            )
         )
         .select_related("child", "staff_member", "service", "room")
         .prefetch_related(
@@ -96,18 +120,53 @@ def tomorrow_overview(target_date: date | None = None) -> TomorrowOverview:
         Appointment.objects.filter(ends_at__lt=timezone.now())
         .annotate(
             participant_count=Count("participants", distinct=True),
+            operational_participant_count=Count(
+                "participants",
+                filter=Q(participants__series_withdrawal_results__isnull=True)
+                & ~Q(
+                    participants__appointment_status__in=[
+                        Appointment.Status.CANCELLED,
+                        Appointment.Status.RESCHEDULED,
+                    ]
+                ),
+                distinct=True,
+            ),
             unknown_participant_count=Count(
                 "participants",
-                filter=Q(participants__attendance_status=Appointment.AttendanceStatus.UNKNOWN),
+                filter=Q(
+                    participants__attendance_status=Appointment.AttendanceStatus.UNKNOWN,
+                    participants__series_withdrawal_results__isnull=True,
+                )
+                & ~Q(
+                    participants__appointment_status__in=[
+                        Appointment.Status.CANCELLED,
+                        Appointment.Status.RESCHEDULED,
+                    ]
+                ),
+                distinct=True,
+            ),
+            unresolved_series_result_count=Count(
+                "participants__series_withdrawal_results",
+                filter=Q(participants__series_withdrawal_results__isnull=False)
+                & ~Q(
+                    participants__series_withdrawal_results__outcome=(
+                        AppointmentSeriesCancellationResult.Outcome.CANCELLED
+                    )
+                ),
                 distinct=True,
             ),
         )
+        .filter(unresolved_series_result_count=0)
         .filter(
             Q(
+                participant_count=0,
                 status__in=[Appointment.Status.CONFIRMED, Appointment.Status.PROPOSED],
                 attendance_status=Appointment.AttendanceStatus.UNKNOWN,
             )
-            | Q(participant_count__gt=0, unknown_participant_count__gt=0)
+            | Q(
+                operational_participant_count__gt=0,
+                unknown_participant_count__gt=0,
+            )
         )
         .select_related("child", "staff_member", "service", "room")
         .prefetch_related("participants__child", "staff_assignments__staff_member")
@@ -119,6 +178,19 @@ def tomorrow_overview(target_date: date | None = None) -> TomorrowOverview:
             | Q(status=AppointmentConfirmation.Status.PENDING)
             | Q(status=AppointmentConfirmation.Status.DECLINED)
         )
+        .filter(
+            Q(participant__isnull=True)
+            | (
+                Q(participant__series_withdrawal_results__isnull=True)
+                & ~Q(
+                    participant__appointment_status__in=[
+                        Appointment.Status.CANCELLED,
+                        Appointment.Status.RESCHEDULED,
+                    ]
+                )
+            )
+        )
+        .distinct()
         .select_related(
             "appointment",
             "appointment__child",

@@ -192,16 +192,13 @@
 Архитектурное решение зафиксировано в
 `docs/decisions/ADR-009-appointment-series-revisions-and-runs.md`.
 
-Статус 2026-08-29: 61C-1 и 61C-2 реализованы и приняты локально/CI; 61C-3
-реализован и локально принят. До 61C-4 прежний `initial` materializer
-fail-closed отклоняет будущую редакцию. Expand-gate `0060` для forward-only
-cross-revision attempt chain и `missing_only` service локально приняты. Expand
-`0061` и сервисное исполнение `retry_skipped` локально приняты. 61C-4b и
-аддитивная миграция `0062` реализуют append-only stop/resume с приоритетом
-руководителя и продолжением принятого run. 61C-4c и миграция `0063` реализуют
-аудируемую отмену будущих неначавшихся занятий create-серии без изменения
-финансовых фактов. Следующий продуктовый подсрез - 61C-4d withdraw, затем
-рабочий 61D UI.
+Статус 2026-08-29: 61C-1 - 61C-4d реализованы и приняты. Expand-gate `0060`
+защищает forward-only cross-revision attempt chain; `0061` фиксирует цели
+`retry_skipped`; `0062` реализует append-only stop/resume с приоритетом
+руководителя; `0063` - аудируемую отмену будущих неначавшихся занятий
+create-серии; `0064` - безопасное снятие будущих участий join-серии без
+изменения общего слота, других участников и финансовых фактов. Следующий
+продуктовый подсрез - рабочий 61D UI.
 
 #### 61C-1. Аддитивная модель редакций и запусков
 
@@ -418,10 +415,12 @@ cross-revision attempt chain и `missing_only` service локально прин
 - 61C-4d тем же lifecycle-журналом реализует
   `withdraw_future_joined_participations`, сохраняя общий Appointment. Целью
   является только canonical materialization-result с outcome `joined`; его
-  `appointment_participant` доказывает владение участием этой join-серией;
+  `appointment_participant` является корнем принадлежащей join-серии линии
+  участия;
 - `AppointmentSeriesCancellationResult` получает nullable
   `appointment_participant`. Для cancel create-серии он остается `NULL`, а для
-  withdraw обязан совпадать с participant канонического `joined`-результата.
+  withdraw обязан указывать только на текущий terminal leaf канонического
+  `joined`-результата по неизменяемой цепочке `source_participant`;
   Один event по-прежнему имеет не более одного результата на Appointment,
   поскольку одна join-серия создается из одного каскада/получателя;
 - безопасное снятие не удаляет `AppointmentParticipant`: оно переводит только
@@ -433,35 +432,57 @@ cross-revision attempt chain и `missing_only` service локально прин
   Несовпадение source/participant/appointment, чужое владение, отметка
   посещения либо изменившаяся проекция дают `manual_review` без записи в
   операционную строку;
+- перенос сохраняет владение join-серии: `source_participant` неизменяем,
+  вся линия защищена от удаления и имеет не более одного прямого преемника.
+  Withdraw под
+  lock проходит всю линию и снимает единственного текущего активного потомка.
+  Цикл, ветвление, несколько активных потомков или несовпадение
+  child/program block/service дают `manual_review`; активное осиротевшее
+  участие после гонки withdraw-vs-reschedule недопустимо;
 - общий status writer не может реактивировать withdrawn participant массовым
-  snapshot-update. Табель и reschedule работают только с активными участиями;
+  snapshot-update. Это распространяется на `Appointment.save()`, общий
+  transition service, формы редактирования, API, табель и reschedule; табель и
+  reschedule работают только с активными участиями;
   подтверждение/уведомление, адресованное withdrawn participant, не меняет
-  статус общего Appointment. Billing запрещает новый charge именно для снятого
-  participant, не блокируя остальных участников группы;
-- lock-order withdraw: series -> все целевые Appointment по `pk` -> все их
-  participant snapshots -> staff snapshots -> ProgramBlock -> BalanceAccount
-  -> LedgerEntry. Поэтому withdraw линеаризуется с attendance, reschedule,
+  статус общего Appointment. Calendar/capacity/readiness queues не учитывают
+  неактивное участие. Billing и attendance не используют legacy fallback, если
+  у занятия существуют participant snapshots, но ни один из них неактивен;
+  явное `do_not_charge` остается допустимым историческим решением;
+- lock-order withdraw: series -> все исходные и найденные по линии целевые
+  Appointment по `pk` -> все их participant snapshots -> staff snapshots ->
+  ProgramBlock -> BalanceAccount -> LedgerEntry. Поэтому withdraw линеаризуется
+  с attendance, reschedule,
   confirmation и charge, не удаляя победивший ранее финансовый факт;
-- миграция `0064` расширяет result-таблицу и PostgreSQL insert guard для двух
+- миграция `0064` до изменения схемы fail-closed проверяет отсутствие старой
+  withdraw-history и валидность существующих participant-линий. Затем она
+  защищает линейность/неизменяемость происхождения, terminal-leaf target,
+  заморозку operational state после любого typed result и расширяет
+  result-таблицу и SQLite/PostgreSQL guards для двух
   типов цели: cancel проверяет статус Appointment и source `created`, withdraw
-  проверяет статус AppointmentParticipant и source `joined`. Reverse
-  fail-closed после первого withdraw event/result. До 4d массово менять
-  `AppointmentParticipant` из join-серии запрещено.
+  проверяет статус AppointmentParticipant, source `joined`, mode серии,
+  принадлежность revision и достижимость target по participant-линии. Reverse
+  fail-closed после первого withdraw event/result.
 
 Acceptance 61C-4d: идемпотентный replay, typed partial outcomes, неизменность
 общего слота/чужого состава/ledger, запрет повторного charge и реактивации,
-PostgreSQL races withdraw-vs-charge/attendance/reschedule, migration empty
-round-trip/history reverse guard, полный SQLite/PostgreSQL regression и
-независимый read-only review.
+отсутствие активного осиротевшего потомка после переноса, PostgreSQL races
+withdraw-vs-charge/attendance/reschedule/participant-confirmation, migration
+empty round-trip, invalid-lineage/history preflight и reverse guard, полный
+SQLite/PostgreSQL regression и независимый read-only review.
 
-Статус приемки 61C-4c: Ruff, Django check, migration dry-run, независимый
-read-only review и полный regression прошли. SQLite: `932 passed, 82 skipped`;
-PostgreSQL 17: `1014 passed` без пропусков. Полный модуль серий: SQLite
-`88 passed, 38 skipped`, PostgreSQL `126 passed`. PostgreSQL races покрывают
-cancel против charge/attendance/confirmation/reschedule и переназначение
-специалиста против табеля. Нового UI в 4c нет, поэтому browser acceptance
-перенесена на рабочие команды 61D. Graphify обновлен и проверен запросом по
-новому cancellation-result и следующему срезу 61C-4d.
+Статус приемки 61C-4d: Ruff, Django check, migration dry-run, два независимых
+read-only review и полный regression прошли. SQLite: `950 passed, 86 skipped`;
+PostgreSQL 17: `1036 passed` без пропусков. Полный модуль серий: SQLite
+`106 passed, 42 skipped`, PostgreSQL `148 passed`. PostgreSQL races покрывают
+withdraw против charge/attendance/reschedule/participant-confirmation.
+Нового UI в 4d нет, поэтому browser acceptance входит в рабочие команды 61D.
+
+Остаточный эксплуатационный риск не скрывается: перед отправкой уведомления
+повторно проверяется актуальный typed result, но между этой проверкой и внешним
+SMTP send остается узкое окно гонки. До включения реального SMTP нужен отдельный
+transactional outbox/claim-контракт с invalidation и конкурентным тестом. Это не
+меняет принятую целостность внутреннего состояния 61C-4d, но блокирует
+production-допуск реальной отправки.
 
 #### Acceptance criteria 61C
 

@@ -12,13 +12,14 @@ from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import DatabaseError, close_old_connections, connection, transaction
+from django.db import DatabaseError, close_old_connections, connection, models, transaction
 from django.db.migrations.executor import MigrationExecutor
 from django.db.models.deletion import ProtectedError
 from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from operations.forms import AppointmentConfirmationSendForm, BillingDecisionForm
 from operations.models import (
     Appointment,
     AppointmentConfirmation,
@@ -57,6 +58,11 @@ from operations.services import (
     program_wizard,
     series_lifecycle,
     series_revisions,
+)
+from operations.views.dashboard import (
+    confirmation_attention_queryset,
+    needs_attendance_queryset,
+    needs_billing_queryset,
 )
 
 User = get_user_model()
@@ -215,6 +221,23 @@ class GroupProgramSeriesTests(TestCase):
             balance_account=account,
         )
         return child, account, block
+
+    def create_joined_series(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        appointment = materialized.series.appointments.get()
+        child, account, block = self.create_third_block()
+        joined = program_series.join_program_block_to_groups(
+            block=block,
+            appointments=[appointment],
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        participant = appointment.participants.get(child=child)
+        return joined.series, appointment, participant, account, block
 
     def flush_pending_revision_composition_constraints(self):
         if connection.vendor != "postgresql":
@@ -2778,6 +2801,660 @@ class GroupProgramSeriesTests(TestCase):
                 reason="Другое основание массовой отмены будущих занятий.",
             )
 
+    def test_withdraw_future_joined_participations_is_isolated_and_idempotent(self):
+        series, appointment, participant, account, block = self.create_joined_series()
+        original_participant_ids = set(appointment.participants.values_list("pk", flat=True))
+        original_staff_ids = set(appointment.staff_assignments.values_list("pk", flat=True))
+        charged = billing_svc.apply_decision(
+            appointment,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=account,
+            amount=Decimal("-1"),
+            actor=self.admin,
+            participant=participant,
+        ).entry
+        ledger_snapshot = tuple(
+            LedgerEntry.objects.filter(pk=charged.pk).values_list(
+                "pk",
+                "account_id",
+                "appointment_id",
+                "appointment_participant_id",
+                "amount",
+            )
+        )
+        operation_key = uuid4()
+        reason = "Администратор снял будущие участия получателя из join-серии."
+
+        withdrawn = series_lifecycle.withdraw_future_joined_participations(
+            series,
+            operation_key=operation_key,
+            actor=self.admin,
+            reason=reason,
+        )
+        replay = series_lifecycle.withdraw_future_joined_participations(
+            series,
+            operation_key=operation_key,
+            actor=self.admin,
+            reason=reason,
+        )
+
+        appointment.refresh_from_db()
+        participant.refresh_from_db()
+        block.refresh_from_db()
+        result = withdrawn.results[0]
+        self.assertEqual(withdrawn.withdrawn_count, 1)
+        self.assertEqual(withdrawn.manual_review_count, 0)
+        self.assertEqual(
+            withdrawn.event.event_type,
+            AppointmentSeriesLifecycleEvent.EventType.WITHDRAW_FUTURE_JOINED_PARTICIPATIONS,
+        )
+        self.assertEqual(appointment.status, Appointment.Status.PROPOSED)
+        self.assertEqual(participant.appointment_status, Appointment.Status.CANCELLED)
+        self.assertEqual(result.appointment_id, appointment.pk)
+        self.assertEqual(result.appointment_participant_id, participant.pk)
+        self.assertEqual(
+            result.source_materialization_result.appointment_participant_id,
+            participant.pk,
+        )
+        self.assertEqual(
+            set(appointment.participants.values_list("pk", flat=True)),
+            original_participant_ids,
+        )
+        self.assertEqual(
+            set(appointment.staff_assignments.values_list("pk", flat=True)),
+            original_staff_ids,
+        )
+        self.assertEqual(
+            tuple(
+                LedgerEntry.objects.filter(pk=charged.pk).values_list(
+                    "pk",
+                    "account_id",
+                    "appointment_id",
+                    "appointment_participant_id",
+                    "amount",
+                )
+            ),
+            ledger_snapshot,
+        )
+        self.assertEqual(block.scheduled_count, 0)
+        self.assertTrue(replay.reused_event)
+        self.assertEqual([row.pk for row in replay.results], [result.pk])
+
+    def test_withdraw_follows_rescheduled_participant_lineage_without_orphan(self):
+        series, appointment, participant, _account, _block = self.create_joined_series()
+        moved = appointment_svc.reschedule(
+            appointment,
+            starts_at=appointment.starts_at + timedelta(days=1),
+            ends_at=appointment.ends_at + timedelta(days=1),
+            staff_member=self.staff1,
+            room=self.room,
+            actor=self.admin,
+            note="Перенос общего группового занятия до снятия участия.",
+        )
+        successor = moved.new.participants.get(child=participant.child)
+
+        withdrawn = series_lifecycle.withdraw_future_joined_participations(
+            series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Снимаем актуальное участие после переноса общего занятия.",
+        )
+
+        participant.refresh_from_db()
+        successor.refresh_from_db()
+        moved.new.refresh_from_db()
+        result = withdrawn.results[0]
+        self.assertEqual(participant.appointment_status, Appointment.Status.RESCHEDULED)
+        self.assertEqual(successor.appointment_status, Appointment.Status.CANCELLED)
+        self.assertEqual(moved.new.status, Appointment.Status.CONFIRMED)
+        self.assertEqual(result.appointment_id, moved.new.pk)
+        self.assertEqual(result.appointment_participant_id, successor.pk)
+        self.assertEqual(
+            result.source_materialization_result.appointment_participant_id,
+            participant.pk,
+        )
+        self.assertFalse(
+            AppointmentParticipant.objects.filter(
+                child=participant.child,
+                appointment_status__in=[
+                    Appointment.Status.PROPOSED,
+                    Appointment.Status.CONFIRMED,
+                    Appointment.Status.RESERVED,
+                ],
+            ).exists()
+        )
+
+    def test_withdraw_uses_current_future_target_when_join_source_is_before_cutoff(self):
+        series, appointment, participant, _account, _block = self.create_joined_series()
+        cutoff = appointment.starts_at + timedelta(days=1)
+        moved = appointment_svc.reschedule(
+            appointment,
+            starts_at=appointment.starts_at + timedelta(days=2),
+            ends_at=appointment.ends_at + timedelta(days=2),
+            staff_member=self.staff1,
+            room=self.room,
+            actor=self.admin,
+            note="Исходное участие до границы перенесено в будущее.",
+        )
+        successor = moved.new.participants.get(child=participant.child)
+        occurred_at_field = AppointmentSeriesLifecycleEvent._meta.get_field("occurred_at")
+
+        with patch.object(occurred_at_field, "_get_default", lambda: cutoff):
+            withdrawn = series_lifecycle.withdraw_future_joined_participations(
+                series,
+                operation_key=uuid4(),
+                actor=self.admin,
+                reason="Снимаем текущее будущее участие независимо от исходной даты.",
+            )
+
+        successor.refresh_from_db()
+        self.assertEqual(withdrawn.withdrawn_count, 1)
+        self.assertEqual(withdrawn.results[0].appointment_participant_id, successor.pk)
+        self.assertEqual(successor.appointment_status, Appointment.Status.CANCELLED)
+
+    def test_withdraw_boundary_target_is_recorded_unchanged_and_frozen(self):
+        series, appointment, participant, _account, _block = self.create_joined_series()
+        cutoff = appointment.starts_at + timedelta(days=1)
+        moved = appointment_svc.reschedule(
+            appointment,
+            starts_at=cutoff,
+            ends_at=cutoff + (appointment.ends_at - appointment.starts_at),
+            staff_member=self.staff1,
+            room=self.room,
+            actor=self.admin,
+            note="Перенос участия точно на границу снятия.",
+        )
+        successor = moved.new.participants.get(child=participant.child)
+        occurred_at_field = AppointmentSeriesLifecycleEvent._meta.get_field("occurred_at")
+
+        with patch.object(occurred_at_field, "_get_default", lambda: cutoff):
+            withdrawn = series_lifecycle.withdraw_future_joined_participations(
+                series,
+                operation_key=uuid4(),
+                actor=self.admin,
+                reason="Фиксируем участие на временной границе без изменения статуса.",
+            )
+
+        successor.refresh_from_db()
+        result = withdrawn.results[0]
+        self.assertEqual(withdrawn.unchanged_count, 1)
+        self.assertEqual(result.reason_code, "not_future")
+        self.assertEqual(result.appointment_participant_id, successor.pk)
+        self.assertEqual(successor.appointment_status, Appointment.Status.CONFIRMED)
+        with self.assertRaisesMessage(ValidationError, "заморожено результатом серии"):
+            successor.appointment_status = Appointment.Status.RESERVED
+            successor.save(update_fields=["appointment_status", "updated_at"])
+
+    def test_manual_review_result_freezes_target_and_removes_actions(self):
+        series, appointment, participant, account, _block = self.create_joined_series()
+        AppointmentParticipant.objects.filter(pk=participant.pk).update(
+            attendance_status=Appointment.AttendanceStatus.ATTENDED,
+            marked_by_staff_at=timezone.now(),
+        )
+
+        withdrawn = series_lifecycle.withdraw_future_joined_participations(
+            series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Отмеченное участие требует отдельного ручного решения.",
+        )
+
+        result = withdrawn.results[0]
+        self.assertEqual(
+            result.outcome,
+            AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW,
+        )
+        with self.assertRaisesMessage(
+            appointment_svc.AppointmentStateConflict,
+            "результат серии",
+        ):
+            appointment_svc.reschedule(
+                appointment,
+                starts_at=appointment.starts_at + timedelta(days=1),
+                ends_at=appointment.ends_at + timedelta(days=1),
+                staff_member=self.staff1,
+                room=self.room,
+                actor=self.admin,
+            )
+        with self.assertRaisesMessage(
+            appointment_svc.AppointmentStateConflict,
+            "результат серии",
+        ):
+            appointment_svc.record_attendance(
+                appointment,
+                action="completed",
+                actor=self.admin,
+            )
+        with self.assertRaisesMessage(ValueError, "зафиксированного результата серии"):
+            billing_svc.apply_decision(
+                appointment,
+                decision=Appointment.BillingDecision.CHARGE,
+                account=account,
+                amount=Decimal("-1"),
+                actor=self.admin,
+                participant=participant,
+            )
+
+        confirmation = AppointmentConfirmation.objects.create(
+            appointment=appointment,
+            participant=participant,
+            target_type=AppointmentConfirmation.TargetType.REPRESENTATIVE,
+            email="manual-review@example.local",
+            subject="Ручной разбор участия",
+            message="Результат серии уже заморозил адресованное участие.",
+            sent_by=self.admin,
+        )
+        self.assertFalse(notifications.send_confirmation_email(confirmation.pk))
+        self.assertNotIn(
+            participant.pk,
+            [
+                row.pk
+                for row in AppointmentConfirmationSendForm(
+                    appointment=appointment
+                ).appointment_participants
+            ],
+        )
+        self.assertFalse(
+            confirmation_attention_queryset().filter(pk=confirmation.pk).exists()
+        )
+
+    def test_all_frozen_participants_block_legacy_charge_and_attendance(self):
+        series, appointment, participant, _account, _block = self.create_joined_series()
+        appointment.participants.exclude(pk=participant.pk).update(
+            appointment_status=Appointment.Status.CANCELLED,
+        )
+        series_lifecycle.withdraw_future_joined_participations(
+            series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Все участия общего занятия стали неактивными.",
+        )
+
+        with self.assertRaisesMessage(ValueError, "без доступного участника"):
+            billing_svc.apply_decision(
+                appointment,
+                decision=Appointment.BillingDecision.CHARGE,
+                account=self.account1,
+                amount=Decimal("-1"),
+                actor=self.admin,
+            )
+        self.assertFalse(
+            LedgerEntry.objects.filter(
+                appointment=appointment,
+                appointment_participant__isnull=True,
+                entry_type=LedgerEntry.EntryType.DEBIT,
+            ).exists()
+        )
+        form = BillingDecisionForm(
+            {
+                "billing_decision": Appointment.BillingDecision.CHARGE,
+                "billing_account": self.account1.pk,
+                "amount": "-1",
+            },
+            appointment=appointment,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("нет доступного участника", str(form.errors).lower())
+
+        Appointment.objects.filter(pk=appointment.pk).update(
+            starts_at=timezone.now() - timedelta(hours=2),
+            ends_at=timezone.now() - timedelta(hours=1),
+        )
+        appointment.refresh_from_db()
+        self.assertFalse(
+            needs_attendance_queryset().filter(pk=appointment.pk).exists()
+        )
+        with self.assertRaisesMessage(
+            appointment_svc.AppointmentStateConflict,
+            "нет активных участников",
+        ):
+            appointment_svc.record_attendance(
+                appointment,
+                action="completed",
+                actor=self.admin,
+            )
+
+    def test_withdrawn_participant_leaves_calendar_and_join_capacity(self):
+        series, appointment, participant, _account, _block = self.create_joined_series()
+        withdrawn_name = participant.child.full_name
+        series_lifecycle.withdraw_future_joined_participations(
+            series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Снятое участие не занимает место и не показывается в календаре.",
+        )
+
+        response = self.client.get("/api/appointments/")
+        self.assertEqual(response.status_code, 200)
+        event = next(item for item in response.json() if item["id"] == appointment.pk)
+        self.assertNotIn(withdrawn_name, event["extendedProps"]["participants"])
+        self.assertEqual(event["extendedProps"]["participantCount"], 2)
+
+        _child, _account, next_block = self.create_third_block()
+        preview = program_series.preview_group_joins(
+            block=next_block,
+            date_from=self.start_date,
+            date_to=self.start_date,
+        )
+        candidate = next(
+            item for item in preview.candidates if item.appointment.pk == appointment.pk
+        )
+        self.assertTrue(candidate.ready)
+        self.assertEqual(candidate.recipient_count_after, 3)
+
+    def test_participant_lineage_nodes_cannot_be_deleted_or_cascaded(self):
+        _series, appointment, participant, _account, _block = self.create_joined_series()
+        moved = appointment_svc.reschedule(
+            appointment,
+            starts_at=appointment.starts_at + timedelta(days=1),
+            ends_at=appointment.ends_at + timedelta(days=1),
+            staff_member=self.staff1,
+            room=self.room,
+            actor=self.admin,
+        )
+        successor = moved.new.participants.get(child=participant.child)
+
+        with self.assertRaisesMessage(ValidationError, "нельзя физически удалить"):
+            participant.delete()
+        with self.assertRaisesMessage(ValidationError, "нельзя физически удалить"):
+            successor.delete()
+        with self.assertRaisesMessage(
+            DatabaseError,
+            "appointment participant lineage nodes are protected",
+        ), transaction.atomic():
+            AppointmentParticipant.objects.filter(pk=successor.pk).delete()
+        with self.assertRaisesMessage(
+            DatabaseError,
+            "appointment participant lineage nodes are protected",
+        ), transaction.atomic():
+            moved.new.delete()
+
+        self.assertTrue(AppointmentParticipant.objects.filter(pk=successor.pk).exists())
+        self.assertTrue(Appointment.objects.filter(pk=moved.new.pk).exists())
+
+    def test_withdraw_blocks_only_target_charge_and_status_reactivation(self):
+        series, appointment, participant, account, _block = self.create_joined_series()
+        other = appointment.participants.get(child=self.child1)
+        series_lifecycle.withdraw_future_joined_participations(
+            series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Снято одно участие, общее занятие и остальные оплаты сохраняются.",
+        )
+
+        with self.assertRaisesMessage(ValueError, "снятия участия"):
+            billing_svc.apply_decision(
+                appointment,
+                decision=Appointment.BillingDecision.CHARGE,
+                account=account,
+                amount=Decimal("-1"),
+                actor=self.admin,
+                participant=participant,
+            )
+        other_charge = billing_svc.apply_decision(
+            appointment,
+            decision=Appointment.BillingDecision.CHARGE,
+            account=self.account1,
+            amount=Decimal("-1"),
+            actor=self.admin,
+            participant=other,
+        )
+        appointment_svc.transition_appointment_status(
+            appointment,
+            status=Appointment.Status.CONFIRMED,
+            allowed_from={Appointment.Status.PROPOSED},
+            action="подтвердить общее занятие",
+        )
+
+        participant.refresh_from_db()
+        other.refresh_from_db()
+        appointment.refresh_from_db()
+        self.assertIsNotNone(other_charge.entry)
+        self.assertEqual(appointment.status, Appointment.Status.CONFIRMED)
+        self.assertEqual(other.appointment_status, Appointment.Status.CONFIRMED)
+        self.assertEqual(participant.appointment_status, Appointment.Status.CANCELLED)
+
+    def test_withdrawn_participant_is_excluded_from_attendance_and_reschedule(self):
+        series, appointment, participant, _account, _block = self.create_joined_series()
+        series_lifecycle.withdraw_future_joined_participations(
+            series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Снятое участие не должно вернуться через табель или перенос.",
+        )
+
+        moved = appointment_svc.reschedule(
+            appointment,
+            starts_at=appointment.starts_at + timedelta(days=1),
+            ends_at=appointment.ends_at + timedelta(days=1),
+            staff_member=self.staff1,
+            room=self.room,
+            actor=self.admin,
+            note="Переносим оставшийся состав группы.",
+        )
+
+        participant.refresh_from_db()
+        self.assertEqual(participant.appointment_status, Appointment.Status.CANCELLED)
+        self.assertFalse(moved.new.participants.filter(child=participant.child).exists())
+        appointment_svc.record_attendance(
+            moved.new,
+            action="completed",
+            actor=self.admin,
+        )
+        participant.refresh_from_db()
+        self.assertEqual(participant.appointment_status, Appointment.Status.CANCELLED)
+        self.assertEqual(participant.attendance_status, Appointment.AttendanceStatus.UNKNOWN)
+
+    def test_withdrawn_confirmation_stays_audit_only_and_leaves_work_queues(self):
+        series, appointment, participant, _account, _block = self.create_joined_series()
+        series_lifecycle.withdraw_future_joined_participations(
+            series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Согласование снятого участия больше не управляет общим слотом.",
+        )
+        Appointment.objects.filter(pk=appointment.pk).update(
+            status=Appointment.Status.COMPLETED
+        )
+        appointment.participants.exclude(pk=participant.pk).update(
+            appointment_status=Appointment.Status.COMPLETED
+        )
+        queue_row = needs_billing_queryset().get(pk=appointment.pk)
+        Appointment.objects.filter(pk=appointment.pk).update(status=Appointment.Status.DRAFT)
+        appointment.refresh_from_db()
+        confirmation = AppointmentConfirmation.objects.create(
+            appointment=appointment,
+            participant=participant,
+            target_type=AppointmentConfirmation.TargetType.REPRESENTATIVE,
+            email="withdrawn@example.local",
+            subject="Историческое согласование",
+            message="Это согласование уже не должно менять общий слот.",
+            sent_by=self.admin,
+        )
+
+        self.assertFalse(notifications.send_confirmation_email(confirmation.pk))
+        confirmation_decisions.record_external_response(
+            confirmation,
+            action="confirm",
+        )
+
+        appointment.refresh_from_db()
+        confirmation.refresh_from_db()
+        form = AppointmentConfirmationSendForm(appointment=appointment)
+        self.assertEqual(appointment.status, Appointment.Status.DRAFT)
+        self.assertEqual(confirmation.status, AppointmentConfirmation.Status.CONFIRMED)
+        self.assertNotIn(
+            participant.pk,
+            [row.pk for row in form.appointment_participants],
+        )
+        self.assertFalse(
+            confirmation_attention_queryset().filter(pk=confirmation.pk).exists()
+        )
+        self.assertEqual(queue_row.undecided_participant_count, 2)
+
+    def test_withdraw_rejects_create_series_without_history(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+
+        with self.assertRaisesMessage(ValidationError, "join-серии"):
+            series_lifecycle.withdraw_future_joined_participations(
+                materialized.series,
+                operation_key=uuid4(),
+                actor=self.admin,
+                reason="Create-серия не владеет отдельным участием общего занятия.",
+            )
+
+        self.assertFalse(materialized.series.lifecycle_events.exists())
+
+    def test_withdrawal_db_guard_blocks_raw_mutation_and_new_successor(self):
+        series, appointment, participant, _account, _block = self.create_joined_series()
+        series_lifecycle.withdraw_future_joined_participations(
+            series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Проверяем защиту снятого участия на уровне PostgreSQL.",
+        )
+
+        with self.assertRaisesMessage(
+            DatabaseError,
+            "series result freezes appointment participant state",
+        ), transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE operations_appointmentparticipant "
+                "SET appointment_status = %s WHERE id = %s",
+                [Appointment.Status.CONFIRMED, participant.pk],
+            )
+
+        participant.refresh_from_db()
+        self.assertEqual(participant.appointment_status, Appointment.Status.CANCELLED)
+
+        target_start = appointment.starts_at + timedelta(days=10)
+        target = Appointment(
+            source_appointment=appointment,
+            child=participant.child,
+            service=appointment.service,
+            staff_member=self.staff1,
+            room=self.room,
+            starts_at=target_start,
+            ends_at=target_start + timedelta(minutes=45),
+            session_type=Appointment.SessionType.GROUP,
+            status=Appointment.Status.CONFIRMED,
+        )
+        target.save(sync_legacy=False)
+        successor = AppointmentParticipant(
+            appointment=target,
+            child=participant.child,
+            program_block=participant.program_block,
+            source_participant=participant,
+            starts_at_snapshot=target.starts_at,
+            ends_at_snapshot=target.ends_at,
+            appointment_status=Appointment.Status.CONFIRMED,
+        )
+        with self.assertRaisesMessage(ValidationError, "после результата серии"):
+            successor.save()
+        with self.assertRaisesMessage(
+            DatabaseError,
+            "series result freezes appointment participant lineage",
+        ), transaction.atomic():
+            AppointmentParticipant.objects.bulk_create([successor])
+
+        existing = AppointmentParticipant.objects.create(
+            appointment=target,
+            child=participant.child,
+            starts_at_snapshot=target.starts_at,
+            ends_at_snapshot=target.ends_at,
+            appointment_status=Appointment.Status.CONFIRMED,
+        )
+        with self.assertRaises(DatabaseError), transaction.atomic():
+            AppointmentParticipant.objects.filter(pk=existing.pk).update(
+                source_participant_id=participant.pk,
+            )
+        existing.refresh_from_db()
+        self.assertIsNone(existing.source_participant_id)
+
+    def test_withdrawal_result_rejects_non_leaf_lineage_target(self):
+        series, appointment, participant, _account, _block = self.create_joined_series()
+        moved = appointment_svc.reschedule(
+            appointment,
+            starts_at=appointment.starts_at + timedelta(days=1),
+            ends_at=appointment.ends_at + timedelta(days=1),
+            staff_member=self.staff1,
+            room=self.room,
+            actor=self.admin,
+        )
+        event = AppointmentSeriesLifecycleEvent.objects.create(
+            series=series,
+            operation_key=uuid4(),
+            fingerprint="f" * 64,
+            event_type=(
+                AppointmentSeriesLifecycleEvent.EventType.WITHDRAW_FUTURE_JOINED_PARTICIPATIONS
+            ),
+            event_number=1,
+            status_from=AppointmentSeries.Status.ACTIVE,
+            status_to=AppointmentSeries.Status.CANCELLED,
+            actor=self.admin,
+            actor_role_snapshot=AppointmentSeriesLifecycleEvent.ActorRole.DIRECTOR,
+            reason="Невалидная цель-предок должна быть отклонена.",
+        )
+        AppointmentSeries.objects.filter(pk=series.pk).update(
+            status=AppointmentSeries.Status.CANCELLED,
+        )
+        source = AppointmentSeriesMaterializationResult.objects.get(
+            series=series,
+            appointment_participant=participant,
+            outcome=AppointmentSeriesOccurrence.Outcome.JOINED,
+        )
+        invalid = AppointmentSeriesCancellationResult(
+            lifecycle_event=event,
+            appointment=appointment,
+            appointment_participant=participant,
+            source_materialization_result=source,
+            outcome=AppointmentSeriesCancellationResult.Outcome.UNCHANGED,
+            status_from=Appointment.Status.RESCHEDULED,
+            status_to=Appointment.Status.RESCHEDULED,
+            reason_code="invalid_ancestor",
+            reason="Предок линии не является текущей целью снятия.",
+            processed_at=max(timezone.now(), event.occurred_at),
+        )
+
+        with self.assertRaisesMessage(ValidationError, "последний узел"):
+            invalid.save()
+        with self.assertRaisesMessage(
+            DatabaseError,
+            "series withdrawal result target must be the current lineage leaf",
+        ), transaction.atomic(), connection.cursor() as cursor:
+            now = timezone.now()
+            cursor.execute(
+                "INSERT INTO operations_appointmentseriescancellationresult "
+                "(lifecycle_event_id, appointment_id, appointment_participant_id, "
+                "source_materialization_result_id, outcome, status_from, status_to, "
+                "reason_code, reason, processed_at, created_at, updated_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                [
+                    event.pk,
+                    appointment.pk,
+                    participant.pk,
+                    source.pk,
+                    AppointmentSeriesCancellationResult.Outcome.UNCHANGED,
+                    Appointment.Status.RESCHEDULED,
+                    Appointment.Status.RESCHEDULED,
+                    "invalid_ancestor",
+                    "Предок линии не является текущей целью снятия.",
+                    max(now, event.occurred_at),
+                    now,
+                    now,
+                ],
+            )
+        self.assertTrue(
+            moved.new.participants.filter(
+                child=participant.child,
+                appointment_status=Appointment.Status.CONFIRMED,
+            ).exists()
+        )
+
     def test_calendar_api_cannot_move_series_cancelled_appointment(self):
         materialized = program_series.create_group_series(
             self.preview(end_date=self.start_date),
@@ -3769,7 +4446,7 @@ class GroupProgramJoinTests(TestCase):
         )
         self.assertEqual(materialization_result.appointment_participant_id, participant.pk)
         self.assertEqual(run.events.get().result_count, 1)
-        with self.assertRaises(ProtectedError):
+        with self.assertRaisesMessage(ValidationError, "нельзя физически удалить"):
             participant.delete()
 
         local_start = timezone.localtime(target.starts_at)
@@ -4177,6 +4854,33 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
         )
         series_revisions.ensure_initial_revision(series, actor=self.admin)
         return series
+
+    def _create_withdraw_target(self):
+        appointment = self._create_join_target()
+        joined = program_series.join_program_block_to_groups(
+            block=self.blocks[1],
+            appointments=[appointment],
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        participant = appointment.participants.get(child=self.children[1])
+        return (
+            joined.series,
+            appointment,
+            participant,
+            self.blocks[1].balance_account,
+        )
+
+    def _collect_concurrent_outcomes(self, outcomes, *targets):
+        threads = [Thread(target=target) for target in targets]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=30)
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        results = [outcomes.get_nowait() for _ in threads]
+        self.assertTrue(all(isinstance(item, tuple) for item in results), results)
+        return results
 
     def _run_competing_missing(self, series_id, operation_keys):
         barrier = Barrier(2)
@@ -5313,6 +6017,303 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
                 ).exists()
             )
 
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Гонка снятия участия и переноса проверяется только на PostgreSQL.",
+    )
+    def test_withdraw_and_reschedule_leave_no_active_joined_participant(self):
+        series, appointment, participant, _account = self._create_withdraw_target()
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def withdraw_participant():
+            close_old_connections()
+            try:
+                barrier.wait(timeout=10)
+                result = series_lifecycle.withdraw_future_joined_participations(
+                    AppointmentSeries.objects.get(pk=series.pk),
+                    operation_key=uuid4(),
+                    actor=User.objects.get(pk=self.admin.pk),
+                    reason="Concurrent withdrawal and reschedule are serialized.",
+                )
+                outcomes.put(("withdraw", result.withdrawn_count))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        def reschedule_appointment():
+            close_old_connections()
+            try:
+                current = Appointment.objects.get(pk=appointment.pk)
+                barrier.wait(timeout=10)
+                moved = appointment_svc.reschedule(
+                    current,
+                    starts_at=current.starts_at + timedelta(days=1),
+                    ends_at=current.ends_at + timedelta(days=1),
+                    staff_member=StaffMember.objects.get(pk=self.staff_members[0].pk),
+                    room=Room.objects.get(pk=self.room.pk),
+                    actor=User.objects.get(pk=self.admin.pk),
+                    note="Concurrent move of a shared group appointment.",
+                )
+                outcomes.put(("reschedule", moved.new.pk))
+            except appointment_svc.AppointmentStateConflict:
+                outcomes.put(("reschedule_rejected", None))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        results = self._collect_concurrent_outcomes(
+            outcomes,
+            withdraw_participant,
+            reschedule_appointment,
+        )
+
+        self.assertEqual(sum(item[0] == "withdraw" for item in results), 1, results)
+        self.assertEqual(
+            sum(item[0] in {"reschedule", "reschedule_rejected"} for item in results),
+            1,
+            results,
+        )
+        withdrawal = AppointmentSeriesCancellationResult.objects.get(
+            lifecycle_event__series=series,
+            source_materialization_result__appointment_participant=participant,
+        )
+        withdrawal.appointment_participant.refresh_from_db()
+        self.assertEqual(
+            withdrawal.outcome,
+            AppointmentSeriesCancellationResult.Outcome.CANCELLED,
+        )
+        self.assertEqual(
+            withdrawal.appointment_participant.appointment_status,
+            Appointment.Status.CANCELLED,
+        )
+        self.assertFalse(
+            AppointmentParticipant.objects.filter(
+                child=participant.child,
+                appointment_status__in=[
+                    Appointment.Status.PROPOSED,
+                    Appointment.Status.CONFIRMED,
+                    Appointment.Status.RESERVED,
+                ],
+            ).exists()
+        )
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Гонка снятия участия и списания проверяется только на PostgreSQL.",
+    )
+    def test_withdraw_and_charge_have_one_linearized_financial_outcome(self):
+        series, appointment, participant, account = self._create_withdraw_target()
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def withdraw_participant():
+            close_old_connections()
+            try:
+                barrier.wait(timeout=10)
+                result = series_lifecycle.withdraw_future_joined_participations(
+                    AppointmentSeries.objects.get(pk=series.pk),
+                    operation_key=uuid4(),
+                    actor=User.objects.get(pk=self.admin.pk),
+                    reason="Concurrent withdrawal and charge are serialized.",
+                )
+                outcomes.put(("withdraw", result.withdrawn_count))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        def charge_participant():
+            close_old_connections()
+            try:
+                barrier.wait(timeout=10)
+                decision = billing_svc.apply_decision(
+                    Appointment.objects.get(pk=appointment.pk),
+                    decision=Appointment.BillingDecision.CHARGE,
+                    account=BalanceAccount.objects.get(pk=account.pk),
+                    amount=Decimal("-1"),
+                    actor=User.objects.get(pk=self.admin.pk),
+                    participant=AppointmentParticipant.objects.get(pk=participant.pk),
+                )
+                outcomes.put(("charge", decision.entry.pk))
+            except ValueError as exc:
+                outcomes.put(("charge_rejected", str(exc)))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        results = self._collect_concurrent_outcomes(
+            outcomes,
+            withdraw_participant,
+            charge_participant,
+        )
+
+        self.assertEqual(sum(item[0] == "withdraw" for item in results), 1, results)
+        self.assertEqual(
+            sum(item[0] in {"charge", "charge_rejected"} for item in results),
+            1,
+            results,
+        )
+        participant.refresh_from_db()
+        self.assertEqual(participant.appointment_status, Appointment.Status.CANCELLED)
+        charged = any(item[0] == "charge" for item in results)
+        self.assertEqual(
+            LedgerEntry.objects.filter(
+                appointment=appointment,
+                appointment_participant=participant,
+                entry_type=LedgerEntry.EntryType.DEBIT,
+            ).exists(),
+            charged,
+        )
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Гонка снятия участия и табеля проверяется только на PostgreSQL.",
+    )
+    def test_withdraw_and_attendance_do_not_overwrite_each_other(self):
+        series, appointment, participant, _account = self._create_withdraw_target()
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def withdraw_participant():
+            close_old_connections()
+            try:
+                barrier.wait(timeout=10)
+                result = series_lifecycle.withdraw_future_joined_participations(
+                    AppointmentSeries.objects.get(pk=series.pk),
+                    operation_key=uuid4(),
+                    actor=User.objects.get(pk=self.admin.pk),
+                    reason="Concurrent withdrawal and attendance are serialized.",
+                )
+                outcomes.put(
+                    (
+                        "withdraw",
+                        result.withdrawn_count,
+                        result.unchanged_count,
+                    )
+                )
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        def mark_attendance():
+            close_old_connections()
+            try:
+                barrier.wait(timeout=10)
+                appointment_svc.record_attendance(
+                    Appointment.objects.get(pk=appointment.pk),
+                    action="completed",
+                    actor=User.objects.get(pk=self.admin.pk),
+                )
+                outcomes.put(("attendance", Appointment.Status.COMPLETED))
+            except appointment_svc.AppointmentStateConflict:
+                outcomes.put(("attendance_rejected", None))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        results = self._collect_concurrent_outcomes(
+            outcomes,
+            withdraw_participant,
+            mark_attendance,
+        )
+
+        self.assertEqual(sum(item[0] == "withdraw" for item in results), 1, results)
+        self.assertEqual(
+            sum(item[0] in {"attendance", "attendance_rejected"} for item in results),
+            1,
+            results,
+        )
+        withdrawal = AppointmentSeriesCancellationResult.objects.get(
+            lifecycle_event__series=series,
+            source_materialization_result__appointment_participant=participant,
+        )
+        participant.refresh_from_db()
+        if withdrawal.outcome == AppointmentSeriesCancellationResult.Outcome.CANCELLED:
+            self.assertEqual(participant.appointment_status, Appointment.Status.CANCELLED)
+        else:
+            self.assertEqual(
+                withdrawal.outcome,
+                AppointmentSeriesCancellationResult.Outcome.UNCHANGED,
+            )
+            self.assertEqual(participant.appointment_status, Appointment.Status.COMPLETED)
+
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Гонка снятия участия и подтверждения проверяется только на PostgreSQL.",
+    )
+    def test_withdraw_and_participant_confirmation_cannot_reactivate_participant(self):
+        series, appointment, participant, _account = self._create_withdraw_target()
+        Appointment.objects.filter(pk=appointment.pk).update(status=Appointment.Status.PROPOSED)
+        appointment.participants.update(appointment_status=Appointment.Status.PROPOSED)
+        appointment.staff_assignments.update(appointment_status=Appointment.Status.PROPOSED)
+        confirmation = AppointmentConfirmation.objects.create(
+            appointment=appointment,
+            participant=participant,
+            target_type=AppointmentConfirmation.TargetType.REPRESENTATIVE,
+            email="concurrent-withdraw@example.local",
+            subject="Concurrent withdrawal confirmation",
+            message="Participant-specific confirmation must not reactivate a withdrawal.",
+            sent_by=self.admin,
+        )
+        barrier = Barrier(2)
+        outcomes = Queue()
+
+        def withdraw_participant():
+            close_old_connections()
+            try:
+                barrier.wait(timeout=10)
+                result = series_lifecycle.withdraw_future_joined_participations(
+                    AppointmentSeries.objects.get(pk=series.pk),
+                    operation_key=uuid4(),
+                    actor=User.objects.get(pk=self.admin.pk),
+                    reason="Concurrent withdrawal and confirmation are serialized.",
+                )
+                outcomes.put(("withdraw", result.withdrawn_count))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        def confirm_participant():
+            close_old_connections()
+            try:
+                barrier.wait(timeout=10)
+                decision = confirmation_decisions.record_external_response(
+                    AppointmentConfirmation.objects.get(pk=confirmation.pk),
+                    action="confirm",
+                )
+                outcomes.put(("confirmation", decision.pk))
+            except BaseException as exc:
+                outcomes.put(exc)
+            finally:
+                connection.close()
+
+        results = self._collect_concurrent_outcomes(
+            outcomes,
+            withdraw_participant,
+            confirm_participant,
+        )
+
+        self.assertEqual(sum(item[0] == "withdraw" for item in results), 1, results)
+        self.assertEqual(sum(item[0] == "confirmation" for item in results), 1, results)
+        participant.refresh_from_db()
+        confirmation.refresh_from_db()
+        self.assertEqual(participant.appointment_status, Appointment.Status.CANCELLED)
+        self.assertEqual(confirmation.status, AppointmentConfirmation.Status.CONFIRMED)
+        self.assertEqual(
+            AppointmentSeriesCancellationResult.objects.get(
+                lifecycle_event__series=series,
+                source_materialization_result__appointment_participant=participant,
+            ).outcome,
+            AppointmentSeriesCancellationResult.Outcome.CANCELLED,
+        )
+
 
 class ProgramWizardPostgreSQLConcurrencyTests(TransactionTestCase):
     def setUp(self):
@@ -5445,6 +6446,27 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
         executor.migrate(executor.loader.graph.leaf_nodes("operations"))
         super().tearDown()
 
+    def _delete_withdraw_events(self, event_model):
+        if connection.vendor == "postgresql":
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "ALTER TABLE operations_appointmentserieslifecycleevent "
+                    "DISABLE TRIGGER USER"
+                )
+                cursor.execute(
+                    "DELETE FROM operations_appointmentserieslifecycleevent "
+                    "WHERE event_type = %s",
+                    ["withdraw_future_joined_participations"],
+                )
+                cursor.execute(
+                    "ALTER TABLE operations_appointmentserieslifecycleevent "
+                    "ENABLE TRIGGER USER"
+                )
+        else:
+            event_model.objects.filter(
+                event_type="withdraw_future_joined_participations"
+            ).delete()
+
     def _create_native_series_history(
         self,
         apps,
@@ -5502,45 +6524,46 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
             default_appointment_status="proposed",
             status="active",
         )
-        revision = revision_model.objects.create(
-            series_id=series.pk,
-            revision_number=1,
-            event_type="created",
-            provenance_kind="native",
-            effective_from=day,
-            title=series.title,
-            service_id=service.pk,
-            room_id=room.pk,
-            start_date=day,
-            end_date=day,
-            days_of_week="ПН",
-            time=time(10, 0),
-            duration_minutes=30,
-            session_type="individual",
-            materialization_mode="create_appointments",
-            default_appointment_status="proposed",
-            allow_unpaid_reserve=False,
-            allow_outside_availability=False,
-            override_reason="",
-            fingerprint="d" * 64,
-            actor_id=actor.pk,
-            actor_role_snapshot="director",
-            reason="Native dual-write migration fixture.",
-            decided_at=timezone.now(),
-        )
-        revision_participant_model.objects.create(
-            revision_id=revision.pk,
-            child_id=child.pk,
-            position=1,
-        )
-        revision_staff_model.objects.create(
-            revision_id=revision.pk,
-            staff_member_id=staff.pk,
-            role="primary",
-        )
-        series_model.objects.filter(pk=series.pk).update(
-            current_revision_id=revision.pk
-        )
+        with transaction.atomic():
+            revision = revision_model.objects.create(
+                series_id=series.pk,
+                revision_number=1,
+                event_type="created",
+                provenance_kind="native",
+                effective_from=day,
+                title=series.title,
+                service_id=service.pk,
+                room_id=room.pk,
+                start_date=day,
+                end_date=day,
+                days_of_week="ПН",
+                time=time(10, 0),
+                duration_minutes=30,
+                session_type="individual",
+                materialization_mode="create_appointments",
+                default_appointment_status="proposed",
+                allow_unpaid_reserve=False,
+                allow_outside_availability=False,
+                override_reason="",
+                fingerprint="d" * 64,
+                actor_id=actor.pk,
+                actor_role_snapshot="director",
+                reason="Native dual-write migration fixture.",
+                decided_at=timezone.now(),
+            )
+            revision_participant_model.objects.create(
+                revision_id=revision.pk,
+                child_id=child.pk,
+                position=1,
+            )
+            revision_staff_model.objects.create(
+                revision_id=revision.pk,
+                staff_member_id=staff.pk,
+                role="primary",
+            )
+            series_model.objects.filter(pk=series.pk).update(
+                current_revision_id=revision.pk
+            )
         run = run_model.objects.create(
             series_id=series.pk,
             revision_id=revision.pk,
@@ -6965,3 +7988,161 @@ class GroupProgramSeriesMigrationTests(TransactionTestCase):
             "Cannot remove series cancellation schema while incompatible lifecycle history exists",
         ):
             executor.migrate(target_before)
+        self._delete_withdraw_events(event_model)
+
+    def test_series_withdrawal_migration_empty_round_trip(self):
+        target_before = [("operations", "0063_series_cancel_results_expand")]
+        target_after = [("operations", "0064_series_withdraw_results_expand")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_before)
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+        apps = executor.loader.project_state(target_after).apps
+        result_model = apps.get_model(
+            "operations", "AppointmentSeriesCancellationResult"
+        )
+        participant_model = apps.get_model("operations", "AppointmentParticipant")
+        self.assertIsNotNone(result_model._meta.get_field("appointment_participant"))
+        self.assertEqual(
+            participant_model._meta.get_field("source_participant").remote_field.on_delete,
+            models.PROTECT,
+        )
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_before)
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+
+    def test_series_withdrawal_migration_rejects_preexisting_history(self):
+        target_before = [("operations", "0063_series_cancel_results_expand")]
+        target_after = [("operations", "0064_series_withdraw_results_expand")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_before)
+        apps = executor.loader.project_state(target_before).apps
+        series, revision, _ = self._create_native_series_history(
+            apps,
+            suffix="withdraw-preflight",
+        )
+        series_model = apps.get_model("operations", "AppointmentSeries")
+        event_model = apps.get_model("operations", "AppointmentSeriesLifecycleEvent")
+        with transaction.atomic():
+            event_model.objects.create(
+                series_id=series.pk,
+                operation_key=uuid4(),
+                fingerprint="f" * 64,
+                event_type="withdraw_future_joined_participations",
+                event_number=1,
+                status_from="active",
+                status_to="cancelled",
+                actor_id=revision.actor_id,
+                actor_role_snapshot="director",
+                reason="Legacy withdrawal without typed per-participant results.",
+            )
+            series_model.objects.filter(pk=series.pk).update(status="cancelled")
+
+        executor = MigrationExecutor(connection)
+        with self.assertRaisesMessage(
+            RuntimeError,
+            "pre-existing withdraw_future_joined_participations history",
+        ):
+            executor.migrate(target_after)
+        self._delete_withdraw_events(event_model)
+
+    def test_series_withdrawal_migration_rejects_invalid_participant_lineage(self):
+        target_before = [("operations", "0063_series_cancel_results_expand")]
+        target_after = [("operations", "0064_series_withdraw_results_expand")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_before)
+        apps = executor.loader.project_state(target_before).apps
+        child_model = apps.get_model("operations", "Child")
+        staff_model = apps.get_model("operations", "StaffMember")
+        service_model = apps.get_model("operations", "Service")
+        room_model = apps.get_model("operations", "Room")
+        appointment_model = apps.get_model("operations", "Appointment")
+        participant_model = apps.get_model("operations", "AppointmentParticipant")
+        child = child_model.objects.create(
+            last_name="Invalid lineage",
+            first_name="Migration fixture",
+        )
+        staff = staff_model.objects.create(full_name="Invalid lineage staff")
+        service = service_model.objects.create(
+            name="Invalid lineage service",
+            code="INVALID-LINEAGE-PREFLIGHT",
+        )
+        room = room_model.objects.create(name="Invalid lineage room")
+        starts_at = _local(timezone.localdate() + timedelta(days=40), time(12, 0))
+        appointment_values = {
+            "child_id": child.pk,
+            "staff_member_id": staff.pk,
+            "service_id": service.pk,
+            "room_id": room.pk,
+            "starts_at": starts_at,
+            "ends_at": starts_at + timedelta(minutes=30),
+            "status": "proposed",
+        }
+        source_appointment = appointment_model.objects.create(**appointment_values)
+        invalid_target_appointment = appointment_model.objects.create(
+            **{
+                **appointment_values,
+                "starts_at": starts_at + timedelta(days=1),
+                "ends_at": starts_at + timedelta(days=1, minutes=30),
+            }
+        )
+        source_participant = participant_model.objects.create(
+            appointment_id=source_appointment.pk,
+            child_id=child.pk,
+            starts_at_snapshot=source_appointment.starts_at,
+            ends_at_snapshot=source_appointment.ends_at,
+            appointment_status="rescheduled",
+        )
+        participant_model.objects.create(
+            appointment_id=invalid_target_appointment.pk,
+            child_id=child.pk,
+            source_participant_id=source_participant.pk,
+            starts_at_snapshot=invalid_target_appointment.starts_at,
+            ends_at_snapshot=invalid_target_appointment.ends_at,
+            appointment_status="confirmed",
+        )
+
+        executor = MigrationExecutor(connection)
+        with self.assertRaisesMessage(RuntimeError, "invalid reschedule provenance"):
+            executor.migrate(target_after)
+
+        invalid_target_appointment.delete()
+        source_appointment.delete()
+
+    def test_series_withdrawal_history_blocks_0064_reverse(self):
+        target_before = [("operations", "0063_series_cancel_results_expand")]
+        target_after = [("operations", "0064_series_withdraw_results_expand")]
+        executor = MigrationExecutor(connection)
+        executor.migrate(target_after)
+        apps = executor.loader.project_state(target_after).apps
+        series, revision, _ = self._create_native_series_history(
+            apps,
+            suffix="withdraw-0064-reverse",
+        )
+        series_model = apps.get_model("operations", "AppointmentSeries")
+        event_model = apps.get_model("operations", "AppointmentSeriesLifecycleEvent")
+        with transaction.atomic():
+            event_model.objects.create(
+                series_id=series.pk,
+                operation_key=uuid4(),
+                fingerprint="a" * 64,
+                event_type="withdraw_future_joined_participations",
+                event_number=1,
+                status_from="active",
+                status_to="cancelled",
+                actor_id=revision.actor_id,
+                actor_role_snapshot="director",
+                reason="Typed withdrawal history must block removal of its schema.",
+            )
+            series_model.objects.filter(pk=series.pk).update(status="cancelled")
+
+        executor = MigrationExecutor(connection)
+        with self.assertRaisesMessage(
+            RuntimeError,
+            "Cannot remove series withdrawal schema while withdrawal history exists",
+        ):
+            executor.migrate(target_before)
+        self._delete_withdraw_events(event_model)

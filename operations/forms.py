@@ -102,7 +102,16 @@ def configure_balance_account_choice_field(field) -> None:
 
 
 def single_participant_or_none(appointment):
-    participants = list(appointment.participants.order_by("pk")[:2])
+    participants = list(
+        appointment.participants.exclude(
+            appointment_status__in=[
+                Appointment.Status.CANCELLED,
+                Appointment.Status.RESCHEDULED,
+            ]
+        )
+        .exclude(series_withdrawal_results__isnull=False)
+        .order_by("pk")[:2]
+    )
     if len(participants) > 1:
         raise ValueError(GROUP_BILLING_PARTICIPANT_REQUIRED)
     return participants[0] if participants else None
@@ -192,7 +201,17 @@ def sync_participant_ledger_to_target(participant, target, user, reason):
 
 
 def sync_appointment_billing_summary(appointment):
-    participants = list(appointment.participants.select_related("billing_account").order_by("pk"))
+    participants = list(
+        appointment.participants.exclude(
+            appointment_status__in=[
+                Appointment.Status.CANCELLED,
+                Appointment.Status.RESCHEDULED,
+            ]
+        )
+        .exclude(series_withdrawal_results__isnull=False)
+        .select_related("billing_account")
+        .order_by("pk")
+    )
     if not participants:
         return
     if any(
@@ -509,15 +528,19 @@ class AppointmentForm(forms.ModelForm):
                 "program_block", "Блок программы должен соответствовать выбранной услуге."
             )
         if self.instance.pk:
+            from operations.services import appointments as appointment_svc
+
             selected_child_ids = {selected.pk for selected in children}
-            protected_participants = list(
-                self.instance.participants.filter(
-                    series_join_occurrences__isnull=False,
-                )
-                .exclude(child_id__in=selected_child_ids)
-                .select_related("child")
-                .distinct()
+            removal_candidates = list(
+                self.instance.participants.exclude(
+                    child_id__in=selected_child_ids,
+                ).select_related("child", "source_participant")
             )
+            protected_participants = [
+                participant
+                for participant in removal_candidates
+                if appointment_svc.participant_has_join_series_owner(participant)
+            ]
             if protected_participants:
                 names = ", ".join(str(item.child) for item in protected_participants)
                 self.add_error(
@@ -528,6 +551,8 @@ class AppointmentForm(forms.ModelForm):
         return cleaned
 
     def _sync_participants(self, appointment: Appointment) -> None:
+        from operations.services import appointments as appointment_svc
+
         children = list(self.cleaned_data.get("participants") or [])
         if (
             appointment.child
@@ -536,9 +561,11 @@ class AppointmentForm(forms.ModelForm):
         ):
             children.insert(0, appointment.child)
         child_ids = [child.pk for child in children]
-        AppointmentParticipant.objects.filter(appointment=appointment).exclude(
-            child_id__in=child_ids
-        ).delete()
+        for participant in AppointmentParticipant.objects.filter(
+            appointment=appointment,
+        ).exclude(child_id__in=child_ids):
+            if not appointment_svc.participant_has_join_series_owner(participant):
+                participant.delete()
         existing_by_child = {
             participant.child_id: participant
             for participant in AppointmentParticipant.objects.filter(appointment=appointment)
@@ -547,6 +574,8 @@ class AppointmentForm(forms.ModelForm):
             is_primary = child.pk == appointment.child_id
             existing = existing_by_child.get(child.pk)
             if existing:
+                if existing.series_withdrawal_results.exists():
+                    continue
                 existing.starts_at_snapshot = appointment.starts_at
                 existing.ends_at_snapshot = appointment.ends_at
                 existing.appointment_status = appointment.status
@@ -736,6 +765,10 @@ class AppointmentForm(forms.ModelForm):
                             locked.appointment,
                             action="изменить время занятия",
                         )
+                        appointment_svc.require_no_unresolved_participant_result(
+                            locked.appointment,
+                            action="изменить время занятия",
+                        )
                     appointment_svc.require_no_series_reactivation(
                         locked.appointment,
                         requested_status=appointment.status,
@@ -817,7 +850,17 @@ class AppointmentMoveForm(forms.Form):
         return schedule_write_svc.room_limit_message(room, conflicts)
 
     def _participant_children(self):
-        participants = list(self.appointment.participants.select_related("child").order_by("pk"))
+        participants = list(
+            self.appointment.participants.exclude(
+                appointment_status__in=[
+                    Appointment.Status.CANCELLED,
+                    Appointment.Status.RESCHEDULED,
+                ]
+            )
+            .exclude(series_withdrawal_results__isnull=False)
+            .select_related("child")
+            .order_by("pk")
+        )
         if participants:
             return [participant.child for participant in participants]
         return [self.appointment.child]
@@ -906,10 +949,8 @@ class AppointmentMoveForm(forms.Form):
                 cleaned["staff_availability_override_reason"] = unavailable
         return cleaned
 
-    def _copy_participants(self, old, new):
-        for participant in old.participants.select_related(
-            "child", "billing_account", "program_block"
-        ).order_by("pk"):
+    def _copy_participants(self, old, new, participants):
+        for participant in participants:
             AppointmentParticipant.objects.update_or_create(
                 appointment=new,
                 child=participant.child,
@@ -1012,9 +1053,23 @@ class AppointmentMoveForm(forms.Form):
                 action="перенести занятие",
             )
             appointment_svc.require_open_appointment(old, action="перенести занятие")
+            appointment_svc.require_no_unresolved_participant_result(
+                old,
+                action="перенести занятие",
+            )
 
             participants = list(
-                old.participants.select_related("child", "billing_account").order_by("pk")
+                old.participants.exclude(
+                    appointment_status__in=[
+                        Appointment.Status.CANCELLED,
+                        Appointment.Status.RESCHEDULED,
+                    ]
+                )
+                .exclude(series_withdrawal_results__isnull=False)
+                .select_related(
+                    "child", "billing_account", "program_block"
+                )
+                .order_by("pk")
             )
             children = [participant.child for participant in participants] or [old.child]
             assignments = list(
@@ -1104,11 +1159,11 @@ class AppointmentMoveForm(forms.Form):
             if self.cleaned_data.get("room_limit_override"):
                 new._skip_room_limit_validation = True
             try:
-                new.save()
+                new.save(sync_legacy=False)
             finally:
                 if hasattr(new, "_skip_room_limit_validation"):
                     del new._skip_room_limit_validation
-            self._copy_participants(old, new)
+            self._copy_participants(old, new, participants)
             self._copy_staff_assignments(old, new, staff_member)
             self._save_room_override(new)
             return new
@@ -1196,6 +1251,7 @@ class BillingDecisionForm(forms.Form):
         self.participant = participant
         self.participant_lookup_error = ""
         self.participant_required_error = ""
+        self.no_operational_participant = False
         data = args[0] if args else kwargs.get("data")
         participant_id = data.get("participant_id") if data else None
         if self.participant is None and participant_id:
@@ -1207,14 +1263,22 @@ class BillingDecisionForm(forms.Form):
                 self.participant_lookup_error = "Участник занятия не найден."
         elif self.participant is None:
             participants = list(
-                appointment.participants.select_related("child", "billing_account").order_by("pk")[
-                    :2
-                ]
+                appointment.participants.exclude(
+                    appointment_status__in=[
+                        Appointment.Status.CANCELLED,
+                        Appointment.Status.RESCHEDULED,
+                    ]
+                )
+                .exclude(series_withdrawal_results__isnull=False)
+                .select_related("child", "billing_account")
+                .order_by("pk")[:2]
             )
             if len(participants) == 1:
                 self.participant = participants[0]
             elif len(participants) > 1:
                 self.participant_required_error = GROUP_BILLING_PARTICIPANT_REQUIRED
+            elif appointment.participants.exists():
+                self.no_operational_participant = True
         super().__init__(*args, **kwargs)
         target_child = self.participant.child if self.participant else appointment.child
         configure_balance_account_choice_field(self.fields["billing_account"])
@@ -1251,6 +1315,11 @@ class BillingDecisionForm(forms.Form):
         if self.participant_required_error:
             self.add_error("participant_id", self.participant_required_error)
         if decision == Appointment.BillingDecision.CHARGE:
+            if self.no_operational_participant:
+                self.add_error(
+                    "participant_id",
+                    "У занятия нет доступного участника для нового списания.",
+                )
             if not account:
                 self.add_error("billing_account", "Для списания нужен счет баланса.")
             else:
@@ -2526,7 +2595,15 @@ class AppointmentConfirmationSendForm(forms.Form):
 
     def _appointment_participants(self, appointment):
         return list(
-            appointment.participants.select_related("child", "child__primary_parent").order_by(
+            appointment.participants.exclude(
+                appointment_status__in=[
+                    Appointment.Status.CANCELLED,
+                    Appointment.Status.RESCHEDULED,
+                ]
+            )
+            .exclude(series_withdrawal_results__isnull=False)
+            .select_related("child", "child__primary_parent")
+            .order_by(
                 "starts_at_snapshot", "child__last_name", "child__first_name"
             )
         )

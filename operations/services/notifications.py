@@ -33,7 +33,12 @@ def build_confirmation_email(
     """
     local_start = timezone.localtime(appointment.starts_at)
     participants = list(
-        appointment.participants.select_related("child").order_by(
+        appointment.participants.exclude(
+            appointment_status__in=[
+                Appointment.Status.CANCELLED,
+                Appointment.Status.RESCHEDULED,
+            ]
+        ).select_related("child").order_by(
             "starts_at_snapshot", "child__last_name", "child__first_name"
         )
     )
@@ -90,12 +95,27 @@ def send_confirmation_email(confirmation_id: int) -> bool:
             "appointment__staff_member",
             "appointment__service",
             "appointment__room",
+            "participant",
         )
         .filter(pk=confirmation_id)
         .first()
     )
     if confirmation is None:
         logger.warning("Confirmation %s disappeared before send", confirmation_id)
+        return False
+
+    if confirmation.participant_id and (
+        confirmation.participant.appointment_status
+        in {Appointment.Status.CANCELLED, Appointment.Status.RESCHEDULED}
+        or appointment_svc.participant_has_series_result(confirmation.participant)
+    ):
+        confirmation.delivery_status = AppointmentConfirmation.DeliveryStatus.FAILED
+        confirmation.delivery_error = (
+            "По участию зафиксирован результат серии до отправки согласования."
+        )
+        confirmation.save(
+            update_fields=["delivery_status", "delivery_error", "updated_at"]
+        )
         return False
 
     confirmation.appointment._pending_token = confirmation.token
@@ -127,6 +147,7 @@ def send_confirmation_email(confirmation_id: int) -> bool:
                 status=Appointment.Status.PROPOSED,
                 allowed_from={Appointment.Status.DRAFT},
                 action="отправить согласование",
+                target_participant_id=confirmation.participant_id,
             )
         except appointment_svc.AppointmentStateConflict:
             logger.info(
