@@ -4,11 +4,17 @@ from decimal import ROUND_FLOOR, Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.core.exceptions import ValidationError
+from django.core.exceptions import NON_FIELD_ERRORS, PermissionDenied, ValidationError
+from django.core.paginator import Paginator
+from django.db.models import Count, Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.http import require_http_methods
 
 from operations.forms import (
+    AppointmentSeriesLifecycleActionForm,
+    AppointmentSeriesRetrySkippedForm,
     GroupProgramJoinForm,
     GroupProgramSeriesForm,
     ProgramBlockForm,
@@ -18,14 +24,22 @@ from operations.forms import (
 )
 from operations.models import (
     AppointmentSeries,
+    AppointmentSeriesCancellationResult,
+    AppointmentSeriesLifecycleEvent,
+    AppointmentSeriesOccurrence,
     BalanceAccount,
     Child,
     ProgramBlock,
     TreatmentProgram,
 )
-from operations.services import billing as billing_svc, program_series, program_wizard
+from operations.services import (
+    billing as billing_svc,
+    program_series,
+    program_wizard,
+    series_lifecycle,
+)
 
-from ._common import admin_required, is_admin_user
+from ._common import admin_required, is_admin_user, is_director
 
 
 def _form_value(form, field_name: str):
@@ -686,6 +700,204 @@ def _group_series_preview_from_form(form: GroupProgramSeriesForm):
     )
 
 
+_SERIES_ACTION_RETRY = "retry-skipped"
+_SERIES_ACTION_CANCEL = "cancel-future"
+_SERIES_ACTION_WITHDRAW = "withdraw-future"
+
+_SERIES_ACTION_DEFINITIONS = {
+    _SERIES_ACTION_RETRY: {
+        "slug": _SERIES_ACTION_RETRY,
+        "title": "Повторить пропущенные даты",
+        "label": "Повторить пропущенные",
+        "icon": "bi-arrow-clockwise",
+        "button_class": "btn-outline-primary",
+        "confirm_class": "btn-primary",
+        "confirm_label": "Запустить повторную проверку",
+        "description": (
+            "Система повторно проверит пропущенные даты и создаст занятия там, "
+            "где ограничения устранены. История предыдущих проверок сохранится."
+        ),
+        "show_period": True,
+        "form_class": AppointmentSeriesRetrySkippedForm,
+    },
+    _SERIES_ACTION_CANCEL: {
+        "slug": _SERIES_ACTION_CANCEL,
+        "title": "Отменить будущие занятия серии",
+        "label": "Отменить будущие занятия",
+        "icon": "bi-calendar2-x",
+        "button_class": "btn-outline-danger",
+        "confirm_class": "btn-danger",
+        "confirm_label": "Отменить будущие занятия",
+        "description": (
+            "Обрабатываются только будущие неначавшиеся занятия, созданные этой серией. "
+            "Финансовые факты и завершенная история не меняются."
+        ),
+        "show_period": False,
+        "form_class": AppointmentSeriesLifecycleActionForm,
+    },
+    _SERIES_ACTION_WITHDRAW: {
+        "slug": _SERIES_ACTION_WITHDRAW,
+        "title": "Снять будущие участия",
+        "label": "Снять будущие участия",
+        "icon": "bi-person-dash",
+        "button_class": "btn-outline-danger",
+        "confirm_class": "btn-danger",
+        "confirm_label": "Снять будущие участия",
+        "description": (
+            "Система снимет только участия получателя выбранной серии. Общие групповые "
+            "занятия, другие получатели, специалисты и проводки сохранятся."
+        ),
+        "show_period": False,
+        "form_class": AppointmentSeriesLifecycleActionForm,
+    },
+}
+
+
+def _series_action_definition(series: AppointmentSeries, action: str) -> dict:
+    definition = _SERIES_ACTION_DEFINITIONS.get(action)
+    if definition is None:
+        raise Http404("Неизвестная команда серии.")
+
+    create_mode = series.materialization_mode == (
+        AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS
+    )
+    join_mode = series.materialization_mode == (
+        AppointmentSeries.MaterializationMode.JOIN_EXISTING
+    )
+    supported = (
+        (action == _SERIES_ACTION_RETRY and create_mode and series.status == series.Status.ACTIVE)
+        or (
+            action == _SERIES_ACTION_CANCEL
+            and create_mode
+            and series.status in {series.Status.ACTIVE, series.Status.CANCELLED}
+        )
+        or (
+            action == _SERIES_ACTION_WITHDRAW
+            and join_mode
+            and series.status in {series.Status.ACTIVE, series.Status.CANCELLED}
+        )
+    )
+    if not supported:
+        raise Http404("Команда недоступна для текущего режима или статуса серии.")
+    return dict(definition)
+
+
+def _series_display_occurrences(series: AppointmentSeries) -> list:
+    """Show effective attempts while retaining dates not yet backfilled."""
+    rows = {
+        occurrence.scheduled_starts_at: occurrence
+        for occurrence in series.occurrences.all()
+    }
+    effective_by_id = {}
+    results = series.materialization_results.select_related(
+        "appointment", "appointment_participant"
+    ).order_by("scheduled_starts_at", "attempt_number", "pk")
+    for result in results:
+        # An unchanged attempt preserves the previous substantive outcome;
+        # the compatibility occurrence remains the immutable first attempt.
+        effective = (
+            effective_by_id.get(result.supersedes_id, result)
+            if result.outcome == AppointmentSeriesOccurrence.Outcome.UNCHANGED
+            else result
+        )
+        effective_by_id[result.pk] = effective
+        rows[result.scheduled_starts_at] = effective
+    return [rows[starts_at] for starts_at in sorted(rows)]
+
+
+def _series_lifecycle_page(series: AppointmentSeries, page_number):
+    queryset = (
+        series.lifecycle_events.select_related("actor")
+        .annotate(
+            result_count=Count("cancellation_results"),
+            cancelled_count=Count(
+                "cancellation_results",
+                filter=Q(
+                    cancellation_results__outcome=(
+                        AppointmentSeriesCancellationResult.Outcome.CANCELLED
+                    )
+                ),
+            ),
+            unchanged_count=Count(
+                "cancellation_results",
+                filter=Q(
+                    cancellation_results__outcome=(
+                        AppointmentSeriesCancellationResult.Outcome.UNCHANGED
+                    )
+                ),
+            ),
+            manual_review_count=Count(
+                "cancellation_results",
+                filter=Q(
+                    cancellation_results__outcome=(
+                        AppointmentSeriesCancellationResult.Outcome.MANUAL_REVIEW
+                    )
+                ),
+            ),
+        )
+        .order_by("-event_number", "-pk")
+    )
+    return Paginator(queryset, 25).get_page(page_number)
+
+
+def _add_form_validation_error(form, exc: ValidationError) -> None:
+    if not hasattr(exc, "error_dict"):
+        form.add_error(None, exc)
+        return
+    for field_name, errors in exc.error_dict.items():
+        target = field_name if field_name in form.fields else None
+        prefix = "" if target or field_name == NON_FIELD_ERRORS else f"{field_name}: "
+        for error in errors:
+            for message in error.messages:
+                form.add_error(target, prefix + message)
+
+
+def _series_available_actions(
+    series: AppointmentSeries,
+    *,
+    user,
+    latest_event: AppointmentSeriesLifecycleEvent | None,
+) -> list[dict]:
+    actions = []
+    if (
+        series.materialization_mode
+        == AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS
+    ):
+        if series.status == AppointmentSeries.Status.ACTIVE:
+            actions.append(dict(_SERIES_ACTION_DEFINITIONS[_SERIES_ACTION_RETRY]))
+        if series.status in {AppointmentSeries.Status.ACTIVE, AppointmentSeries.Status.CANCELLED}:
+            actions.append(dict(_SERIES_ACTION_DEFINITIONS[_SERIES_ACTION_CANCEL]))
+    elif (
+        series.materialization_mode
+        == AppointmentSeries.MaterializationMode.JOIN_EXISTING
+        and series.status in {AppointmentSeries.Status.ACTIVE, AppointmentSeries.Status.CANCELLED}
+    ):
+        actions.append(dict(_SERIES_ACTION_DEFINITIONS[_SERIES_ACTION_WITHDRAW]))
+
+    director_lock = bool(
+        latest_event
+        and latest_event.actor_role_snapshot
+        == AppointmentSeriesLifecycleEvent.ActorRole.DIRECTOR
+        and not is_director(user)
+    )
+    for action in actions:
+        action["url"] = reverse(
+            "appointment_series_action",
+            args=[series.pk, action["slug"]],
+        )
+        is_lifecycle_action = action["slug"] in {
+            _SERIES_ACTION_CANCEL,
+            _SERIES_ACTION_WITHDRAW,
+        }
+        action["enabled"] = not (director_lock and is_lifecycle_action)
+        action["blocked_reason"] = (
+            "Последнее решение по серии принято руководителем. Изменить его может только руководитель."
+            if director_lock and is_lifecycle_action
+            else ""
+        )
+    return actions
+
+
 @admin_required
 def program_block_group_join(request, block_id: int):
     block = _program_block_or_404(block_id)
@@ -868,8 +1080,14 @@ def appointment_series_detail(request, series_id: int):
             "default_participants__billing_account__funding_source",
             "default_staff_assignments__staff_member",
             "occurrences__appointment",
+            "occurrences__appointment_participant",
         ),
         pk=series_id,
+    )
+    latest_event = series.lifecycle_events.order_by("-event_number", "-pk").first()
+    lifecycle_page = _series_lifecycle_page(
+        series,
+        request.GET.get("history_page"),
     )
     return render(
         request,
@@ -878,7 +1096,101 @@ def appointment_series_detail(request, series_id: int):
             "series": series,
             "participants": series.default_participants.all(),
             "staff_assignments": series.default_staff_assignments.all(),
-            "occurrences": series.occurrences.all(),
+            "occurrences": _series_display_occurrences(series),
+            "series_actions": _series_available_actions(
+                series,
+                user=request.user,
+                latest_event=latest_event,
+            ),
+            "lifecycle_events": lifecycle_page.object_list,
+            "lifecycle_page": lifecycle_page,
+        },
+    )
+
+
+@admin_required
+@require_http_methods(["GET", "POST"])
+def appointment_series_action(request, series_id: int, action: str):
+    series = get_object_or_404(
+        AppointmentSeries.objects.select_related("child", "service", "program_block"),
+        pk=series_id,
+    )
+    definition = _series_action_definition(series, action)
+    latest_event = series.lifecycle_events.order_by("-event_number", "-pk").first()
+    if (
+        action in {_SERIES_ACTION_CANCEL, _SERIES_ACTION_WITHDRAW}
+        and latest_event is not None
+        and latest_event.actor_role_snapshot
+        == AppointmentSeriesLifecycleEvent.ActorRole.DIRECTOR
+        and not is_director(request.user)
+    ):
+        raise PermissionDenied(
+            "Администратор не может отменить последнее решение руководителя по серии."
+        )
+
+    form_class = definition["form_class"]
+    form = form_class(request.POST if request.method == "POST" else None)
+    if request.method == "POST" and form.is_valid():
+        data = form.cleaned_data
+        try:
+            if action == _SERIES_ACTION_RETRY:
+                result = program_series.materialize_retry_skipped_series(
+                    series,
+                    operation_key=data["operation_key"],
+                    actor=request.user,
+                    reason=data["reason"],
+                    date_from=data.get("date_from"),
+                    date_to=data.get("date_to"),
+                )
+                messages.success(
+                    request,
+                    "Повторная проверка завершена. "
+                    f"Создано: {result.created_count}; пропущено: {result.skipped_count}; "
+                    f"без изменений: {result.unchanged_count}.",
+                )
+                if result.reused_run:
+                    messages.info(request, "Повторный запрос распознан без нового запуска.")
+            else:
+                lifecycle_service = (
+                    series_lifecycle.cancel_future_unstarted
+                    if action == _SERIES_ACTION_CANCEL
+                    else series_lifecycle.withdraw_future_joined_participations
+                )
+                result = lifecycle_service(
+                    series,
+                    operation_key=data["operation_key"],
+                    actor=request.user,
+                    reason=data["reason"],
+                )
+                changed_label = (
+                    "Отменено занятий"
+                    if action == _SERIES_ACTION_CANCEL
+                    else "Снято участий"
+                )
+                message = (
+                    f"{changed_label}: {result.cancelled_count}; "
+                    f"без изменений: {result.unchanged_count}; "
+                    f"ручная проверка: {result.manual_review_count}."
+                )
+                if result.manual_review_count:
+                    messages.warning(request, message)
+                else:
+                    messages.success(request, message)
+                if result.reused_event:
+                    messages.info(request, "Повторный запрос распознан без нового события.")
+        except ValidationError as exc:
+            _add_form_validation_error(form, exc)
+        else:
+            return redirect("appointment_series_detail", series_id=series.pk)
+
+    return render(
+        request,
+        "operations/appointment_series_action.html",
+        {
+            "series": series,
+            "action": definition,
+            "form": form,
+            "cancel_url": reverse("appointment_series_detail", args=[series.pk]),
         },
     )
 

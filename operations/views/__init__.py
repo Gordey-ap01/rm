@@ -109,6 +109,7 @@ from .imports import (
 )
 from .payments import payment_create
 from .programs import (
+    appointment_series_action,
     appointment_series_detail,
     program_block_create,
     program_block_group_join,
@@ -205,6 +206,7 @@ __all__ = [
     "appointment_reschedule_plan_create",
     "appointment_reschedule_plan_detail",
     "appointment_send_confirmation",
+    "appointment_series_action",
     "appointment_series_detail",
     "balance_account_create",
     "balance_account_delete",

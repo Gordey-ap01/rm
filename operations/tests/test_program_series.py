@@ -81,6 +81,11 @@ class GroupProgramSeriesTests(TestCase):
             is_staff=True,
             is_superuser=True,
         )
+        cls.operator = User.objects.create_user(
+            "group-series-operator",
+            password="x",
+            is_staff=True,
+        )
         cls.specialist_user = User.objects.create_user("group-series-specialist", password="x")
         cls.parent1 = ParentGuardian.objects.create(
             last_name="Первая",
@@ -721,6 +726,15 @@ class GroupProgramSeriesTests(TestCase):
         self.assertEqual(unchanged.supersedes.revision_id, previous.pk)
         self.assertIsNone(unchanged.appointment_id)
         self.assertIsNone(unchanged.compatibility_occurrence_id)
+        detail = self.client.get(reverse("appointment_series_detail", args=[series.pk]))
+        self.assertEqual(
+            [item.appointment_id for item in detail.context["occurrences"]],
+            appointment_ids,
+        )
+        self.assertTrue(all(
+            item.outcome == AppointmentSeriesOccurrence.Outcome.CREATED
+            for item in detail.context["occurrences"]
+        ))
         self.assertEqual(
             list(
                 Appointment.objects.filter(series=series)
@@ -2663,6 +2677,383 @@ class GroupProgramSeriesTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 403)
+
+    def test_series_detail_shows_only_mode_appropriate_working_actions(self):
+        created = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        detail = self.client.get(
+            reverse("appointment_series_detail", args=[created.series.pk])
+        )
+
+        self.assertContains(detail, "Повторить пропущенные")
+        self.assertContains(detail, "Отменить будущие занятия")
+        self.assertNotContains(detail, "Снять будущие участия")
+        self.assertContains(detail, "История решений")
+
+        appointment_svc.cancel(
+            created.series.appointments.get(),
+            status=Appointment.Status.CANCELLED,
+            reason_text="Освобождаем слот перед проверкой join-режима.",
+        )
+        joined_series, _, _, _, _ = self.create_joined_series()
+        joined_detail = self.client.get(
+            reverse("appointment_series_detail", args=[joined_series.pk])
+        )
+        self.assertContains(joined_detail, "Снять будущие участия")
+        self.assertNotContains(joined_detail, "Повторить пропущенные")
+        self.assertEqual(
+            self.client.get(
+                reverse(
+                    "appointment_series_action",
+                    args=[joined_series.pk, "cancel-future"],
+                )
+            ).status_code,
+            404,
+        )
+
+    def test_series_retry_action_is_idempotent(self):
+        conflict_start = _local(self.start_date, time(10, 0))
+        conflict = Appointment.objects.create(
+            child=self.child1,
+            staff_member=self.staff1,
+            service=self.service,
+            starts_at=conflict_start,
+            ends_at=conflict_start + timedelta(minutes=45),
+            status=Appointment.Status.CONFIRMED,
+        )
+        initial = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        conflict.status = Appointment.Status.CANCELLED
+        conflict.save(update_fields=["status", "updated_at"])
+        operation_key = uuid4()
+        action_url = reverse(
+            "appointment_series_action",
+            args=[initial.series.pk, "retry-skipped"],
+        )
+        payload = {
+            "operation_key": str(operation_key),
+            "reason": "Конфликт устранен, повторяем пропущенную дату.",
+            "date_from": "",
+            "date_to": "",
+        }
+        self.client.force_login(self.operator)
+
+        first = self.client.post(action_url, payload)
+        self.assertRedirects(
+            first,
+            reverse("appointment_series_detail", args=[initial.series.pk]),
+            fetch_redirect_response=False,
+        )
+        first_page = self.client.get(first.url)
+        second = self.client.post(action_url, payload)
+        self.assertEqual(second.status_code, 302)
+        second_page = self.client.get(second.url)
+
+        self.assertContains(first_page, "Повторная проверка завершена")
+        self.assertContains(second_page, "Повторный запрос распознан без нового запуска")
+        run = AppointmentSeriesMaterializationRun.objects.get(operation_key=operation_key)
+        self.assertEqual(run.mode, AppointmentSeriesMaterializationRun.Mode.RETRY_SKIPPED)
+        self.assertEqual(run.results.count(), 1)
+        self.assertEqual(
+            run.results.get().outcome,
+            AppointmentSeriesOccurrence.Outcome.CREATED,
+        )
+        self.assertEqual(
+            first_page.context["occurrences"][0].outcome,
+            AppointmentSeriesOccurrence.Outcome.CREATED,
+        )
+        self.assertContains(
+            first_page,
+            reverse("appointment_detail", args=[run.results.get().appointment_id]),
+        )
+        self.assertNotContains(first_page, "не создано")
+
+    def test_series_cancel_action_validates_reason_and_renders_audit_result(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        action_url = reverse(
+            "appointment_series_action",
+            args=[materialized.series.pk, "cancel-future"],
+        )
+        self.client.force_login(self.operator)
+        invalid = self.client.post(
+            action_url,
+            {"operation_key": str(uuid4()), "reason": "нет"},
+        )
+        self.assertEqual(invalid.status_code, 200)
+        self.assertFormError(
+            invalid.context["form"],
+            "reason",
+            "Убедитесь, что это значение содержит не менее 5 символов (сейчас 3).",
+        )
+        self.assertFalse(materialized.series.lifecycle_events.exists())
+
+        reason = "Будущие занятия отменены через рабочую карточку серии."
+        response = self.client.post(
+            action_url,
+            {"operation_key": str(uuid4()), "reason": reason},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        detail = self.client.get(response.url)
+        self.assertContains(detail, "Отменено занятий: 1")
+        self.assertContains(detail, "Изменено: 1")
+        self.assertContains(detail, reason)
+        materialized.series.refresh_from_db()
+        appointment = materialized.series.appointments.get()
+        self.assertEqual(materialized.series.status, AppointmentSeries.Status.CANCELLED)
+        self.assertEqual(appointment.status, Appointment.Status.CANCELLED)
+
+    def test_series_withdraw_action_preserves_shared_group_appointment(self):
+        series, appointment, participant, _, _ = self.create_joined_series()
+        action_url = reverse(
+            "appointment_series_action",
+            args=[series.pk, "withdraw-future"],
+        )
+        self.client.force_login(self.operator)
+
+        response = self.client.post(
+            action_url,
+            {
+                "operation_key": str(uuid4()),
+                "reason": "Получатель снят с будущих общих групповых занятий.",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        detail = self.client.get(response.url)
+        self.assertContains(detail, "Снято участий: 1")
+        participant.refresh_from_db()
+        appointment.refresh_from_db()
+        self.assertEqual(participant.appointment_status, Appointment.Status.CANCELLED)
+        self.assertEqual(appointment.status, Appointment.Status.PROPOSED)
+        self.assertEqual(
+            appointment.participants.exclude(pk=participant.pk)
+            .filter(appointment_status=Appointment.Status.PROPOSED)
+            .count(),
+            2,
+        )
+
+    def test_series_action_ui_enforces_director_priority(self):
+        operator = User.objects.create_user(
+            "series-action-operator",
+            password="x",
+            is_staff=True,
+        )
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series_lifecycle.cancel_future_unstarted(
+            materialized.series,
+            operation_key=uuid4(),
+            actor=self.admin,
+            reason="Руководитель принял решение по будущим занятиям серии.",
+        )
+        action_url = reverse(
+            "appointment_series_action",
+            args=[materialized.series.pk, "cancel-future"],
+        )
+        self.client.force_login(operator)
+
+        detail = self.client.get(
+            reverse("appointment_series_detail", args=[materialized.series.pk])
+        )
+        self.assertContains(detail, "Изменить его может только руководитель")
+        self.assertNotContains(detail, f'href="{action_url}"')
+        denied = self.client.post(
+            action_url,
+            {
+                "operation_key": str(uuid4()),
+                "reason": "Администратор пытается переопределить руководителя.",
+            },
+        )
+        self.assertEqual(denied.status_code, 403)
+
+    def test_director_can_override_administrator_series_action(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        action_url = reverse(
+            "appointment_series_action",
+            args=[materialized.series.pk, "cancel-future"],
+        )
+        self.client.force_login(self.operator)
+        first = self.client.post(
+            action_url,
+            {
+                "operation_key": str(uuid4()),
+                "reason": "Администратор отменяет будущие занятия серии.",
+            },
+        )
+        self.assertEqual(first.status_code, 302)
+        self.assertEqual(
+            materialized.series.lifecycle_events.get().actor_role_snapshot,
+            AppointmentSeriesLifecycleEvent.ActorRole.ADMINISTRATOR,
+        )
+
+        self.client.force_login(self.admin)
+        second = self.client.post(
+            action_url,
+            {
+                "operation_key": str(uuid4()),
+                "reason": "Руководитель повторно проверяет и переопределяет решение.",
+            },
+        )
+
+        self.assertEqual(second.status_code, 302)
+        latest = materialized.series.lifecycle_events.order_by("-event_number").first()
+        self.assertEqual(latest.actor_role_snapshot, AppointmentSeriesLifecycleEvent.ActorRole.DIRECTOR)
+        self.assertEqual(latest.event_number, 2)
+
+    def test_series_action_handles_operation_key_and_service_field_errors(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        action_url = reverse(
+            "appointment_series_action",
+            args=[materialized.series.pk, "cancel-future"],
+        )
+        self.client.force_login(self.operator)
+
+        empty_post = self.client.post(action_url, {})
+        self.assertContains(empty_post, "Откройте команду из карточки серии заново")
+
+        missing_key = self.client.post(
+            action_url,
+            {"reason": "Команда без ключа не должна выполняться."},
+        )
+        self.assertEqual(missing_key.status_code, 200)
+        self.assertContains(missing_key, "Ключ операции")
+        self.assertContains(missing_key, "Откройте команду из карточки серии заново")
+
+        with patch(
+            "operations.views.programs.series_lifecycle.cancel_future_unstarted",
+            side_effect=ValidationError(
+                {"status": "Статус серии изменился после открытия команды."}
+            ),
+        ):
+            service_error = self.client.post(
+                action_url,
+                {
+                    "operation_key": str(uuid4()),
+                    "reason": "Проверка безопасного вывода словарной ошибки сервиса.",
+                },
+            )
+
+        self.assertEqual(service_error.status_code, 200)
+        self.assertContains(
+            service_error,
+            "status: Статус серии изменился после открытия команды.",
+        )
+        self.assertFalse(materialized.series.lifecycle_events.exists())
+
+    def test_series_action_route_rejects_unknown_methods_and_redirects_anonymous(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        action_url = reverse(
+            "appointment_series_action",
+            args=[materialized.series.pk, "cancel-future"],
+        )
+        self.client.logout()
+        self.assertEqual(self.client.get(action_url).status_code, 302)
+        self.assertEqual(
+            self.client.post(
+                action_url,
+                {"operation_key": str(uuid4()), "reason": "Анонимный запрос."},
+            ).status_code,
+            302,
+        )
+
+        self.client.force_login(self.operator)
+        self.assertEqual(
+            self.client.post(
+                reverse(
+                    "appointment_series_action",
+                    args=[materialized.series.pk, "unknown-command"],
+                ),
+                {"operation_key": str(uuid4()), "reason": "Неизвестная команда."},
+            ).status_code,
+            404,
+        )
+        self.assertEqual(self.client.put(action_url).status_code, 405)
+        self.assertEqual(self.client.delete(action_url).status_code, 405)
+
+    def test_series_lifecycle_history_is_paginated(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        series = materialized.series
+        for number in range(13):
+            stopped = series_lifecycle.stop_materialization(
+                series,
+                operation_key=uuid4(),
+                actor=self.admin,
+                reason=f"Остановка серии для страницы истории {number}.",
+            )
+            resumed = series_lifecycle.resume_materialization(
+                stopped.series,
+                operation_key=uuid4(),
+                actor=self.admin,
+                reason=f"Возобновление серии для страницы истории {number}.",
+            )
+            series = resumed.series
+
+        first = self.client.get(
+            reverse("appointment_series_detail", args=[series.pk])
+        )
+        second = self.client.get(
+            reverse("appointment_series_detail", args=[series.pk]),
+            {"history_page": 2},
+        )
+
+        self.assertEqual(first.context["lifecycle_page"].paginator.count, 26)
+        self.assertEqual(len(first.context["lifecycle_events"]), 25)
+        self.assertContains(first, "1 из 2")
+        self.assertContains(first, "?history_page=2")
+        self.assertEqual(len(second.context["lifecycle_events"]), 1)
+        self.assertContains(second, "2 из 2")
+
+    def test_specialist_cannot_execute_series_action(self):
+        materialized = program_series.create_group_series(
+            self.preview(end_date=self.start_date),
+            operation_key=uuid4(),
+            actor=self.admin,
+        )
+        self.client.force_login(self.specialist_user)
+
+        response = self.client.post(
+            reverse(
+                "appointment_series_action",
+                args=[materialized.series.pk, "cancel-future"],
+            ),
+            {
+                "operation_key": str(uuid4()),
+                "reason": "Специалист не может управлять серией.",
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(materialized.series.lifecycle_events.exists())
 
     def test_stop_materialization_is_idempotent_and_preserves_existing_facts(self):
         operator = User.objects.create_user(

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action.title }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>{{ action.title }}</h1>
+    <p>{{ series.title }} · {{ series.service }} · {{ series.get_status_display }}</p>
+  </div>
+  <a class="button-link secondary" href="{{ cancel_url }}"><i class="bi bi-arrow-left" aria-hidden="true"></i> К серии</a>
+</section>
+
+<section class="detail-grid">
+  <article class="panel form-panel">
+    <h2 class="h6">Подтверждение команды</h2>
+    <p>{{ action.description }}</p>
+    <form method="post" class="form-stack">
+      {% csrf_token %}
+      {% for hidden in form.hidden_fields %}
+        {{ hidden }}
+        {% if hidden.errors %}
+          <div class="form-error" role="alert">
+            <strong>{{ hidden.label }}:</strong> {{ hidden.errors }}
+            <span class="d-block">Откройте команду из карточки серии заново.</span>
+          </div>
+        {% endif %}
+      {% endfor %}
+      {% if form.non_field_errors %}<div class="form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+
+      {% if action.show_period %}
+        <div class="form-grid">
+          <div class="field">
+            <label for="{{ form.date_from.id_for_label }}"><span>{{ form.date_from.label }}</span></label>
+            {{ form.date_from }}
+            {% if form.date_from.errors %}<div class="form-error" role="alert">{{ form.date_from.errors }}</div>{% endif %}
+          </div>
+          <div class="field">
+            <label for="{{ form.date_to.id_for_label }}"><span>{{ form.date_to.label }}</span></label>
+            {{ form.date_to }}
+            {% if form.date_to.errors %}<div class="form-error" role="alert">{{ form.date_to.errors }}</div>{% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="field">
+        <label for="{{ form.reason.id_for_label }}"><span>{{ form.reason.label }}</span></label>
+        {{ form.reason }}
+        {% if form.reason.errors %}<div class="form-error" role="alert">{{ form.reason.errors }}</div>{% endif %}
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn {{ action.confirm_class }}">
+          <i class="bi {{ action.icon }}" aria-hidden="true"></i> {{ action.confirm_label }}
+        </button>
+        <a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>
+      </div>
+    </form>
+  </article>
+
+  <aside class="panel" aria-label="Параметры серии">
+    <h2 class="h6">Серия</h2>
+    <dl class="detail-list mb-0">
+      <div><dt>Режим</dt><dd>{{ series.get_materialization_mode_display }}</dd></div>
+      <div><dt>Период</dt><dd>{{ series.start_date|date:"d.m.Y" }}-{{ series.end_date|date:"d.m.Y" }}</dd></div>
+      <div><dt>Получатель</dt><dd>{{ series.child }}</dd></div>
+      <div><dt>Каскад</dt><dd>{% if series.program_block %}{{ series.program_block.number }}. {{ series.program_block.title }}{% else %}<span class="muted">не указан</span>{% endif %}</dd></div>
+    </dl>
+  </aside>
+</section>
+{% endblock %}

@@ -331,6 +331,11 @@ urlpatterns = [
         name="appointment_series_detail",
     ),
     path(
+        "appointment-series/<int:series_id>/actions/<slug:action>/",
+        views.appointment_series_action,
+        name="appointment_series_action",
+    ),
+    path(
         "program-blocks/<int:block_id>/transfer-funds/",
         views.program_block_transfer_funds,
         name="program_block_transfer_funds",

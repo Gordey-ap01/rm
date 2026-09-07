@@ -2389,6 +2389,42 @@ class GroupProgramJoinForm(forms.Form):
         return cleaned
 
 
+class AppointmentSeriesLifecycleActionForm(forms.Form):
+    operation_key = forms.UUIDField(label="Ключ операции", widget=forms.HiddenInput)
+    reason = forms.CharField(
+        label="Основание решения",
+        min_length=5,
+        max_length=2000,
+        strip=True,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.initial.setdefault("operation_key", uuid4())
+
+
+class AppointmentSeriesRetrySkippedForm(AppointmentSeriesLifecycleActionForm):
+    date_from = forms.DateField(
+        label="Повторить с даты",
+        required=False,
+        widget=DATE_INPUT,
+    )
+    date_to = forms.DateField(
+        label="Повторить по дату",
+        required=False,
+        widget=DATE_INPUT,
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        date_from = cleaned.get("date_from")
+        date_to = cleaned.get("date_to")
+        if date_from and date_to and date_to < date_from:
+            self.add_error("date_to", "Дата окончания не может быть раньше даты начала.")
+        return cleaned
+
+
 class ProgramFundsTransferForm(forms.Form):
     operation_kind = forms.ChoiceField(
         label="Вид операции",
