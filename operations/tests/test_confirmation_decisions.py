@@ -16,6 +16,9 @@ from operations.models import (
     Appointment,
     AppointmentConfirmation,
     AppointmentConfirmationDecision,
+    AppointmentReschedulePlan,
+    AppointmentRescheduleStep,
+    AppointmentStaffAssignment,
     Child,
     Service,
     StaffMember,
@@ -66,6 +69,109 @@ class ConfirmationDecisionFixture(TestCase):
 
 
 class ConfirmationDecisionServiceTests(ConfirmationDecisionFixture):
+    def test_manual_schedule_syncs_only_current_specialist_confirmation(self):
+        confirmation = self.create_confirmation()
+        appointment = confirmation.appointment
+        assistant = StaffMember.objects.create(full_name="Другой специалист")
+        assignment = AppointmentStaffAssignment.objects.create(
+            appointment=appointment,
+            staff_member=assistant,
+            role=AppointmentStaffAssignment.Role.ASSISTANT,
+            starts_at_snapshot=appointment.starts_at,
+            ends_at_snapshot=appointment.ends_at,
+            appointment_status=appointment.status,
+        )
+        other_staff_confirmation = AppointmentConfirmation.objects.create(
+            appointment=appointment,
+            staff_assignment=assignment,
+            target_type=AppointmentConfirmation.TargetType.SPECIALIST,
+            email="assistant@example.local",
+            subject="Согласование ассистента",
+            message="Подтвердите участие.",
+            sent_by=self.admin,
+        )
+        representative_confirmation = AppointmentConfirmation.objects.create(
+            appointment=appointment,
+            target_type=AppointmentConfirmation.TargetType.REPRESENTATIVE,
+            email="representative@example.local",
+            subject="Согласование представителя",
+            message="Подтвердите занятие.",
+            sent_by=self.admin,
+        )
+        plan = AppointmentReschedulePlan.objects.create(
+            plan_type=AppointmentReschedulePlan.PlanType.MANUAL,
+            root_appointment=appointment,
+            reason="Проверка отдельного переноса.",
+            created_by=self.admin,
+        )
+        step = AppointmentRescheduleStep.objects.create(
+            plan=plan,
+            position=1,
+            action_type=AppointmentRescheduleStep.ActionType.MOVE,
+            source_appointment=appointment,
+            proposed_starts_at=appointment.starts_at,
+            proposed_ends_at=appointment.ends_at,
+            proposed_primary_staff=self.staff,
+        )
+        reschedule_confirmation = AppointmentConfirmation.objects.create(
+            appointment=appointment,
+            reschedule_step=step,
+            target_type=AppointmentConfirmation.TargetType.SPECIALIST,
+            email="reschedule@example.local",
+            subject="Согласование переноса",
+            message="Подтвердите перенос.",
+            sent_by=self.admin,
+        )
+
+        reason = "Расписание принято оператором."
+        operation_key = uuid4()
+        schedule_record = schedule_decisions.resolve_manually(
+            appointment,
+            staff_member=self.staff,
+            action="confirm",
+            reason=reason,
+            actor=self.admin,
+            operation_key=operation_key,
+        )
+        replay = schedule_decisions.resolve_manually(
+            appointment,
+            staff_member=self.staff,
+            action="confirm",
+            reason=reason,
+            actor=self.admin,
+            operation_key=operation_key,
+        )
+        self.assertEqual(schedule_record.pk, replay.pk)
+
+        confirmation.refresh_from_db()
+        other_staff_confirmation.refresh_from_db()
+        representative_confirmation.refresh_from_db()
+        reschedule_confirmation.refresh_from_db()
+        self.assertEqual(confirmation.status, AppointmentConfirmation.Status.CONFIRMED)
+        synced = confirmation.decision_history.get(is_current=True)
+        self.assertEqual(synced.source, AppointmentConfirmationDecision.Source.ADMINISTRATOR_MANUAL)
+        self.assertEqual(synced.actor, self.admin)
+        self.assertEqual(synced.note, reason)
+        self.assertEqual(other_staff_confirmation.status, AppointmentConfirmation.Status.PENDING)
+        self.assertEqual(representative_confirmation.status, AppointmentConfirmation.Status.PENDING)
+        self.assertEqual(reschedule_confirmation.status, AppointmentConfirmation.Status.PENDING)
+        self.assertEqual(appointment.schedule_decisions.count(), 1)
+        self.assertEqual(confirmation.decision_history.count(), 1)
+
+    def test_legacy_manual_resolution_creates_one_schedule_and_confirmation_decision(self):
+        confirmation = self.create_confirmation()
+        reason = "Согласование через старый маршрут."
+
+        record = decision_svc.resolve_manually(
+            confirmation, action="confirm", reason=reason, actor=self.admin
+        )
+
+        self.assertEqual(record.source, AppointmentConfirmationDecision.Source.ADMINISTRATOR_MANUAL)
+        self.assertEqual(record.actor, self.admin)
+        self.assertEqual(record.note, reason)
+        self.assertEqual(confirmation.appointment.schedule_decisions.count(), 1)
+        self.assertEqual(confirmation.decision_history.count(), 1)
+
     def test_administrator_can_resolve_pending_confirmation_manually(self):
         confirmation = self.create_confirmation()
 
@@ -170,8 +276,10 @@ class ConfirmationDecisionServiceTests(ConfirmationDecisionFixture):
             )
 
         confirmation.refresh_from_db()
-        self.assertEqual(confirmation.status, AppointmentConfirmation.Status.PENDING)
-        self.assertFalse(confirmation.decision_history.exists())
+        self.assertEqual(confirmation.status, AppointmentConfirmation.Status.CONFIRMED)
+        synced = confirmation.decision_history.get(is_current=True)
+        self.assertEqual(synced.source, AppointmentConfirmationDecision.Source.ADMINISTRATOR_MANUAL)
+        self.assertEqual(synced.actor, self.admin)
 
     def test_manual_resolution_requires_reason(self):
         confirmation = self.create_confirmation()

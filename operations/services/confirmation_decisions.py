@@ -183,6 +183,11 @@ def resolve_manually(
             appointment, staff_member=StaffMember.objects.get(pk=staff_id),
             action=action, reason=reason, actor=actor,
         )
+        # The schedule command also updates existing specialist requests under
+        # the appointment lock. Return that projection without a second event.
+        return AppointmentConfirmationDecision.objects.get(
+            confirmation=locked, is_current=True,
+        )
 
     return _record_decision(
         locked,

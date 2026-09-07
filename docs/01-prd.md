@@ -256,7 +256,7 @@
 | Программы и блоки | Реализованы частично | 61A-61B и 61C-1 - 61C-4d реализованы: fixed/join, immutable revision/run, будущий состав, управляемое восстановление, stop/resume, cancel и withdraw `0064`; нужен 61D UI полного жизненного цикла |
 | Балансы и списания | Сильная основа | PostgreSQL idempotency/concurrency, payroll и persisted transfer/conversion завершены; нужен пилот |
 | Конвертация между рублями и занятиями | Базово реализована | Persisted `direct` и `money -> sessions`; отдельно нужны возвраты, обратная конвертация и юридическая policy |
-| Гранты и зарплата | Широко реализованы | Payroll, grant report, append-only план, 59A, неизменяемый снимок 59B-1 и приватная фактическая сдача 59B-2 реализованы; до production нужны retention/legal hold, шифрование backup, malware policy, production credentials для разделенных DB-ролей и cutover `0048-0064` |
+| Гранты и зарплата | Широко реализованы | Payroll, grant report, append-only план, 59A, неизменяемый снимок 59B-1 и приватная фактическая сдача 59B-2 реализованы; до production нужны retention/legal hold, шифрование backup, malware policy, production credentials для разделенных DB-ролей и cutover `0048-0065` |
 | Мобильный кабинет | Базово реализован | Локальная browser-приемка `390px` завершена; нужны регулярный smoke и проверка на физическом телефоне |
 | Документы и сертификаты | Широко реализованы | Production cleanup и правовая приемка |
 | Excel | Частично | Общий безопасный write-path после стабилизации |

@@ -106,7 +106,7 @@ def resolve_manually(
     ):
         raise PermissionDenied("Решение руководителя может изменить только руководитель.")
     previous = appointment.schedule_decisions.filter(staff_member=staff_member).first()
-    return AppointmentScheduleDecision.objects.create(
+    record = AppointmentScheduleDecision.objects.create(
         appointment=appointment, staff_member=staff_member,
         actor=actor, actor_role_snapshot=role, reason=reason,
         operation_key=operation_key, fingerprint=fingerprint,
@@ -115,3 +115,27 @@ def resolve_manually(
         supersedes=previous, starts_at_snapshot=appointment.starts_at,
         ends_at_snapshot=appointment.ends_at,
     )
+    # Keep existing request projections consistent with the canonical decision.
+    # No request is created and no message is sent for a standalone manual action.
+    from .confirmation_decisions import _record_decision
+
+    confirmations = AppointmentConfirmation.objects.select_for_update(of=("self",)).filter(
+        appointment=appointment,
+        target_type=AppointmentConfirmation.TargetType.SPECIALIST,
+        reschedule_step__isnull=True,
+    ).filter(
+        Q(staff_assignment__staff_member=staff_member)
+        | Q(staff_assignment__isnull=True, appointment__staff_member=staff_member)
+    ).order_by("pk")
+    source = (
+        AppointmentConfirmationDecision.Source.DIRECTOR_MANUAL
+        if role == AuthorityRole.DIRECTOR
+        else AppointmentConfirmationDecision.Source.ADMINISTRATOR_MANUAL
+    )
+    for confirmation in confirmations:
+        confirmation.appointment = appointment
+        _record_decision(
+            confirmation, decision=record.decision, source=source,
+            actor_role=role, note=reason, actor=actor,
+        )
+    return record
