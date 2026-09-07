@@ -7175,6 +7175,7 @@ class ConfirmationPublicViewTests(NewViewsTestBase):
 
 class SpecialistActionsTests(NewViewsTestBase):
     def test_mark_appointment_completed(self):
+        self.client.force_login(self.staff_user)
         appt = Appointment.objects.create(
             child=self.child,
             service=self.service,
@@ -7194,6 +7195,7 @@ class SpecialistActionsTests(NewViewsTestBase):
         self.assertEqual(appt.attendance_status, Appointment.AttendanceStatus.ATTENDED)
 
     def test_mark_appointment_backfills_legacy_snapshots(self):
+        self.client.force_login(self.staff_user)
         appt = Appointment.objects.create(
             child=self.child,
             service=self.service,
@@ -7226,6 +7228,7 @@ class SpecialistActionsTests(NewViewsTestBase):
         self.assertEqual(staff_assignment.ends_at_snapshot, appt.ends_at)
 
     def test_mark_appointment_no_show(self):
+        self.client.force_login(self.staff_user)
         appt = Appointment.objects.create(
             child=self.child,
             service=self.service,
