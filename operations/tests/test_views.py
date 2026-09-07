@@ -8438,7 +8438,7 @@ class AppointmentDetailAndMoveTests(NewViewsTestBase):
         )
         self.assertContains(response, "Контроль отмены")
         self.assertContains(response, 'id="appointment-cancel-form"')
-        self.assertContains(response, "Решение по списанию принимается отдельно")
+        self.assertContains(response, "Отмена не списывает занятие автоматически.")
 
     def test_same_day_cancel_requires_billing_acknowledgement(self):
         appt = Appointment.objects.create(
