@@ -28,7 +28,9 @@
     </div>
 
     <div id="confirmation-result">
-      {% if submitted %}
+      {% if operator_schedule_decision %}
+        <p class="note-block">Решение по расписанию уже принято администратором или руководителем центра. Дополнительный ответ не требуется.</p>
+      {% elif submitted %}
         <p class="note-block">Ответ сохранен. Администратор увидит его в системе.</p>
       {% elif confirmation.status != "pending" %}
         <p class="note-block">Ответ уже был отправлен: {{ confirmation.get_status_display }}.</p>

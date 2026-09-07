@@ -239,7 +239,7 @@ class AppointmentServiceTests(_FixturesMixin, TestCase):
         self.assertEqual(moved_participant.source_participant, participant)
         self.assertFalse(result.new.participants.filter(child=self.child).exists())
 
-    def test_cancel_sets_note_with_reason(self):
+    def test_cancel_rejects_no_show_status(self):
         appt = appt_svc.create_appointment(
             child=self.child,
             staff_member=self.staff_a,
@@ -249,10 +249,15 @@ class AppointmentServiceTests(_FixturesMixin, TestCase):
             room=self.room1,
             billing_account=self.account,
         )
-        appt_svc.cancel(appt, status=Appointment.Status.NO_SHOW, reason_text="Болезнь получателя")
+        with self.assertRaises(ValueError):
+            appt_svc.cancel(
+                appt,
+                status=Appointment.Status.NO_SHOW,
+                reason_text="Болезнь получателя",
+            )
         appt.refresh_from_db()
-        self.assertEqual(appt.status, Appointment.Status.NO_SHOW)
-        self.assertIn("Болезнь получателя", appt.admin_note)
+        self.assertEqual(appt.status, Appointment.Status.CONFIRMED)
+        self.assertNotIn("Болезнь получателя", appt.admin_note)
 
     def test_cancel_preserves_partial_snapshot_without_readding_legacy_child(self):
         participant_parent = ParentGuardian.objects.create(
@@ -288,6 +293,7 @@ class AppointmentServiceTests(_FixturesMixin, TestCase):
         appt.refresh_from_db()
         participant.refresh_from_db()
         self.assertEqual(appt.status, Appointment.Status.CANCELLED)
+        self.assertIn("Family request", appt.admin_note)
         self.assertEqual(participant.appointment_status, Appointment.Status.CANCELLED)
         self.assertEqual(
             list(appt.participants.values_list("child_id", flat=True)),
@@ -308,12 +314,17 @@ class AppointmentServiceTests(_FixturesMixin, TestCase):
             appt,
             action="completed",
             actor=self.user,
+            reason="Администратор подтвердил проведение.",
             note="Всё ок",
         )
         appt.refresh_from_db()
         self.assertEqual(appt.status, Appointment.Status.COMPLETED)
         self.assertEqual(appt.attendance_status, Appointment.AttendanceStatus.ATTENDED)
-        self.assertEqual(appt.specialist_note, "Всё ок")
+        decision = appt.attendance_decisions.get()
+        self.assertEqual(decision.actor, self.user)
+        self.assertEqual(decision.actor_role_snapshot, "administrator")
+        self.assertEqual(decision.note, "Всё ок")
+        self.assertEqual(appt.specialist_note, "")
 
     def test_record_attendance_updates_participant_snapshot(self):
         appt = appt_svc.create_appointment(
@@ -330,14 +341,19 @@ class AppointmentServiceTests(_FixturesMixin, TestCase):
             appt,
             action="completed",
             actor=self.user,
+            reason="Администратор подтвердил участника.",
             note="Готово",
         )
 
         participant = appt.participants.get(child=self.child)
         self.assertEqual(participant.appointment_status, Appointment.Status.COMPLETED)
         self.assertEqual(participant.attendance_status, Appointment.AttendanceStatus.ATTENDED)
-        self.assertEqual(participant.specialist_note, "Готово")
-        self.assertIsNotNone(participant.marked_by_staff_at)
+        decision = appt.attendance_decisions.get()
+        self.assertEqual(decision.actor, self.user)
+        self.assertEqual(decision.actor_role_snapshot, "administrator")
+        self.assertEqual(decision.note, "Готово")
+        self.assertEqual(participant.specialist_note, "")
+        self.assertIsNone(participant.marked_by_staff_at)
 
     def test_record_attendance_invalid_action(self):
         appt = appt_svc.create_appointment(

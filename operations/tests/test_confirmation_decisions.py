@@ -2,6 +2,7 @@ from datetime import datetime, time, timedelta
 from queue import Queue
 from threading import Barrier, Thread
 from unittest import skipUnless
+from uuid import uuid4
 
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -20,7 +21,7 @@ from operations.models import (
     StaffMember,
     TimeOffRequest,
 )
-from operations.services import confirmation_decisions as decision_svc
+from operations.services import confirmation_decisions as decision_svc, schedule_decisions
 
 
 class ConfirmationDecisionFixture(TestCase):
@@ -150,6 +151,28 @@ class ConfirmationDecisionServiceTests(ConfirmationDecisionFixture):
         )
         self.assertIsNone(record.actor)
 
+    def test_public_specialist_response_is_blocked_after_manual_schedule_decision(self):
+        confirmation = self.create_confirmation()
+        schedule_decisions.resolve_manually(
+            confirmation.appointment,
+            staff_member=self.staff,
+            action="confirm",
+            reason="Расписание принято администратором.",
+            actor=self.admin,
+            operation_key=uuid4(),
+        )
+
+        with self.assertRaises((ValueError, PermissionDenied)):
+            decision_svc.record_external_response(
+                confirmation,
+                action="decline",
+                note="Поздний ответ специалиста.",
+            )
+
+        confirmation.refresh_from_db()
+        self.assertEqual(confirmation.status, AppointmentConfirmation.Status.PENDING)
+        self.assertFalse(confirmation.decision_history.exists())
+
     def test_manual_resolution_requires_reason(self):
         confirmation = self.create_confirmation()
 
@@ -249,6 +272,29 @@ class ConfirmationDecisionViewTests(ConfirmationDecisionFixture):
             confirmation.decision_history.get(is_current=True).source,
             AppointmentConfirmationDecision.Source.ADMINISTRATOR_MANUAL,
         )
+
+    def test_legacy_manual_confirmation_route_cannot_bypass_director_decision(self):
+        confirmation = self.create_confirmation()
+        decision_svc.resolve_manually(
+            confirmation,
+            action="decline",
+            reason="Окончательное решение руководителя.",
+            actor=self.director,
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("appointment_confirmation_resolve", args=[confirmation.pk]),
+            {
+                "action": "confirm",
+                "reason": "Попытка обойти решение руководителя.",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        confirmation.refresh_from_db()
+        self.assertEqual(confirmation.status, AppointmentConfirmation.Status.DECLINED)
+        self.assertEqual(confirmation.decision_history.count(), 1)
 
     def test_specialist_cannot_use_manual_resolution_endpoint(self):
         confirmation = self.create_confirmation()

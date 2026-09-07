@@ -2,6 +2,8 @@
 
 PUBLIC_SCHEMA = "public"
 IMMUTABLE_APPEND_ONLY_TABLES = (
+    "operations_appointmentattendancedecision",
+    "operations_appointmentscheduledecision",
     "operations_donorreportsnapshot",
     "operations_donorreportsubmission",
     "operations_donorreportsubmissionaccess",
@@ -16,6 +18,7 @@ IMMUTABLE_APPEND_ONLY_TABLES = (
 )
 APPEND_LOCK_TABLE = "operations_donorreport"
 RUNTIME_EXECUTE_FUNCTIONS = (
+    "operations_operator_actor_role(bigint)",
     "operations_canonical_jsonb(jsonb)",
     "operations_jsonb_keys_allowed(jsonb, text[])",
     "operations_donor_json_values_allowed(jsonb, text)",

@@ -19,6 +19,7 @@ from operations.models import Appointment, AppointmentConfirmation
 from operations.services import (
     appointments as appointment_svc,
     confirmation_decisions as decision_svc,
+    schedule_decisions as schedule_decisions_svc,
 )
 from operations.tasks import send_appointment_confirmation_email
 
@@ -44,7 +45,19 @@ def _confirmation_target_label(confirmation: AppointmentConfirmation) -> str:
     return confirmation.email
 
 
-def _confirmation_next_action(confirmation: AppointmentConfirmation, submitted: bool) -> dict[str, str]:
+def _confirmation_next_action(
+    confirmation: AppointmentConfirmation,
+    submitted: bool,
+    operator_schedule_decision=None,
+) -> dict[str, str]:
+    if operator_schedule_decision:
+        return {
+            "tone": "info",
+            "label": "Статус",
+            "title": "Решение по расписанию уже принято",
+            "detail": "Администратор или руководитель центра зафиксировал итог.",
+            "href": "#confirmation-result",
+        }
     if submitted:
         return {
             "tone": "success",
@@ -115,7 +128,16 @@ def _confirmation_control_items(
     confirmation: AppointmentConfirmation,
     *,
     submitted: bool,
+    operator_schedule_decision=None,
 ) -> list[dict[str, str]]:
+    if operator_schedule_decision:
+        return [
+            {
+                "tone": "info",
+                "title": "Решение уже принято внутри центра",
+                "text": "Дополнительный ответ по этой ссылке не требуется.",
+            }
+        ]
     if submitted:
         return [
             {
@@ -227,16 +249,26 @@ def appointment_confirmation_public(request, token):
     )
     target_label = _confirmation_target_label(confirmation)
     submitted = False
-    if request.method == "POST":
+    operator_schedule_decision = schedule_decisions_svc.current_confirmation_decision(
+        confirmation
+    )
+    if request.method == "POST" and not operator_schedule_decision:
         form = ConfirmationResponseForm(request.POST)
         if form.is_valid() and confirmation.status == AppointmentConfirmation.Status.PENDING:
-            decision_svc.record_external_response(
-                confirmation,
-                action=form.cleaned_data["action"],
-                note=form.cleaned_data.get("response_note", ""),
-            )
-            confirmation.refresh_from_db()
-            submitted = True
+            try:
+                decision_svc.record_external_response(
+                    confirmation,
+                    action=form.cleaned_data["action"],
+                    note=form.cleaned_data.get("response_note", ""),
+                )
+            except (PermissionDenied, ValueError):
+                confirmation.refresh_from_db()
+                operator_schedule_decision = schedule_decisions_svc.current_confirmation_decision(
+                    confirmation
+                )
+            else:
+                confirmation.refresh_from_db()
+                submitted = True
     else:
         form = ConfirmationResponseForm()
 
@@ -247,10 +279,15 @@ def appointment_confirmation_public(request, token):
             "confirmation": confirmation,
             "form": form,
             "submitted": submitted,
+            "operator_schedule_decision": operator_schedule_decision,
             "child_names": child_names,
             "staff_names": staff_names,
             "confirmation_target_label": target_label,
-            "confirmation_next_action": _confirmation_next_action(confirmation, submitted),
+            "confirmation_next_action": _confirmation_next_action(
+                confirmation,
+                submitted,
+                operator_schedule_decision,
+            ),
             "confirmation_summary_items": _confirmation_summary_items(
                 confirmation,
                 child_names=child_names,
@@ -260,6 +297,7 @@ def appointment_confirmation_public(request, token):
             "confirmation_control_items": _confirmation_control_items(
                 confirmation,
                 submitted=submitted,
+                operator_schedule_decision=operator_schedule_decision,
             ),
         },
     )

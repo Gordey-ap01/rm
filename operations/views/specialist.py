@@ -10,6 +10,7 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied
+from django.db.models import Prefetch
 from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -22,6 +23,7 @@ from operations.forms import (
 )
 from operations.models import (
     Appointment,
+    AppointmentParticipant,
     AppointmentStaffAssignment,
     StaffAvailability,
     StaffMember,
@@ -121,7 +123,7 @@ def _assignment_needs_marking(
         return False
     if appointment.status not in [Appointment.Status.CONFIRMED, Appointment.Status.PROPOSED]:
         return False
-    participants = list(appointment.participants.all())
+    participants = getattr(appointment, "operational_participants", ())
     if participants:
         return any(
             participant.attendance_status == Appointment.AttendanceStatus.UNKNOWN
@@ -184,6 +186,23 @@ def specialist_next_action(
     }
 
 
+def _operational_participant_prefetch(lookup: str) -> Prefetch:
+    return Prefetch(
+        lookup,
+        queryset=(
+            AppointmentParticipant.objects.exclude(
+                appointment_status__in=[
+                    Appointment.Status.CANCELLED,
+                    Appointment.Status.RESCHEDULED,
+                ]
+            )
+            .exclude(series_withdrawal_results__isnull=False)
+            .select_related("child")
+        ),
+        to_attr="operational_participants",
+    )
+
+
 @login_required
 def specialist_home(request):
     staff = getattr(request.user, "staff_profile", None)
@@ -220,7 +239,8 @@ def specialist_home(request):
             "staff_member",
         )
         .prefetch_related(
-            "appointment__participants__child", "appointment__staff_assignments__staff_member"
+            _operational_participant_prefetch("appointment__participants"),
+            "appointment__staff_assignments__staff_member",
         )
         .order_by("starts_at_snapshot")
     )
@@ -238,7 +258,10 @@ def specialist_home(request):
         )
         .exclude(staff_assignments__staff_member=staff)
         .select_related("child", "service", "room", "staff_member")
-        .prefetch_related("participants__child", "staff_assignments__staff_member")
+        .prefetch_related(
+            _operational_participant_prefetch("participants"),
+            "staff_assignments__staff_member",
+        )
         .distinct()
     ]
     schedule_assignments = sorted(
@@ -269,7 +292,7 @@ def specialist_home(request):
         if assignment.appointment.status == Appointment.Status.COMPLETED
         or any(
             participant.attendance_status == Appointment.AttendanceStatus.ATTENDED
-            for participant in assignment.appointment.participants.all()
+            for participant in assignment.appointment.operational_participants
         )
     )
     availability_windows = staff.availability_windows.order_by("weekday", "starts_at")
@@ -359,7 +382,7 @@ def mark_appointment(request, pk: int):
                 note=note,
                 participant_statuses=posted_statuses,
             )
-        except appointment_svc.AppointmentStateConflict as exc:
+        except (appointment_svc.AppointmentStateConflict, PermissionDenied) as exc:
             messages.error(request, str(exc))
             return redirect(specialist_home_redirect(request, staff))
         except ValueError:
@@ -367,7 +390,7 @@ def mark_appointment(request, pk: int):
             return redirect(specialist_home_redirect(request, staff))
         messages.success(
             request,
-            "Отметка специалиста сохранена. Решение по списанию остается за администратором.",
+            "Отметка проведения сохранена. Решение по списанию остается за администратором.",
         )
     return redirect(specialist_home_redirect(request, staff))
 

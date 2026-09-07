@@ -95,6 +95,7 @@ class OperationalAcceptanceTests(TestCase):
             appointment,
             action="completed",
             actor=self.administrator,
+            reason="Администратор подтвердил проведение.",
             note="Занятие проведено в приемочном сценарии.",
         )
 
@@ -126,7 +127,14 @@ class OperationalAcceptanceTests(TestCase):
         participant = appointment.participants.get(child=self.child)
         self.assertEqual(participant.appointment_status, Appointment.Status.COMPLETED)
         self.assertEqual(participant.attendance_status, Appointment.AttendanceStatus.ATTENDED)
-        self.assertIsNotNone(participant.marked_by_staff_at)
+        self.assertIsNone(participant.marked_by_staff_at)
+        attendance_decision = appointment.attendance_decisions.get()
+        self.assertEqual(attendance_decision.actor, self.administrator)
+        self.assertEqual(attendance_decision.actor_role_snapshot, "administrator")
+        self.assertEqual(
+            attendance_decision.note,
+            "Занятие проведено в приемочном сценарии.",
+        )
         self.assertEqual(appointment.billing_decision, Appointment.BillingDecision.CHARGE)
         self.assertEqual(self.account.current_balance, Decimal("1.00"))
         self.assertEqual(

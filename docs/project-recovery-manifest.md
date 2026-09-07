@@ -64,6 +64,7 @@
 | `docs/59-grant-fixed-compensation-and-donor-report-snapshot-contract.md` | Реализованный эпик 59: payroll-бюджет, fixed/per-session policy, фиксированная оплата проекта и закрытый донорский снимок. |
 | `docs/60-private-artifact-storage-and-donor-submission-contract.md` | Реализованный срез 59B-2: private storage, append-only сдачи/выдачи, integrity и backup/restore v2; там же production-блокеры. |
 | `docs/61-group-program-series-lifecycle-contract.md` | Активный доменный контракт: 61A-61B и 61C-1 - 61C-4d, `0060-0064`, `missing_only`, `retry_skipped`, stop/resume, cancel и withdraw реализованы; следующее - рабочий 61D UI. |
+| `docs/62-operator-attendance-and-schedule-decisions.md` | Проведение и принятие расписания без ответа специалиста: два типизированных журнала, полномочия, рабочий UI, миграция `0065` и финансовая граница исправлений. |
 | `docs/decisions/ADR-001-*.md` | Django/PostgreSQL/local-first. |
 | `docs/decisions/ADR-002-*.md` | Балансовые счета и ledger. |
 | `docs/decisions/ADR-003-*.md` | Полномочия и ручные решения. |

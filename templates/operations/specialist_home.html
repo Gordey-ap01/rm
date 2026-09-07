@@ -54,7 +54,7 @@
       </header>
       <div class="calendar-day-body">
         {% for assignment in day.assignments %}
-          {% with item=assignment.appointment participants=assignment.appointment.participants.all %}
+          {% with item=assignment.appointment participants=assignment.appointment.operational_participants %}
             <div class="calendar-card status-{{ item.status }}" id="appointment-{{ item.pk }}">
               <div class="calendar-time">{{ assignment.starts_at_snapshot|date:"H:i" }}-{{ assignment.ends_at_snapshot|date:"H:i" }}</div>
               <h2>

@@ -346,6 +346,28 @@ class AppointmentForm(forms.ModelForm):
         configure_balance_account_choice_field(self.fields["billing_account"])
         self.fields["billing_account"].queryset = self._billing_accounts_queryset()
         self.fields["admin_note"].required = False
+        editable_statuses = (
+            Appointment.Status.DRAFT,
+            Appointment.Status.PROPOSED,
+            Appointment.Status.CONFIRMED,
+            Appointment.Status.RESERVED,
+        )
+        protected_attendance = bool(
+            instance
+            and (
+                instance.status in {Appointment.Status.COMPLETED, Appointment.Status.NO_SHOW}
+                or instance.attendance_decisions.exists()
+            )
+        )
+        if protected_attendance:
+            self.fields["status"].disabled = True
+            self.fields["status"].initial = instance.status
+        else:
+            self.fields["status"].choices = [
+                choice
+                for choice in Appointment.Status.choices
+                if choice[0] in editable_statuses
+            ]
         self.fields["staff_availability_override"].initial = bool(
             instance and getattr(instance, "staff_availability_override", False)
         )
@@ -432,6 +454,7 @@ class AppointmentForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        appointment_status = cleaned.get("status", self.instance.status)
         day = cleaned.get("date")
         clock = cleaned.get("time")
         duration = cleaned.get("duration_minutes")
@@ -478,7 +501,7 @@ class AppointmentForm(forms.ModelForm):
             if (
                 conflicts.get("room_over_limit")
                 and room
-                and cleaned.get("status") in ACTIVE_APPOINTMENT_STATUSES
+                and appointment_status in ACTIVE_APPOINTMENT_STATUSES
             ):
                 self.room_limit_warning = self._room_limit_message(room, conflicts)
                 if not self._room_override_requested():
@@ -493,7 +516,7 @@ class AppointmentForm(forms.ModelForm):
                 ]
             else:
                 cleaned["room_limit_override"] = False
-            if messages and cleaned.get("status") in ACTIVE_APPOINTMENT_STATUSES:
+            if messages and appointment_status in ACTIVE_APPOINTMENT_STATUSES:
                 raise forms.ValidationError("Конфликт расписания: " + ", ".join(messages) + ".")
             unavailable_by_staff = [
                 (staff, reason)
@@ -501,7 +524,7 @@ class AppointmentForm(forms.ModelForm):
                 if (reason := staff_unavailability_reason(staff, starts_at, ends_at))
             ]
             unavailable = "; ".join(f"{staff}: {reason}" for staff, reason in unavailable_by_staff)
-            if unavailable and cleaned.get("status") in ACTIVE_APPOINTMENT_STATUSES:
+            if unavailable and appointment_status in ACTIVE_APPOINTMENT_STATUSES:
                 self.availability_warning = unavailable
                 if not self._staff_override_requested():
                     raise forms.ValidationError("Недоступность специалиста: " + unavailable + ".")
@@ -1172,7 +1195,6 @@ class AppointmentMoveForm(forms.Form):
 class AppointmentCancelForm(forms.Form):
     STATUS_CHOICES = (
         (Appointment.Status.CANCELLED, "Отменено"),
-        (Appointment.Status.NO_SHOW, "Неявка"),
     )
     REASON_CHOICES = (
         ("sick", "Получатель заболел"),
@@ -2827,6 +2849,95 @@ class ManualConfirmationDecisionForm(forms.Form):
         max_length=1000,
         widget=forms.Textarea(attrs={"rows": 2}),
     )
+
+
+class ManualAttendanceDecisionForm(forms.Form):
+    ACTION_CHOICES = (
+        ("completed", "Проведено"),
+        ("not_completed", "Не проведено"),
+    )
+
+    action = forms.ChoiceField(
+        label="Факт занятия",
+        choices=ACTION_CHOICES,
+        help_text=(
+            "Для «Не проведено» ни у одного активного участника нельзя выбрать «Пришел»."
+        ),
+    )
+    reason = forms.CharField(
+        label="Основание ручной отметки",
+        min_length=5,
+        max_length=2000,
+        widget=forms.Textarea(attrs={"rows": 2}),
+    )
+    note = forms.CharField(
+        label="Заметка",
+        max_length=2000,
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 2}),
+    )
+    operation_key = forms.UUIDField(widget=forms.HiddenInput(), initial=uuid4)
+
+    def __init__(self, *args, appointment: Appointment, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.appointment = appointment
+        active_participants = appointment.participants.exclude(
+            appointment_status__in={
+                Appointment.Status.CANCELLED,
+                Appointment.Status.RESCHEDULED,
+            }
+        ).exclude(series_withdrawal_results__outcome="cancelled").select_related("child")
+        self.participants = list(active_participants.order_by("pk"))
+        for participant in self.participants:
+            self.fields[f"participant_status_{participant.pk}"] = forms.ChoiceField(
+                label=participant.child.full_name,
+                choices=Appointment.AttendanceStatus.choices,
+                initial=participant.attendance_status,
+                required=True,
+                help_text="При «Не проведено» вариант «Пришел» недоступен.",
+            )
+
+    def participant_statuses(self) -> dict[int, str]:
+        if not hasattr(self, "cleaned_data"):
+            return {}
+        return {
+            participant.pk: self.cleaned_data[f"participant_status_{participant.pk}"]
+            for participant in self.participants
+            if f"participant_status_{participant.pk}" in self.cleaned_data
+        }
+
+
+class ManualScheduleDecisionForm(forms.Form):
+    ACTION_CHOICES = (
+        ("confirm", "Принять расписание"),
+        ("decline", "Отклонить расписание"),
+    )
+
+    staff_member = forms.ModelChoiceField(label="Специалист", queryset=StaffMember.objects.none())
+    action = forms.ChoiceField(label="Решение", choices=ACTION_CHOICES)
+    reason = forms.CharField(
+        label="Основание ручного решения",
+        min_length=5,
+        max_length=2000,
+        widget=forms.Textarea(attrs={"rows": 2}),
+    )
+    expected_schedule = forms.CharField(widget=forms.HiddenInput())
+    operation_key = forms.UUIDField(widget=forms.HiddenInput(), initial=uuid4)
+
+    def __init__(self, *args, appointment: Appointment, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.appointment = appointment
+        assigned_staff_ids = list(
+            appointment.staff_assignments.values_list("staff_member_id", flat=True)
+        ) or [appointment.staff_member_id]
+        self.fields["staff_member"].queryset = StaffMember.objects.filter(
+            pk__in=assigned_staff_ids
+        ).order_by("full_name")
+        self.fields["expected_schedule"].initial = (
+            f"{appointment.starts_at.isoformat()}|{appointment.ends_at.isoformat()}"
+        )
+        if self.fields["staff_member"].queryset.count() == 1:
+            self.fields["staff_member"].initial = self.fields["staff_member"].queryset.first()
 
 
 class StaffAvailabilityForm(forms.ModelForm):

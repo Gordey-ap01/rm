@@ -126,6 +126,21 @@
         {% endfor %}
       </div>
     {% endif %}
+    {% if withdrawn_participants %}
+      <h3>Снятые участия</h3>
+      <table class="appointment-detail-table appointment-participants-table">
+        <thead><tr><th>Получатель</th><th>Статус участия</th><th>Посещение</th></tr></thead>
+        <tbody>
+        {% for participant in withdrawn_participants %}
+          <tr>
+            <td data-label="Получатель">{{ participant.child }}</td>
+            <td data-label="Статус участия">{{ participant.get_appointment_status_display }}</td>
+            <td data-label="Посещение">{{ participant.get_attendance_status_display }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
     {% if staff_assignments|length > 1 %}
       <h3>Специалисты занятия</h3>
       <table class="appointment-detail-table appointment-staff-table">
@@ -144,6 +159,102 @@
     {% if appointment.staff_availability_override_reason %}<p class="note-block">Причина выхода вне графика: {{ appointment.staff_availability_override_reason }}</p>{% endif %}
     {% if appointment.admin_note %}<p class="note-block">{{ appointment.admin_note|linebreaksbr }}</p>{% endif %}
     {% if appointment.specialist_note %}<p class="note-block">Заметка специалиста: {{ appointment.specialist_note|linebreaksbr }}</p>{% endif %}
+  </article>
+
+  <article class="panel" id="attendance-decision">
+    <h2>Проведение занятия</h2>
+    <p class="muted">Ручная отметка фиксирует факт занятия. Решение по списанию и выплате остается отдельным.</p>
+    {% if attendance_current_decision %}
+      <p class="note-block">
+        Текущее решение: {{ attendance_current_decision.get_action_display }} ·
+        {{ attendance_current_decision.actor|default:"Система" }} ·
+        {{ attendance_current_decision.created_at|date:"d.m.Y H:i" }}.<br>
+        Основание: {{ attendance_current_decision.reason }}
+        {% if attendance_current_decision.note %}<br>Заметка: {{ attendance_current_decision.note }}{% endif %}
+      </p>
+    {% endif %}
+    <form method="post" action="{% url 'appointment_attendance_decide' appointment.pk %}" class="form">
+      {% csrf_token %}
+      {{ attendance_form.operation_key }}
+      {% if attendance_form.non_field_errors %}<div class="form-error">{{ attendance_form.non_field_errors }}</div>{% endif %}
+      <div class="form-grid">
+        <label class="field">
+          <span>{{ attendance_form.action.label }}</span>
+          {{ attendance_form.action }}
+          {% if attendance_form.action.help_text %}<small class="muted">{{ attendance_form.action.help_text }}</small>{% endif %}
+          {% if attendance_form.action.errors %}<span class="form-error">{{ attendance_form.action.errors }}</span>{% endif %}
+        </label>
+        <label class="field form-wide">
+          <span>{{ attendance_form.reason.label }}</span>
+          {{ attendance_form.reason }}
+          {% if attendance_form.reason.errors %}<span class="form-error">{{ attendance_form.reason.errors }}</span>{% endif %}
+        </label>
+        <label class="field form-wide">
+          <span>{{ attendance_form.note.label }}</span>
+          {{ attendance_form.note }}
+          {% if attendance_form.note.errors %}<span class="form-error">{{ attendance_form.note.errors }}</span>{% endif %}
+        </label>
+      </div>
+      {% if attendance_form.participants %}
+        <h3>Посещаемость участников</h3>
+        <div class="participant-attendance-list">
+          {% for field in attendance_form.visible_fields %}
+            {% if field.name|slice:":19" == "participant_status_" %}
+              <label class="participant-attendance-row">
+                <span><strong>{{ field.label }}</strong></span>
+                {{ field }}
+                {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+                {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+              </label>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+      <div class="form-actions"><button type="submit">Сохранить проведение</button></div>
+    </form>
+    {% if attendance_decisions %}
+      <h3>История решений</h3>
+      <table class="appointment-detail-table">
+        <thead><tr><th>Дата</th><th>Решение</th><th>Автор</th><th>Основание</th></tr></thead>
+        <tbody>{% for record in attendance_decisions %}
+          <tr><td data-label="Дата">{{ record.created_at|date:"d.m.Y H:i" }}</td><td data-label="Решение">{{ record.get_action_display }}</td><td data-label="Автор">{{ record.actor|default:"Система" }} · {{ record.get_actor_role_snapshot_display }}</td><td data-label="Основание">{{ record.reason }}</td></tr>
+        {% endfor %}</tbody>
+      </table>
+    {% endif %}
+  </article>
+
+  <article class="panel" id="schedule-decision">
+    <h2>Решение по расписанию</h2>
+    <p class="muted">Оператор может принять или отклонить расписание назначенного специалиста без отправки запроса. Статус занятия при этом не меняется.</p>
+    {% for row in schedule_decision_rows %}
+      <p class="note-block">
+        {{ row.staff_member }}:
+        {% if row.current %}{{ row.current.get_decision_display }} · {{ row.current.actor|default:"Система" }} · {{ row.current.created_at|date:"d.m.Y H:i" }}.<br>Основание: {{ row.current.reason }}{% else %}ручное решение еще не зафиксировано.{% endif %}
+      </p>
+    {% empty %}<p class="empty-state">У занятия нет назначенного специалиста.</p>{% endfor %}
+    <form method="post" action="{% url 'appointment_schedule_decide' appointment.pk %}" class="form">
+      {% csrf_token %}
+      {{ schedule_form.expected_schedule }}
+      {{ schedule_form.operation_key }}
+      {% if schedule_form.non_field_errors %}<div class="form-error">{{ schedule_form.non_field_errors }}</div>{% endif %}
+      <div class="form-grid">
+        {% for field in schedule_form.visible_fields %}
+          <label class="field{% if field.name == 'reason' %} form-wide{% endif %}">
+            <span>{{ field.label }}</span>{{ field }}{% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
+          </label>
+        {% endfor %}
+      </div>
+      <div class="form-actions"><button type="submit">Сохранить решение по расписанию</button></div>
+    </form>
+    {% if schedule_decisions %}
+      <h3>История решений</h3>
+      <table class="appointment-detail-table">
+        <thead><tr><th>Дата</th><th>Специалист</th><th>Решение</th><th>Автор</th><th>Основание</th></tr></thead>
+        <tbody>{% for record in schedule_decisions %}
+          <tr><td data-label="Дата">{{ record.created_at|date:"d.m.Y H:i" }}</td><td data-label="Специалист">{{ record.staff_member }}</td><td data-label="Решение">{{ record.get_decision_display }}</td><td data-label="Автор">{{ record.actor|default:"Система" }} · {{ record.get_actor_role_snapshot_display }}</td><td data-label="Основание">{{ record.reason }}</td></tr>
+        {% endfor %}</tbody>
+      </table>
+    {% endif %}
   </article>
 
   <article class="panel" id="billing-decision">

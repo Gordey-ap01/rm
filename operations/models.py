@@ -3681,6 +3681,19 @@ class Appointment(TimeStampedModel):
         **kwargs: object,
     ) -> None:
         with transaction.atomic():
+            if self.pk:
+                decision = AppointmentAttendanceDecision.objects.filter(appointment_id=self.pk).first()
+                protected = {"status", "attendance_status", "starts_at", "ends_at"}
+                update_fields = kwargs.get("update_fields")
+                if decision and (update_fields is None or protected.intersection(update_fields)):
+                    expected = {
+                        "status": decision.status_after,
+                        "attendance_status": decision.attendance_after,
+                        "starts_at": decision.starts_at_snapshot,
+                        "ends_at": decision.ends_at_snapshot,
+                    }
+                    if any(getattr(self, field) != value for field, value in expected.items()):
+                        raise ValidationError("Проведение изменяется только новым решением с сохранением истории.")
             if not self.pk and self.program_block_id and not self.sequence_number:
                 ProgramBlock.objects.select_for_update().only("pk").get(
                     pk=self.program_block_id
@@ -4078,6 +4091,16 @@ class AppointmentParticipant(TimeStampedModel):
                     raise ValidationError(
                         {"source_participant": "Происхождение участия нельзя изменять."}
                     )
+                if original:
+                    decision = AppointmentAttendanceDecision.objects.filter(
+                        appointment_id=original["appointment_id"]
+                    ).first()
+                    if decision and str(self.pk) in decision.participants_after and (
+                        self.appointment_id != original["appointment_id"]
+                        or self.appointment_status != decision.status_after
+                        or self.attendance_status != decision.participants_after[str(self.pk)]
+                    ):
+                        raise ValidationError("Посещение участника изменяется только новым решением с сохранением истории.")
                 lineage_identity_changed = bool(
                     original
                     and (
@@ -7247,6 +7270,173 @@ class Note(TimeStampedModel):
 
     def __str__(self) -> str:
         return self.title
+
+
+class AppointmentAttendanceDecision(TimeStampedModel):
+    class Action(models.TextChoices):
+        COMPLETED = "completed", "Проведено"
+        NOT_COMPLETED = "not_completed", "Не проведено"
+
+    class ActorRole(models.TextChoices):
+        SPECIALIST = "specialist", "Специалист"
+        ADMINISTRATOR = "administrator", "Администратор"
+        DIRECTOR = "director", "Руководитель"
+
+    appointment = models.ForeignKey(
+        Appointment, on_delete=models.PROTECT, related_name="attendance_decisions"
+    )
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    actor_role_snapshot = models.CharField(max_length=30, choices=ActorRole.choices)
+    operation_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    fingerprint = models.CharField(max_length=64, editable=False)
+    decision_number = models.PositiveIntegerField()
+    supersedes = models.OneToOneField(
+        "self", on_delete=models.PROTECT, null=True, blank=True, related_name="successor"
+    )
+    action = models.CharField(max_length=30, choices=Action.choices)
+    reason = models.TextField("основание", blank=True, max_length=2000)
+    note = models.TextField("заметка", blank=True, max_length=2000)
+    status_before = models.CharField(max_length=30, choices=Appointment.Status.choices)
+    status_after = models.CharField(max_length=30, choices=Appointment.Status.choices)
+    attendance_after = models.CharField(max_length=30, choices=Appointment.AttendanceStatus.choices)
+    starts_at_snapshot = models.DateTimeField()
+    ends_at_snapshot = models.DateTimeField()
+    participants_before = models.JSONField(default=dict, blank=True)
+    participants_after = models.JSONField(default=dict, blank=True)
+
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        ordering = ["-decision_number"]
+        constraints = [
+            models.UniqueConstraint(fields=["appointment", "decision_number"], name="attendance_decision_sequence"),
+            models.CheckConstraint(condition=Q(decision_number__gte=1), name="attendance_decision_positive"),
+            models.CheckConstraint(
+                condition=Q(actor_role_snapshot="specialist") | ~Q(reason=""),
+                name="attendance_manual_reason_required",
+            ),
+            models.CheckConstraint(
+                condition=Q(action="completed", status_after="completed")
+                | Q(action="not_completed", status_after="no_show"),
+                name="attendance_action_status_match",
+            ),
+        ]
+
+    def clean(self) -> None:
+        from operations.services.authority import authority_role
+
+        if self._state.adding and self.actor_id and self.actor_role_snapshot != authority_role(self.actor):
+            raise ValidationError({"actor_role_snapshot": "Роль решения должна соответствовать автору."})
+        self.reason = normalize_immutable_reason(self.reason) if self.reason else ""
+        if self.actor_role_snapshot != self.ActorRole.SPECIALIST and len(self.reason) < 5:
+            raise ValidationError({"reason": "Укажите основание не короче 5 символов."})
+        if self.action == self.Action.NOT_COMPLETED and (
+            self.attendance_after == Appointment.AttendanceStatus.ATTENDED
+            or Appointment.AttendanceStatus.ATTENDED in self.participants_after.values()
+        ):
+            raise ValidationError("Непроведенное занятие не может иметь пришедших участников.")
+        previous = type(self).objects.filter(appointment_id=self.appointment_id).first()
+        if self.decision_number != (previous.decision_number + 1 if previous else 1):
+            raise ValidationError("Решение должно продолжать историю проведения.")
+        if self.supersedes_id != (previous.pk if previous else None):
+            raise ValidationError("Решение должно ссылаться на предыдущую отметку.")
+        if previous and (
+            self.actor_role_snapshot == self.ActorRole.SPECIALIST
+            or (previous.actor_role_snapshot == self.ActorRole.DIRECTOR
+                and self.actor_role_snapshot != self.ActorRole.DIRECTOR)
+        ):
+            raise ValidationError("Нельзя переопределить решение вышестоящей роли.")
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Историю проведения нельзя изменять.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Историю проведения нельзя удалять.")
+
+    def __str__(self) -> str:
+        return f"{self.appointment_id}: {self.get_action_display()} ({self.get_actor_role_snapshot_display()})"
+
+
+class AppointmentScheduleDecision(TimeStampedModel):
+    class Decision(models.TextChoices):
+        CONFIRMED = "confirmed", "Принято"
+        DECLINED = "declined", "Отклонено"
+
+    class ActorRole(models.TextChoices):
+        ADMINISTRATOR = "administrator", "Администратор"
+        DIRECTOR = "director", "Руководитель"
+
+    appointment = models.ForeignKey(
+        Appointment, on_delete=models.PROTECT, related_name="schedule_decisions"
+    )
+    staff_member = models.ForeignKey(StaffMember, on_delete=models.PROTECT)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    actor_role_snapshot = models.CharField(max_length=30, choices=ActorRole.choices)
+    operation_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    fingerprint = models.CharField(max_length=64, editable=False)
+    decision_number = models.PositiveIntegerField()
+    supersedes = models.OneToOneField(
+        "self", on_delete=models.PROTECT, null=True, blank=True, related_name="successor"
+    )
+    decision = models.CharField(max_length=30, choices=Decision.choices)
+    reason = models.TextField("основание", max_length=2000)
+    starts_at_snapshot = models.DateTimeField()
+    ends_at_snapshot = models.DateTimeField()
+
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        ordering = ["-decision_number", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["appointment", "staff_member", "decision_number"],
+                name="schedule_decision_sequence",
+            ),
+            models.CheckConstraint(condition=Q(decision_number__gte=1), name="schedule_decision_positive"),
+            models.CheckConstraint(condition=~Q(reason=""), name="schedule_decision_reason_required"),
+        ]
+
+    def clean(self) -> None:
+        from operations.services.authority import authority_role
+
+        if self._state.adding and self.actor_id and self.actor_role_snapshot != authority_role(self.actor):
+            raise ValidationError({"actor_role_snapshot": "Роль решения должна соответствовать автору."})
+        if self._state.adding and self.appointment_id and self.staff_member_id:
+            assigned = list(self.appointment.staff_assignments.values_list("staff_member_id", flat=True))
+            if self.staff_member_id not in (assigned or [self.appointment.staff_member_id]):
+                raise ValidationError({"staff_member": "Специалист не назначен на это занятие."})
+        self.reason = normalize_immutable_reason(self.reason)
+        if len(self.reason) < 5:
+            raise ValidationError({"reason": "Укажите основание не короче 5 символов."})
+        previous = type(self).objects.filter(
+            appointment_id=self.appointment_id, staff_member_id=self.staff_member_id
+        ).first()
+        if self.decision_number != (previous.decision_number + 1 if previous else 1):
+            raise ValidationError("Решение должно продолжать историю расписания.")
+        if self.supersedes_id != (previous.pk if previous else None):
+            raise ValidationError("Решение должно ссылаться на предыдущее решение.")
+        if previous and (
+            previous.starts_at_snapshot == self.starts_at_snapshot
+            and previous.ends_at_snapshot == self.ends_at_snapshot
+            and previous.actor_role_snapshot == self.ActorRole.DIRECTOR
+            and self.actor_role_snapshot != self.ActorRole.DIRECTOR
+        ):
+            raise ValidationError("Решение руководителя может изменить только руководитель.")
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Историю принятия расписания нельзя изменять.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> None:
+        raise ValidationError("Историю принятия расписания нельзя удалять.")
+
+    def __str__(self) -> str:
+        return f"{self.appointment_id} / {self.staff_member_id}: {self.get_decision_display()}"
 
 
 class AppointmentConfirmation(TimeStampedModel):

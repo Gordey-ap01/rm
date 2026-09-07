@@ -2832,6 +2832,19 @@ class GroupProgramSeriesTests(TestCase):
         self.assertEqual(response.status_code, 302)
         detail = self.client.get(response.url)
         self.assertContains(detail, "Снято участий: 1")
+        appointment_detail = self.client.get(
+            reverse("appointment_detail", args=[appointment.pk])
+        )
+        self.assertContains(appointment_detail, "Снятые участия")
+        self.assertContains(appointment_detail, participant.child.full_name)
+        self.assertNotIn(
+            participant.pk,
+            [row.pk for row in appointment_detail.context["participants"]],
+        )
+        self.assertIn(
+            participant.pk,
+            [row.pk for row in appointment_detail.context["withdrawn_participants"]],
+        )
         participant.refresh_from_db()
         appointment.refresh_from_db()
         self.assertEqual(participant.appointment_status, Appointment.Status.CANCELLED)
@@ -2841,6 +2854,19 @@ class GroupProgramSeriesTests(TestCase):
             .filter(appointment_status=Appointment.Status.PROPOSED)
             .count(),
             2,
+        )
+        active_participant = appointment.participants.exclude(pk=participant.pk).first()
+        self.client.force_login(self.specialist_user)
+        specialist_home = self.client.get(reverse("specialist_home"))
+        self.assertEqual(specialist_home.status_code, 200)
+        self.assertContains(specialist_home, "Участников: 2")
+        self.assertContains(
+            specialist_home,
+            f'name="participant_status_{active_participant.pk}"',
+        )
+        self.assertNotContains(
+            specialist_home,
+            f'name="participant_status_{participant.pk}"',
         )
 
     def test_series_action_ui_enforces_director_priority(self):
@@ -3631,6 +3657,7 @@ class GroupProgramSeriesTests(TestCase):
             moved.new,
             action="completed",
             actor=self.admin,
+            reason="Администратор подтвердил перенесенное занятие.",
         )
         participant.refresh_from_db()
         self.assertEqual(participant.appointment_status, Appointment.Status.CANCELLED)
@@ -6075,6 +6102,7 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
                     current,
                     action="completed",
                     actor=User.objects.get(pk=self.admin.pk),
+                    reason="Администратор подтвердил проведение в гонке.",
                 )
                 outcomes.put(("attendance", Appointment.Status.COMPLETED))
             except appointment_svc.AppointmentStateConflict:
@@ -6599,6 +6627,7 @@ class GroupProgramSeriesPostgreSQLConcurrencyTests(TransactionTestCase):
                     Appointment.objects.get(pk=appointment.pk),
                     action="completed",
                     actor=User.objects.get(pk=self.admin.pk),
+                    reason="Администратор подтвердил проведение после переназначения.",
                 )
                 outcomes.put(("attendance", Appointment.Status.COMPLETED))
             except appointment_svc.AppointmentStateConflict:

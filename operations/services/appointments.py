@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
+from uuid import UUID, uuid4
 
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -15,6 +19,7 @@ from django.utils import timezone
 from operations import schedule_writes as schedule_write_svc
 from operations.models import (
     Appointment,
+    AppointmentAttendanceDecision,
     AppointmentParticipant,
     AppointmentSeries,
     AppointmentSeriesCancellationResult,
@@ -24,8 +29,9 @@ from operations.models import (
     LedgerEntry,
     Service,
     StaffMember,
+    normalize_immutable_reason,
 )
-from operations.services.authority import is_center_operator
+from operations.services.authority import AuthorityRole, authority_role, is_center_operator
 
 
 @dataclass(frozen=True)
@@ -145,6 +151,8 @@ def transition_locked_appointment_status(
 ) -> Appointment:
     """Apply a transition after the caller locked appointment and snapshot rows."""
 
+    if status in {Appointment.Status.COMPLETED, Appointment.Status.NO_SHOW}:
+        raise AppointmentStateConflict("Проведение и неявка отмечаются отдельным решением о посещении.")
     if appointment.status not in allowed_from:
         raise AppointmentStateConflict(
             f"Нельзя {action}: занятие уже имеет статус «{appointment.get_status_display()}»."
@@ -187,8 +195,8 @@ def set_locked_appointment_status(
 ) -> Appointment:
     """Change a status after the caller locked appointment, participant and staff rows."""
 
-    if status not in {Appointment.Status.CANCELLED, Appointment.Status.NO_SHOW}:
-        raise ValueError("Сервис отмены поддерживает только статусы «отменено» и «неявка».")
+    if status != Appointment.Status.CANCELLED:
+        raise ValueError("Сервис отмены поддерживает только отмену. Неявка отмечается через проведение занятия.")
     return transition_locked_appointment_status(
         appointment,
         status=status,
@@ -563,14 +571,55 @@ def record_attendance(
     actor: Any,
     note: str = "",
     participant_statuses: dict[int, str] | None = None,
+    reason: str = "",
+    operation_key: UUID | None = None,
 ) -> Appointment:
-    """Отмечает факт проведения/неявки со стороны специалиста.
-
-    ``action`` — ``"completed"`` или ``"not_completed"``.
-    Решение по списанию остаётся за администратором.
-    """
+    """Record an attributed attendance decision; financial decisions are separate."""
     appointment = Appointment.objects.select_for_update().get(pk=appointment.pk)
-    require_open_appointment(appointment, action="отметить посещение")
+    role = authority_role(actor)
+    if role not in {AuthorityRole.DIRECTOR, AuthorityRole.ADMINISTRATOR, AuthorityRole.SPECIALIST}:
+        raise PermissionDenied("Недостаточно прав для отметки проведения.")
+    if action not in {"completed", "not_completed"}:
+        raise ValueError(f"Неизвестное действие: {action!r}")
+    operator = role != AuthorityRole.SPECIALIST
+    note = note.strip()
+    reason = (reason or (note if operator else "")).strip()
+    if reason:
+        try:
+            reason = normalize_immutable_reason(reason)
+        except ValidationError as exc:
+            raise ValueError(" ".join(exc.messages)) from exc
+    operation_key = operation_key or uuid4()
+    fingerprint = hashlib.sha256(json.dumps({
+        "appointment": appointment.pk, "actor": actor.pk, "action": action,
+        "reason": reason, "note": note,
+        "participants": sorted((str(key), value) for key, value in (participant_statuses or {}).items()),
+    }, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    reused = AppointmentAttendanceDecision.objects.filter(operation_key=operation_key).first()
+    if reused:
+        if reused.fingerprint != fingerprint:
+            raise ValueError("Ключ операции уже использован для другого решения.")
+        return appointment
+    previous = appointment.attendance_decisions.first()
+    if previous and role == AuthorityRole.SPECIALIST:
+        raise PermissionDenied("Отметка проведения уже принята. Исправление выполняет администратор или руководитель.")
+    if previous and previous.actor_role_snapshot == AuthorityRole.DIRECTOR and role != AuthorityRole.DIRECTOR:
+        raise PermissionDenied("Решение руководителя может изменить только руководитель.")
+    correcting = operator and appointment.status in {Appointment.Status.COMPLETED, Appointment.Status.NO_SHOW}
+    if correcting:
+        if (
+            appointment.billing_decision != Appointment.BillingDecision.UNDECIDED
+            or appointment.participants.exclude(billing_decision=Appointment.BillingDecision.UNDECIDED).exists()
+            or LedgerEntry.objects.filter(appointment=appointment).exists()
+            or appointment.payroll_accruals.exists()
+        ):
+            raise AppointmentStateConflict(
+                "У занятия уже есть финансовое решение. Сначала требуется профильная финансовая корректировка."
+            )
+        if appointment.series_cancellation_results.filter(appointment_participant__isnull=True).exists():
+            raise AppointmentStateConflict("У занятия есть зафиксированный результат серии.")
+    else:
+        require_open_appointment(appointment, action="отметить посещение")
     locked_participants = list(
         AppointmentParticipant.objects.select_for_update()
         .filter(appointment=appointment)
@@ -590,6 +639,10 @@ def record_attendance(
         raise AppointmentStateConflict(
             "Нельзя отметить посещение: у занятия нет активных участников."
         )
+    if operator and len(reason) < 5:
+        raise ValueError("Укажите основание ручного решения не короче 5 символов.")
+    if len(reason) > 2000 or len(note) > 2000:
+        raise ValueError("Основание и заметка должны быть не длиннее 2000 символов.")
     if not locked_participants and appointment.child_id:
         participants = [
             AppointmentParticipant.objects.create(
@@ -639,6 +692,8 @@ def record_attendance(
                 "Нельзя отметить посещение: специалист больше не назначен на это занятие."
             )
 
+    status_before = appointment.status
+    participants_before = {str(participant.pk): participant.attendance_status for participant in participants}
     if action == "completed":
         appointment.status = Appointment.Status.COMPLETED
         fallback_attendance = Appointment.AttendanceStatus.ATTENDED
@@ -655,10 +710,18 @@ def record_attendance(
         status not in valid_statuses for status in participant_statuses.values()
     ):
         raise ValueError("Передана недопустимая отметка участника занятия.")
-    if note:
+    if action == "not_completed" and any(
+        (participant_statuses.get(participant.pk, participant.attendance_status)
+         if participant_statuses else fallback_attendance) == Appointment.AttendanceStatus.ATTENDED
+        for participant in participants
+    ):
+        raise ValueError("Для непроведенного занятия нельзя оставить участника с отметкой «Пришел».")
+    if note and not operator:
         appointment.specialist_note = note
     marked_at = timezone.now()
-    appointment.specialist_marked_at = marked_at
+    if not operator:
+        appointment.specialist_marked_at = marked_at
+    participant_updates = []
     for participant in participants:
         participant.appointment_status = appointment.status
         participant.starts_at_snapshot = appointment.starts_at
@@ -674,12 +737,14 @@ def record_attendance(
                 participant.pk,
                 fallback_attendance,
             )
-            participant.marked_by_staff_at = marked_at
-            update_fields.extend(["attendance_status", "marked_by_staff_at"])
-            if note:
+            update_fields.append("attendance_status")
+            if not operator:
+                participant.marked_by_staff_at = marked_at
+                update_fields.append("marked_by_staff_at")
+            if note and not operator:
                 participant.specialist_note = note
                 update_fields.append("specialist_note")
-        participant.save(update_fields=update_fields)
+        participant_updates.append((participant, update_fields))
 
     participant_attendance = [participant.attendance_status for participant in participants]
     if Appointment.AttendanceStatus.ATTENDED in participant_attendance:
@@ -693,6 +758,19 @@ def record_attendance(
         appointment.attendance_status = Appointment.AttendanceStatus.EXCUSED
     else:
         appointment.attendance_status = fallback_attendance
+    AppointmentAttendanceDecision.objects.create(
+        appointment=appointment, actor=actor, actor_role_snapshot=role,
+        operation_key=operation_key, fingerprint=fingerprint,
+        decision_number=previous.decision_number + 1 if previous else 1,
+        supersedes=previous, action=action, reason=reason, note=note,
+        status_before=status_before, status_after=appointment.status,
+        attendance_after=appointment.attendance_status,
+        starts_at_snapshot=appointment.starts_at, ends_at_snapshot=appointment.ends_at,
+        participants_before=participants_before,
+        participants_after={str(participant.pk): participant.attendance_status for participant in participants},
+    )
+    for participant, update_fields in participant_updates:
+        participant.save(update_fields=update_fields)
     appointment.save(
         update_fields=[
             "status",

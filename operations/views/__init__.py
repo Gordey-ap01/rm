@@ -15,6 +15,7 @@ from .appointments import (
     appointment_participant_program,
 )
 from .assets import equipment_asset_create, equipment_asset_edit, equipment_asset_list
+from .attendance import appointment_attendance_decide, appointment_schedule_decide
 from .balances import balance_account_create, balance_account_delete, balance_account_edit, balances
 from .center_profile import center_legal_profile_edit
 from .compensation_rules import (
@@ -193,6 +194,7 @@ from .staff_members import (
 from .tomorrow import tomorrow
 
 __all__ = [
+    "appointment_attendance_decide",
     "appointment_billing",
     "appointment_cancel",
     "appointment_confirmation_public",
@@ -205,6 +207,7 @@ __all__ = [
     "appointment_participant_program",
     "appointment_reschedule_plan_create",
     "appointment_reschedule_plan_detail",
+    "appointment_schedule_decide",
     "appointment_send_confirmation",
     "appointment_series_action",
     "appointment_series_detail",

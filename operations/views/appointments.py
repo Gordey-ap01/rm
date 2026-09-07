@@ -22,9 +22,14 @@ from operations.forms import (
     AppointmentMoveForm,
     AppointmentParticipantProgramForm,
     BillingDecisionForm,
+    ManualAttendanceDecisionForm,
+    ManualScheduleDecisionForm,
 )
 from operations.models import Appointment, AppointmentConfirmationDecision, LedgerEntry
-from operations.services import appointments as appointment_svc
+from operations.services import (
+    appointments as appointment_svc,
+    schedule_decisions as schedule_decisions_svc,
+)
 from operations.services.authority import AuthorityRole, authority_role
 
 from ._common import is_admin_user, safe_next_url
@@ -567,10 +572,12 @@ def appointment_detail_context(
     billing_form=None,
     participant_billing_form=None,
     participant_program_form=None,
+    attendance_form=None,
+    schedule_form=None,
     actor=None,
 ) -> dict:
     local_day = timezone.localtime(appointment.starts_at).date()
-    participants = list(
+    all_participants = list(
         appointment.participants.select_related(
             "child",
             "billing_account",
@@ -578,6 +585,15 @@ def appointment_detail_context(
             "program_block__program",
         ).order_by("starts_at_snapshot", "child__last_name", "child__first_name")
     )
+    operational_participant_ids = set(
+        appointment_svc.operational_participants(appointment).values_list("pk", flat=True)
+    )
+    participants = [
+        participant for participant in all_participants if participant.pk in operational_participant_ids
+    ]
+    withdrawn_participants = [
+        participant for participant in all_participants if participant.pk not in operational_participant_ids
+    ]
     related_child_ids = {participant.child_id for participant in participants}
     if not related_child_ids and appointment.child_id:
         related_child_ids.add(appointment.child_id)
@@ -641,6 +657,24 @@ def appointment_detail_context(
         "starts_at_snapshot", "staff_member__full_name"
     )
     staff_assignments = list(staff_assignments)
+    attendance_decisions = list(
+        appointment.attendance_decisions.select_related("actor").order_by("-decision_number")
+    )
+    schedule_decisions = list(
+        appointment.schedule_decisions.select_related("actor", "staff_member").order_by(
+            "-created_at"
+        )
+    )
+    schedule_decision_rows = [
+        {
+            "staff_member": assignment.staff_member,
+            "current": schedule_decisions_svc.current_decision(
+                appointment,
+                assignment.staff_member_id,
+            ),
+        }
+        for assignment in staff_assignments
+    ]
     participant_billing_rows = []
     participant_error_id = getattr(
         getattr(participant_billing_form, "participant", None), "pk", None
@@ -682,7 +716,12 @@ def appointment_detail_context(
         ),
         "appointment_payment_account": appointment_payment_account(appointment, participants),
         "participants": participants,
+        "withdrawn_participants": withdrawn_participants,
         "staff_assignments": staff_assignments,
+        "attendance_decisions": attendance_decisions,
+        "attendance_current_decision": attendance_decisions[0] if attendance_decisions else None,
+        "schedule_decisions": schedule_decisions,
+        "schedule_decision_rows": schedule_decision_rows,
         "participant_billing_rows": participant_billing_rows,
         "participant_program_rows": participant_program_rows,
         "related_child_appointments": related_child_appointments,
@@ -702,10 +741,12 @@ def appointment_detail_context(
         "confirmations": confirmations,
         "can_resolve_confirmations": can_resolve_confirmations,
         "audit_entries": appointment_audit_entries(
-            appointment, participants, staff_assignments, ledger_entries, confirmations
+            appointment, all_participants, staff_assignments, ledger_entries, confirmations
         ),
         "confirmation_form": AppointmentConfirmationSendForm(appointment=appointment),
         "billing_form": billing_form or BillingDecisionForm(appointment=appointment),
+        "attendance_form": attendance_form or ManualAttendanceDecisionForm(appointment=appointment),
+        "schedule_form": schedule_form or ManualScheduleDecisionForm(appointment=appointment),
         "schedule_date": local_day,
     }
 

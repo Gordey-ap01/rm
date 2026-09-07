@@ -36,7 +36,7 @@
       {% csrf_token %}
       <div class="appointment-cancel-form-head">
         <h2>Параметры отмены</h2>
-        <p>Отмена или неявка не списывает занятие автоматически. Решение по списанию принимается отдельно.</p>
+        <p>Отмена не списывает занятие автоматически. Неявку отмечают отдельной панелью «Проведение занятия» в карточке.</p>
       </div>
       {% if form.non_field_errors %}
         <div class="form-error form-wide">{{ form.non_field_errors }}</div>
@@ -71,7 +71,7 @@
       <ul class="appointment-cancel-check-list">
         <li>
           <strong>Статус занятия</strong>
-          <span>Будет изменен на выбранный в форме статус: отменено или неявка.</span>
+          <span>Будет изменен на статус «Отменено».</span>
         </li>
         <li>
           <strong>Списание</strong>

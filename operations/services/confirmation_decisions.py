@@ -116,7 +116,13 @@ def record_external_response(
     action: str,
     note: str = "",
 ) -> AppointmentConfirmationDecision:
+    from . import schedule_decisions
+
+    appointment = Appointment.objects.select_for_update().get(pk=confirmation.appointment_id)
     locked = AppointmentConfirmation.objects.select_for_update().get(pk=confirmation.pk)
+    locked.appointment = appointment
+    if schedule_decisions.current_confirmation_decision(locked):
+        raise ValueError("Решение по расписанию уже принято оператором. Поздний ответ его не меняет.")
     if locked.status != AppointmentConfirmation.Status.PENDING:
         raise ValueError("По этому согласованию решение уже принято.")
     source, actor_role = _external_source(locked)
@@ -145,7 +151,11 @@ def resolve_manually(
     if len(reason) < 5:
         raise ValueError("Укажите основание ручного решения не короче 5 символов.")
 
+    from . import schedule_decisions
+
+    appointment = Appointment.objects.select_for_update().get(pk=confirmation.appointment_id)
     locked = AppointmentConfirmation.objects.select_for_update().get(pk=confirmation.pk)
+    locked.appointment = appointment
     previous = (
         AppointmentConfirmationDecision.objects.select_for_update()
         .filter(confirmation=locked, is_current=True)
@@ -164,6 +174,15 @@ def resolve_manually(
     else:
         source = AppointmentConfirmationDecision.Source.ADMINISTRATOR_MANUAL
         actor_role = AppointmentConfirmationDecision.ActorRole.ADMINISTRATOR
+
+    staff_id = schedule_decisions.confirmation_staff_id(locked)
+    if staff_id is not None:
+        from operations.models import StaffMember
+
+        schedule_decisions.resolve_manually(
+            appointment, staff_member=StaffMember.objects.get(pk=staff_id),
+            action=action, reason=reason, actor=actor,
+        )
 
     return _record_decision(
         locked,
