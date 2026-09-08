@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Реестр серий занятий{% endblock %}
+
+{% block extra_head %}
+<style>
+  .series-registry-layout { display: grid; gap: 1rem; min-width: 0; }
+  .series-filter-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .75rem; align-items: end; }
+  .series-filter-field { display: grid; gap: .25rem; min-width: 0; }
+  .series-filter-field label { font-size: .875rem; font-weight: 600; }
+  .series-filter-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+  .series-filter-note { margin: .75rem 0 0; color: var(--muted); font-size: .875rem; }
+  .series-registry-table { width: 100%; }
+  .series-registry-table th, .series-registry-table td { overflow-wrap: anywhere; vertical-align: top; }
+  .series-registry-table .series-title { min-width: 12rem; }
+  .series-registry-table .series-participants { min-width: 14rem; }
+  .series-registry-table .series-actions { width: 8rem; white-space: nowrap; }
+  .series-meta { display: grid; gap: .25rem; }
+  .series-meta small { color: var(--muted); }
+  .series-participant-list { margin: 0; padding-left: 1.1rem; }
+  .series-participant-list li + li { margin-top: .25rem; }
+  .series-revision-note { display: block; margin-top: .5rem; color: var(--muted); font-size: .8125rem; }
+  .series-page-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }
+  .series-page-footer p { margin: 0; color: var(--muted); }
+
+  @media (max-width: 900px) {
+    .series-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .series-filter-actions { grid-column: 1 / -1; }
+  }
+
+  @media (max-width: 640px) {
+    .series-filter-grid { grid-template-columns: 1fr; }
+    .series-registry-table, .series-registry-table tbody, .series-registry-table tr,
+    .series-registry-table th, .series-registry-table td { display: block; width: 100%; }
+    .series-registry-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .series-registry-table tbody { display: grid; gap: .75rem; }
+    .series-registry-table tr { border: 1px solid var(--line); border-radius: var(--radius); padding: .75rem; }
+    .series-registry-table td { border: 0; padding: .35rem 0; }
+    .series-registry-table td::before { content: attr(data-label); display: block; margin-bottom: .125rem; color: var(--muted); font-size: .75rem; font-weight: 700; text-transform: uppercase; }
+    .series-registry-table .series-actions { width: 100%; white-space: normal; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Реестр серий занятий</h1>
+    <p>Поиск по получателю, программе, статусу и плановому периоду.</p>
+  </div>
+  <a class="button-link secondary" href="{% url 'schedule' %}"><i class="bi bi-calendar-week" aria-hidden="true"></i> К расписанию</a>
+</section>
+
+<div class="series-registry-layout">
+  <section class="panel" aria-labelledby="series-filter-title">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+      <div>
+        <h2 class="h6 mb-1" id="series-filter-title">Фильтры</h2>
+        <p class="muted mb-0">Период ищет пересечение с плановым периодом серии включительно.</p>
+      </div>
+      {% if selected_recipient %}
+        <a class="small-action" href="{% url 'recipient_detail' selected_recipient.pk %}">Открыть карточку: {{ selected_recipient }}</a>
+      {% endif %}
+    </div>
+
+    <form method="get" novalidate>
+      {% for hidden in filter_form.hidden_fields %}{{ hidden }}{% endfor %}
+      {% if filter_form.non_field_errors %}
+        <div class="alert alert-danger" role="alert">{{ filter_form.non_field_errors }}</div>
+      {% endif %}
+      <div class="series-filter-grid">
+        {% for field in filter_form.visible_fields %}
+          <div class="series-filter-field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+          </div>
+        {% endfor %}
+        <div class="series-filter-actions">
+          <button class="btn btn-primary" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i> Применить</button>
+          <a class="button-link secondary" href="{% url 'appointment_series_list' %}">Сбросить</a>
+        </div>
+      </div>
+    </form>
+    <p class="series-filter-note"><i class="bi bi-info-circle" aria-hidden="true"></i> Последняя сохраненная редакция может вступать в силу позднее; поиск также включает прошлый состав.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="series-list-title">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <h2 class="h6 mb-1" id="series-list-title">Серии</h2>
+        {% if filters_valid %}
+          <p class="muted mb-0">Найдено: {{ page_obj.paginator.count }}</p>
+        {% else %}
+          <p class="text-danger mb-0">Исправьте ошибки фильтров, чтобы увидеть результаты.</p>
+        {% endif %}
+      </div>
+      {% if selected_program %}<span class="status-pill">Программа: {{ selected_program }}</span>{% endif %}
+    </div>
+
+    {% if filters_valid %}
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 series-registry-table">
+          <thead>
+            <tr><th>Серия</th><th>Услуга и формат</th><th>Статус</th><th>Плановый период</th><th>Последний сохраненный состав</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for row in registry_rows %}
+              {% with series=row.series %}
+                <tr>
+                  <td class="series-title" data-label="Серия"><a href="{% url 'appointment_series_detail' series.pk %}"><strong>{{ series.title }}</strong></a></td>
+                  <td data-label="Услуга и формат">
+                    <div class="series-meta">
+                      <strong>{{ series.service }}</strong>
+                      <small>{{ series.get_session_type_display }} · {{ series.get_materialization_mode_display }}</small>
+                    </div>
+                  </td>
+                  <td data-label="Статус"><span class="status-pill">{{ series.get_status_display }}</span></td>
+                  <td data-label="Плановый период">{{ series.start_date|date:"d.m.Y" }} — {{ series.end_date|date:"d.m.Y" }}</td>
+                  <td class="series-participants" data-label="Последний сохраненный состав">
+                    {% if row.participants %}
+                      <ul class="series-participant-list">
+                        {% for participant in row.participants %}
+                          <li>
+                            <a href="{% url 'recipient_detail' participant.child.pk %}">{{ participant.child }}</a>
+                            {% if participant.program_block %}<span class="muted"> · {{ participant.program_block.title }}</span>{% endif %}
+                          </li>
+                        {% endfor %}
+                      </ul>
+                    {% else %}<span class="muted">Состав не указан</span>{% endif %}
+                    {% if row.composition_revision %}<span class="series-revision-note">Редакция №{{ row.composition_revision.revision_number }} действует с {{ row.composition_revision.effective_from|date:"d.m.Y" }}.</span>{% else %}<span class="series-revision-note">Состав ранее созданной серии.</span>{% endif %}
+                  </td>
+                  <td class="series-actions" data-label="Управление"><a class="small-action" href="{% url 'appointment_series_detail' series.pk %}">Открыть</a></td>
+                </tr>
+              {% endwith %}
+            {% empty %}
+              <tr><td colspan="6" data-label="Серии"><div class="empty-state">По выбранным фильтрам серий нет.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state" role="status">Результаты не показаны, пока фильтры содержат ошибки.</div>
+    {% endif %}
+
+    {% if filters_valid and page_obj.paginator.count and page_obj.paginator.num_pages > 1 %}
+      <div class="series-page-footer mt-3">
+        <p>Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</p>
+        <nav aria-label="Страницы реестра серий">
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item{% if not page_obj.has_previous %} disabled{% endif %}">
+              {% if page_obj.has_previous %}<a class="page-link" href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Предыдущая страница"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>{% else %}<span class="page-link" aria-hidden="true"><i class="bi bi-chevron-left"></i></span>{% endif %}
+            </li>
+            <li class="page-item disabled"><span class="page-link" aria-current="page">{{ page_obj.number }}</span></li>
+            <li class="page-item{% if not page_obj.has_next %} disabled{% endif %}">
+              {% if page_obj.has_next %}<a class="page-link" href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}" aria-label="Следующая страница"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>{% else %}<span class="page-link" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>{% endif %}
+            </li>
+          </ul>
+        </nav>
+      </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

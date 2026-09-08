@@ -8,7 +8,10 @@
     <h1>{{ series.title }}</h1>
     <p>{{ series.service }} · {{ series.get_session_type_display }} · {{ series.get_status_display }}</p>
   </div>
-  <a class="button-link secondary" href="{% url 'recipient_detail' series.child_id %}"><i class="bi bi-arrow-left"></i> К получателю</a>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="button-link secondary" href="{% url 'appointment_series_list' %}"><i class="bi bi-collection"></i> Серии занятий</a>
+    <a class="button-link secondary" href="{% url 'recipient_detail' series.child_id %}"><i class="bi bi-arrow-left"></i> К получателю</a>
+  </div>
 </section>
 
 <section class="detail-grid">

@@ -20,6 +20,7 @@
     <a class="btn btn-outline-info btn-sm" href="{% url 'consent_list' %}?child_id={{ recipient.pk }}">Согласия</a>
     <a class="btn btn-outline-info btn-sm" href="{% url 'document_create_for_child' recipient.pk %}">+ Документ</a>
     <a class="btn btn-outline-info btn-sm" href="{% url 'consent_create_for_child' recipient.pk %}">+ Согласие</a>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'appointment_series_list' %}?recipient={{ recipient.pk }}"><i class="bi bi-collection"></i> Серии занятий</a>
     <a class="btn btn-outline-secondary btn-sm" href="{% url 'recipient_edit' recipient.pk %}"><i class="bi bi-pencil"></i></a>
     <a class="btn btn-outline-secondary btn-sm" href="{% url 'recipient_list' %}">К списку</a>
   </div>
@@ -220,7 +221,10 @@
             <strong>{{ program.title }}</strong>
             <span class="status-pill">{{ program.get_status_display }}</span>
           </div>
-          <a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'program_block_create' program.pk %}">+ Блок</a>
+          <div class="d-flex flex-wrap gap-1">
+            <a class="btn btn-outline-primary btn-sm py-0" href="{% url 'appointment_series_list' %}?recipient={{ recipient.pk }}&amp;program={{ program.pk }}">Серии программы</a>
+            <a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'program_block_create' program.pk %}">+ Блок</a>
+          </div>
         </div>
         <div class="table-responsive recipient-detail-table-wrap">
           <table class="table table-sm table-hover mb-0 recipient-detail-table recipient-program-blocks-table">

@@ -326,6 +326,11 @@ urlpatterns = [
         name="program_block_group_join",
     ),
     path(
+        "appointment-series/",
+        views.appointment_series_list,
+        name="appointment_series_list",
+    ),
+    path(
         "appointment-series/<int:series_id>/",
         views.appointment_series_detail,
         name="appointment_series_detail",
