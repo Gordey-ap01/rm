@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Будущий состав — {{ series.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .series-composition-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(260px,340px); gap:16px; align-items:start; }
+  .series-composition-main, .series-composition-sidebar, .series-composition-form, .series-staff-panel { display:grid; gap:16px; }
+  .series-composition-sidebar { position:sticky; top:84px; }
+  .series-composition-form .field > label { font-weight:700; font-size:13px; }
+  .series-composition-form .field > label::after { content:":"; }
+  .series-composition-form .field select[multiple] { min-height:12rem; }
+  .series-staff-table td { vertical-align:top; min-width:0; }
+  .series-staff-table select, .series-staff-table textarea { width:100%; min-width:0; }
+  .series-staff-table textarea { min-height:4.5rem; resize:vertical; }
+  .series-staff-remove { display:grid; gap:6px; min-width:9rem; }
+  .series-staff-row.is-removed { opacity:.62; background:var(--danger-soft); }
+  .series-staff-row.is-removed :is(select, textarea, input:not([type=checkbox])) { pointer-events:none; }
+  .series-staff-status { font-size:13px; color:var(--muted); }
+  .series-staff-row.is-removed .series-staff-status { color:var(--danger); font-weight:700; }
+  .series-preview-list { margin:0; padding-left:1.2rem; }
+  .series-revision-composition { display:grid; gap:4px; min-width:15rem; }
+  .series-revision-composition ul { margin:0; padding-left:1.2rem; }
+  @media (max-width:800px) {
+    .series-composition-layout { grid-template-columns:1fr; }
+    .series-composition-sidebar { position:static; }
+  }
+  @media (max-width:600px) {
+    .series-staff-panel { overflow:visible; }
+    .series-staff-table, .series-staff-table tbody, .series-staff-table tr, .series-staff-table td { display:block; width:100%; }
+    .series-staff-table thead { display:none; }
+    .series-staff-table tr { border:1px solid var(--line); border-radius:var(--radius-sm); margin-bottom:12px; padding:10px; }
+    .series-staff-table td { border:0; padding:5px 0; }
+    .series-staff-table td::before { content:attr(data-label); display:block; margin-bottom:4px; color:var(--muted); font-size:12px; font-weight:700; }
+    .series-staff-table td:last-child::before { display:none; }
+    .series-staff-remove { min-width:0; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Будущий состав серии</h1>
+    <p>{{ series.title }} · {{ series.service }} · кабинет: {{ series.room }} · текущая редакция: №{{ series.current_revision.revision_number }}</p>
+  </div>
+  <a class="button-link secondary" href="{% url 'appointment_series_detail' series.pk %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> К серии</a>
+</section>
+
+{% if not composition_access.allowed %}
+  <section class="panel" role="status">
+    <h2>Редактирование недоступно</h2>
+    <p class="mb-3">{{ composition_access.reason }}</p>
+    <a class="button-link secondary" href="{% url 'appointment_series_detail' series.pk %}">Вернуться к серии</a>
+  </section>
+{% else %}
+  <div class="alert alert-info" role="note">
+    <i class="bi bi-info-circle" aria-hidden="true"></i>
+    Изменяется только определение будущих дат. Уже созданные занятия, их участники, назначения, списания и другая финансовая история останутся без изменений. Редактор не создает занятия автоматически.
+  </div>
+
+  <form method="post" class="series-composition-layout series-composition-form" data-series-composition-form>
+    {% csrf_token %}
+    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+    {% for hidden in form.hidden_fields %}{% if hidden.errors %}<div class="form-error form-wide">{{ hidden.errors }}</div>{% endif %}{% endfor %}
+    <section class="series-composition-main">
+      <section class="panel form-panel">
+        <div class="object-form-head mb-3">
+          <div>
+            <h2>Получатели и дата применения</h2>
+            <p>Выберите каскады той же услуги. Счет будет взят из каждого выбранного каскада.</p>
+          </div>
+        </div>
+        {% if form.non_field_errors %}<div class="form-error mb-3">{{ form.non_field_errors }}</div>{% endif %}
+        <div class="form-grid">
+          <div class="field form-wide">
+            <label for="{{ form.program_blocks.id_for_label }}">{{ form.program_blocks.label }}</label>
+            {{ form.program_blocks }}
+            {% if form.program_blocks.help_text %}<small class="muted">{{ form.program_blocks.help_text }}</small>{% endif %}
+            {% if form.program_blocks.errors %}<span class="form-error">{{ form.program_blocks.errors }}</span>{% endif %}
+          </div>
+          <div class="field">
+            <label for="{{ form.effective_from.id_for_label }}">{{ form.effective_from.label }}</label>
+            {{ form.effective_from }}
+            {% if form.effective_from.help_text %}<small class="muted">{{ form.effective_from.help_text }}</small>{% endif %}
+            {% if form.effective_from.errors %}<span class="form-error">{{ form.effective_from.errors }}</span>{% endif %}
+          </div>
+          <div class="field form-wide">
+            <label for="{{ form.reason.id_for_label }}">{{ form.reason.label }}</label>
+            {{ form.reason }}
+            {% if form.reason.help_text %}<small class="muted">{{ form.reason.help_text }}</small>{% endif %}
+            {% if form.reason.errors %}<span class="form-error">{{ form.reason.errors }}</span>{% endif %}
+          </div>
+        </div>
+      </section>
+
+      <section class="panel form-panel series-staff-panel">
+        <div class="object-form-head">
+          <div>
+            <h2>Специалисты</h2>
+            <p>Укажите одного основного специалиста. Выход вне графика требует основания для конкретного назначения.</p>
+          </div>
+        </div>
+        {{ staff_formset.management_form }}
+        {% if staff_formset.non_form_errors %}<div class="form-error">{{ staff_formset.non_form_errors }}</div>{% endif %}
+        <div class="table-responsive">
+          <table class="table table-sm mb-0 series-staff-table" data-staff-table>
+            <thead><tr><th>Специалист</th><th>Роль</th><th>Вне графика</th><th>Основание</th><th>Строка</th></tr></thead>
+            <tbody data-staff-rows>
+              {% for staff_form in staff_formset.forms %}
+                <tr class="series-staff-row{% if staff_form.DELETE.value %} is-removed{% endif %}" data-staff-row>
+                  {% for hidden in staff_form.hidden_fields %}{{ hidden }}{% endfor %}
+                  <td data-label="Специалист">
+                    <label class="visually-hidden" for="{{ staff_form.staff_member.id_for_label }}">Специалист, строка {{ forloop.counter }}</label>
+                    {{ staff_form.staff_member }}
+                    {% if staff_form.staff_member.errors %}<span class="form-error">{{ staff_form.staff_member.errors }}</span>{% endif %}
+                    {% if staff_form.non_field_errors %}<span class="form-error">{{ staff_form.non_field_errors }}</span>{% endif %}
+                  </td>
+                  <td data-label="Роль"><label class="visually-hidden" for="{{ staff_form.role.id_for_label }}">Роль, строка {{ forloop.counter }}</label>{{ staff_form.role }}{% if staff_form.role.errors %}<span class="form-error">{{ staff_form.role.errors }}</span>{% endif %}</td>
+                  <td data-label="Выход вне графика">
+                    <label class="check-field mb-0" for="{{ staff_form.override_availability.id_for_label }}">{{ staff_form.override_availability }} <span>Разрешить</span></label>
+                    {% if staff_form.override_availability.errors %}<span class="form-error">{{ staff_form.override_availability.errors }}</span>{% endif %}
+                  </td>
+                  <td data-label="Основание"><label class="visually-hidden" for="{{ staff_form.override_reason.id_for_label }}">Основание выхода вне графика, строка {{ forloop.counter }}</label>{{ staff_form.override_reason }}{% if staff_form.override_reason.errors %}<span class="form-error">{{ staff_form.override_reason.errors }}</span>{% endif %}</td>
+                  <td data-label="Строка" class="series-staff-remove">
+                    <label class="check-field mb-0" for="{{ staff_form.DELETE.id_for_label }}">{{ staff_form.DELETE }} <span>Удалить</span></label>
+                    <span class="series-staff-status" data-row-status{% if staff_form.empty_permitted %} data-new-row="true"{% endif %}>{% if staff_form.DELETE.value %}Будет удалена при сохранении{% elif staff_form.empty_permitted %}Новая строка{% else %}В составе{% endif %}</span>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <template data-staff-empty-form>
+          <tr class="series-staff-row" data-staff-row>
+            {% for hidden in staff_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+            <td data-label="Специалист"><label class="visually-hidden" for="{{ staff_formset.empty_form.staff_member.id_for_label }}">Специалист, строка <span data-row-number></span></label>{{ staff_formset.empty_form.staff_member }}</td>
+            <td data-label="Роль"><label class="visually-hidden" for="{{ staff_formset.empty_form.role.id_for_label }}">Роль, строка <span data-row-number></span></label>{{ staff_formset.empty_form.role }}</td>
+            <td data-label="Выход вне графика"><label class="check-field mb-0" for="{{ staff_formset.empty_form.override_availability.id_for_label }}">{{ staff_formset.empty_form.override_availability }} <span>Разрешить</span></label></td>
+            <td data-label="Основание"><label class="visually-hidden" for="{{ staff_formset.empty_form.override_reason.id_for_label }}">Основание выхода вне графика, строка <span data-row-number></span></label>{{ staff_formset.empty_form.override_reason }}</td>
+            <td data-label="Строка" class="series-staff-remove"><label class="check-field mb-0" for="{{ staff_formset.empty_form.DELETE.id_for_label }}">{{ staff_formset.empty_form.DELETE }} <span>Удалить</span></label><span class="series-staff-status" data-row-status>Новая строка</span></td>
+          </tr>
+        </template>
+        <div class="form-actions"><button type="button" class="button-link secondary" data-add-staff><i class="bi bi-person-plus" aria-hidden="true"></i> Добавить специалиста</button></div>
+      </section>
+
+      {% if preview %}
+        <section class="panel form-panel" aria-labelledby="composition-preview-title">
+          <div class="object-form-head mb-3"><div><h2 id="composition-preview-title">Предварительный просмотр</h2><p>Проверьте состав перед сохранением. При изменении формы сначала запросите новый просмотр.</p></div></div>
+          <div class="detail-grid">
+            <div><h3 class="h6">Получатели и счета</h3><ul class="series-preview-list">{% for participant in preview.participants %}<li>{{ participant.child }} · {% if participant.program_block %}{{ participant.program_block }}{% else %}Каскад не указан{% endif %} · {% if participant.billing_account %}{{ participant.billing_account }}{% else %}Счет не указан{% endif %}</li>{% empty %}<li class="muted">Нет участников.</li>{% endfor %}</ul></div>
+            <div><h3 class="h6">Специалисты</h3><ul class="series-preview-list">{% for assignment in preview.staff %}<li>{{ assignment.staff_member }} · {{ assignment.role_label }}{% if assignment.override_availability %} · вне графика: {{ assignment.override_reason }}{% endif %}</li>{% empty %}<li class="muted">Нет специалистов.</li>{% endfor %}</ul></div>
+            <div><h3 class="h6">Применяется с</h3><p>{{ preview.effective_from|date:"d.m.Y" }}</p><h3 class="h6">Основание</h3><p>{{ preview.reason }}</p></div>
+            <div><h3 class="h6">Уже созданные будущие занятия</h3>{% if preview.existing_appointments %}<ul class="series-preview-list">{% for appointment in preview.existing_appointments %}<li><a href="{% url 'appointment_detail' appointment.pk %}">{{ appointment.starts_at|date:"d.m.Y H:i" }} · {{ appointment.title|default:appointment.get_status_display }}</a></li>{% endfor %}</ul>{% else %}<p class="muted">В этом периоде нет созданных занятий.</p>{% endif %}{% if preview.existing_appointments_count > 10 %}<p class="muted mb-0">Показаны первые 10 из {{ preview.existing_appointments_count }} занятий.</p>{% endif %}</div>
+          </div>
+        </section>
+      {% endif %}
+    </section>
+
+    <aside class="series-composition-sidebar" aria-label="Контекст серии">
+      <section class="panel object-form-control">
+        <h2>Параметры серии</h2>
+        <dl class="detail-list mb-0">
+          <div><dt>Услуга</dt><dd>{{ series.service }}</dd></div>
+          <div><dt>Кабинет</dt><dd>{{ series.room }}</dd></div>
+          <div><dt>Период</dt><dd>{{ series.start_date|date:"d.m.Y" }}–{{ series.end_date|date:"d.m.Y" }}</dd></div>
+          <div><dt>Текущая редакция</dt><dd>№{{ series.current_revision.revision_number }}</dd></div>
+        </dl>
+        <div class="form-actions object-form-actions">
+          <button type="submit" name="action" value="preview"><i class="bi bi-search" aria-hidden="true"></i> Посмотреть изменения</button>
+          {% if preview %}<button type="submit" name="action" value="apply" data-apply-composition><i class="bi bi-check2-circle" aria-hidden="true"></i> Сохранить редакцию</button>{% endif %}
+          <a class="button-link secondary" href="{% url 'appointment_series_detail' series.pk %}">Отмена</a>
+        </div>
+      </section>
+    </aside>
+  </form>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}<script src="{% static 'operations/series_composition.js' %}"></script>{% endblock %}

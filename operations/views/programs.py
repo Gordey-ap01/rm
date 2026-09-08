@@ -6,10 +6,11 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import NON_FIELD_ERRORS, PermissionDenied, ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Count, Q
+from django.db.models import Count, Prefetch, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from operations.forms import (
@@ -27,6 +28,8 @@ from operations.models import (
     AppointmentSeriesCancellationResult,
     AppointmentSeriesLifecycleEvent,
     AppointmentSeriesOccurrence,
+    AppointmentSeriesRevisionParticipant,
+    AppointmentSeriesRevisionStaffAssignment,
     BalanceAccount,
     Child,
     ProgramBlock,
@@ -40,6 +43,7 @@ from operations.services import (
 )
 
 from ._common import admin_required, is_admin_user, is_director
+from .series_composition import composition_access
 
 
 def _form_value(form, field_name: str):
@@ -1074,6 +1078,7 @@ def appointment_series_detail(request, series_id: int):
             "staff_member",
             "room",
             "program_block",
+            "current_revision",
         ).prefetch_related(
             "default_participants__child",
             "default_participants__program_block__program",
@@ -1089,6 +1094,24 @@ def appointment_series_detail(request, series_id: int):
         series,
         request.GET.get("history_page"),
     )
+    revisions = series.revisions.select_related("actor").prefetch_related(
+        Prefetch(
+            "participants",
+            queryset=AppointmentSeriesRevisionParticipant.objects.select_related(
+                "child", "program_block__program__child", "billing_account__funding_source",
+                "billing_account__child", "billing_account__service",
+            ).order_by("position", "pk"),
+        ),
+        Prefetch(
+            "staff_assignments",
+            queryset=AppointmentSeriesRevisionStaffAssignment.objects.select_related("staff_member"),
+        ),
+    ).order_by("-revision_number", "-pk")
+    revision_page = Paginator(revisions, 10).get_page(request.GET.get("revision_page"))
+    revision_query = request.GET.copy()
+    for key in list(revision_query):
+        if key != "history_page":
+            revision_query.pop(key)
     return render(
         request,
         "operations/appointment_series_detail.html",
@@ -1104,6 +1127,10 @@ def appointment_series_detail(request, series_id: int):
             ),
             "lifecycle_events": lifecycle_page.object_list,
             "lifecycle_page": lifecycle_page,
+            "composition_access": composition_access(series, user=request.user),
+            "revision_page": revision_page,
+            "revision_pagination_query": revision_query.urlencode(),
+            "today": timezone.localdate(),
         },
     )
 

@@ -173,6 +173,7 @@ from .rescheduling_plans import (
 from .rooms import room_create, room_edit, room_list
 from .schedule import schedule
 from .scheduling_helpers import suggested_transfer_slots
+from .series_composition import appointment_series_composition
 from .series_registry import appointment_series_list
 from .services import service_archive, service_create, service_edit, service_list, service_restore
 from .specialist import (
@@ -211,6 +212,7 @@ __all__ = [
     "appointment_schedule_decide",
     "appointment_send_confirmation",
     "appointment_series_action",
+    "appointment_series_composition",
     "appointment_series_detail",
     "appointment_series_list",
     "balance_account_create",

@@ -354,16 +354,11 @@ def revise_future_composition(
         raise ValidationError("Для выхода специалиста вне графика укажите основание.")
 
     locked = AppointmentSeries.objects.select_for_update().get(pk=series.pk)
+    if locked.current_revision_id is None:
+        raise ValidationError("Для изменения состава нужна сохраненная редакция серии.")
     if locked.current_revision_id != expected_revision_id:
         raise SeriesRevisionMismatch("Состав серии уже изменен другим пользователем.")
-    if locked.status != AppointmentSeries.Status.ACTIVE:
-        raise ValidationError("Будущий состав можно изменить только у активной серии.")
-    if (
-        locked.materialization_mode
-        != AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS
-    ):
-        raise ValidationError("Состав join-серии является историей выбранной операции.")
-    previous = AppointmentSeriesRevision.objects.get(pk=expected_revision_id)
+    previous = assert_future_composition_editable(locked, actor=actor)
     assert_current_projection(locked, previous)
     today = timezone.localdate()
     if effective_from <= today:
@@ -572,6 +567,32 @@ def revise_future_composition(
     )
     locked.current_revision_id = revision.pk
     return revision
+
+
+def assert_future_composition_editable(
+    series: AppointmentSeries, *, actor: Any
+) -> AppointmentSeriesRevision:
+    """Shared availability check; the writer calls it again under the root lock."""
+    role = require_operator_role(actor)
+    if series.status != AppointmentSeries.Status.ACTIVE:
+        raise ValidationError("Будущий состав можно изменить только у активной серии.")
+    if series.materialization_mode != AppointmentSeries.MaterializationMode.CREATE_APPOINTMENTS:
+        raise ValidationError("Состав операции присоединения сохраняется как история и не редактируется.")
+    if series.current_revision_id is None:
+        raise ValidationError("Для изменения состава нужна сохраненная редакция серии.")
+    previous = series.current_revision
+    if (
+        role == AuthorityRole.ADMINISTRATOR.value
+        and previous.event_type == AppointmentSeriesRevision.EventType.FUTURE_COMPOSITION
+        and previous.actor_role_snapshot == AppointmentSeriesRevision.ActorRole.DIRECTOR
+    ):
+        raise PermissionDenied(
+            "Последнее изменение будущего состава принято руководителем. "
+            "Следующую редакцию может сохранить только руководитель."
+        )
+    if max(timezone.localdate(), previous.effective_from) >= previous.end_date:
+        raise ValidationError("В периоде серии не осталось даты для новой будущей редакции.")
+    return previous
 
 
 def _run_payload(
