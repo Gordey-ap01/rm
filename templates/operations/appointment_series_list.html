@@ -115,7 +115,7 @@
                       <small>{{ series.get_session_type_display }} · {{ series.get_materialization_mode_display }}</small>
                     </div>
                   </td>
-                  <td data-label="Статус"><span class="status-pill">{{ series.get_status_display }}</span></td>
+                  <td data-label="Статус"><span class="status-pill">{% if row.materialization_stopped %}Новые запуски остановлены{% else %}{{ series.get_status_display }}{% endif %}</span></td>
                   <td data-label="Плановый период">{{ series.start_date|date:"d.m.Y" }} — {{ series.end_date|date:"d.m.Y" }}</td>
                   <td class="series-participants" data-label="Последний сохраненный состав">
                     {% if row.participants %}

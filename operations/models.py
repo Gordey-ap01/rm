@@ -5150,8 +5150,8 @@ class AppointmentSeriesLifecycleEvent(TimeStampedModel):
                 errors["supersedes"] = "Возобновление должно ссылаться на остановившее событие."
             elif self.supersedes.series_id != self.series_id:
                 errors["supersedes"] = "Переопределяемое событие должно относиться к той же серии."
-            elif self.supersedes.event_type == self.EventType.RESUME_MATERIALIZATION:
-                errors["supersedes"] = "Возобновление должно переопределять остановку серии."
+            elif self.supersedes.event_type != self.EventType.STOP_MATERIALIZATION:
+                errors["supersedes"] = "Возобновление должно переопределять явную остановку новых запусков."
         elif self.supersedes_id:
             errors["supersedes"] = "Операционная остановка начинает новую цепочку решения."
 

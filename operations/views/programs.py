@@ -16,6 +16,7 @@ from django.views.decorators.http import require_http_methods
 from operations.forms import (
     AppointmentSeriesLifecycleActionForm,
     AppointmentSeriesRetrySkippedForm,
+    AppointmentSeriesStopResumeForm,
     GroupProgramJoinForm,
     GroupProgramSeriesForm,
     ProgramBlockForm,
@@ -707,6 +708,8 @@ def _group_series_preview_from_form(form: GroupProgramSeriesForm):
 _SERIES_ACTION_RETRY = "retry-skipped"
 _SERIES_ACTION_CANCEL = "cancel-future"
 _SERIES_ACTION_WITHDRAW = "withdraw-future"
+_SERIES_ACTION_STOP = "stop-materialization"
+_SERIES_ACTION_RESUME = "resume-materialization"
 
 _SERIES_ACTION_DEFINITIONS = {
     _SERIES_ACTION_RETRY: {
@@ -754,6 +757,37 @@ _SERIES_ACTION_DEFINITIONS = {
         "show_period": False,
         "form_class": AppointmentSeriesLifecycleActionForm,
     },
+    _SERIES_ACTION_STOP: {
+        "slug": _SERIES_ACTION_STOP,
+        "title": "Остановить новые запуски",
+        "label": "Остановить новые запуски",
+        "icon": "bi-pause-circle",
+        "button_class": "btn-outline-warning",
+        "confirm_class": "btn-warning",
+        "confirm_label": "Остановить новые запуски",
+        "description": (
+            "Новые запуски создания занятий будут остановлены, а незавершенные "
+            "запуски прерваны. Уже созданные занятия, участия и финансовая история "
+            "сохранятся. Эта команда не создает занятия автоматически."
+        ),
+        "show_period": False,
+        "form_class": AppointmentSeriesStopResumeForm,
+    },
+    _SERIES_ACTION_RESUME: {
+        "slug": _SERIES_ACTION_RESUME,
+        "title": "Возобновить новые запуски",
+        "label": "Возобновить новые запуски",
+        "icon": "bi-play-circle",
+        "button_class": "btn-outline-success",
+        "confirm_class": "btn-success",
+        "confirm_label": "Возобновить новые запуски",
+        "description": (
+            "Будущие запуски снова будут разрешены. Эта команда не создает занятия, "
+            "не меняет уже созданные занятия, участия или финансовую историю."
+        ),
+        "show_period": False,
+        "form_class": AppointmentSeriesStopResumeForm,
+    },
 }
 
 
@@ -781,9 +815,35 @@ def _series_action_definition(series: AppointmentSeries, action: str) -> dict:
             and series.status in {series.Status.ACTIVE, series.Status.CANCELLED}
         )
     )
+    if action in {_SERIES_ACTION_STOP, _SERIES_ACTION_RESUME}:
+        latest_event = series.lifecycle_events.order_by("-event_number", "-pk").first()
+        if action == _SERIES_ACTION_STOP:
+            available = series.status == series.Status.ACTIVE
+            blocked_reason = (
+                "Остановить новые запуски можно только для активной серии."
+                if not available
+                else ""
+            )
+        else:
+            available = bool(
+                series.status == series.Status.CANCELLED
+                and latest_event
+                and latest_event.event_type
+                == AppointmentSeriesLifecycleEvent.EventType.STOP_MATERIALIZATION
+            )
+            blocked_reason = (
+                "Возобновление доступно только после последней явной остановки новых запусков."
+                if not available
+                else ""
+            )
+        result = dict(definition)
+        result.update(available=available, blocked_reason=blocked_reason)
+        return result
     if not supported:
         raise Http404("Команда недоступна для текущего режима или статуса серии.")
-    return dict(definition)
+    result = dict(definition)
+    result.update(available=True, blocked_reason="")
+    return result
 
 
 def _series_display_occurrences(series: AppointmentSeries) -> list:
@@ -877,6 +937,12 @@ def _series_available_actions(
         and series.status in {AppointmentSeries.Status.ACTIVE, AppointmentSeries.Status.CANCELLED}
     ):
         actions.append(dict(_SERIES_ACTION_DEFINITIONS[_SERIES_ACTION_WITHDRAW]))
+    actions.extend(
+        [
+            dict(_SERIES_ACTION_DEFINITIONS[_SERIES_ACTION_STOP]),
+            dict(_SERIES_ACTION_DEFINITIONS[_SERIES_ACTION_RESUME]),
+        ]
+    )
 
     director_lock = bool(
         latest_event
@@ -892,7 +958,40 @@ def _series_available_actions(
         is_lifecycle_action = action["slug"] in {
             _SERIES_ACTION_CANCEL,
             _SERIES_ACTION_WITHDRAW,
+            _SERIES_ACTION_STOP,
         }
+        if action["slug"] == _SERIES_ACTION_STOP:
+            action["enabled"] = series.status == AppointmentSeries.Status.ACTIVE and not (
+                director_lock and not is_director(user)
+            )
+            action["blocked_reason"] = (
+                "Последнее решение по серии принято руководителем. Остановить новые запуски может только руководитель."
+                if director_lock and not is_director(user)
+                else (
+                    "Новые запуски уже остановлены или серия не активна."
+                    if series.status != AppointmentSeries.Status.ACTIVE
+                    else ""
+                )
+            )
+            continue
+        if action["slug"] == _SERIES_ACTION_RESUME:
+            can_resume = bool(
+                series.status == AppointmentSeries.Status.CANCELLED
+                and latest_event
+                and latest_event.event_type
+                == AppointmentSeriesLifecycleEvent.EventType.STOP_MATERIALIZATION
+            )
+            action["enabled"] = can_resume and is_director(user)
+            action["blocked_reason"] = (
+                "Возобновление доступно только руководителю."
+                if can_resume and not is_director(user)
+                else (
+                    "Возобновление доступно только после последней явной остановки новых запусков."
+                    if not can_resume
+                    else ""
+                )
+            )
+            continue
         action["enabled"] = not (director_lock and is_lifecycle_action)
         action["blocked_reason"] = (
             "Последнее решение по серии принято руководителем. Изменить его может только руководитель."
@@ -1131,6 +1230,12 @@ def appointment_series_detail(request, series_id: int):
             "revision_page": revision_page,
             "revision_pagination_query": revision_query.urlencode(),
             "today": timezone.localdate(),
+            "materialization_stopped": bool(
+                latest_event
+                and latest_event.event_type
+                == AppointmentSeriesLifecycleEvent.EventType.STOP_MATERIALIZATION
+                and series.status == AppointmentSeries.Status.CANCELLED
+            ),
         },
     )
 
@@ -1144,6 +1249,25 @@ def appointment_series_action(request, series_id: int, action: str):
     )
     definition = _series_action_definition(series, action)
     latest_event = series.lifecycle_events.order_by("-event_number", "-pk").first()
+    is_stop_resume = action in {_SERIES_ACTION_STOP, _SERIES_ACTION_RESUME}
+    if action == _SERIES_ACTION_STOP and (
+        latest_event is not None
+        and latest_event.actor_role_snapshot
+        == AppointmentSeriesLifecycleEvent.ActorRole.DIRECTOR
+        and not is_director(request.user)
+    ):
+        definition.update(
+            available=False,
+            blocked_reason=(
+                "Последнее решение по серии принято руководителем. Остановить новые "
+                "запуски может только руководитель."
+            ),
+        )
+    elif action == _SERIES_ACTION_RESUME and not is_director(request.user):
+        definition.update(
+            available=False,
+            blocked_reason="Возобновить новые запуски может только руководитель.",
+        )
     if (
         action in {_SERIES_ACTION_CANCEL, _SERIES_ACTION_WITHDRAW}
         and latest_event is not None
@@ -1156,7 +1280,11 @@ def appointment_series_action(request, series_id: int, action: str):
         )
 
     form_class = definition["form_class"]
-    form = form_class(request.POST if request.method == "POST" else None)
+    form = form_class(
+        request.POST if request.method == "POST" else None,
+        initial={"expected_event_id": latest_event.pk if latest_event else 0},
+    )
+    response_status = 200
     if request.method == "POST" and form.is_valid():
         data = form.cleaned_data
         try:
@@ -1177,6 +1305,25 @@ def appointment_series_action(request, series_id: int, action: str):
                 )
                 if result.reused_run:
                     messages.info(request, "Повторный запрос распознан без нового запуска.")
+            elif is_stop_resume:
+                lifecycle_service = (
+                    series_lifecycle.stop_materialization
+                    if action == _SERIES_ACTION_STOP
+                    else series_lifecycle.resume_materialization
+                )
+                result = lifecycle_service(
+                    series,
+                    operation_key=data["operation_key"],
+                    actor=request.user,
+                    reason=data["reason"],
+                    expected_event_id=data["expected_event_id"],
+                )
+                if result.reused_event:
+                    messages.info(request, "Повторный запрос распознан без нового события.")
+                elif action == _SERIES_ACTION_STOP:
+                    messages.success(request, "Новые запуски остановлены.")
+                else:
+                    messages.success(request, "Новые запуски возобновлены.")
             else:
                 lifecycle_service = (
                     series_lifecycle.cancel_future_unstarted
@@ -1205,6 +1352,11 @@ def appointment_series_action(request, series_id: int, action: str):
                     messages.success(request, message)
                 if result.reused_event:
                     messages.info(request, "Повторный запрос распознан без нового события.")
+        except series_lifecycle.SeriesLifecycleMismatch as exc:
+            _add_form_validation_error(form, exc)
+            response_status = 409
+        except PermissionDenied:
+            raise
         except ValidationError as exc:
             _add_form_validation_error(form, exc)
         else:
@@ -1218,7 +1370,15 @@ def appointment_series_action(request, series_id: int, action: str):
             "action": definition,
             "form": form,
             "cancel_url": reverse("appointment_series_detail", args=[series.pk]),
+            "materialization_stopped": bool(
+                latest_event
+                and latest_event.event_type
+                == AppointmentSeriesLifecycleEvent.EventType.STOP_MATERIALIZATION
+                and series.status == AppointmentSeries.Status.CANCELLED
+            ),
+            "show_action_form": definition["available"] or request.method == "POST",
         },
+        status=response_status,
     )
 
 

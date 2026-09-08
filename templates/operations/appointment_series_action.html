@@ -6,15 +6,19 @@
 <section class="page-header">
   <div>
     <h1>{{ action.title }}</h1>
-    <p>{{ series.title }} · {{ series.service }} · {{ series.get_status_display }}</p>
+    <p>{{ series.title }} · {{ series.service }} · {% if materialization_stopped %}Новые запуски остановлены{% else %}{{ series.get_status_display }}{% endif %}</p>
   </div>
   <a class="button-link secondary" href="{{ cancel_url }}"><i class="bi bi-arrow-left" aria-hidden="true"></i> К серии</a>
 </section>
 
 <section class="detail-grid">
   <article class="panel form-panel">
-    <h2 class="h6">Подтверждение команды</h2>
+    <h2 class="h6">{% if action.available %}Подтверждение команды{% else %}Команда недоступна{% endif %}</h2>
     <p>{{ action.description }}</p>
+    {% if not action.available %}
+      <div class="alert alert-warning" role="status">{{ action.blocked_reason }}</div>
+    {% endif %}
+    {% if show_action_form %}
     <form method="post" class="form-stack">
       {% csrf_token %}
       {% for hidden in form.hidden_fields %}
@@ -50,18 +54,22 @@
       </div>
 
       <div class="form-actions">
+        {% if action.available %}
         <button type="submit" class="btn {{ action.confirm_class }}">
           <i class="bi {{ action.icon }}" aria-hidden="true"></i> {{ action.confirm_label }}
         </button>
+        {% endif %}
         <a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>
       </div>
     </form>
+    {% endif %}
   </article>
 
   <aside class="panel" aria-label="Параметры серии">
     <h2 class="h6">Серия</h2>
     <dl class="detail-list mb-0">
       <div><dt>Режим</dt><dd>{{ series.get_materialization_mode_display }}</dd></div>
+      <div><dt>Состояние запусков</dt><dd>{% if materialization_stopped %}Новые запуски остановлены{% elif series.status == 'active' %}Новые запуски разрешены{% else %}Недоступны: {{ series.get_status_display }}{% endif %}</dd></div>
       <div><dt>Период</dt><dd>{{ series.start_date|date:"d.m.Y" }}-{{ series.end_date|date:"d.m.Y" }}</dd></div>
       <div><dt>Получатель</dt><dd>{{ series.child }}</dd></div>
       <div><dt>Каскад</dt><dd>{% if series.program_block %}{{ series.program_block.number }}. {{ series.program_block.title }}{% else %}<span class="muted">не указан</span>{% endif %}</dd></div>

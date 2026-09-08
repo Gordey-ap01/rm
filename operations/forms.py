@@ -2426,6 +2426,10 @@ class AppointmentSeriesLifecycleActionForm(forms.Form):
         self.initial.setdefault("operation_key", uuid4())
 
 
+class AppointmentSeriesStopResumeForm(AppointmentSeriesLifecycleActionForm):
+    expected_event_id = forms.IntegerField(min_value=0, widget=forms.HiddenInput)
+
+
 class AppointmentSeriesRetrySkippedForm(AppointmentSeriesLifecycleActionForm):
     date_from = forms.DateField(
         label="Повторить с даты",

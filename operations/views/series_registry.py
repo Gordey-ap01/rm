@@ -1,13 +1,14 @@
 """Operator navigation over current and historical series membership."""
 
 from django.core.paginator import Paginator
-from django.db.models import Exists, OuterRef, Prefetch, Q
+from django.db.models import Exists, OuterRef, Prefetch, Q, Subquery
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
 
 from operations.forms_series_registry import SeriesRegistryFilterForm
 from operations.models import (
     AppointmentSeries,
+    AppointmentSeriesLifecycleEvent,
     AppointmentSeriesParticipant,
     AppointmentSeriesRevisionParticipant,
 )
@@ -63,6 +64,11 @@ def _registry_row(series):
         "series": series,
         "participants": participants,
         "composition_revision": revision,
+        "materialization_stopped": (
+            series.status == AppointmentSeries.Status.CANCELLED
+            and series.latest_event_type
+            == AppointmentSeriesLifecycleEvent.EventType.STOP_MATERIALIZATION
+        ),
     }
 
 
@@ -72,12 +78,32 @@ def appointment_series_list(request):
     form = SeriesRegistryFilterForm(request.GET)
     filters_valid = form.is_valid()
     filters = form.cleaned_data if filters_valid else {}
-    series = AppointmentSeries.objects.all()
+    latest_event_type = AppointmentSeriesLifecycleEvent.objects.filter(
+        series_id=OuterRef("pk")
+    ).order_by("-event_number", "-pk").values("event_type")[:1]
+    series = AppointmentSeries.objects.annotate(latest_event_type=Subquery(latest_event_type))
     if filters_valid:
         series = _filter_membership(
             series, recipient=filters.get("recipient"), program=filters.get("program")
         )
-        if filters.get("status"):
+        if filters.get("status") == "stopped":
+            series = series.filter(
+                status=AppointmentSeries.Status.CANCELLED,
+                latest_event_type=AppointmentSeriesLifecycleEvent.EventType.STOP_MATERIALIZATION,
+            )
+        elif filters.get("status") == AppointmentSeries.Status.CANCELLED:
+            series = series.filter(
+                Q(status=AppointmentSeries.Status.CANCELLED)
+                & (
+                    Q(latest_event_type__isnull=True)
+                    | ~Q(
+                        latest_event_type=(
+                            AppointmentSeriesLifecycleEvent.EventType.STOP_MATERIALIZATION
+                        )
+                    )
+                )
+            )
+        elif filters.get("status"):
             series = series.filter(status=filters["status"])
         if filters.get("date_from"):
             series = series.filter(end_date__gte=filters["date_from"])

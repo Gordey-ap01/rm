@@ -24,7 +24,11 @@ class SeriesRegistryFilterForm(forms.Form):
     )
     status = forms.ChoiceField(
         label="Статус серии",
-        choices=[("", "Все статусы"), *AppointmentSeries.Status.choices],
+        choices=[
+            ("", "Все статусы"),
+            ("stopped", "Новые запуски остановлены"),
+            *AppointmentSeries.Status.choices,
+        ],
         required=False,
         widget=forms.Select(attrs={"class": "form-select"}),
     )

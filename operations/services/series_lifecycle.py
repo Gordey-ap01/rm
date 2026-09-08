@@ -190,6 +190,16 @@ def _assert_decision_priority(
         )
 
 
+def _assert_expected_event(
+    previous: AppointmentSeriesLifecycleEvent | None,
+    expected_event_id: int | None,
+) -> None:
+    if expected_event_id is not None and expected_event_id != (previous.pk if previous else 0):
+        raise SeriesLifecycleMismatch(
+            "Состояние серии уже изменилось. Откройте карточку и проверьте последнее решение."
+        )
+
+
 def _interrupt_unfinished_runs(series: AppointmentSeries) -> None:
     unfinished_runs = list(
         series.materialization_runs.select_for_update()
@@ -225,6 +235,7 @@ def stop_materialization(
     operation_key: UUID,
     actor: Any,
     reason: str,
+    expected_event_id: int | None = None,
 ) -> SeriesLifecycleResult:
     role = require_operator_role(actor)
     reason = _normalized_reason(reason)
@@ -244,6 +255,7 @@ def stop_materialization(
             reused_event=True,
         )
     previous = _latest_series_event(locked)
+    _assert_expected_event(previous, expected_event_id)
     _assert_decision_priority(role, previous)
     if locked.status != AppointmentSeries.Status.ACTIVE:
         raise ValidationError("Остановить materialization можно только для активной серии.")
@@ -300,6 +312,7 @@ def resume_materialization(
     operation_key: UUID,
     actor: Any,
     reason: str,
+    expected_event_id: int | None = None,
 ) -> SeriesLifecycleResult:
     role = authority_role(actor)
     if role != AuthorityRole.DIRECTOR:
@@ -320,15 +333,16 @@ def resume_materialization(
             ),
             reused_event=True,
         )
-    if locked.status != AppointmentSeries.Status.CANCELLED:
-        raise ValidationError("Возобновить materialization можно только после явной остановки.")
-
     previous = _latest_series_event(locked)
-    if previous is None or previous.event_type == (
-        AppointmentSeriesLifecycleEvent.EventType.RESUME_MATERIALIZATION
+    _assert_expected_event(previous, expected_event_id)
+    if locked.status != AppointmentSeries.Status.CANCELLED:
+        raise ValidationError("Возобновить новые запуски можно только после явной остановки.")
+    if previous is None or previous.event_type != (
+        AppointmentSeriesLifecycleEvent.EventType.STOP_MATERIALIZATION
     ):
         raise SeriesLifecycleMismatch(
-            "У серии нет остановившего lifecycle-события для переопределения."
+            "Возобновить новые запуски можно только после явной остановки. "
+            "Отмена занятий или снятие участий не допускают возобновления."
         )
 
     payload = _event_payload(
