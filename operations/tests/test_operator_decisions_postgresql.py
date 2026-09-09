@@ -30,6 +30,11 @@ from operations.services import appointments as appointment_svc, schedule_decisi
 class OperatorDecisionPostgreSQLTests(TransactionTestCase):
     reset_sequences = True
 
+    def tearDown(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes("operations"))
+        super().tearDown()
+
     def setUp(self):
         self.admin = User.objects.create_user("pg-operator-admin", password="x", is_staff=True)
         self.director = User.objects.create_superuser("pg-operator-director", password="x")
