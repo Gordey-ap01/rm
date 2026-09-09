@@ -222,6 +222,7 @@
             <span class="status-pill">{{ program.get_status_display }}</span>
           </div>
           <div class="d-flex flex-wrap gap-1">
+            <a class="btn btn-outline-primary btn-sm py-0" href="{% url 'program_detail' program.pk %}"><i class="bi bi-sliders" aria-hidden="true"></i> Управление программой</a>
             <a class="btn btn-outline-primary btn-sm py-0" href="{% url 'appointment_series_list' %}?recipient={{ recipient.pk }}&amp;program={{ program.pk }}">Серии программы</a>
             <a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'program_block_create' program.pk %}">+ Блок</a>
           </div>

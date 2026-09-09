@@ -297,6 +297,9 @@ class AppointmentForm(forms.ModelForm):
         self._original_ends_at = instance.ends_at if instance and instance.pk else None
         self._original_child_id = instance.child_id if instance else None
         self._original_staff_member_id = instance.staff_member_id if instance else None
+        self._original_service_id = instance.service_id if instance else None
+        self._original_room_id = instance.room_id if instance else None
+        self._original_program_block_id = instance.program_block_id if instance else None
         self._original_participant_ids: set[int] = set()
         self._original_staff_assignment_ids: set[int] = set()
         if instance and instance.pk:
@@ -731,6 +734,52 @@ class AppointmentForm(forms.ModelForm):
             defaults=defaults,
         )
 
+    def _requires_paused_program_check(self, appointment: Appointment) -> bool:
+        if not appointment.pk:
+            return True
+        selected_child_ids = {
+            child.pk for child in self._selected_children(self.cleaned_data)
+        }
+        selected_staff_ids = {
+            staff.pk for staff in self._selected_staff_members(self.cleaned_data)
+        }
+        return any(
+            (
+                appointment.starts_at != self._original_starts_at,
+                appointment.ends_at != self._original_ends_at,
+                appointment.child_id != self._original_child_id,
+                appointment.staff_member_id != self._original_staff_member_id,
+                appointment.service_id != self._original_service_id,
+                appointment.room_id != self._original_room_id,
+                appointment.program_block_id != self._original_program_block_id,
+                selected_child_ids != self._original_participant_ids,
+                selected_staff_ids != self._original_staff_assignment_ids,
+            )
+        )
+
+    def _affected_program_block_ids(
+        self,
+        appointment: Appointment,
+        locked_appointment: Appointment | None,
+    ) -> set[int]:
+        block_ids = {
+            block_id
+            for block_id in (
+                appointment.program_block_id,
+                locked_appointment.program_block_id if locked_appointment else None,
+            )
+            if block_id is not None
+        }
+        if locked_appointment is not None:
+            from operations.services import appointments as appointment_svc
+
+            block_ids.update(
+                appointment_svc.operational_participants(locked_appointment)
+                .filter(program_block_id__isnull=False)
+                .values_list("program_block_id", flat=True)
+            )
+        return block_ids
+
     def _post_clean(self):
         if self._room_override_requested():
             self.instance._skip_room_limit_validation = True
@@ -742,7 +791,7 @@ class AppointmentForm(forms.ModelForm):
 
     @transaction.atomic
     def save(self, commit=True):
-        from operations.services import appointments as appointment_svc
+        from operations.services import appointments as appointment_svc, program_scheduling
 
         appointment = super().save(commit=False)
         appointment.starts_at = self.cleaned_data["starts_at"]
@@ -796,6 +845,10 @@ class AppointmentForm(forms.ModelForm):
                         locked.appointment,
                         requested_status=appointment.status,
                         action="сохранить занятие",
+                    )
+                if self._requires_paused_program_check(appointment):
+                    program_scheduling.assert_program_blocks_not_paused(
+                        self._affected_program_block_ids(appointment, locked.appointment)
                     )
                 room = locked.room_for(appointment.room_id)
                 room_conflicts = schedule_write_svc.ensure_room_capacity(
@@ -1052,7 +1105,7 @@ class AppointmentMoveForm(forms.Form):
 
     @transaction.atomic
     def save(self):
-        from operations.services import appointments as appointment_svc
+        from operations.services import appointments as appointment_svc, program_scheduling
 
         starts_at = self.cleaned_data["starts_at"]
         ends_at = self.cleaned_data["ends_at"]
@@ -1093,6 +1146,12 @@ class AppointmentMoveForm(forms.Form):
                     "child", "billing_account", "program_block"
                 )
                 .order_by("pk")
+            )
+            program_scheduling.assert_program_blocks_not_paused(
+                [
+                    old.program_block_id,
+                    *(participant.program_block_id for participant in participants),
+                ]
             )
             children = [participant.child for participant in participants] or [old.child]
             assignments = list(
@@ -1434,21 +1493,33 @@ class AppointmentParticipantProgramForm(forms.Form):
         return cleaned
 
     def save(self):
+        from operations.services import program_scheduling
+
         participant = self.participant
         if participant is None:
             raise ValueError("Участник занятия не найден.")
         program_block = self.cleaned_data.get("program_block")
-        previous_block_id = participant.program_block_id
-        participant.program_block = program_block
-        if not program_block or program_block.pk != previous_block_id:
-            participant.sequence_number = None
-        participant.save(update_fields=["program_block", "sequence_number", "updated_at"])
-        if participant.child_id == self.appointment.child_id:
-            Appointment.objects.filter(pk=self.appointment.pk).update(
-                program_block=participant.program_block,
-                sequence_number=participant.sequence_number,
-                updated_at=timezone.now(),
+        with transaction.atomic(), schedule_write_svc.lock_schedule_write(
+            appointment_id=self.appointment.pk,
+            room_ids=[self.appointment.room_id],
+        ) as locked:
+            participant = AppointmentParticipant.objects.select_for_update().get(
+                pk=participant.pk, appointment_id=self.appointment.pk
             )
+            if (program_block.pk if program_block else None) == participant.program_block_id:
+                return participant
+            program_scheduling.assert_program_blocks_not_paused(
+                [participant.program_block_id, program_block.pk if program_block else None]
+            )
+            participant.program_block = program_block
+            participant.sequence_number = None
+            participant.save(update_fields=["program_block", "sequence_number", "updated_at"])
+            if participant.child_id == locked.appointment.child_id:
+                Appointment.objects.filter(pk=self.appointment.pk).update(
+                    program_block=participant.program_block,
+                    sequence_number=participant.sequence_number,
+                    updated_at=timezone.now(),
+                )
         return participant
 
 
@@ -1987,6 +2058,19 @@ class TreatmentProgramForm(forms.ModelForm):
     def __init__(self, *args, child: Child | None = None, **kwargs):
         super().__init__(*args, **kwargs)
         self.child = child
+        has_lifecycle_history = bool(
+            self.instance.pk and self.instance.lifecycle_events.exists()
+        )
+        if self.instance.pk and (
+            self.instance.status == TreatmentProgram.Status.PAUSED or has_lifecycle_history
+        ):
+            self.fields["status"].disabled = True
+        else:
+            self.fields["status"].choices = [
+                choice
+                for choice in self.fields["status"].choices
+                if choice[0] != TreatmentProgram.Status.PAUSED
+            ]
         self.fields["child"].queryset = Child.objects.order_by("last_name", "first_name")
         self.fields["consultation"].required = False
         consultations = Appointment.objects.select_related("service", "staff_member").order_by(

@@ -31,6 +31,7 @@ from operations.models import (
     StaffMember,
     normalize_immutable_reason,
 )
+from operations.services import program_scheduling
 from operations.services.authority import AuthorityRole, authority_role, is_center_operator
 
 
@@ -465,6 +466,12 @@ def reschedule(
             operational_participants(appointment).select_related(
                 "child", "billing_account", "program_block"
             ).order_by("pk")
+        )
+        program_scheduling.assert_program_blocks_not_paused(
+            [
+                appointment.program_block_id,
+                *(participant.program_block_id for participant in participants),
+            ]
         )
         children = [participant.child for participant in participants] or [appointment.child]
         target_room = locked.room_for(room_id)

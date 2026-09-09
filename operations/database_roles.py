@@ -2,6 +2,7 @@
 
 PUBLIC_SCHEMA = "public"
 IMMUTABLE_APPEND_ONLY_TABLES = (
+    "operations_treatmentprogramlifecycleevent",
     "operations_appointmentattendancedecision",
     "operations_appointmentscheduledecision",
     "operations_donorreportsnapshot",

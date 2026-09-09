@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action.title }}{% endblock %}
+
+{% block content %}
+<section class="page-header"><div><h1>{{ action.title }}</h1><p>{{ program.title }} · {{ program.child }} · {% if program.status == 'paused' %}Программа на паузе{% else %}{{ program.get_status_display }}{% endif %}</p></div><a class="button-link secondary" href="{{ cancel_url }}"><i class="bi bi-arrow-left" aria-hidden="true"></i> К программе</a></section>
+
+<section class="detail-grid">
+  <article class="panel form-panel">
+    <h2 class="h6">{% if action.available %}Подтверждение команды{% else %}Команда недоступна{% endif %}</h2>
+    <p>{{ action.description }}</p>
+    {% if legacy_paused_without_history and action.slug == 'resume' %}<div class="alert alert-warning" role="note">Пауза была установлена до появления журнала. Возобновление создаст первое событие; прошлое решение не будет добавлено задним числом.</div>{% endif %}
+    {% if not action.available %}<div class="alert alert-warning" role="status">{{ action.blocked_reason }}</div>{% endif %}
+    {% if show_action_form %}<form method="post" class="form-stack">{% csrf_token %}{% for hidden in form.hidden_fields %}{{ hidden }}{% if hidden.errors %}<div class="form-error" role="alert"><strong>{{ hidden.label }}:</strong> {{ hidden.errors }}</div>{% endif %}{% endfor %}{% if form.non_field_errors %}<div class="form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}<div class="field"><label for="{{ form.reason.id_for_label }}"><span>{{ form.reason.label }}</span></label>{{ form.reason }}{% if form.reason.errors %}<div class="form-error" role="alert">{{ form.reason.errors }}</div>{% endif %}</div><div class="form-actions">{% if action.available %}<button type="submit" class="btn {{ action.confirm_class }}"><i class="bi {{ action.icon }}" aria-hidden="true"></i> {{ action.confirm_label }}</button>{% endif %}<a class="button-link secondary" href="{{ cancel_url }}">Отмена</a></div></form>{% endif %}
+  </article>
+  <aside class="panel" aria-label="Параметры программы"><h2 class="h6">Программа</h2><dl class="detail-list mb-0"><div><dt>Получатель</dt><dd>{{ program.child }}</dd></div><div><dt>Статус</dt><dd>{% if program.status == 'paused' %}Программа на паузе{% else %}{{ program.get_status_display }}{% endif %}</dd></div><div><dt>Период</dt><dd>{% if program.starts_on %}{{ program.starts_on|date:"d.m.Y" }}{% else %}не указан{% endif %} — {% if program.ends_on %}{{ program.ends_on|date:"d.m.Y" }}{% else %}не указан{% endif %}</dd></div></dl></aside>
+</section>
+{% endblock %}

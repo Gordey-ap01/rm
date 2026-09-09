@@ -77,6 +77,7 @@ from .models import (
     TimeOffRequest,
     TimeOffRequestDecision,
     TreatmentProgram,
+    TreatmentProgramLifecycleEvent,
 )
 
 admin.site.site_header = "Реабилитационный центр"
@@ -1086,6 +1087,35 @@ class TreatmentProgramAdmin(admin.ModelAdmin):
     list_filter = ("status",)
     autocomplete_fields = ("child", "consultation")
     inlines = (ProgramBlockInline,)
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj and (obj.status == TreatmentProgram.Status.PAUSED or obj.lifecycle_events.exists()):
+            return ("status",)
+        return ()
+
+    def formfield_for_choice_field(self, db_field, request, **kwargs):
+        if db_field.name == "status":
+            kwargs["choices"] = [
+                choice for choice in TreatmentProgram.Status.choices
+                if choice[0] != TreatmentProgram.Status.PAUSED
+            ]
+        return super().formfield_for_choice_field(db_field, request, **kwargs)
+
+
+@admin.register(TreatmentProgramLifecycleEvent)
+class TreatmentProgramLifecycleEventAdmin(admin.ModelAdmin):
+    list_display = ("program", "event_number", "event_type", "actor", "occurred_at")
+    list_filter = ("event_type", "actor_role_snapshot")
+    readonly_fields = tuple(field.name for field in TreatmentProgramLifecycleEvent._meta.fields)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(ProgramBlock)

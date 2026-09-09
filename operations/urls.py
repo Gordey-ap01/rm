@@ -305,6 +305,12 @@ urlpatterns = [
         views.program_create,
         name="program_create_for_child",
     ),
+    path("programs/<int:program_id>/", views.program_detail, name="program_detail"),
+    path(
+        "programs/<int:program_id>/actions/<str:action>/",
+        views.program_lifecycle_action,
+        name="program_lifecycle_action",
+    ),
     path(
         "programs/<int:program_id>/blocks/new/",
         views.program_block_create,

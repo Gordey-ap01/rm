@@ -54,6 +54,7 @@ from operations.services import (
     billing as billing_svc,
     confirmation_decisions,
     notifications,
+    program_lifecycle,
     program_series,
     program_wizard,
     series_lifecycle,
@@ -2365,8 +2366,13 @@ class GroupProgramSeriesTests(TestCase):
             room=self.room,
             requested_count=1,
         )
-        self.program1.status = TreatmentProgram.Status.PAUSED
-        self.program1.save(update_fields=["status", "updated_at"])
+        program_lifecycle.pause_program(
+            self.program1,
+            actor=self.admin,
+            reason="Программа приостановлена после предварительного просмотра.",
+            operation_key=uuid4(),
+            expected_event_id=0,
+        )
 
         with self.assertRaisesMessage(ValidationError, "Программа изменилась"):
             program_wizard.create_schedule_from_preview(preview)
@@ -2562,33 +2568,51 @@ class GroupProgramSeriesTests(TestCase):
         )
 
     def test_group_series_requires_active_program_and_respects_program_dates(self):
-        self.program2.status = TreatmentProgram.Status.PAUSED
-        self.program2.save(update_fields=["status", "updated_at"])
+        paused = program_lifecycle.pause_program(
+            self.program2,
+            actor=self.admin,
+            reason="Программа приостановлена для проверки доступности серии.",
+            operation_key=uuid4(),
+            expected_event_id=0,
+        )
+        self.program2.refresh_from_db()
         with self.assertRaisesMessage(ValidationError, "активных программ"):
             self.preview()
 
-        self.program2.status = TreatmentProgram.Status.ACTIVE
+        program_lifecycle.resume_program(
+            self.program2,
+            actor=self.admin,
+            reason="Программа возобновлена для проверки периода.",
+            operation_key=uuid4(),
+            expected_event_id=paused.event.pk,
+        )
+        self.program2.refresh_from_db()
         self.program2.starts_on = self.start_date + timedelta(days=1)
-        self.program2.save(update_fields=["status", "starts_on", "updated_at"])
+        self.program2.save(update_fields=["starts_on", "updated_at"])
         with self.assertRaisesMessage(ValidationError, "начинается раньше программы"):
             self.preview()
 
     def test_group_series_rechecks_program_lifecycle_during_apply(self):
         preview = self.preview(end_date=self.start_date)
-        self.program2.status = TreatmentProgram.Status.PAUSED
-        self.program2.save(update_fields=["status", "updated_at"])
-
-        result = program_series.create_group_series(
-            preview,
-            operation_key=uuid4(),
+        program_lifecycle.pause_program(
+            self.program2,
             actor=self.admin,
+            reason="Программа приостановлена перед сохранением серии.",
+            operation_key=uuid4(),
+            expected_event_id=0,
         )
+        series_count = AppointmentSeries.objects.count()
+        appointment_count = Appointment.objects.count()
 
-        self.assertEqual(result.created_count, 0)
-        self.assertEqual(result.skipped_count, 1)
-        occurrence = result.series.occurrences.get()
-        self.assertEqual(occurrence.reason_code, "program_unavailable")
-        self.assertIsNone(occurrence.appointment_id)
+        with self.assertRaisesMessage(ValidationError, "активных программ"):
+            program_series.create_group_series(
+                preview,
+                operation_key=uuid4(),
+                actor=self.admin,
+            )
+
+        self.assertEqual(AppointmentSeries.objects.count(), series_count)
+        self.assertEqual(Appointment.objects.count(), appointment_count)
 
     def test_occurrence_and_series_history_cannot_be_changed_or_deleted(self):
         result = program_series.create_group_series(

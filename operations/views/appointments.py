@@ -9,6 +9,7 @@ from auditlog.models import LogEntry
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -790,6 +791,8 @@ def appointment_create(request):
         if form.is_valid():
             try:
                 appointment = form.save()
+            except ValidationError as exc:
+                form.add_error(None, exc)
             except IntegrityError:
                 form.add_error(None, "Не удалось сохранить: найден конфликт расписания.")
             else:
@@ -814,6 +817,8 @@ def appointment_edit(request, pk: int):
         if form.is_valid():
             try:
                 appointment = form.save()
+            except ValidationError as exc:
+                form.add_error(None, exc)
             except IntegrityError:
                 form.add_error(None, "Не удалось сохранить: найден конфликт расписания.")
             except appointment_svc.AppointmentStateConflict as exc:
@@ -849,6 +854,8 @@ def appointment_move(request, pk: int):
         if form.is_valid():
             try:
                 new_appointment = form.save()
+            except ValidationError as exc:
+                form.add_error(None, exc)
             except IntegrityError:
                 form.add_error(None, "Не удалось перенести: найден конфликт расписания.")
             except appointment_svc.AppointmentStateConflict as exc:
@@ -964,9 +971,13 @@ def appointment_participant_program(request, pk: int):
     if request.method == "POST":
         form = AppointmentParticipantProgramForm(request.POST, appointment=appointment)
         if form.is_valid():
-            participant = form.save()
-            messages.success(request, f"Каскад участника «{participant.child}» сохранен.")
-            return redirect("appointment_detail", pk=appointment.pk)
+            try:
+                participant = form.save()
+            except ValidationError as exc:
+                form.add_error(None, exc)
+            else:
+                messages.success(request, f"Каскад участника «{participant.child}» сохранен.")
+                return redirect("appointment_detail", pk=appointment.pk)
         messages.error(request, "Каскад участника не сохранен. Проверьте поля формы.")
         return render(
             request,

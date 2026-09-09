@@ -35,7 +35,7 @@ from operations.models import (
     StaffMember,
     TreatmentProgram,
 )
-from operations.services import program_wizard, scheduling, series_revisions
+from operations.services import program_scheduling, program_wizard, scheduling, series_revisions
 
 
 @dataclass(frozen=True)
@@ -572,7 +572,12 @@ def _create_series_definition(
             )
         return existing, True
 
-    primary_block = preview.blocks[0]
+    locked_blocks = program_scheduling.assert_program_blocks_active(
+        block.pk for block in preview.blocks
+    )
+    if len(locked_blocks) != len(preview.blocks):
+        raise ValidationError("Один из каскадов групповой серии больше не найден.")
+    primary_block = locked_blocks[preview.blocks[0].pk]
     primary_staff = preview.staff_members[0]
     series = AppointmentSeries(
         operation_key=operation_key,
@@ -598,7 +603,8 @@ def _create_series_definition(
     )
     series.full_clean()
     series.save()
-    for position, block in enumerate(preview.blocks, start=1):
+    for position, preview_block in enumerate(preview.blocks, start=1):
+        block = locked_blocks[preview_block.pk]
         AppointmentSeriesParticipant.objects.create(
             series=series,
             child=block.program.child,
@@ -1765,7 +1771,9 @@ def create_group_series(
     series_revisions.require_operator_role(actor)
     try:
         series, reused = _create_series_definition(preview, operation_key=operation_key)
-    except IntegrityError as exc:
+    except (IntegrityError, ValidationError) as exc:
+        # A concurrent winner may be visible to full_clean after waiting for
+        # program locks, so a duplicate UUID can fail validation before INSERT.
         series = AppointmentSeries.objects.filter(operation_key=operation_key).first()
         if series is None:
             raise
@@ -2061,6 +2069,12 @@ def _create_join_series_definition(
         _validate_reused_join_series(existing, fingerprint=fingerprint)
         return existing, True
 
+    locked_blocks = program_scheduling.assert_program_blocks_active([block.pk])
+    try:
+        block = locked_blocks[block.pk]
+    except KeyError as exc:
+        raise ValidationError("Каскад для присоединения больше не найден.") from exc
+
     first = appointments[0]
     local_starts = [timezone.localtime(item.starts_at) for item in appointments]
     series = AppointmentSeries(
@@ -2291,7 +2305,8 @@ def join_program_block_to_groups(
             selected,
             operation_key=operation_key,
         )
-    except IntegrityError:
+    except (IntegrityError, ValidationError):
+        # Replay only an accepted key; unrelated validation still propagates.
         series = AppointmentSeries.objects.filter(operation_key=operation_key).first()
         if series is None:
             raise

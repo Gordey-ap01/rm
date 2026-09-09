@@ -2702,6 +2702,18 @@ class GrantRecipientAllocation(TimeStampedModel):
         )
 
 
+class TreatmentProgramQuerySet(QuerySet):
+    def update(self, **kwargs):
+        if "status" in kwargs:
+            raise ValidationError("Статус программы меняется проверяемой командой.")
+        return super().update(**kwargs)
+
+    def bulk_update(self, objs, fields, batch_size=None):
+        if "status" in fields:
+            raise ValidationError("Статус программы меняется проверяемой командой.")
+        return super().bulk_update(objs, fields, batch_size=batch_size)
+
+
 class TreatmentProgram(TimeStampedModel):
     class Status(models.TextChoices):
         DRAFT = "draft", "Черновик"
@@ -2731,13 +2743,161 @@ class TreatmentProgram(TimeStampedModel):
     color = models.CharField("цвет", max_length=20, default="#1267f2")
     notes = models.TextField("примечания", blank=True)
 
+    objects = models.Manager.from_queryset(TreatmentProgramQuerySet)()
+
     class Meta:
         verbose_name = "программа занятий"
         verbose_name_plural = "программы занятий"
         ordering = ["child__last_name", "starts_on", "title"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(status__in=["draft", "active", "paused", "completed", "cancelled"]),
+                name="treatment_program_known_status",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        if not self.pk or (update_fields is not None and "status" not in update_fields):
+            return super().save(*args, **kwargs)
+        using = kwargs.get("using") or self._state.db or "default"
+        with transaction.atomic(using=using):
+            previous = (
+                type(self).objects.using(using).select_for_update(of=("self",))
+                .filter(pk=self.pk).values_list("status", flat=True).first()
+            )
+            if previous is not None and previous != self.status:
+                event = (
+                    TreatmentProgramLifecycleEvent.objects.using(using)
+                    .filter(program_id=self.pk).order_by("-event_number", "-pk").first()
+                )
+                guarded = previous == self.Status.PAUSED or self.status == self.Status.PAUSED or event
+                if guarded and not (
+                    event and event.status_from == previous and event.status_to == self.status
+                ):
+                    raise ValidationError("Пауза и возобновление программы требуют нового решения.")
+            return super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.child}: {self.title}"
+
+
+class TreatmentProgramLifecycleEvent(TimeStampedModel):
+    class EventType(models.TextChoices):
+        PAUSED = "paused", "Приостановить программу"
+        RESUMED = "resumed", "Возобновить программу"
+
+    class ActorRole(models.TextChoices):
+        DIRECTOR = "director", "Руководитель"
+        ADMINISTRATOR = "administrator", "Администратор"
+
+    program = models.ForeignKey(
+        TreatmentProgram, on_delete=models.PROTECT, related_name="lifecycle_events",
+        verbose_name="программа",
+    )
+    operation_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    fingerprint = models.CharField("отпечаток операции", max_length=64)
+    event_type = models.CharField("решение", max_length=20, choices=EventType.choices)
+    event_number = models.PositiveIntegerField("номер решения")
+    status_from = models.CharField("статус был", max_length=30, choices=TreatmentProgram.Status.choices)
+    status_to = models.CharField("статус стал", max_length=30, choices=TreatmentProgram.Status.choices)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name="program_lifecycle_events", verbose_name="решение принял",
+    )
+    actor_role_snapshot = models.CharField("роль", max_length=20, choices=ActorRole.choices)
+    reason = models.TextField("основание")
+    occurred_at = models.DateTimeField("время решения", default=timezone.now)
+    supersedes = models.ForeignKey(
+        "self", on_delete=models.PROTECT, null=True, blank=True,
+        related_name="superseded_by", verbose_name="предыдущее решение",
+    )
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        verbose_name = "решение по программе"
+        verbose_name_plural = "решения по программам"
+        ordering = ["program_id", "-event_number"]
+        constraints = [
+            models.UniqueConstraint(fields=["program", "event_number"], name="unique_program_event_number"),
+            models.UniqueConstraint(
+                fields=["supersedes"], condition=Q(supersedes__isnull=False),
+                name="unique_program_event_successor",
+            ),
+            models.CheckConstraint(condition=Q(event_number__gte=1), name="program_event_number_positive"),
+            models.CheckConstraint(
+                condition=(
+                    Q(event_type="paused", status_from="active", status_to="paused",
+                      actor_role_snapshot__in=["administrator", "director"])
+                    | Q(event_type="resumed", status_from="paused", status_to="active",
+                        actor_role_snapshot="director")
+                ), name="program_event_transition_role",
+            ),
+        ]
+
+    def fingerprint_payload(self):
+        return {
+            "program_id": self.program_id, "event_type": self.event_type,
+            "event_number": self.event_number, "status_from": self.status_from,
+            "status_to": self.status_to, "actor_id": self.actor_id,
+            "actor_role_snapshot": self.actor_role_snapshot, "reason": self.reason,
+            "supersedes_id": self.supersedes_id,
+        }
+
+    def clean(self):
+        from operations.services.authority import authority_role
+        from operations.services.series_revisions import canonical_fingerprint
+
+        super().clean()
+        self.reason = normalize_immutable_reason(self.reason)
+        errors = {}
+        if len(self.reason) < 5:
+            errors["reason"] = "Укажите основание решения: не менее 5 символов."
+        if self.actor_id and (
+            not self.actor.is_active or authority_role(self.actor) != self.actor_role_snapshot
+        ):
+            errors["actor_role_snapshot"] = "Роль решения не соответствует автору."
+        if self.fingerprint != canonical_fingerprint(self.fingerprint_payload()):
+            errors["fingerprint"] = "Отпечаток решения не соответствует его данным."
+        if self.program_id:
+            using = self._state.db or "default"
+            current = TreatmentProgram.objects.using(using).filter(pk=self.program_id).first()
+            previous = (
+                type(self).objects.using(using).filter(program_id=self.program_id)
+                .order_by("-event_number", "-pk").first()
+            )
+            if current and current.status != self.status_from:
+                errors["status_from"] = "Состояние программы уже изменилось."
+            if self.event_number != (previous.event_number + 1 if previous else 1):
+                errors["event_number"] = "Решение должно продолжать историю программы."
+            if self.supersedes_id != (previous.pk if previous else None):
+                errors["supersedes"] = "Решение должно ссылаться на предыдущее решение программы."
+            if previous:
+                if previous.status_to != self.status_from:
+                    errors["status_from"] = "Переход должен продолжать предыдущее решение."
+                if self.occurred_at and self.occurred_at < previous.occurred_at:
+                    errors["occurred_at"] = "Новое решение не может предшествовать предыдущему."
+                if previous.actor_role_snapshot == self.ActorRole.DIRECTOR and (
+                    self.actor_role_snapshot != self.ActorRole.DIRECTOR
+                ):
+                    errors["actor_role_snapshot"] = "Решение руководителя меняет только руководитель."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Решение по программе нельзя изменять.")
+        using = kwargs.get("using") or self._state.db or "default"
+        with transaction.atomic(using=using):
+            TreatmentProgram.objects.using(using).select_for_update(of=("self",)).get(pk=self.program_id)
+            self.full_clean()
+            return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Решение по программе нельзя удалять.")
+
+    def __str__(self):
+        return f"{self.program} / {self.get_event_type_display()} / №{self.event_number}"
 
 
 class ProgramBlock(TimeStampedModel):
