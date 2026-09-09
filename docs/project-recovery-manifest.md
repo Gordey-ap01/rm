@@ -63,7 +63,7 @@
 | `docs/58-grant-plan-versioning-contract.md` | Реализованный срез: типизированные редакции квот и распределений, director-only write-path, legacy backfill и payroll provenance. |
 | `docs/59-grant-fixed-compensation-and-donor-report-snapshot-contract.md` | Реализованный эпик 59: payroll-бюджет, fixed/per-session policy, фиксированная оплата проекта и закрытый донорский снимок. |
 | `docs/60-private-artifact-storage-and-donor-submission-contract.md` | Реализованный срез 59B-2: private storage, append-only сдачи/выдачи, integrity и backup/restore v2; там же production-блокеры. |
-| `docs/61-group-program-series-lifecycle-contract.md` | Активный доменный контракт: 61A-61D-3 приняты; stop/resume UI и guard 0066 (61D-4) реализованы. Статус приемки и следующий срез — в current-state. |
+| `docs/61-group-program-series-lifecycle-contract.md` | Активный доменный контракт: 61A-61D-4 приняты, включая stop/resume UI и guard 0066. Доказательства приемки и следующий срез — в current-state. |
 | `docs/62-operator-attendance-and-schedule-decisions.md` | Проведение и принятие расписания без ответа специалиста: два типизированных журнала, полномочия, рабочий UI, миграция `0065` и финансовая граница исправлений. |
 | `docs/decisions/ADR-001-*.md` | Django/PostgreSQL/local-first. |
 | `docs/decisions/ADR-002-*.md` | Балансовые счета и ledger. |
@@ -77,6 +77,7 @@
 | `docs/interviews/*.md` | Первичные интервью; читать при спорном требовании. |
 | `docs/PRODUCTION_DEPLOYMENT.md` | Развертывание и эксплуатация production. |
 | `docs/current-state.md` | Компактная текущая контрольная точка. |
+| `docs/project-roadmap-2026-09-09.md` | Карта продолжения для владельца центра: готовность, пакеты до пилота, предпосылки оценки времени и сметы. |
 | `docs/archive/prd/` | Сохраненные старые PRD, не источники текущих требований. |
 | `docs/archive/recovery/` | Полные старые журналы и промпты, не читать по умолчанию. |
 | `docshablon/` | Приватные исходные образцы документов; не коммитить. |

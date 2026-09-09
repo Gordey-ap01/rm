@@ -648,6 +648,14 @@ production-допуск реальной отправки.
   SQL, forward/reverse миграции и preflight старой некорректной истории,
   сохранность занятий/ledger, реестр, desktop/mobile browser QA и общий CI.
 
+Приемка 61D-4 завершена 2026-09-09: код `103cf8b`,
+[CI 34292476098](https://github.com/Gordey-ap01/rm/actions/runs/34292476098)
+успешен, `1114 passed, 490 warnings`; чистая PostgreSQL-цепочка и production
+backup/restore drill прошли. Локально проверены 13 новых тестов на PostgreSQL
+и SQLite (один PostgreSQL-only пропуск на SQLite), 183 существующих теста
+на PostgreSQL и desktop/390px browser QA. Это приемка stop/resume серии;
+управляемые переходы программы/каскада и общая приемка 61D остаются впереди.
+
 ## 7. Acceptance criteria всего контура
 
 1. Одна групповая серия создает занятия с несколькими получателями и
