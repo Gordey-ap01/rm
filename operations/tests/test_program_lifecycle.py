@@ -642,7 +642,7 @@ class ProgramLifecycleTests(TestCase):
         self.assertContains(response, "Проведено")
         self.assertContains(response, "Осталось провести")
         self.assertContains(response, "Идёт")
-        self.assertContains(response, "Неявка и списание не закрывают план")
+        self.assertContains(response, "Неявка и списание сами по себе не закрывают план")
         self.assertNotContains(response, "Приостановить можно только активную программу.")
 
     def test_recipient_detail_shows_progress_without_hiding_charged_count(self):

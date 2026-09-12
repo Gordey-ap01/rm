@@ -1,6 +1,6 @@
 # Текущее состояние проекта
 
-Дата продолжения: 2026-09-12. Ветка: `codex/domain-appointments-v2`.
+Дата продолжения: 2026-09-13. Ветка: `codex/domain-appointments-v2`.
 
 ## Откуда продолжать
 
@@ -22,7 +22,14 @@
 нового helper, проекции и lifecycle UI: **33 passed за 68.55s**, native exit 0;
 лог `.runtime/program-progress-final.log`. Код сохранен в `5f538de`;
 [общий CI 34696564220](https://github.com/Gordey-ap01/rm/actions/runs/34696564220)
-запущен на `5f538de82247afbda569c341cbc2700dc5479642`, результат еще ожидается.
+на `5f538de82247afbda569c341cbc2700dc5479642` завершился: 1165 passed и
+1 failed за 875.65s, 500 warnings. Единственный failure — UI-тест ожидал
+старый текст пояснения после финальной правки шаблона. Ожидание исправлено;
+тот же тест прошел отдельно (1 passed за 35.26s, native exit 0). Причина —
+текст был изменен после локального gate; итоговая редакция должна проверяться
+после последнего изменения. Повторный общий CI еще требуется. Лог первого
+CI — `.runtime/program-progress-ci-failed.log`, исправления —
+`.runtime/program-progress-copy-fix.log`. Restore job прошел.
 Browser QA на синтетических данных: при фактических 390px показатели
 каскада отображаются карточкой без горизонтальной прокрутки; при 1280px —
 таблицей. Пример plan=4, allocated=2, completed=1, remaining=3, charged=2
