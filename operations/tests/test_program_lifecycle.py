@@ -17,6 +17,7 @@ from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from operations.forms import TreatmentProgramForm
 from operations.models import (
     Appointment,
     AppointmentParticipant,
@@ -390,8 +391,10 @@ class ProgramLifecycleTests(TestCase):
             status=TreatmentProgram.Status.ACTIVE,
         )
         legacy_non_pause.status = TreatmentProgram.Status.COMPLETED
-        legacy_non_pause.save(update_fields=["status", "updated_at"])
-        self.assertEqual(legacy_non_pause.status, TreatmentProgram.Status.COMPLETED)
+        with self.assertRaises(ValidationError):
+            legacy_non_pause.save(update_fields=["status", "updated_at"])
+        legacy_non_pause.refresh_from_db()
+        self.assertEqual(legacy_non_pause.status, TreatmentProgram.Status.ACTIVE)
 
         fake_role_program = TreatmentProgram.objects.create(
             child=self.child,
@@ -515,6 +518,107 @@ class ProgramLifecycleTests(TestCase):
             ).status_code,
             302,
         )
+
+    def test_activation_completion_and_cancellation_actions_use_frozen_review(self):
+        draft = TreatmentProgram.objects.create(
+            child=self.child,
+            title="Черновик для активации через карточку",
+            status=TreatmentProgram.Status.DRAFT,
+        )
+        ProgramBlock.objects.create(
+            program=draft,
+            number=1,
+            title="Каскад черновика",
+            service=self.service,
+            staff_member=self.staff,
+            planned_sessions=3,
+            balance_account=self.account,
+        )
+        activation_url = self._action_url(draft, "activate")
+        activation = self.client.get(activation_url)
+        self.assertEqual(activation.status_code, 200)
+        self.assertTrue(activation.context["action"]["available"])
+        self.assertIn("expected_review_fingerprint", activation.context["form"].fields)
+        activation_review = program_lifecycle.get_program_lifecycle_review(draft)
+        activation_payload = self._payload(expected=0)
+        activation_payload["expected_review_fingerprint"] = activation_review.fingerprint
+        self.assertEqual(self.client.post(activation_url, activation_payload).status_code, 302)
+        draft.refresh_from_db()
+        self.assertEqual(draft.status, TreatmentProgram.Status.ACTIVE)
+
+        completion_url = self._action_url(draft, "complete")
+        completion = self.client.get(completion_url)
+        self.assertFalse(completion.context["action"]["available"])
+        self.assertEqual(len(completion.context["review_blocks"]), 1)
+        self.assertEqual(
+            completion.context["review_blocks"][0]["status_display"],
+            ProgramBlock.Status.PLANNED.label,
+        )
+
+        self.client.force_login(self.director)
+        completion_review = program_lifecycle.get_program_lifecycle_review(draft)
+        completion_payload = self._payload(
+            expected=draft.lifecycle_events.latest("event_number").pk,
+            reason="Руководитель завершает программу с незавершенным каскадом.",
+        )
+        completion_payload["expected_review_fingerprint"] = completion_review.fingerprint
+        self.assertEqual(self.client.post(completion_url, completion_payload).status_code, 302)
+        draft.refresh_from_db()
+        self.assertEqual(draft.status, TreatmentProgram.Status.COMPLETED)
+
+        cancelled = TreatmentProgram.objects.create(
+            child=self.child,
+            title="Программа для отмены через карточку",
+            status=TreatmentProgram.Status.ACTIVE,
+        )
+        cancel_url = self._action_url(cancelled, "cancel")
+        cancellation = self.client.get(cancel_url)
+        self.assertTrue(cancellation.context["action"]["available"])
+        cancellation_review = program_lifecycle.get_program_lifecycle_review(cancelled)
+        cancellation_payload = self._payload(expected=0)
+        cancellation_payload["expected_review_fingerprint"] = cancellation_review.fingerprint
+        self.assertEqual(self.client.post(cancel_url, cancellation_payload).status_code, 302)
+        cancelled.refresh_from_db()
+        self.assertEqual(cancelled.status, TreatmentProgram.Status.CANCELLED)
+
+    def test_program_status_is_not_ordinary_editable_data(self):
+        new_form = TreatmentProgramForm()
+        self.assertTrue(new_form.fields["status"].disabled)
+        self.assertEqual(
+            list(new_form.fields["status"].choices),
+            [(TreatmentProgram.Status.DRAFT, "Черновик")],
+        )
+        existing_form = TreatmentProgramForm(instance=self.program)
+        self.assertTrue(existing_form.fields["status"].disabled)
+
+    def test_review_action_stale_post_explains_how_to_refresh(self):
+        draft = TreatmentProgram.objects.create(
+            child=self.child,
+            title="Черновик для устаревшей проверки",
+            status=TreatmentProgram.Status.DRAFT,
+        )
+        block = ProgramBlock.objects.create(
+            program=draft,
+            number=1,
+            title="Каскад устаревшей проверки",
+            service=self.service,
+            staff_member=self.staff,
+            planned_sessions=2,
+            balance_account=self.account,
+        )
+        activation_url = self._action_url(draft, "activate")
+        review = program_lifecycle.get_program_lifecycle_review(draft)
+        block.planned_sessions = 3
+        block.save(update_fields=["planned_sessions", "updated_at"])
+        payload = self._payload(expected=0)
+        payload["expected_review_fingerprint"] = review.fingerprint
+
+        response = self.client.post(activation_url, payload)
+
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(response.context["review_is_stale"])
+        self.assertContains(response, "Обновить проверку", status_code=409)
+        self.assertEqual(response.context["refresh_url"], activation_url)
 
     def test_program_detail_paginates_append_only_history_by_ten(self):
         expected = 0

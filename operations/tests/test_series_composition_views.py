@@ -33,7 +33,7 @@ from operations.models import (
     StaffMember,
     TreatmentProgram,
 )
-from operations.services import program_series, series_revisions
+from operations.services import program_lifecycle, program_series, series_revisions
 
 User = get_user_model()
 
@@ -730,8 +730,17 @@ class SeriesCompositionViewTests(TestCase):
         )
         self.assertIn("program_blocks", wrong_service.context["form"].errors)
 
-        self.blocks[2].program.status = TreatmentProgram.Status.COMPLETED
-        self.blocks[2].program.save(update_fields=["status", "updated_at"])
+        inactive_review = program_lifecycle.get_program_lifecycle_review(
+            self.blocks[2].program
+        )
+        program_lifecycle.complete_program(
+            self.blocks[2].program,
+            actor=self.director,
+            reason="Завершить программу для проверки недоступного состава.",
+            operation_key=uuid4(),
+            expected_event_id=0,
+            expected_review_fingerprint=inactive_review.fingerprint,
+        )
         inactive_program, _ = self._preview(blocks=[self.blocks[0], self.blocks[2]])
         self.assertIn("program_blocks", inactive_program.context["form"].errors)
 

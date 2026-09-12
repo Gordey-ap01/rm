@@ -37,16 +37,20 @@ def lock_program_blocks(block_ids: Iterable[int | None]) -> dict[int, ProgramBlo
 def assert_program_blocks_not_paused(
     block_ids: Iterable[int | None],
 ) -> dict[int, ProgramBlock]:
-    """Reject a new manual scheduling assignment to a paused program only."""
+    """Reject new work for paused/terminal programs and terminal cascades."""
     blocks = lock_program_blocks(block_ids)
     paused = [
         block
         for block in blocks.values()
-        if block.program.status == TreatmentProgram.Status.PAUSED
+        if block.program.status in {
+            TreatmentProgram.Status.PAUSED, TreatmentProgram.Status.COMPLETED,
+            TreatmentProgram.Status.CANCELLED,
+        } or block.status in {ProgramBlock.Status.COMPLETED, ProgramBlock.Status.CANCELLED}
     ]
     if paused:
         raise ValidationError(
-            "Нельзя назначать или переносить занятия для приостановленной программы."
+            "Нельзя назначать или переносить занятия для приостановленной, завершенной "
+            "или отмененной программы либо закрытого каскада."
         )
     return blocks
 

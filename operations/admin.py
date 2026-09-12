@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.contrib.admin.utils import unquote
+from django.db import transaction
 
 from .models import (
     Appointment,
@@ -1079,6 +1081,14 @@ class ProgramBlockInline(admin.TabularInline):
     )
     autocomplete_fields = ("service", "staff_member", "balance_account")
 
+    def has_add_permission(self, request, obj=None):
+        if obj and obj.status in {
+            TreatmentProgram.Status.COMPLETED,
+            TreatmentProgram.Status.CANCELLED,
+        }:
+            return False
+        return super().has_add_permission(request, obj)
+
 
 @admin.register(TreatmentProgram)
 class TreatmentProgramAdmin(admin.ModelAdmin):
@@ -1088,17 +1098,36 @@ class TreatmentProgramAdmin(admin.ModelAdmin):
     autocomplete_fields = ("child", "consultation")
     inlines = (ProgramBlockInline,)
 
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        if request.method != "POST" or object_id is None:
+            return super().changeform_view(request, object_id, form_url, extra_context)
+        obj = self.get_object(request, unquote(object_id))
+        if obj is None:
+            return super().changeform_view(request, object_id, form_url, extra_context)
+        with transaction.atomic():
+            list(
+                ProgramBlock.objects.select_for_update(of=("self",))
+                .filter(program_id=obj.pk)
+                .order_by("pk")
+                .values_list("pk", flat=True)
+            )
+            locked_program = (
+                TreatmentProgram.objects.select_for_update(of=("self",))
+                .filter(pk=obj.pk)
+                .first()
+            )
+            if locked_program is None:
+                return super().changeform_view(request, object_id, form_url, extra_context)
+            return super().changeform_view(request, object_id, form_url, extra_context)
+
     def get_readonly_fields(self, request, obj=None):
-        if obj and (obj.status == TreatmentProgram.Status.PAUSED or obj.lifecycle_events.exists()):
+        if obj:
             return ("status",)
         return ()
 
     def formfield_for_choice_field(self, db_field, request, **kwargs):
         if db_field.name == "status":
-            kwargs["choices"] = [
-                choice for choice in TreatmentProgram.Status.choices
-                if choice[0] != TreatmentProgram.Status.PAUSED
-            ]
+            kwargs["choices"] = [(TreatmentProgram.Status.DRAFT, "Черновик")]
         return super().formfield_for_choice_field(db_field, request, **kwargs)
 
 

@@ -2771,11 +2771,10 @@ class TreatmentProgram(TimeStampedModel):
                     TreatmentProgramLifecycleEvent.objects.using(using)
                     .filter(program_id=self.pk).order_by("-event_number", "-pk").first()
                 )
-                guarded = previous == self.Status.PAUSED or self.status == self.Status.PAUSED or event
-                if guarded and not (
+                if not (
                     event and event.status_from == previous and event.status_to == self.status
                 ):
-                    raise ValidationError("Пауза и возобновление программы требуют нового решения.")
+                    raise ValidationError("Статус программы требует нового решения.")
             return super().save(*args, **kwargs)
 
     def __str__(self) -> str:
@@ -2784,8 +2783,11 @@ class TreatmentProgram(TimeStampedModel):
 
 class TreatmentProgramLifecycleEvent(TimeStampedModel):
     class EventType(models.TextChoices):
+        ACTIVATED = "activated", "Активировать программу"
         PAUSED = "paused", "Приостановить программу"
         RESUMED = "resumed", "Возобновить программу"
+        COMPLETED = "completed", "Завершить программу"
+        CANCELLED = "cancelled", "Отменить программу"
 
     class ActorRole(models.TextChoices):
         DIRECTOR = "director", "Руководитель"
@@ -2807,6 +2809,7 @@ class TreatmentProgramLifecycleEvent(TimeStampedModel):
     )
     actor_role_snapshot = models.CharField("роль", max_length=20, choices=ActorRole.choices)
     reason = models.TextField("основание")
+    context_snapshot = models.JSONField("состояние перед решением", default=dict, blank=True)
     occurred_at = models.DateTimeField("время решения", default=timezone.now)
     supersedes = models.ForeignKey(
         "self", on_delete=models.PROTECT, null=True, blank=True,
@@ -2831,18 +2834,28 @@ class TreatmentProgramLifecycleEvent(TimeStampedModel):
                       actor_role_snapshot__in=["administrator", "director"])
                     | Q(event_type="resumed", status_from="paused", status_to="active",
                         actor_role_snapshot="director")
+                    | Q(event_type="activated", status_from="draft", status_to="active",
+                        actor_role_snapshot__in=["administrator", "director"])
+                    | Q(event_type="completed", status_from__in=["active", "paused"], status_to="completed",
+                        actor_role_snapshot__in=["administrator", "director"])
+                    | Q(event_type="cancelled", status_from__in=["draft", "active", "paused"], status_to="cancelled",
+                        actor_role_snapshot__in=["administrator", "director"])
                 ), name="program_event_transition_role",
             ),
         ]
 
     def fingerprint_payload(self):
-        return {
+        payload = {
             "program_id": self.program_id, "event_type": self.event_type,
             "event_number": self.event_number, "status_from": self.status_from,
             "status_to": self.status_to, "actor_id": self.actor_id,
             "actor_role_snapshot": self.actor_role_snapshot, "reason": self.reason,
             "supersedes_id": self.supersedes_id,
         }
+        # Keep the accepted 0067 pause/resume fingerprints unchanged.
+        if self.context_snapshot:
+            payload["context_snapshot"] = self.context_snapshot
+        return payload
 
     def clean(self):
         from operations.services.authority import authority_role
@@ -2868,6 +2881,21 @@ class TreatmentProgramLifecycleEvent(TimeStampedModel):
             )
             if current and current.status != self.status_from:
                 errors["status_from"] = "Состояние программы уже изменилось."
+            reviewed_types = {self.EventType.ACTIVATED, self.EventType.COMPLETED, self.EventType.CANCELLED}
+            if current and self.event_type in reviewed_types:
+                from operations.services.program_lifecycle import get_program_lifecycle_review
+
+                review = get_program_lifecycle_review(current)
+                if self.context_snapshot != review.snapshot:
+                    errors["context_snapshot"] = "Состав программы изменился. Проверьте решение заново."
+                if self.event_type == self.EventType.ACTIVATED and not review.can_activate:
+                    errors["program"] = review.activation_error
+                if self.event_type == self.EventType.COMPLETED and review.unfinished_blocks and (
+                    self.actor_role_snapshot != self.ActorRole.DIRECTOR
+                ):
+                    errors["actor_role_snapshot"] = "Досрочно завершить программу может только руководитель."
+            elif self.context_snapshot:
+                errors["context_snapshot"] = "Эта команда не использует снимок каскадов."
             if self.event_number != (previous.event_number + 1 if previous else 1):
                 errors["event_number"] = "Решение должно продолжать историю программы."
             if self.supersedes_id != (previous.pk if previous else None):
@@ -2941,6 +2969,45 @@ class ProgramBlock(TimeStampedModel):
                 fields=["program", "number"], name="unique_program_block_number"
             ),
         ]
+
+    def clean(self):
+        super().clean()
+        using = self._state.db or "default"
+        previous_program_id = (
+            type(self).objects.using(using).filter(pk=self.pk).values_list("program_id", flat=True).first()
+            if self.pk else None
+        )
+        if previous_program_id != self.program_id and TreatmentProgram.objects.using(using).filter(
+            pk=self.program_id, status__in=[TreatmentProgram.Status.COMPLETED, TreatmentProgram.Status.CANCELLED],
+        ).exists():
+            raise ValidationError({"program": "Нельзя добавлять каскады в завершенную или отмененную программу."})
+
+    def save(self, *args, **kwargs):
+        using = kwargs.get("using") or self._state.db or "default"
+        with transaction.atomic(using=using):
+            previous_program_id = None
+            if self.pk:
+                previous_program_id = (
+                    type(self).objects.using(using).select_for_update(of=("self",))
+                    .filter(pk=self.pk).values_list("program_id", flat=True).first()
+                )
+            update_fields = kwargs.get("update_fields")
+            target_program_id = self.program_id
+            if previous_program_id is not None and update_fields is not None and not {
+                "program", "program_id",
+            }.intersection(update_fields):
+                target_program_id = previous_program_id
+            roots = list(
+                TreatmentProgram.objects.using(using).select_for_update(of=("self",))
+                .filter(pk__in={pk for pk in [previous_program_id, target_program_id] if pk})
+                .order_by("pk")
+            )
+            target = next((root for root in roots if root.pk == target_program_id), None)
+            if previous_program_id != target_program_id and target and target.status in {
+                TreatmentProgram.Status.COMPLETED, TreatmentProgram.Status.CANCELLED,
+            }:
+                raise ValidationError("Нельзя добавлять каскады в завершенную или отмененную программу.")
+            return super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.program} / {self.number}. {self.title}"

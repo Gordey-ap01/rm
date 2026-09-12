@@ -2058,19 +2058,11 @@ class TreatmentProgramForm(forms.ModelForm):
     def __init__(self, *args, child: Child | None = None, **kwargs):
         super().__init__(*args, **kwargs)
         self.child = child
-        has_lifecycle_history = bool(
-            self.instance.pk and self.instance.lifecycle_events.exists()
-        )
-        if self.instance.pk and (
-            self.instance.status == TreatmentProgram.Status.PAUSED or has_lifecycle_history
-        ):
+        if self.instance.pk:
             self.fields["status"].disabled = True
         else:
-            self.fields["status"].choices = [
-                choice
-                for choice in self.fields["status"].choices
-                if choice[0] != TreatmentProgram.Status.PAUSED
-            ]
+            self.fields["status"].choices = [(TreatmentProgram.Status.DRAFT, "Черновик")]
+            self.fields["status"].disabled = True
         self.fields["child"].queryset = Child.objects.order_by("last_name", "first_name")
         self.fields["consultation"].required = False
         consultations = Appointment.objects.select_related("service", "staff_member").order_by(

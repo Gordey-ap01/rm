@@ -542,9 +542,13 @@ def program_create(request, child_id: int | None = None):
     if request.method == "POST":
         form = TreatmentProgramForm(request.POST, child=child)
         if form.is_valid():
-            program = form.save()
-            messages.success(request, "Программа занятий создана.")
-            return redirect("recipient_detail", pk=program.child_id)
+            try:
+                program = form.save()
+            except ValidationError as exc:
+                form.add_error(None, exc)
+            else:
+                messages.success(request, "Программа занятий создана.")
+                return redirect("recipient_detail", pk=program.child_id)
     else:
         form = TreatmentProgramForm(child=child)
 
@@ -575,9 +579,13 @@ def program_block_create(request, program_id: int):
     if request.method == "POST":
         form = ProgramBlockForm(request.POST, program=program)
         if form.is_valid():
-            block = form.save()
-            messages.success(request, "Блок программы создан.")
-            return redirect("recipient_detail", pk=block.program.child_id)
+            try:
+                block = form.save()
+            except ValidationError as exc:
+                form.add_error(None, exc)
+            else:
+                messages.success(request, "Блок программы создан.")
+                return redirect("recipient_detail", pk=block.program.child_id)
     else:
         form = ProgramBlockForm(program=program, initial={"number": next_number})
 

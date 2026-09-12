@@ -1,4 +1,4 @@
-"""Forms for explicit pause and resume decisions on treatment programs."""
+"""Forms for explicit audited lifecycle decisions on treatment programs."""
 
 from uuid import uuid4
 
@@ -16,7 +16,13 @@ class TreatmentProgramLifecycleActionForm(forms.Form):
         widget=forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, requires_review_fingerprint=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.initial.setdefault("operation_key", uuid4())
-
+        if requires_review_fingerprint:
+            self.fields["expected_review_fingerprint"] = forms.CharField(
+                label="Состояние программы",
+                required=True,
+                max_length=64,
+                widget=forms.HiddenInput,
+            )
