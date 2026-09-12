@@ -620,6 +620,45 @@ class ProgramLifecycleTests(TestCase):
         self.assertContains(response, "Обновить проверку", status_code=409)
         self.assertEqual(response.context["refresh_url"], activation_url)
 
+    def test_program_detail_shows_participant_first_block_progress(self):
+        self.appointment.status = Appointment.Status.COMPLETED
+        self.appointment.attendance_status = Appointment.AttendanceStatus.ATTENDED
+        self.appointment.save(update_fields=["status", "attendance_status", "updated_at"])
+        AppointmentParticipant.objects.filter(appointment=self.appointment).update(
+            appointment_status=Appointment.Status.COMPLETED,
+            attendance_status=Appointment.AttendanceStatus.ATTENDED,
+        )
+
+        response = self.client.get(reverse("program_detail", args=[self.program.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        progress = response.context["blocks"][0].progress
+        self.assertEqual(progress.planned, 20)
+        self.assertEqual(progress.allocated, 1)
+        self.assertEqual(progress.completed, 1)
+        self.assertEqual(progress.remaining, 19)
+        self.assertEqual(progress.activity_status_label, "Идёт")
+        self.assertContains(response, "Назначено")
+        self.assertContains(response, "Проведено")
+        self.assertContains(response, "Осталось провести")
+        self.assertContains(response, "Идёт")
+        self.assertContains(response, "Неявка и списание не закрывают план")
+        self.assertNotContains(response, "Приостановить можно только активную программу.")
+
+    def test_recipient_detail_shows_progress_without_hiding_charged_count(self):
+        response = self.client.get(reverse("recipient_detail", args=[self.child.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        progress = response.context["programs"][0].blocks.all()[0].progress
+        self.assertEqual(progress.allocated, 1)
+        self.assertEqual(progress.completed, 0)
+        self.assertEqual(progress.charged, 1)
+        self.assertEqual(progress.activity_status_label, "Расписан")
+        self.assertContains(response, 'data-label="Назначено"')
+        self.assertContains(response, 'data-label="Проведено"')
+        self.assertContains(response, 'data-label="Осталось провести"')
+        self.assertContains(response, 'data-label="Списано"')
+
     def test_program_detail_paginates_append_only_history_by_ten(self):
         expected = 0
         for index in range(11):

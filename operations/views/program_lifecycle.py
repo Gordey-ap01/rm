@@ -16,6 +16,7 @@ from operations.models import (
     TreatmentProgramLifecycleEvent,
 )
 from operations.services import program_lifecycle
+from operations.services.program_progress import get_program_block_progress
 
 from ._common import admin_required, is_director
 
@@ -188,7 +189,10 @@ def _action_definition(program, action, *, user, latest_event, review=None):
             blocked_reason = ""
 
     result = dict(definition)
-    result.update(available=available, blocked_reason=blocked_reason)
+    result.update(
+        available=available,
+        blocked_reason="" if available else blocked_reason,
+    )
     return result
 
 
@@ -243,6 +247,10 @@ def program_detail(request, program_id):
         ),
         pk=program_id,
     )
+    blocks = list(program.blocks.all())
+    progress_by_block = get_program_block_progress(blocks)
+    for block in blocks:
+        block.progress = progress_by_block[block.pk]
     latest_event = _latest_event(program)
     review = program_lifecycle.get_program_lifecycle_review(program)
     history_page = Paginator(
@@ -254,7 +262,7 @@ def program_detail(request, program_id):
         "operations/program_detail.html",
         {
             "program": program,
-            "blocks": program.blocks.all(),
+            "blocks": blocks,
             "program_actions": _available_actions(
                 program, user=request.user, latest_event=latest_event, review=review
             ),

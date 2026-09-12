@@ -5,8 +5,20 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from operations.models import ProgramBlock, TreatmentProgram
+
+
+def mark_program_blocks_scheduled(block_ids: Iterable[int | None]) -> int:
+    """Advance newly allocated blocks inside the caller's scheduling transaction.
+
+    A stale scheduling object must never reopen or regress an existing block.
+    Callers retain their block/program locks until the appointment writes commit.
+    """
+    return ProgramBlock.objects.filter(
+        pk__in={pk for pk in block_ids if pk is not None}, status=ProgramBlock.Status.PLANNED,
+    ).update(status=ProgramBlock.Status.SCHEDULED, updated_at=timezone.now())
 
 
 def lock_program_blocks(block_ids: Iterable[int | None]) -> dict[int, ProgramBlock]:

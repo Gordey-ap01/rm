@@ -22,7 +22,7 @@ from operations.models import (
     StaffMember,
     TreatmentProgram,
 )
-from operations.services import scheduling
+from operations.services import program_scheduling, scheduling
 
 
 @dataclass(frozen=True)
@@ -549,8 +549,7 @@ def create_schedule_from_preview(
             )
             appointments.append(appointment)
 
-    if appointments:
-        block.status = ProgramBlock.Status.SCHEDULED
-        block.save(update_fields=["status", "updated_at"])
+        if appointments:
+            program_scheduling.mark_program_blocks_scheduled([block.pk])
 
     return ScheduleCreateResult(preview=preview, appointments=appointments)

@@ -28,6 +28,7 @@ from operations.models import (
 )
 from operations.services import certificates as certificate_svc
 from operations.services.pdf import contract_pdf
+from operations.services.program_progress import get_program_block_progress
 
 from ._common import is_admin_user
 
@@ -453,6 +454,10 @@ def recipient_detail(request, pk: int):
         )
         .order_by("-starts_on", "title")
     )
+    program_blocks = [block for program in programs for block in program.blocks.all()]
+    progress_by_block = get_program_block_progress(program_blocks)
+    for block in program_blocks:
+        block.progress = progress_by_block[block.pk]
     return render(
         request,
         "operations/recipient_detail.html",

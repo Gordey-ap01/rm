@@ -227,9 +227,10 @@
             <a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'program_block_create' program.pk %}">+ Блок</a>
           </div>
         </div>
+        <p class="small text-muted mb-2">«Проведено» учитывает только фактическое посещение. Неявка и списание сами по себе не закрывают план.</p>
         <div class="table-responsive recipient-detail-table-wrap">
           <table class="table table-sm table-hover mb-0 recipient-detail-table recipient-program-blocks-table">
-            <thead class="table-light"><tr><th>№</th><th>Блок</th><th>Услуга</th><th>Специалист</th><th>План</th><th>Расписано</th><th>Списано</th><th>Счёт</th><th></th></tr></thead>
+            <thead class="table-light"><tr><th>№</th><th>Блок</th><th>Услуга</th><th>Специалист</th><th>Статус</th><th>План</th><th>Назначено</th><th>Проведено</th><th>Осталось провести</th><th>Списано</th><th>Счёт</th><th></th></tr></thead>
             <tbody>
             {% for block in program.blocks.all %}
               <tr>
@@ -237,9 +238,12 @@
                 <td data-label="Блок"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ block.color }}"></span> {{ block.title }}</td>
                 <td data-label="Услуга">{{ block.service }}</td>
                 <td data-label="Специалист">{% if block.staff_member %}{{ block.staff_member }}{% else %}<span class="text-muted">не выбран</span>{% endif %}</td>
-                <td data-label="План">{{ block.planned_sessions }}</td>
-                <td data-label="Расписано">{{ block.scheduled_count }}</td>
-                <td data-label="Списано">{{ block.paid_count }}</td>
+                <td data-label="Статус">{{ block.progress.activity_status_label }}</td>
+                <td data-label="План">{{ block.progress.planned }}</td>
+                <td data-label="Назначено">{{ block.progress.allocated }}</td>
+                <td data-label="Проведено">{{ block.progress.completed }}</td>
+                <td data-label="Осталось провести">{{ block.progress.remaining }}</td>
+                <td data-label="Списано">{{ block.progress.charged }}</td>
                 <td data-label="Счёт">{% if block.balance_account %}{{ block.balance_account.current_balance }} {{ block.balance_account.get_unit_display }}{% else %}<span class="text-muted">не выбран</span>{% endif %}</td>
                 <td class="text-end text-nowrap recipient-detail-actions" data-label="Действия">
                   <a class="btn btn-outline-primary btn-sm py-0" href="{% url 'program_block_schedule_wizard' block.pk %}">
@@ -257,7 +261,7 @@
                 </td>
               </tr>
             {% empty %}
-              <tr><td colspan="9" class="text-muted" data-label="Блоки">Блоки ещё не созданы.</td></tr>
+              <tr><td colspan="12" class="text-muted" data-label="Блоки">Блоки ещё не созданы.</td></tr>
             {% endfor %}
             </tbody>
           </table>

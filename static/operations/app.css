@@ -6822,41 +6822,50 @@ code {
     min-width: 0;
   }
 
-  .recipient-detail-table-wrap {
+  .recipient-detail-table-wrap,
+  .program-detail-table-wrap {
     overflow: visible;
   }
 
-  .recipient-detail-table {
+  .recipient-detail-table,
+  .program-detail-table {
     border-collapse: separate;
     border-spacing: 0 10px;
   }
 
-  .recipient-detail-table thead {
+  .recipient-detail-table thead,
+  .program-detail-table thead {
     display: none;
   }
 
   .recipient-detail-table tbody,
   .recipient-detail-table tr,
-  .recipient-detail-table td {
+  .recipient-detail-table td,
+  .program-detail-table tbody,
+  .program-detail-table tr,
+  .program-detail-table td {
     display: block;
     width: 100%;
   }
 
-  .recipient-detail-table tr {
+  .recipient-detail-table tr,
+  .program-detail-table tr {
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     background: var(--surface);
     padding: 10px;
   }
 
-  .recipient-detail-table td {
+  .recipient-detail-table td,
+  .program-detail-table td {
     border: 0;
     padding: 4px 0;
     text-align: left !important;
     white-space: normal;
   }
 
-  .recipient-detail-table td::before {
+  .recipient-detail-table td::before,
+  .program-detail-table td::before {
     content: attr(data-label);
     display: block;
     margin-bottom: 2px;

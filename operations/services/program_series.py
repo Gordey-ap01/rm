@@ -903,11 +903,8 @@ def _materialize_individual_date(
                     ),
                     admin_note="Создано единым materializer серии.",
                 )
-                if block and block.status == ProgramBlock.Status.PLANNED:
-                    ProgramBlock.objects.filter(pk=block.pk).update(
-                        status=ProgramBlock.Status.SCHEDULED,
-                        updated_at=timezone.now(),
-                    )
+                if block:
+                    program_scheduling.mark_program_blocks_scheduled([block.pk])
                 if retry_run and retry_target:
                     return (
                         series_revisions.record_retry_result(
@@ -1247,12 +1244,7 @@ def _materialize_one_date(
                         override_availability=assignment.override_availability,
                         override_reason=assignment.override_reason,
                     )
-                for block in blocks:
-                    if block.status == ProgramBlock.Status.PLANNED:
-                        ProgramBlock.objects.filter(pk=block.pk).update(
-                            status=ProgramBlock.Status.SCHEDULED,
-                            updated_at=timezone.now(),
-                        )
+                program_scheduling.mark_program_blocks_scheduled([block.pk for block in blocks])
                 if retry_run and retry_target:
                     return (
                         series_revisions.record_retry_result(
@@ -2238,11 +2230,7 @@ def _join_one_appointment(
                     appointment_status=target.status,
                     admin_note="Присоединено мастером групповых занятий.",
                 )
-                if block.status == ProgramBlock.Status.PLANNED:
-                    ProgramBlock.objects.filter(pk=block.pk).update(
-                        status=ProgramBlock.Status.SCHEDULED,
-                        updated_at=timezone.now(),
-                    )
+                program_scheduling.mark_program_blocks_scheduled([block.pk])
                 return (
                     AppointmentSeriesOccurrence.objects.create(
                         series=locked_series,

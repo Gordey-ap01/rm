@@ -47,9 +47,10 @@
 
 <section class="panel mt-3">
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><h2 class="h6 mb-0">Каскады</h2>{% if program.status == 'completed' or program.status == 'cancelled' %}<span class="btn btn-sm btn-outline-secondary disabled" aria-disabled="true"><i class="bi bi-lock" aria-hidden="true"></i> Добавление каскада недоступно</span>{% else %}<a class="btn btn-sm btn-outline-primary" href="{% url 'program_block_create' program.pk %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> Добавить каскад</a>{% endif %}</div>
-  <div class="table-responsive">
-    <table class="table table-sm table-hover mb-0"><thead><tr><th>№</th><th>Каскад</th><th>Услуга</th><th>Специалист</th><th>Статус</th><th>План / расписано</th></tr></thead><tbody>
-      {% for block in blocks %}<tr><td>{{ block.number }}</td><td>{{ block.title }}</td><td>{{ block.service }}</td><td>{% if block.staff_member %}{{ block.staff_member }}{% else %}<span class="muted">не выбран</span>{% endif %}</td><td>{{ block.get_status_display }}</td><td>{{ block.planned_sessions }} / {{ block.scheduled_count }}</td></tr>{% empty %}<tr><td colspan="6" class="muted">Каскады еще не созданы.</td></tr>{% endfor %}
+  <p class="small muted mb-3">«Проведено» учитывает только фактическое посещение. Неявка и списание сами по себе не закрывают план.</p>
+  <div class="table-responsive program-detail-table-wrap">
+    <table class="table table-sm table-hover mb-0 program-detail-table"><thead><tr><th>№</th><th>Каскад</th><th>Услуга</th><th>Специалист</th><th>Статус</th><th>План</th><th>Назначено</th><th>Проведено</th><th>Осталось провести</th></tr></thead><tbody>
+      {% for block in blocks %}<tr><td data-label="№">{{ block.number }}</td><td data-label="Каскад">{{ block.title }}</td><td data-label="Услуга">{{ block.service }}</td><td data-label="Специалист">{% if block.staff_member %}{{ block.staff_member }}{% else %}<span class="muted">не выбран</span>{% endif %}</td><td data-label="Статус">{{ block.progress.activity_status_label }}</td><td data-label="План">{{ block.progress.planned }}</td><td data-label="Назначено">{{ block.progress.allocated }}</td><td data-label="Проведено">{{ block.progress.completed }}</td><td data-label="Осталось провести">{{ block.progress.remaining }}</td></tr>{% empty %}<tr><td colspan="9" class="muted" data-label="Каскады">Каскады еще не созданы.</td></tr>{% endfor %}
     </tbody></table>
   </div>
 </section>
