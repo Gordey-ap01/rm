@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action.title }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>{{ action.title }}</h1>
+    <p>{{ program_block.program.title }} · {{ program_block.program.child }} · {{ program_block.number }}. {{ program_block.title }}</p>
+  </div>
+  <a class="button-link secondary" href="{{ cancel_url }}"><i class="bi bi-arrow-left" aria-hidden="true"></i> К каскаду</a>
+</section>
+
+<section class="detail-grid">
+  <article class="panel form-panel">
+    <h2 class="h6">{% if action.available %}Подтверждение команды{% else %}Команда недоступна{% endif %}</h2>
+    <p>{{ action.description }}</p>
+    <section class="mt-3" aria-labelledby="block-review-heading">
+      <h3 id="block-review-heading" class="h6">Проверка перед решением</h3>
+      <dl class="detail-list mb-0">
+        <div><dt>План</dt><dd>{{ review.planned }}</dd></div>
+        <div><dt>Проведено</dt><dd>{{ review.completed }}</dd></div>
+        <div><dt>Осталось провести</dt><dd>{{ review.remaining }}</dd></div>
+        <div><dt>Назначено</dt><dd>{{ review.allocated }}</dd></div>
+        <div><dt>Неявки</dt><dd>{{ review.missed }}</dd></div>
+        <div><dt>Списано</dt><dd>{{ review.charged }}</dd></div>
+      </dl>
+      <p class="small muted mt-3 mb-0">Проведено — занятия с фактическим посещением. Неявки и списания не закрывают план.</p>
+    </section>
+    {% if not action.available %}
+      <div class="alert alert-warning mt-3" role="status">{{ action.blocked_reason }}</div>
+    {% endif %}
+    {% if action.early_completion %}
+      <div class="alert alert-warning mt-3" role="note"><strong>План не выполнен:</strong> осталось провести {{ review.remaining }}. Это досрочное завершение и требует основания.</div>
+    {% endif %}
+    {% if review_is_stale %}
+      <div class="alert alert-warning mt-3" role="alert">Состояние каскада изменилось после открытия формы. <a href="{{ refresh_url }}">Обновить проверку</a> и подтвердить решение заново.</div>
+    {% endif %}
+    {% if show_action_form %}
+      <form method="post" class="form-stack mt-3">
+        {% csrf_token %}
+        {% for hidden in form.hidden_fields %}
+          {{ hidden }}
+          {% if hidden.errors %}<div class="form-error" role="alert"><strong>{{ hidden.label }}:</strong> {{ hidden.errors }}</div>{% endif %}
+        {% endfor %}
+        {% if form.non_field_errors %}<div class="form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+        <div class="field">
+          <label for="{{ form.reason.id_for_label }}"><span>{{ form.reason.label }}</span></label>
+          {{ form.reason }}
+          {% if form.reason.errors %}<div class="form-error" role="alert">{{ form.reason.errors }}</div>{% endif %}
+        </div>
+        <div class="form-actions">
+          {% if action.available %}<button type="submit" class="btn {{ action.confirm_class }}"><i class="bi {{ action.icon }}" aria-hidden="true"></i> {{ action.confirm_label }}</button>{% endif %}
+          <a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>
+        </div>
+      </form>
+    {% endif %}
+  </article>
+
+  <aside class="panel" aria-label="Параметры каскада">
+    <h2 class="h6">Каскад</h2>
+    <dl class="detail-list mb-0">
+      <div><dt>Программа</dt><dd><a href="{% url 'program_detail' program_block.program_id %}">{{ program_block.program.title }}</a></dd></div>
+      <div><dt>Услуга</dt><dd>{{ program_block.service }}</dd></div>
+      <div><dt>Статус</dt><dd>{{ review.activity_status_label }}</dd></div>
+      <div><dt>Счёт</dt><dd>{% if program_block.balance_account %}{{ program_block.balance_account }}{% else %}не указан{% endif %}</dd></div>
+    </dl>
+  </aside>
+</section>
+{% endblock %}

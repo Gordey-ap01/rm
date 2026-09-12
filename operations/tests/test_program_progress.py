@@ -20,7 +20,7 @@ from operations.models import (
     StaffMember,
     TreatmentProgram,
 )
-from operations.services import program_series, series_lifecycle
+from operations.services import program_block_lifecycle, program_series, series_lifecycle
 from operations.services.program_progress import get_program_block_progress
 
 User = get_user_model()
@@ -238,11 +238,27 @@ class ProgramBlockProgressTests(TestCase):
             attendance=Appointment.AttendanceStatus.UNKNOWN,
             hour=10,
         )
-        ProgramBlock.objects.filter(pk=completed_block.pk).update(
-            status=ProgramBlock.Status.COMPLETED
+        completed_review = program_block_lifecycle.get_program_block_lifecycle_review(
+            completed_block
         )
-        ProgramBlock.objects.filter(pk=cancelled_block.pk).update(
-            status=ProgramBlock.Status.CANCELLED
+        program_block_lifecycle.complete_block(
+            completed_block,
+            actor=self.admin,
+            reason="Руководитель закрывает каскад до поздней отметки.",
+            operation_key=uuid4(),
+            expected_review_fingerprint=completed_review.fingerprint,
+            expected_event_id=0,
+        )
+        cancelled_review = program_block_lifecycle.get_program_block_lifecycle_review(
+            cancelled_block
+        )
+        program_block_lifecycle.cancel_block(
+            cancelled_block,
+            actor=self.admin,
+            reason="Руководитель отменяет каскад до поздней отметки.",
+            operation_key=uuid4(),
+            expected_review_fingerprint=cancelled_review.fingerprint,
+            expected_event_id=0,
         )
         for appointment in (completed_appointment, cancelled_appointment):
             Appointment.objects.filter(pk=appointment.pk).update(

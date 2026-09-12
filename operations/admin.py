@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.admin.utils import unquote
 from django.db import transaction
 
+from .forms import ProgramBlockForm
 from .models import (
     Appointment,
     AppointmentConfirmation,
@@ -67,6 +68,7 @@ from .models import (
     PayrollSheetLifecycleEvent,
     PayrollSheetLine,
     ProgramBlock,
+    ProgramBlockLifecycleEvent,
     RecipientRepresentative,
     Recommendation,
     Room,
@@ -1068,6 +1070,7 @@ class BalanceAccountAdmin(admin.ModelAdmin):
 
 class ProgramBlockInline(admin.TabularInline):
     model = ProgramBlock
+    form = ProgramBlockForm
     extra = 0
     fields = (
         "number",
@@ -1149,6 +1152,7 @@ class TreatmentProgramLifecycleEventAdmin(admin.ModelAdmin):
 
 @admin.register(ProgramBlock)
 class ProgramBlockAdmin(admin.ModelAdmin):
+    form = ProgramBlockForm
     list_display = (
         "program",
         "number",
@@ -1168,6 +1172,22 @@ class ProgramBlockAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "service", "staff_member")
     autocomplete_fields = ("program", "service", "staff_member", "balance_account")
+
+
+@admin.register(ProgramBlockLifecycleEvent)
+class ProgramBlockLifecycleEventAdmin(admin.ModelAdmin):
+    list_display = ("block", "event_type", "actor", "occurred_at")
+    list_filter = ("event_type", "actor_role_snapshot")
+    readonly_fields = tuple(field.name for field in ProgramBlockLifecycleEvent._meta.fields)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class AppointmentSeriesParticipantInline(admin.TabularInline):

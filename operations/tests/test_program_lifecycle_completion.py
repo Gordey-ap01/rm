@@ -33,7 +33,7 @@ from operations.models import (
     TreatmentProgram,
     TreatmentProgramLifecycleEvent,
 )
-from operations.services import program_lifecycle, program_scheduling
+from operations.services import program_block_lifecycle, program_lifecycle, program_scheduling
 from operations.services.series_revisions import canonical_fingerprint
 
 User = get_user_model()
@@ -185,10 +185,11 @@ class ProgramCompletionLifecycleTests(TestCase):
             number=5,
             status=ProgramBlock.Status.COMPLETED,
         )
-        self._block(program, number=6, status="unknown-legacy-status")
+        with self.assertRaises(DatabaseError), transaction.atomic():
+            self._block(program, number=6, status="unknown-legacy-status")
         review = self._review(program)
         self.assertFalse(review.can_activate)
-        self.assertEqual(len(review.blocks), 6)
+        self.assertEqual(len(review.blocks), 5)
         with self.assertRaises(ValidationError):
             self._activate(program, review=review)
         program.refresh_from_db()
@@ -467,8 +468,12 @@ class ProgramCompletionLifecycleTests(TestCase):
 
         completed = self._complete(active, actor=self.director)
         block.title = "Уточненный итог каскада после закрытия программы"
-        block.status = ProgramBlock.Status.COMPLETED
-        block.save(update_fields=["title", "status", "updated_at"])
+        block.save(update_fields=["title", "updated_at"])
+        program_block_lifecycle.complete_block(
+            block, actor=self.director, reason="Явное завершение каскада после программы.",
+            operation_key=uuid4(), expected_event_id=0,
+            expected_review_fingerprint=program_block_lifecycle.get_program_block_lifecycle_review(block).fingerprint,
+        )
         block.refresh_from_db()
         self.assertEqual(block.status, ProgramBlock.Status.COMPLETED)
         self.assertEqual(completed.program.status, TreatmentProgram.Status.COMPLETED)

@@ -263,6 +263,7 @@ def program_detail(request, program_id):
         {
             "program": program,
             "blocks": blocks,
+            "user_is_director": is_director(request.user),
             "program_actions": _available_actions(
                 program, user=request.user, latest_event=latest_event, review=review
             ),

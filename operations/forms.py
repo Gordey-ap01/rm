@@ -2110,10 +2110,16 @@ class ProgramBlockForm(forms.ModelForm):
 
     def __init__(self, *args, program: TreatmentProgram | None = None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.program = program
-        self.fields["program"].queryset = TreatmentProgram.objects.select_related("child").order_by(
-            "child__last_name", "title"
+        # The treatment-program admin inline intentionally excludes its parent
+        # field.  The instance still carries that relation, so use it for the
+        # same account validation without requiring a missing form field.
+        self.program = program or (
+            self.instance.program if self.instance.program_id else None
         )
+        if "program" in self.fields:
+            self.fields["program"].queryset = TreatmentProgram.objects.select_related(
+                "child"
+            ).order_by("child__last_name", "title")
         self.fields["service"].queryset = Service.objects.filter(is_active=True).order_by("name")
         self.fields["staff_member"].queryset = StaffMember.objects.filter(
             status=StaffMember.Status.ACTIVE
@@ -2123,14 +2129,24 @@ class ProgramBlockForm(forms.ModelForm):
         accounts = BalanceAccount.objects.select_related(
             "child", "funding_source", "service"
         ).filter(status=BalanceAccount.Status.ACTIVE)
-        if program is not None:
-            self.fields["program"].initial = program
-            self.fields["program"].disabled = True
-            accounts = accounts.filter(child=program.child)
+        if self.program is not None:
+            if "program" in self.fields:
+                self.fields["program"].initial = self.program
+                self.fields["program"].disabled = True
+            accounts = accounts.filter(child=self.program.child)
         self.fields["balance_account"].queryset = accounts.order_by(
             "funding_source__name", "service__name"
         )
         self.fields["color"].required = False
+        if self.instance.pk:
+            # Terminal transitions are append-only lifecycle commands.  Preserve
+            # the stored value while allowing ordinary edits of block metadata.
+            self.fields["status"].disabled = True
+        else:
+            self.fields["status"].choices = [
+                (ProgramBlock.Status.PLANNED, ProgramBlock.Status.PLANNED.label)
+            ]
+            self.initial["status"] = ProgramBlock.Status.PLANNED
 
     def clean_color(self):
         return self.cleaned_data.get("color") or ProgramBlock._meta.get_field("color").default

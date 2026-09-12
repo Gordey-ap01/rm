@@ -2,6 +2,7 @@
 
 PUBLIC_SCHEMA = "public"
 IMMUTABLE_APPEND_ONLY_TABLES = (
+    "operations_programblocklifecycleevent",
     "operations_treatmentprogramlifecycleevent",
     "operations_appointmentattendancedecision",
     "operations_appointmentscheduledecision",
@@ -19,6 +20,7 @@ IMMUTABLE_APPEND_ONLY_TABLES = (
 )
 APPEND_LOCK_TABLE = "operations_donorreport"
 RUNTIME_EXECUTE_FUNCTIONS = (
+    "operations_program_block_review_snapshot(bigint)",
     "operations_operator_actor_role(bigint)",
     "operations_canonical_jsonb(jsonb)",
     "operations_jsonb_keys_allowed(jsonb, text[])",

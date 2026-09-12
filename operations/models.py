@@ -2928,6 +2928,21 @@ class TreatmentProgramLifecycleEvent(TimeStampedModel):
         return f"{self.program} / {self.get_event_type_display()} / №{self.event_number}"
 
 
+class ProgramBlockQuerySet(QuerySet):
+    def update(self, **kwargs):
+        if "status" in kwargs:
+            if kwargs["status"] not in {"planned", "scheduled", "in_progress"}:
+                raise ValidationError("Закрытие каскада требует отдельного решения.")
+            if self.filter(status__in=["completed", "cancelled"]).exists():
+                raise ValidationError("Закрытый каскад нельзя открыть обычным редактированием.")
+        return super().update(**kwargs)
+
+    def bulk_update(self, objs, fields, batch_size=None):
+        if "status" in fields:
+            raise ValidationError("Статусы каскадов нельзя изменять массовым редактированием.")
+        return super().bulk_update(objs, fields, batch_size=batch_size)
+
+
 class ProgramBlock(TimeStampedModel):
     class Status(models.TextChoices):
         PLANNED = "planned", "Запланирован"
@@ -2959,6 +2974,7 @@ class ProgramBlock(TimeStampedModel):
     )
     color = models.CharField("цвет", max_length=20, default="#b71b55")
     notes = models.TextField("примечания", blank=True)
+    objects = models.Manager.from_queryset(ProgramBlockQuerySet)()
 
     class Meta:
         verbose_name = "блок программы"
@@ -2967,6 +2983,10 @@ class ProgramBlock(TimeStampedModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["program", "number"], name="unique_program_block_number"
+            ),
+            models.CheckConstraint(
+                condition=Q(status__in=["planned", "scheduled", "in_progress", "completed", "cancelled"]),
+                name="program_block_known_status",
             ),
         ]
 
@@ -2986,11 +3006,15 @@ class ProgramBlock(TimeStampedModel):
         using = kwargs.get("using") or self._state.db or "default"
         with transaction.atomic(using=using):
             previous_program_id = None
+            previous_status = None
             if self.pk:
-                previous_program_id = (
+                previous = (
                     type(self).objects.using(using).select_for_update(of=("self",))
-                    .filter(pk=self.pk).values_list("program_id", flat=True).first()
+                    .filter(pk=self.pk).values("program_id", "status").first()
                 )
+                if previous:
+                    previous_program_id = previous["program_id"]
+                    previous_status = previous["status"]
             update_fields = kwargs.get("update_fields")
             target_program_id = self.program_id
             if previous_program_id is not None and update_fields is not None and not {
@@ -3007,6 +3031,17 @@ class ProgramBlock(TimeStampedModel):
                 TreatmentProgram.Status.COMPLETED, TreatmentProgram.Status.CANCELLED,
             }:
                 raise ValidationError("Нельзя добавлять каскады в завершенную или отмененную программу.")
+            if previous_status is not None and previous_status != self.status and (
+                update_fields is None or "status" in update_fields
+            ):
+                if previous_status in {self.Status.COMPLETED, self.Status.CANCELLED}:
+                    raise ValidationError("Закрытый каскад нельзя открыть обычным редактированием.")
+                if self.status in {self.Status.COMPLETED, self.Status.CANCELLED} and not (
+                    ProgramBlockLifecycleEvent.objects.using(using).filter(
+                        block_id=self.pk, status_from=previous_status, status_to=self.status,
+                    ).exists()
+                ):
+                    raise ValidationError("Закрытие каскада требует отдельного решения.")
             return super().save(*args, **kwargs)
 
     def __str__(self) -> str:
@@ -3024,6 +3059,104 @@ class ProgramBlock(TimeStampedModel):
             billing_decision=Appointment.BillingDecision.CHARGE,
             billing_account__isnull=False,
         ).count()
+
+
+class ProgramBlockLifecycleEvent(TimeStampedModel):
+    """An explicit terminal decision; late attendance never reopens a cascade."""
+
+    class EventType(models.TextChoices):
+        COMPLETED = "completed", "Завершить каскад"
+        CANCELLED = "cancelled", "Отменить каскад"
+
+    ActorRole = TreatmentProgramLifecycleEvent.ActorRole
+
+    block = models.ForeignKey(
+        ProgramBlock, on_delete=models.PROTECT, related_name="lifecycle_events",
+        verbose_name="каскад",
+    )
+    operation_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    fingerprint = models.CharField("отпечаток операции", max_length=64)
+    event_type = models.CharField("решение", max_length=20, choices=EventType.choices)
+    status_from = models.CharField("статус был", max_length=30, choices=ProgramBlock.Status.choices)
+    status_to = models.CharField("статус стал", max_length=30, choices=ProgramBlock.Status.choices)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name="program_block_lifecycle_events", verbose_name="решение принял",
+    )
+    actor_role_snapshot = models.CharField("роль", max_length=20, choices=ActorRole.choices)
+    reason = models.TextField("основание")
+    context_snapshot = models.JSONField("факты перед решением", default=dict)
+    occurred_at = models.DateTimeField("время решения", default=timezone.now)
+    objects = ImmutableHistoryManager()
+
+    class Meta:
+        verbose_name = "решение по каскаду"
+        verbose_name_plural = "решения по каскадам"
+        ordering = ["block_id", "-pk"]
+        constraints = [
+            models.UniqueConstraint(fields=["block"], name="unique_block_terminal_decision"),
+            models.CheckConstraint(
+                condition=(
+                    Q(status_from__in=["planned", "scheduled", "in_progress"],
+                      actor_role_snapshot__in=["administrator", "director"])
+                    & (Q(event_type="completed", status_to="completed")
+                       | Q(event_type="cancelled", status_to="cancelled"))
+                ), name="block_event_transition_role",
+            ),
+        ]
+
+    def fingerprint_payload(self):
+        return {
+            "block_id": self.block_id, "event_type": self.event_type,
+            "status_from": self.status_from, "status_to": self.status_to,
+            "actor_id": self.actor_id, "actor_role_snapshot": self.actor_role_snapshot,
+            "reason": self.reason, "context_snapshot": self.context_snapshot,
+        }
+
+    def clean(self):
+        from operations.services.authority import authority_role
+        from operations.services.program_block_lifecycle import get_program_block_lifecycle_review
+        from operations.services.series_revisions import canonical_fingerprint
+
+        super().clean()
+        self.reason = normalize_immutable_reason(self.reason)
+        errors = {}
+        if len(self.reason) < 5:
+            errors["reason"] = "Укажите основание решения: не менее 5 символов."
+        if self.actor_id and (
+            not self.actor.is_active or authority_role(self.actor) != self.actor_role_snapshot
+        ):
+            errors["actor_role_snapshot"] = "Роль решения не соответствует автору."
+        if self.fingerprint != canonical_fingerprint(self.fingerprint_payload()):
+            errors["fingerprint"] = "Отпечаток решения не соответствует его данным."
+        if self.block_id:
+            review = get_program_block_lifecycle_review(self.block)
+            if review.snapshot["block"]["status"] != self.status_from:
+                errors["status_from"] = "Состояние каскада уже изменилось."
+            if self.context_snapshot != review.snapshot:
+                errors["context_snapshot"] = "Факты изменились. Проверьте решение заново."
+            if self.event_type == self.EventType.COMPLETED and not review.can_complete_normally and (
+                self.actor_role_snapshot != self.ActorRole.DIRECTOR
+            ):
+                errors["actor_role_snapshot"] = "Досрочно завершить каскад может только руководитель."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Решение по каскаду нельзя изменять.")
+        using = kwargs.get("using") or self._state.db or "default"
+        with transaction.atomic(using=using):
+            block = ProgramBlock.objects.using(using).select_for_update(of=("self",)).get(pk=self.block_id)
+            TreatmentProgram.objects.using(using).select_for_update(of=("self",)).get(pk=block.program_id)
+            self.full_clean()
+            return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Решение по каскаду нельзя удалять.")
+
+    def __str__(self):
+        return f"{self.block} / {self.get_event_type_display()}"
 
 
 class AppointmentSeries(TimeStampedModel):
@@ -3730,6 +3863,36 @@ class AppointmentSeriesMaterializationRunEvent(TimeStampedModel):
         return f"{self.run} / {self.get_event_type_display()}"
 
 
+def _lock_program_block_allocation(instance, *, previous_block_id, identity_changed=False):
+    """Guard a new allocation, while permitting late facts on existing rows."""
+    if not instance.program_block_id or (
+        instance.program_block_id == previous_block_id and not identity_changed
+    ):
+        return
+    block = ProgramBlock.objects.select_for_update(of=("self",)).get(pk=instance.program_block_id)
+    program = TreatmentProgram.objects.select_for_update(of=("self",)).get(pk=block.program_id)
+    if block.status not in {"completed", "cancelled"} and program.status not in {
+        "paused", "completed", "cancelled",
+    }:
+        return
+    if isinstance(instance, AppointmentParticipant) and previous_block_id is None:
+        legacy = Appointment.objects.get(pk=instance.appointment_id)
+        if (
+            legacy.program_block_id == instance.program_block_id
+            and legacy.child_id == instance.child_id
+            and instance.appointment_status == legacy.status
+            and instance.attendance_status == legacy.attendance_status
+            and instance.billing_decision == legacy.billing_decision
+            and instance.billing_account_id == legacy.billing_account_id
+            and (legacy.sequence_number is None or instance.sequence_number == legacy.sequence_number)
+            and instance.starts_at_snapshot == legacy.starts_at
+            and instance.ends_at_snapshot == legacy.ends_at
+            and not AppointmentParticipant.objects.filter(appointment_id=legacy.pk).exclude(pk=instance.pk).exists()
+        ):
+            return
+    raise ValidationError({"program_block": "Новое назначение в закрытый каскад или приостановленную программу недоступно."})
+
+
 class Appointment(TimeStampedModel):
     class Status(models.TextChoices):
         DRAFT = "draft", "Черновик"
@@ -3921,6 +4084,13 @@ class Appointment(TimeStampedModel):
                     }
                     if any(getattr(self, field) != value for field, value in expected.items()):
                         raise ValidationError("Проведение изменяется только новым решением с сохранением истории.")
+            update_fields = kwargs.get("update_fields")
+            if update_fields is None or {"program_block", "program_block_id"}.intersection(update_fields):
+                previous_block_id = (
+                    type(self).objects.filter(pk=self.pk).values_list("program_block_id", flat=True).first()
+                    if self.pk else None
+                )
+                _lock_program_block_allocation(self, previous_block_id=previous_block_id)
             if not self.pk and self.program_block_id and not self.sequence_number:
                 ProgramBlock.objects.select_for_update().only("pk").get(
                     pk=self.program_block_id
@@ -4298,6 +4468,7 @@ class AppointmentParticipant(TimeStampedModel):
 
     def save(self, *args: object, **kwargs: object) -> None:
         with transaction.atomic():
+            original = None
             if self.pk:
                 original = (
                     AppointmentParticipant.objects.filter(pk=self.pk)
@@ -4385,6 +4556,20 @@ class AppointmentParticipant(TimeStampedModel):
                 if update_fields is not None:
                     kwargs["update_fields"] = set(update_fields) | {"sequence_number"}
             self.full_clean()
+            update_fields = kwargs.get("update_fields")
+            identity_changed = bool(original and (
+                (original["appointment_id"] != self.appointment_id and (
+                    update_fields is None or {"appointment", "appointment_id"}.intersection(update_fields)
+                ))
+                or (original["child_id"] != self.child_id and (
+                    update_fields is None or {"child", "child_id"}.intersection(update_fields)
+                ))
+            ))
+            if identity_changed or update_fields is None or {"program_block", "program_block_id"}.intersection(update_fields):
+                _lock_program_block_allocation(
+                    self, previous_block_id=original["program_block_id"] if original else None,
+                    identity_changed=identity_changed,
+                )
             super().save(*args, **kwargs)
 
     def delete(self, *args: object, **kwargs: object) -> tuple[int, dict[str, int]]:

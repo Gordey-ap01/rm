@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}{{ program_block.title }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>{{ program_block.number }}. {{ program_block.title }}</h1>
+    <p>{{ program_block.program.title }} · {{ program_block.program.child }} · {{ program_block.service }}</p>
+  </div>
+  <a class="button-link secondary" href="{% url 'program_detail' program_block.program_id %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> К программе</a>
+</section>
+
+<section class="panel">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div><h2 class="h6 mb-1">Управление каскадом</h2><p class="muted mb-0">Решения сохраняются в истории. Новые занятия не создаются, а существующие факты сохраняются.</p></div>
+    <div class="d-flex flex-wrap gap-2">
+      {% for action in block_actions %}
+        {% if action.available %}<a class="btn btn-sm {{ action.button_class }}" href="{% url 'program_block_lifecycle_action' program_block.pk action.slug %}"><i class="bi {{ action.icon }}" aria-hidden="true"></i> {{ action.label }}</a>{% else %}<span class="btn btn-sm btn-outline-secondary disabled" aria-disabled="true"><i class="bi {{ action.icon }}" aria-hidden="true"></i> {{ action.label }}</span>{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% for action in block_actions %}{% if action.blocked_reason %}<p class="small text-warning-emphasis mb-0"><i class="bi bi-shield-lock" aria-hidden="true"></i> {{ action.blocked_reason }}</p>{% endif %}{% endfor %}
+</section>
+
+<section class="detail-grid mt-3">
+  <article class="panel">
+    <h2 class="h6">Фактический прогресс</h2>
+    <dl class="detail-list mb-0">
+      <div><dt>План</dt><dd>{{ review.planned }}</dd></div>
+      <div><dt>Проведено</dt><dd>{{ review.completed }}</dd></div>
+      <div><dt>Осталось провести</dt><dd>{{ review.remaining }}</dd></div>
+      <div><dt>Назначено</dt><dd>{{ review.allocated }}</dd></div>
+      <div><dt>Неявки</dt><dd>{{ review.missed }}</dd></div>
+      <div><dt>Списано</dt><dd>{{ review.charged }}</dd></div>
+    </dl>
+    <p class="small muted mt-3 mb-0">Проведено — занятия с фактическим посещением. Неявки и списания не закрывают план.</p>
+  </article>
+  <aside class="panel" aria-label="Параметры каскада">
+    <h2 class="h6">Каскад</h2>
+    <dl class="detail-list mb-0">
+      <div><dt>Статус</dt><dd>{{ review.activity_status_label }}</dd></div>
+      <div><dt>Услуга</dt><dd>{{ program_block.service }}</dd></div>
+      <div><dt>Счёт</dt><dd>{% if program_block.balance_account %}{{ program_block.balance_account }}{% else %}не указан{% endif %}</dd></div>
+    </dl>
+  </aside>
+</section>
+
+<section class="panel mt-3" id="program-block-lifecycle-history">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><h2 class="h6 mb-0">История решений</h2><span class="muted">Событий: {{ lifecycle_page.paginator.count }}</span></div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0"><thead><tr><th>Время</th><th>Действие</th><th>Автор</th><th>Переход</th><th>Основание</th></tr></thead><tbody>
+      {% for event in lifecycle_events %}<tr><td class="text-nowrap">{{ event.occurred_at|date:"d.m.Y H:i" }}</td><td>{{ event.get_event_type_display }}</td><td>{{ event.actor.get_full_name|default:event.actor.username }}<span class="d-block small muted">{{ event.get_actor_role_snapshot_display }}</span></td><td>{{ event.get_status_from_display }} → {{ event.get_status_to_display }}</td><td>{{ event.reason }}</td></tr>{% empty %}<tr><td colspan="5" class="muted">Решений жизненного цикла ещё нет. Исторический статус показан без добавления события задним числом.</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+  {% if lifecycle_page.paginator.num_pages > 1 %}<nav class="mt-3" aria-label="Страницы истории каскада"><ul class="pagination pagination-sm mb-0 flex-wrap"><li class="page-item{% if not lifecycle_page.has_previous %} disabled{% endif %}">{% if lifecycle_page.has_previous %}<a class="page-link" href="?history_page={{ lifecycle_page.previous_page_number }}#program-block-lifecycle-history" aria-label="Предыдущая страница"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>{% else %}<span class="page-link" aria-hidden="true"><i class="bi bi-chevron-left"></i></span>{% endif %}</li><li class="page-item disabled"><span class="page-link" aria-current="page">{{ lifecycle_page.number }} из {{ lifecycle_page.paginator.num_pages }}</span></li><li class="page-item{% if not lifecycle_page.has_next %} disabled{% endif %}">{% if lifecycle_page.has_next %}<a class="page-link" href="?history_page={{ lifecycle_page.next_page_number }}#program-block-lifecycle-history" aria-label="Следующая страница"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>{% else %}<span class="page-link" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>{% endif %}</li></ul></nav>{% endif %}
+</section>
+{% endblock %}

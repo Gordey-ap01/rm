@@ -790,7 +790,6 @@ class ProgramLifecycleTests(TestCase):
         self.assertEqual(participant.program_block_id, other_block.pk)
 
     def test_move_checks_a_paused_secondary_group_participant_program(self):
-        self._pause(expected=0)
         primary_child = Child.objects.create(
             last_name="Активная программа", first_name="Основной участник"
         )
@@ -827,6 +826,7 @@ class ProgramLifecycleTests(TestCase):
             ends_at_snapshot=group.ends_at,
             appointment_status=group.status,
         )
+        self._pause(expected=0)
         count = Appointment.objects.count()
 
         response = self.client.post(

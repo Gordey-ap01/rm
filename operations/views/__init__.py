@@ -109,6 +109,10 @@ from .imports import (
     recipient_import_preview,
 )
 from .payments import payment_create
+from .program_block_lifecycle import (
+    program_block_lifecycle_action,
+    program_block_lifecycle_detail,
+)
 from .program_lifecycle import program_detail, program_lifecycle_action
 from .programs import (
     appointment_series_action,
@@ -316,6 +320,8 @@ __all__ = [
     "program_block_create",
     "program_block_group_join",
     "program_block_group_series_create",
+    "program_block_lifecycle_action",
+    "program_block_lifecycle_detail",
     "program_block_schedule_wizard",
     "program_block_transfer_funds",
     "program_create",
