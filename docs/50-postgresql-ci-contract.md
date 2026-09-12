@@ -47,6 +47,14 @@ PostgreSQL 17 service container с одноразовой базой `rehab_ci`.
 
 ## Границы
 
-CI не заменяет отдельную production-приемку: restore drill, SMTP, мониторинг,
-реальные права GitHub branch protection и production financial-integrity run
-остаются следующими эксплуатационными задачами.
+С 2026-09-12 workflow разделен на два независимых задания с отдельными runners:
+`Django and PostgreSQL 17` выполняет миграции, проверки и полный pytest;
+`Production backup and restore drill` проверяет production-скрипты, Compose,
+preflight и восстановление синтетического production-подобного стенда.
+Оба результата обязательны для приемки. Разделение сокращает последовательное
+ожидание, но само по себе не обещает экономии runner-минут; длительность
+измеряется по фактическому CI. Рабочие данные и production-пароли не используются.
+
+CI не заменяет отдельную production-приемку: восстановление внешней резервной
+копии, SMTP, мониторинг, реальные права GitHub branch protection и production
+financial-integrity run остаются эксплуатационными задачами.

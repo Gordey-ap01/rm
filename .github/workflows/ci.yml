@@ -61,6 +61,18 @@ jobs:
       - name: Verify production dependency manifests
         run: python scripts/verify_dependency_manifests.py
 
+      - name: Run full test suite
+        run: python -m pytest -q --tb=short
+
+  production-backup-restore:
+    name: Production backup and restore drill
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
       - name: Validate production scripts and Compose config
         run: |
           bash -n scripts/_production_common.sh scripts/backup_prod.sh scripts/verify_backup_prod.sh scripts/restore_prod.sh scripts/production_preflight.sh scripts/restore_drill_ci.sh scripts/deploy_prod.sh
@@ -80,6 +92,3 @@ jobs:
 
       - name: Prove production backup and restore drill
         run: CI=true bash scripts/restore_drill_ci.sh
-
-      - name: Run full test suite
-        run: python -m pytest -q --tb=short
