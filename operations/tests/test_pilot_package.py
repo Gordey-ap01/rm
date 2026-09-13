@@ -67,10 +67,12 @@ def source_repository(tmp_path):
     return repository, commit(repository)
 
 
+@pytest.mark.parametrize("autocrlf", ["false", "true"])
 def test_export_uses_committed_bytes_and_excludes_private_or_untracked_files(
-    source_repository, tmp_path
+    source_repository, tmp_path, autocrlf
 ):
     repository, source_commit = source_repository
+    git(repository, "config", "core.autocrlf", autocrlf)
     (repository / "operations/models.py").write_text("UNCOMMITTED WORK", encoding="utf-8")
     (repository / "static/untracked.png").write_bytes(b"UNTRACKED")
     output = tmp_path / "kit"

@@ -168,6 +168,10 @@ def build_pilot(repository: Path, commit: str, output: Path, training_date: date
         archive_path = Path(temporary) / "source.tar"
         _git(
             repository,
+            "-c",
+            "core.autocrlf=false",
+            "-c",
+            "core.eol=lf",
             "archive",
             "--format=tar",
             f"--output={archive_path}",
