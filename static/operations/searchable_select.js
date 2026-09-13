@@ -112,7 +112,7 @@
     var renderedOptions = [];
     var observer = new MutationObserver(function () {
       syncFromSelect();
-      render(input.value, true);
+      if (isOpen) render(input.value, true);
     });
 
     function setDisabledState() {
