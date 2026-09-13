@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Очередь администратора{% endblock %}
+{% block title %}Очередь администратора и руководителя{% endblock %}
 
 {% block content %}
 <section class="page-header">
   <div>
-    <h1>Очередь администратора</h1>
+    <h1>Очередь администратора и руководителя</h1>
     <p>Ежедневный список ситуаций, где нужно решение человека.</p>
   </div>
   <a class="button-link" href="{% url 'schedule' %}">Открыть календарь</a>
@@ -28,6 +28,8 @@
 </section>
 
 <section class="queue-grid">
+  {% include "operations/includes/program_lifecycle_queue.html" %}
+
   <article class="panel" id="queue-billing">
     <h2>Нужно решение по списанию</h2>
     <div class="task-list">

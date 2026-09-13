@@ -6,6 +6,7 @@ from datetime import datetime, time, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.core.paginator import Paginator
 from django.db.models import Case, Count, IntegerField, Max, Q, Sum, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -32,9 +33,11 @@ from operations.services import (
     financial_integrity_checks as financial_integrity_checks_svc,
     financial_integrity_events as financial_integrity_events_svc,
     financial_integrity_triage as financial_integrity_triage_svc,
+    program_lifecycle_overview as program_lifecycle_overview_svc,
     rescheduling_plans as plan_svc,
     time_off_decisions as time_off_svc,
 )
+from operations.services.program_progress import get_program_block_progress
 
 from ._common import is_admin_user, safe_next_url
 
@@ -1184,6 +1187,7 @@ def dashboard_focus_items(
     failed_step_count: int,
     financial_integrity_count: int,
     financial_integrity_tone: str,
+    lifecycle_attention_count: int,
 ):
     queue_url = reverse("work_queue")
     items = []
@@ -1205,6 +1209,16 @@ def dashboard_focus_items(
                 "title": "Проверить финансы",
                 "detail": "Есть расхождения между списаниями, участниками и ledger.",
                 "href": f"{queue_url}#queue-financial-integrity",
+            }
+        )
+    if lifecycle_attention_count:
+        items.append(
+            {
+                "tone": "info",
+                "value": lifecycle_attention_count,
+                "title": "Проверить завершение программ",
+                "detail": "Есть каскады и программы, для которых требуется решение.",
+                "href": f"{queue_url}#queue-program-lifecycle",
             }
         )
     if overdue_attendance:
@@ -1334,6 +1348,7 @@ def work_queue_summary_items(
     financial_integrity_tone: str,
     certificate_attention_count: int,
     certificate_tone: str,
+    lifecycle_attention_count: int,
 ):
     chain_attention_count = ready_chain_count + stale_chain_count + failed_chain_count
     chain_tone = "success"
@@ -1422,6 +1437,13 @@ def work_queue_summary_items(
             "tone": "info" if time_off_count else "success",
             "detail": "Отпуска, отгулы и другие отсутствия.",
         },
+        {
+            "label": "Проверить программы и каскады",
+            "value": lifecycle_attention_count,
+            "href": "#queue-program-lifecycle",
+            "tone": "info" if lifecycle_attention_count else "success",
+            "detail": "Программы и каскады, для которых требуется решение.",
+        },
     ]
 
 
@@ -1472,6 +1494,137 @@ def certificate_backfill_tone(
     return "success"
 
 
+_LIFECYCLE_BLOCK_FOCUSES = {
+    program_lifecycle_overview_svc.BLOCK_READY,
+    program_lifecycle_overview_svc.PARENT_CLOSED,
+}
+_LIFECYCLE_PROGRAM_FOCUSES = {
+    program_lifecycle_overview_svc.PROGRAM_READY,
+    program_lifecycle_overview_svc.PROGRAM_PAUSED,
+}
+_LIFECYCLE_FOCUSES = _LIFECYCLE_BLOCK_FOCUSES | _LIFECYCLE_PROGRAM_FOCUSES
+_LIFECYCLE_QUEUE_ANCHOR = "queue-program-lifecycle"
+
+
+def _lifecycle_queue_url(
+    request,
+    *,
+    focus: str | None = None,
+    page_key: str | None = None,
+    page: int | None = None,
+) -> str:
+    """Build queue links without dropping unrelated filters or the lifecycle anchor."""
+
+    params = request.GET.copy()
+    if focus is None and params.get("lifecycle", "") not in _LIFECYCLE_FOCUSES:
+        params.pop("lifecycle", None)
+    if focus is not None:
+        if focus:
+            params["lifecycle"] = focus
+        else:
+            params.pop("lifecycle", None)
+        params.pop("block_page", None)
+        params.pop("program_page", None)
+    if page_key and page:
+        params[page_key] = page
+    query = params.urlencode()
+    path = reverse("work_queue")
+    return f"{path}?{query}#{_LIFECYCLE_QUEUE_ANCHOR}" if query else f"{path}#{_LIFECYCLE_QUEUE_ANCHOR}"
+
+
+def _lifecycle_queue_context(request):
+    focus = request.GET.get("lifecycle", "")
+    if focus not in _LIFECYCLE_FOCUSES:
+        focus = ""
+
+    show_blocks = not focus or focus in _LIFECYCLE_BLOCK_FOCUSES
+    show_programs = not focus or focus in _LIFECYCLE_PROGRAM_FOCUSES
+    block_page = None
+    program_page = None
+    block_rows = []
+    block_progress_rows = []
+
+    if show_blocks:
+        block_page = Paginator(
+            program_lifecycle_overview_svc.block_attention_queryset(
+                focus if focus in _LIFECYCLE_BLOCK_FOCUSES else ""
+            ),
+            20,
+        ).get_page(request.GET.get("block_page"))
+        block_rows = list(block_page.object_list)
+        block_progress = get_program_block_progress(block_rows)
+        block_progress_rows = [
+            (block, block_progress[block.pk]) for block in block_rows
+        ]
+
+    if show_programs:
+        program_page = Paginator(
+            program_lifecycle_overview_svc.program_attention_queryset(
+                focus if focus in _LIFECYCLE_PROGRAM_FOCUSES else ""
+            ),
+            20,
+        ).get_page(request.GET.get("program_page"))
+
+    return {
+        "lifecycle_counts": program_lifecycle_overview_svc.get_lifecycle_overview_counts(),
+        "lifecycle_focus": focus,
+        "lifecycle_show_blocks": show_blocks,
+        "lifecycle_show_programs": show_programs,
+        "lifecycle_block_rows": block_progress_rows,
+        "lifecycle_block_page": block_page,
+        "lifecycle_program_page": program_page,
+        "lifecycle_all_url": _lifecycle_queue_url(request, focus=""),
+        "lifecycle_block_ready_url": _lifecycle_queue_url(
+            request, focus=program_lifecycle_overview_svc.BLOCK_READY
+        ),
+        "lifecycle_parent_closed_url": _lifecycle_queue_url(
+            request, focus=program_lifecycle_overview_svc.PARENT_CLOSED
+        ),
+        "lifecycle_program_ready_url": _lifecycle_queue_url(
+            request, focus=program_lifecycle_overview_svc.PROGRAM_READY
+        ),
+        "lifecycle_program_paused_url": _lifecycle_queue_url(
+            request, focus=program_lifecycle_overview_svc.PROGRAM_PAUSED
+        ),
+        "lifecycle_block_previous_url": (
+            _lifecycle_queue_url(
+                request,
+                page_key="block_page",
+                page=block_page.previous_page_number(),
+            )
+            if block_page and block_page.has_previous()
+            else ""
+        ),
+        "lifecycle_block_next_url": (
+            _lifecycle_queue_url(
+                request,
+                page_key="block_page",
+                page=block_page.next_page_number(),
+            )
+            if block_page and block_page.has_next()
+            else ""
+        ),
+        "lifecycle_program_previous_url": (
+            _lifecycle_queue_url(
+                request,
+                page_key="program_page",
+                page=program_page.previous_page_number(),
+            )
+            if program_page and program_page.has_previous()
+            else ""
+        ),
+        "lifecycle_program_next_url": (
+            _lifecycle_queue_url(
+                request,
+                page_key="program_page",
+                page=program_page.next_page_number(),
+            )
+            if program_page and program_page.has_next()
+            else ""
+        ),
+    }
+
+
 @login_required
 def dashboard(request):
     if not is_admin_user(request.user):
@@ -1490,6 +1643,7 @@ def dashboard(request):
     reschedule_step_count = step_counts["total"]
     financial_findings = financial_integrity_active_findings_queryset()
     financial_summary = financial_integrity_summary(financial_findings)
+    lifecycle_counts = program_lifecycle_overview_svc.get_lifecycle_overview_counts()
     priority_total = (
         unresolved_billing
         + awaiting_transfer
@@ -1499,6 +1653,7 @@ def dashboard(request):
         + chain_attention_count
         + reschedule_step_count
         + int(financial_summary["total"])
+        + lifecycle_counts.total
     )
     today_appointments = (
         Appointment.objects.filter(starts_at__date=today)
@@ -1538,6 +1693,7 @@ def dashboard(request):
         failed_step_count=step_counts["failed"],
         financial_integrity_count=int(financial_summary["total"]),
         financial_integrity_tone=str(financial_summary["tone"]),
+        lifecycle_attention_count=lifecycle_counts.total,
     )
     return render(
         request,
@@ -1565,6 +1721,7 @@ def dashboard(request):
             "financial_integrity_warning_count": financial_summary["warnings"],
             "financial_integrity_info_count": financial_summary["info"],
             "financial_integrity_tone": financial_summary["tone"],
+            "lifecycle_counts": lifecycle_counts,
             "staff_load": staff_load,
             "low_balances": low_balances,
             "tomorrow_appointments": tomorrow_appointments,
@@ -1629,6 +1786,7 @@ def work_queue(request):
             "pk", flat=True
         )[:CERTIFICATE_PREFLIGHT_SAMPLE_LIMIT]
     )
+    lifecycle_context = _lifecycle_queue_context(request)
     queue_summary = work_queue_summary_items(
         needs_billing_count=len(needs_billing),
         needs_attendance_count=len(needs_attendance),
@@ -1647,6 +1805,7 @@ def work_queue(request):
         financial_integrity_tone=str(financial_summary["tone"]),
         certificate_attention_count=certificate_attention_count,
         certificate_tone=certificate_tone,
+        lifecycle_attention_count=lifecycle_context["lifecycle_counts"].total,
     )
     return render(
         request,
@@ -1685,5 +1844,6 @@ def work_queue(request):
             "stale_step_count": step_counts["stale"],
             "queue_summary_items": queue_summary,
             "queue_next_action": work_queue_next_action(queue_summary),
+            **lifecycle_context,
         },
     )

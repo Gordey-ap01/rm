@@ -90,6 +90,10 @@
     <span class="ops-metric-value">{{ reschedule_step_count }}</span>
     <span>шагов переноса в очереди</span>
   </a>
+  <a class="ops-metric needs-action" href="{% url 'work_queue' %}#queue-program-lifecycle">
+    <span class="ops-metric-value">{{ lifecycle_counts.total }}</span>
+    <span>программ и каскадов ждут решения</span>
+  </a>
   <a class="ops-metric needs-action" href="{% url 'work_queue' %}">
     <span class="ops-metric-value">{{ confirmation_tasks }}</span>
     <span>email-согласований</span>

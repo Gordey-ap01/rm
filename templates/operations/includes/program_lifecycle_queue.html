@@ -1,0 +1,94 @@
+<article class="panel" id="queue-program-lifecycle">
+  <div class="queue-section-actions">
+    <a class="panel-link" href="{% url 'appointment_series_list' %}?status=stopped">Остановленные серии: {{ lifecycle_counts.stopped_series }}</a>
+  </div>
+  <h2>Программы и каскады: требуется решение</h2>
+  <p class="muted">Очередь администратора и руководителя для проверки факта занятий и решений по программам.</p>
+
+  <div class="queue-summary" aria-label="Фильтры жизненного цикла">
+    <a class="queue-summary-item is-info" href="{{ lifecycle_all_url }}"{% if not lifecycle_focus %} aria-current="page"{% endif %}>
+      <strong>{{ lifecycle_counts.total }}</strong>
+      <span>Всего в очереди</span>
+    </a>
+    <a class="queue-summary-item is-info" href="{{ lifecycle_block_ready_url }}"{% if lifecycle_focus == "block_ready" %} aria-current="page"{% endif %}>
+      <strong>{{ lifecycle_counts.block_ready }}</strong>
+      <span>План каскада выполнен</span>
+    </a>
+    <a class="queue-summary-item is-warning" href="{{ lifecycle_parent_closed_url }}"{% if lifecycle_focus == "parent_closed" %} aria-current="page"{% endif %}>
+      <strong>{{ lifecycle_counts.parent_closed }}</strong>
+      <span>Каскады закрытых программ</span>
+    </a>
+    <a class="queue-summary-item is-info" href="{{ lifecycle_program_ready_url }}"{% if lifecycle_focus == "program_ready" %} aria-current="page"{% endif %}>
+      <strong>{{ lifecycle_counts.program_ready }}</strong>
+      <span>Программы без незавершенных каскадов</span>
+    </a>
+    <a class="queue-summary-item is-warning" href="{{ lifecycle_program_paused_url }}"{% if lifecycle_focus == "program_paused" %} aria-current="page"{% endif %}>
+      <strong>{{ lifecycle_counts.program_paused }}</strong>
+      <span>Программы на паузе</span>
+    </a>
+  </div>
+
+  <p class="small muted mt-2">Один объект может быть в нескольких списках. В общем количестве каждая программа и каскад учитывается один раз.</p>
+
+  {% if lifecycle_show_blocks %}
+    <h3 class="h5 mt-3">Каскады</h3>
+    <div class="task-list">
+      {% for block, progress in lifecycle_block_rows %}
+        <div class="task-card">
+          <div>
+            <strong><a href="{% url 'recipient_detail' block.program.child.pk %}">{{ block.program.child }}</a></strong>
+            <p>{{ block.program.title }} · каскад {{ block.number }}{% if block.title %} · {{ block.title }}{% endif %}</p>
+            <p class="muted">Услуга: {{ block.service }} · статус: {{ progress.activity_status_label }}</p>
+            <p>План: {{ progress.planned }} · назначено: {{ progress.allocated }} · проведено: {{ progress.completed }} · осталось: {{ progress.remaining }}</p>
+            <p class="muted">Неявки: {{ progress.missed }} · списано: {{ progress.charged }} (финансовый факт, не проведение).</p>
+          </div>
+          <div class="task-actions">
+            <a class="button-link secondary small-action" href="{% url 'program_block_lifecycle_detail' block.pk %}">Открыть каскад</a>
+          </div>
+        </div>
+      {% empty %}
+        <p class="empty-state">Каскадов, требующих проверки, сейчас нет.</p>
+      {% endfor %}
+    </div>
+    {% if lifecycle_block_page.paginator.num_pages > 1 %}
+      <nav class="task-actions mt-2" aria-label="Страницы каскадов">
+        {% if lifecycle_block_page.has_previous %}<a class="button-link secondary small-action" href="{{ lifecycle_block_previous_url }}">Предыдущие</a>{% endif %}
+        <span class="muted">Страница {{ lifecycle_block_page.number }} из {{ lifecycle_block_page.paginator.num_pages }}</span>
+        {% if lifecycle_block_page.has_next %}<a class="button-link secondary small-action" href="{{ lifecycle_block_next_url }}">Следующие</a>{% endif %}
+      </nav>
+    {% endif %}
+  {% endif %}
+
+  {% if lifecycle_show_programs %}
+    <h3 class="h5 mt-3">Программы</h3>
+    <div class="task-list">
+      {% for program in lifecycle_program_page %}
+        <div class="task-card">
+          <div>
+            <strong><a href="{% url 'recipient_detail' program.child.pk %}">{{ program.child }}</a></strong>
+            <p>{{ program.title }} · статус: {{ program.get_status_display }}</p>
+            {% if program.status == "paused" %}
+              <p class="muted">Проверьте основание паузы и дальнейшие действия.</p>
+            {% elif program.has_unfinished_blocks %}
+              <p class="muted">Есть незавершенные каскады.</p>
+            {% else %}
+              <p class="muted">Незавершенных каскадов нет; откройте программу для проверки решения.</p>
+            {% endif %}
+          </div>
+          <div class="task-actions">
+            <a class="button-link secondary small-action" href="{% url 'program_detail' program.pk %}">Открыть программу</a>
+          </div>
+        </div>
+      {% empty %}
+        <p class="empty-state">Программ, требующих проверки, сейчас нет.</p>
+      {% endfor %}
+    </div>
+    {% if lifecycle_program_page.paginator.num_pages > 1 %}
+      <nav class="task-actions mt-2" aria-label="Страницы программ">
+        {% if lifecycle_program_page.has_previous %}<a class="button-link secondary small-action" href="{{ lifecycle_program_previous_url }}">Предыдущие</a>{% endif %}
+        <span class="muted">Страница {{ lifecycle_program_page.number }} из {{ lifecycle_program_page.paginator.num_pages }}</span>
+        {% if lifecycle_program_page.has_next %}<a class="button-link secondary small-action" href="{{ lifecycle_program_next_url }}">Следующие</a>{% endif %}
+      </nav>
+    {% endif %}
+  {% endif %}
+</article>
