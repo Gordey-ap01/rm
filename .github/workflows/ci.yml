@@ -57,6 +57,7 @@ jobs:
         run: >-
           python -m ruff check operations rehab_center
           scripts/restore_files.py scripts/fsync_backup.py scripts/migrate_prod.py
+          scripts/build_pilot.py
 
       - name: Verify production dependency manifests
         run: python scripts/verify_dependency_manifests.py

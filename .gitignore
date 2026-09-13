@@ -18,6 +18,7 @@ data/
 backups/
 /tmp/
 /.runtime/
+/pilot/.pilot-*
 серверапаролиключи/
 *.sqlite3
 staticfiles/

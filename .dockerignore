@@ -4,6 +4,7 @@
 .env.*
 .venv
 /.venv-test/
+pilot/.pilot-*
 __pycache__/
 *.pyc
 .pytest_cache/

@@ -1,0 +1,87 @@
+services:
+  volume-init:
+    image: "rm-pilot-web:${PILOT_IMAGE_TAG:?PILOT_IMAGE_TAG must be set in pilot/.pilot-local.env}"
+    user: "0:0"
+    command:
+      - sh
+      - -ec
+      - >-
+        mkdir -p /app/media /app/private-artifacts /app/staticfiles
+        && chown -R rehab:rehab /app/media /app/private-artifacts /app/staticfiles
+    volumes:
+      - pilot-media-data:/app/media
+      - pilot-private-artifact-data:/app/private-artifacts
+      - pilot-static-data:/app/staticfiles
+    restart: "no"
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: rm_pilot_training
+      POSTGRES_USER: rm_pilot
+      POSTGRES_PASSWORD: ${RM_PILOT_DB_PASSWORD:?RM_PILOT_DB_PASSWORD must be set in pilot/.pilot-local.env}
+    volumes:
+      - pilot-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rm_pilot -d rm_pilot_training"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: "rm-pilot-web:${PILOT_IMAGE_TAG:?PILOT_IMAGE_TAG must be set in pilot/.pilot-local.env}"
+    command:
+      - gunicorn
+      - rehab_center.wsgi:application
+      - --bind
+      - 0.0.0.0:8000
+      - --workers
+      - "2"
+      - --timeout
+      - "90"
+    ports:
+      - "127.0.0.1:18000:8000"
+    environment:
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: rm_pilot_training
+      DATABASE_USER: rm_pilot
+      DATABASE_PASSWORD: ${RM_PILOT_DB_PASSWORD:?RM_PILOT_DB_PASSWORD must be set in pilot/.pilot-local.env}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in pilot/.pilot-local.env}
+      DJANGO_SETTINGS_MODULE: rehab_center.settings_pilot
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: 127.0.0.1,localhost
+      DJANGO_CSRF_TRUSTED_ORIGINS: http://127.0.0.1:18000,http://localhost:18000
+      EMAIL_BACKEND: django.core.mail.backends.locmem.EmailBackend
+      DEFAULT_FROM_EMAIL: rm-pilot@example.local
+      RM_PILOT_MODE: "1"
+      RM_PILOT_PASSWORD: ${RM_PILOT_PASSWORD:?RM_PILOT_PASSWORD must be set in pilot/.pilot-local.env}
+    volumes:
+      - pilot-media-data:/app/media
+      - pilot-private-artifact-data:/app/private-artifacts
+      - pilot-static-data:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+      volume-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/', timeout=5).read()"
+      interval: 10s
+      timeout: 6s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  pilot-db-data:
+  pilot-media-data:
+  pilot-private-artifact-data:
+  pilot-static-data:
