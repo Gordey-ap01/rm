@@ -26,6 +26,7 @@ from operations.schedule_validation import (
     staff_unavailability_reason,
 )
 from operations.services import appointments as appointment_svc
+from operations.services.authority import is_center_operator
 
 api = NinjaAPI(auth=django_auth, urls_namespace="api", version="1.0.0")
 
@@ -63,9 +64,9 @@ class ErrorOut(Schema):
 
 
 def admin_api_forbidden(request):
-    if request.user.is_staff:
+    if is_center_operator(request.user):
         return None
-    return HttpResponseForbidden("Доступ к API календаря разрешен только администраторам.")
+    return HttpResponseForbidden("Доступ к API календаря разрешен только операторам центра.")
 
 
 def move_conflict_messages(appointment: Appointment, starts_at, ends_at) -> list[str]:
