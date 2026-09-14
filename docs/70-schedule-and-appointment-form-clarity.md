@@ -55,8 +55,10 @@ Ruff (`operations rehab_center`), dependency manifests, проверка diff и
 Записи для этих проверок создавались только в отдельной копии QA на 18001.
 
 [CI 34866385869](https://github.com/Gordey-ap01/rm/actions/runs/34866385869)
-запущен на точном SHA; на момент записи ещё выполняется. Агент отслеживает
-его без повторного запуска; итог сохранить в `.runtime/schedule-clarity-ci.log`.
+завершился: **1260 passed, 1 failed, 529 warnings, 769.45s**. Единственное
+падение — старый prefill-тест ожидал `<option selected>` вместо нового checkbox.
+Проверка исправлена и прошла в [срезе 71](71-compact-people-picker-and-help.md).
+Backup/restore, миграции/check, Ruff/manifests успешны. Лог `.runtime/schedule-clarity-ci.log`.
 Предыдущий CI `e693f5a` завершился с одной устаревшей проверкой табличной
 разметки (1256 passed, 1 failed). Она обновлена на семантику карточек заявок
 и входит в успешно пройденные 60 тестов текущей версии.
