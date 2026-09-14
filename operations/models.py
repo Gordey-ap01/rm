@@ -4572,14 +4572,63 @@ class AppointmentParticipant(TimeStampedModel):
                 )
             super().save(*args, **kwargs)
 
-    def delete(self, *args: object, **kwargs: object) -> tuple[int, dict[str, int]]:
-        if self.pk and (
-            self.source_participant_id is not None
-            or self.rescheduled_to.exists()
-            or self.series_materialization_results.filter(outcome="joined").exists()
+    def removal_block_reasons(self) -> tuple[str, ...]:
+        """Return immutable facts that must keep the participant link intact."""
+        if not self.pk:
+            return ()
+
+        reasons = []
+        if (
+            AppointmentAttendanceDecision.objects.filter(
+                appointment_id=self.appointment_id
+            ).exists()
+            or self.attendance_status != Appointment.AttendanceStatus.UNKNOWN
+            or self.appointment_status
+            in {Appointment.Status.COMPLETED, Appointment.Status.NO_SHOW}
         ):
-            raise ValidationError("Узел линии участия нельзя физически удалить.")
-        return super().delete(*args, **kwargs)
+            reasons.append("отметка проведения")
+        if self.billing_decision != Appointment.BillingDecision.UNDECIDED:
+            reasons.append("решение по списанию")
+        if LedgerEntry.objects.filter(appointment_participant_id=self.pk).exists():
+            reasons.append("операция баланса")
+        if PayrollAccrual.objects.filter(appointment_participant_id=self.pk).exists():
+            reasons.append("начисление специалисту")
+        if AppointmentConfirmation.objects.filter(participant_id=self.pk).exists():
+            reasons.append("подтверждение")
+        if FinancialIntegrityFinding.objects.filter(
+            appointment_participant_id=self.pk
+        ).exists():
+            reasons.append("зафиксированное финансовое расхождение")
+        return tuple(reasons)
+
+    def delete(self, *args: object, **kwargs: object) -> tuple[int, dict[str, int]]:
+        if not self.pk:
+            return super().delete(*args, **kwargs)
+
+        using = kwargs.get("using") or self._state.db or "default"
+        with transaction.atomic(using=using):
+            # Attendance and billing lock the appointment before its participants.
+            # Keep the same order so a fact cannot appear between this check and DELETE.
+            Appointment.objects.using(using).select_for_update().get(
+                pk=self.appointment_id
+            )
+            participant = AppointmentParticipant.objects.using(using).select_for_update().get(
+                pk=self.pk
+            )
+            reasons = participant.removal_block_reasons()
+            if reasons:
+                raise ValidationError(
+                    "Нельзя удалить участника занятия: сохранены связанные факты ("
+                    + ", ".join(reasons)
+                    + ")."
+                )
+            if (
+                participant.source_participant_id is not None
+                or participant.rescheduled_to.exists()
+                or participant.series_materialization_results.filter(outcome="joined").exists()
+            ):
+                raise ValidationError("Узел линии участия нельзя физически удалить.")
+            return super().delete(*args, **kwargs)
 
 
 class AppointmentStaffAssignment(TimeStampedModel):

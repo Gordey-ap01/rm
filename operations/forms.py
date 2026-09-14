@@ -574,6 +574,25 @@ class AppointmentForm(forms.ModelForm):
                     "Нельзя удалить получателя, присоединенного через серию: "
                     f"{names}. История присоединения неизменяема.",
                 )
+            factual_participants = [
+                (participant, participant.removal_block_reasons())
+                for participant in removal_candidates
+            ]
+            factual_participants = [
+                (participant, reasons)
+                for participant, reasons in factual_participants
+                if reasons
+            ]
+            if factual_participants:
+                details = "; ".join(
+                    f"{participant.child} ({', '.join(reasons)})"
+                    for participant, reasons in factual_participants
+                )
+                self.add_error(
+                    "participants",
+                    "Нельзя удалить получателя с сохраненными фактами: "
+                    f"{details}.",
+                )
         return cleaned
 
     def _sync_participants(self, appointment: Appointment) -> None:

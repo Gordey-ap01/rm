@@ -1286,6 +1286,7 @@ class AppointmentSeriesAdmin(admin.ModelAdmin):
 class AppointmentParticipantInline(admin.TabularInline):
     model = AppointmentParticipant
     extra = 0
+    can_delete = False
     fields = (
         "child",
         "attendance_status",
@@ -1446,6 +1447,24 @@ class AppointmentParticipantAdmin(admin.ModelAdmin):
         "program_block",
         "source_participant",
     )
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        actions.pop("delete_selected", None)
+        return actions
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is None:
+            return super().has_delete_permission(request, obj)
+        if obj.removal_block_reasons():
+            return False
+        if (
+            obj.source_participant_id is not None
+            or obj.rescheduled_to.exists()
+            or obj.series_materialization_results.filter(outcome="joined").exists()
+        ):
+            return False
+        return super().has_delete_permission(request, obj)
 
 
 @admin.register(AppointmentStaffAssignment)
