@@ -252,6 +252,78 @@ class TimeOffDecisionServiceTests(TimeOffDecisionFixture):
 
 
 class TimeOffDecisionViewTests(TimeOffDecisionFixture):
+    def test_personal_header_keeps_approved_request_visible_through_director_review(self):
+        request = self.create_request(request_type=TimeOffRequest.RequestType.SICK, days=3)
+        time_off_svc.resolve_manually(
+            request, action="approve", reason="Больничный согласован администратором.", actor=self.admin,
+        )
+        self.client.force_login(self.specialist_user)
+        response = self.client.get(reverse("specialist_home"))
+        summary = response.context["personal_time_off_summary"]
+        self.assertEqual((summary["total"], summary["approved"], summary["review"]), (1, 1, 1))
+        self.assertContains(response, "Мои заявки · 1")
+        self.assertContains(response, "Согласовано: 1")
+        self.assertContains(response, "На контроле руководителя: 1")
+        self.assertContains(response, f'href="{reverse("specialist_home")}#staff-time-off"')
+
+        time_off_svc.resolve_manually(
+            request, action="approve", reason="Руководитель подтвердил больничный.", actor=self.director,
+        )
+        response = self.client.get(reverse("specialist_home"))
+        summary = response.context["personal_time_off_summary"]
+        self.assertEqual((summary["total"], summary["approved"], summary["awaiting_final"]), (1, 1, 0))
+        self.assertContains(response, "Мои заявки · 1")
+        self.assertContains(response, "Руководитель подтвердил больничный.")
+        self.assertNotContains(response, "На контроле руководителя:")
+
+    def test_personal_header_never_uses_selected_or_another_staff_profile(self):
+        self.create_request()
+        other_user = User.objects.create_user("other-requests-specialist", password="x")
+        other_staff = StaffMember.objects.create(user=other_user, full_name="Другой специалист")
+        self.client.force_login(other_user)
+        response = self.client.get(reverse("specialist_home"), {"staff_id": self.staff.pk})
+        self.assertEqual(response.context["personal_time_off_summary"]["total"], 0)
+        self.assertEqual(response.context["staff"], other_staff)
+        self.assertContains(response, "Пока не отправлены")
+        self.assertNotContains(response, "Тестовая заявка специалиста.")
+
+        for operator in (self.admin, self.director):
+            self.client.force_login(operator)
+            response = self.client.get(reverse("specialist_home"), {"staff_id": self.staff.pk})
+            self.assertIsNone(response.context["personal_time_off_summary"])
+            self.assertNotContains(response, 'class="personal-requests-link"')
+
+        other_user.is_staff = True
+        other_user.save(update_fields=["is_staff"])
+        self.client.force_login(other_user)
+        response = self.client.get(reverse("specialist_home"), {"staff_id": self.staff.pk})
+        self.assertEqual(response.context["personal_time_off_summary"]["total"], 0)
+        self.assertEqual(response.context["time_off_summary"]["total"], 1)
+
+        other_staff.can_use_mobile = False
+        other_staff.save(update_fields=["can_use_mobile"])
+        response = self.client.get(reverse("dashboard"))
+        self.assertNotContains(response, 'class="personal-requests-link"')
+        self.client.logout()
+        response = self.client.get(reverse("login"))
+        self.assertNotContains(response, 'class="personal-requests-link"')
+
+    def test_request_counts_include_history_beyond_first_page(self):
+        oldest = self.create_request()
+        for _ in range(11):
+            item = self.create_request()
+            item.status = TimeOffRequest.Status.CANCELLED
+            item.save(update_fields=["status"])
+        self.client.force_login(self.specialist_user)
+        response = self.client.get(reverse("specialist_home"))
+        summary = response.context["personal_time_off_summary"]
+        self.assertEqual((summary["total"], summary["pending"], summary["cancelled"]), (12, 1, 11))
+        self.assertEqual(len(response.context["time_off_requests"]), 10)
+        self.assertContains(response, "Предыдущие заявки")
+        response = self.client.get(reverse("specialist_home"), {"requests_page": 2})
+        self.assertIn(oldest.pk, [item.pk for item in response.context["time_off_requests"]])
+        self.assertContains(response, "Ожидает решения")
+
     def test_multiday_sick_leave_separates_admin_revision_from_director_review(self):
         request = self.create_request(request_type=TimeOffRequest.RequestType.SICK, days=3)
         endpoint = reverse("time_off_request_decide", args=[request.pk])

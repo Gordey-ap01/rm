@@ -10,6 +10,7 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from django.db.models import Prefetch
 from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
@@ -73,6 +74,7 @@ def specialist_week_summary_items(
     today,
     marked_count: int,
     pending_time_off_count: int,
+    total_time_off_count: int,
 ) -> list[dict[str, str]]:
     today_count = sum(
         1
@@ -106,9 +108,9 @@ def specialist_week_summary_items(
             "hint": "групповых занятий",
         },
         {
-            "label": "Заявки",
-            "value": str(pending_time_off_count),
-            "hint": "ожидают итогового решения",
+            "label": "Отправлено заявок",
+            "value": str(total_time_off_count),
+            "hint": f"ожидают итогового решения: {pending_time_off_count}",
         },
     ]
 
@@ -296,18 +298,14 @@ def specialist_home(request):
         )
     )
     availability_windows = staff.availability_windows.order_by("weekday", "starts_at")
-    time_off_requests = time_off_svc.decorate_rows(
+    time_off_summary = time_off_svc.staff_request_summary(staff.pk)
+    time_off_page = Paginator(
         time_off_svc.with_current_decision(
-            staff.time_off_requests.select_related("decided_by").order_by("-created_at")[:10]
+            staff.time_off_requests.select_related("decided_by").order_by("-created_at", "-pk")
         ),
-        actor=request.user,
-    )
-    pending_time_off_count = sum(
-        1
-        for item in time_off_requests
-        if item.status == TimeOffRequest.Status.PENDING
-        or item.awaits_director_review
-    )
+        10,
+    ).get_page(request.GET.get("requests_page"))
+    time_off_requests = time_off_svc.decorate_rows(time_off_page, actor=request.user)
     return render(
         request,
         "operations/specialist_home.html",
@@ -322,7 +320,8 @@ def specialist_home(request):
                 schedule_assignments=schedule_assignments,
                 today=today,
                 marked_count=summary,
-                pending_time_off_count=pending_time_off_count,
+                pending_time_off_count=time_off_summary["awaiting_final"],
+                total_time_off_count=time_off_summary["total"],
             ),
             "specialist_next_action": specialist_next_action(
                 schedule_assignments=schedule_assignments,
@@ -333,6 +332,8 @@ def specialist_home(request):
             "week_end": week_end,
             "availability_windows": availability_windows,
             "time_off_requests": time_off_requests,
+            "time_off_summary": time_off_summary,
+            "time_off_page": time_off_page,
             "availability_form": StaffAvailabilityForm(),
             "time_off_form": TimeOffRequestForm(initial={"starts_on": today, "ends_on": today}),
         },

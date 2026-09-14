@@ -43,7 +43,7 @@
   <nav class="specialist-quick-links" aria-label="Быстрые переходы">
     <a href="#specialist-schedule">Расписание</a>
     <a href="#staff-availability">График</a>
-    <a href="#staff-time-off">Отгулы</a>
+    <a href="#staff-time-off">Заявки и решения · {{ time_off_summary.total }}</a>
   </nav>
 </section>
 
@@ -116,6 +116,57 @@
 </section>
 
 <section class="detail-grid staff-ops">
+  <article class="panel staff-requests-panel" id="staff-time-off" aria-labelledby="staff-requests-heading">
+    <h2 id="staff-requests-heading">{% if can_manage_specialists %}Заявки специалиста{% else %}Мои заявки{% endif %} · {{ time_off_summary.total }}</h2>
+    <p class="muted">Больничные, отпуск, отгулы и изменения графика. Здесь сохраняются отправленные заявки и решения по ним.</p>
+    <ul class="staff-request-list" aria-label="Отправленные заявки">
+      {% for request_item in time_off_requests %}
+        <li class="staff-request-card is-{{ request_item.status }}" id="staff-request-{{ request_item.pk }}">
+          <div class="staff-request-heading">
+            <strong>{{ request_item.get_request_type_display }}</strong>
+            <span>{{ request_item.starts_on|date:"d.m.Y" }}–{{ request_item.ends_on|date:"d.m.Y" }}</span>
+            <span class="request-status is-{{ request_item.status }}">{{ request_item.get_status_display }}</span>
+          </div>
+          <div class="staff-request-decision">
+            {% if request_item.current_decision_record %}
+              <strong>{{ request_item.current_decision_record.get_source_display }}</strong>
+              {% if request_item.current_decision_record.note %}
+                <p>{{ request_item.current_decision_record.note }}</p>
+              {% endif %}
+            {% endif %}
+            {% if request_item.awaits_director_review %}
+              <span class="request-status is-pending">Ожидает контроля руководителя</span>
+            {% endif %}
+          </div>
+        </li>
+      {% empty %}
+        <li class="empty-state">Заявок пока нет. Отправьте первую заявку с помощью формы ниже.</li>
+      {% endfor %}
+    </ul>
+    {% if time_off_page.has_other_pages %}
+    <nav class="specialist-quick-links" aria-label="Страницы заявок">
+      {% if time_off_page.has_previous %}<a href="?{% if can_manage_specialists %}staff_id={{ staff.pk }}&amp;{% endif %}requests_page={{ time_off_page.previous_page_number }}#staff-time-off">Новые заявки</a>{% endif %}
+      <span>Страница {{ time_off_page.number }} из {{ time_off_page.paginator.num_pages }}</span>
+      {% if time_off_page.has_next %}<a href="?{% if can_manage_specialists %}staff_id={{ staff.pk }}&amp;{% endif %}requests_page={{ time_off_page.next_page_number }}#staff-time-off">Предыдущие заявки</a>{% endif %}
+    </nav>
+    {% endif %}
+
+    <h3 class="staff-request-form-heading">Новая заявка</h3>
+    <form method="post" action="{% url 'time_off_request_create' %}" class="form compact-stack">
+      {% csrf_token %}
+      {% if can_manage_specialists %}<input type="hidden" name="staff_id" value="{{ staff.pk }}">{% endif %}
+      <div class="form-grid">
+        {% for field in time_off_form %}
+          <label class="field {% if field.name == 'reason' %}form-wide{% endif %}">
+            <span>{{ field.label }}</span>
+            {{ field }}
+          </label>
+        {% endfor %}
+      </div>
+      <button type="submit">Отправить заявку</button>
+    </form>
+  </article>
+
   <article class="panel" id="staff-availability">
     <h2>Рабочий график</h2>
     <div class="staff-ops-table-wrap">
@@ -156,49 +207,5 @@
     </form>
   </article>
 
-  <article class="panel" id="staff-time-off">
-    <h2>Отпуск и отгулы</h2>
-    <div class="staff-ops-table-wrap">
-    <table class="staff-ops-table staff-time-off-table">
-      <thead><tr><th>Период</th><th>Тип</th><th>Статус</th></tr></thead>
-      <tbody>
-      {% for request_item in time_off_requests %}
-        <tr>
-          <td data-label="Период">{{ request_item.starts_on|date:"d.m" }}-{{ request_item.ends_on|date:"d.m" }}</td>
-          <td data-label="Тип">{{ request_item.get_request_type_display }}</td>
-          <td data-label="Статус">
-            {{ request_item.get_status_display }}
-            {% if request_item.current_decision_record %}
-              <br><small>{{ request_item.current_decision_record.get_source_display }}</small>
-              {% if request_item.current_decision_record.note %}
-                <br><small>{{ request_item.current_decision_record.note }}</small>
-              {% endif %}
-            {% endif %}
-            {% if request_item.awaits_director_review %}
-              <br><small>Ожидает контроля руководителя</small>
-            {% endif %}
-          </td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="3" data-label="Заявки">Заявок пока нет.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-    </div>
-
-    <form method="post" action="{% url 'time_off_request_create' %}" class="form compact-stack">
-      {% csrf_token %}
-      {% if can_manage_specialists %}<input type="hidden" name="staff_id" value="{{ staff.pk }}">{% endif %}
-      <div class="form-grid">
-        {% for field in time_off_form %}
-          <label class="field {% if field.name == 'reason' %}form-wide{% endif %}">
-            <span>{{ field.label }}</span>
-            {{ field }}
-          </label>
-        {% endfor %}
-      </div>
-      <button type="submit">Отправить заявку</button>
-    </form>
-  </article>
 </section>
 {% endblock %}

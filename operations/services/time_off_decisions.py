@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Prefetch, Q, QuerySet
+from django.db.models import Count, Prefetch, Q, QuerySet
 from django.utils import timezone
 
 from operations.models import TimeOffRequest, TimeOffRequestDecision
@@ -101,6 +101,28 @@ def attention_rows(*, limit: int, actor=None) -> list[TimeOffRequest]:
         .order_by("starts_on", "staff_member__full_name")
     )
     return decorate_rows(with_current_decision(queryset)[:limit], actor=actor)
+
+
+def staff_request_summary(staff_id: int) -> dict:
+    """Count all personal requests, independently of the history page size."""
+    counts = TimeOffRequest.objects.filter(staff_member_id=staff_id).aggregate(
+        total=Count("pk"),
+        review=Count(
+            "pk",
+            filter=Q(pk__in=attention_queryset().exclude(status=TimeOffRequest.Status.PENDING)),
+        ),
+        **{
+            status: Count("pk", filter=Q(status=status))
+            for status in TimeOffRequest.Status.values
+        },
+    )
+    counts["awaiting_final"] = counts["pending"] + counts["review"]
+    counts["items"] = [
+        {"status": status, "label": label, "count": counts[status]}
+        for status, label in TimeOffRequest.Status.choices
+        if counts[status]
+    ]
+    return counts
 
 
 @transaction.atomic

@@ -79,6 +79,19 @@
         </div>
         {% endif %}
       </div>
+      {% if personal_time_off_summary %}
+      <a class="personal-requests-link" href="{% url 'specialist_home' %}#staff-time-off">
+        <strong><i class="bi bi-inbox" aria-hidden="true"></i> Мои заявки · {{ personal_time_off_summary.total }}</strong>
+        <span class="personal-requests-statuses">
+          {% for item in personal_time_off_summary.items %}
+            <span>{{ item.label }}: {{ item.count }}</span>
+          {% empty %}
+            <span>Пока не отправлены</span>
+          {% endfor %}
+          {% if personal_time_off_summary.review %}<span>На контроле руководителя: {{ personal_time_off_summary.review }}</span>{% endif %}
+        </span>
+      </a>
+      {% endif %}
     </div>
   </nav>
 
