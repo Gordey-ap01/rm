@@ -441,6 +441,15 @@ button:disabled {
   gap: 6px;
 }
 
+.time-off-decision-change summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.time-off-decision-change[open] summary {
+  margin-bottom: 8px;
+}
+
 .status-note.warning {
   margin: 6px 0 0;
   color: var(--warn);

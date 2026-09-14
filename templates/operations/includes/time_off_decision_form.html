@@ -1,0 +1,32 @@
+{% if item.awaits_director_review %}
+  {% if item.can_review_as_director %}
+    <p class="status-note warning">Решение администратора уже действует, требуется контроль руководителя. Подтвердите его или примите другое решение.</p>
+  {% else %}
+    <p class="status-note warning">Решение сохранено и действует. Следующий шаг — проверка руководителем. Повторно согласовывать заявку не нужно.</p>
+  {% endif %}
+{% elif item.director_priority_required and item.status == "pending" %}
+  <p class="status-note warning">После решения администратора заявка останется на контроль руководителю.</p>
+{% endif %}
+
+{% if item.can_resolve_manually %}
+  {% if item.decision_form_is_change %}
+    <details class="time-off-decision-change">
+      <summary>Изменить решение</summary>
+  {% endif %}
+  <form method="post" action="{% url 'time_off_request_decide' item.pk %}" class="form time-off-decision-form">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}#{{ anchor }}">
+    <label class="field">
+      <span>{{ item.decision_reason_label }}</span>
+      <textarea name="reason" minlength="5" maxlength="1000" rows="2" required aria-describedby="time-off-reason-help-{{ item.pk }}"></textarea>
+    </label>
+    <small class="muted" id="time-off-reason-help-{{ item.pk }}">Ваш комментарий: почему вы согласуете или отклоняете заявку. Не менее 5 символов.{% if item.reason %} Причина специалиста указана выше.{% endif %}</small>
+    <div class="inline-actions">
+      <button type="submit" name="action" value="approve">{% if item.can_review_as_director and item.status == "approved" %}Подтвердить согласование{% elif item.decision_form_is_change %}Сохранить согласование{% else %}Согласовать{% endif %}</button>
+      <button class="secondary-button" type="submit" name="action" value="reject">{% if item.can_review_as_director and item.status == "rejected" %}Подтвердить отказ{% elif item.decision_form_is_change %}Сохранить отказ{% else %}Отклонить{% endif %}</button>
+    </div>
+  </form>
+  {% if item.decision_form_is_change %}
+    </details>
+  {% endif %}
+{% endif %}

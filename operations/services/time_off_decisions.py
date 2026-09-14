@@ -55,6 +55,15 @@ def decorate_rows(
         current = current_rows[0] if current_rows else None
         item.current_decision_record = current
         item.awaits_director_review = bool(current and current.awaits_director_review)
+        item.can_review_as_director = (
+            item.awaits_director_review and viewer_role == AuthorityRole.DIRECTOR
+        )
+        item.decision_form_is_change = bool(current and not item.can_review_as_director)
+        item.decision_reason_label = (
+            "Основание решения руководителя"
+            if viewer_role == AuthorityRole.DIRECTOR
+            else "Основание решения администратора"
+        )
         legacy_director = (
             current is None
             and item.decided_by_id

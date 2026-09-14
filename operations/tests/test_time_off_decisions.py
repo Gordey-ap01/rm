@@ -3,7 +3,7 @@ from queue import Queue
 from threading import Barrier, Thread
 from unittest import skipUnless
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import close_old_connections, connection
 from django.db.models.deletion import ProtectedError, RestrictedError
@@ -252,6 +252,54 @@ class TimeOffDecisionServiceTests(TimeOffDecisionFixture):
 
 
 class TimeOffDecisionViewTests(TimeOffDecisionFixture):
+    def test_multiday_sick_leave_separates_admin_revision_from_director_review(self):
+        request = self.create_request(request_type=TimeOffRequest.RequestType.SICK, days=3)
+        endpoint = reverse("time_off_request_decide", args=[request.pk])
+        self.client.force_login(self.admin)
+        self.client.post(endpoint, {"action": "approve", "reason": "Согласовано по обращению специалиста."})
+
+        for page in ("work_queue", "tomorrow"):
+            with self.subTest(page=page):
+                response = self.client.get(reverse(page))
+                self.assertContains(response, "Текущий статус: Согласовано")
+                self.assertContains(response, "Причина специалиста: Тестовая заявка специалиста.")
+                self.assertContains(response, "Согласовано по обращению специалиста.")
+                self.assertContains(response, "Повторно согласовывать заявку не нужно.")
+                self.assertContains(response, '<details class="time-off-decision-change">')
+                self.assertNotContains(response, '<details class="time-off-decision-change" open')
+                self.assertContains(response, "Основание решения администратора")
+
+        first = request.decision_history.get(is_current=True)
+        self.client.post(endpoint, {"action": "reject", "reason": "Уточнены даты отсутствия специалиста."})
+        first.refresh_from_db()
+        second = request.decision_history.get(is_current=True)
+        self.assertFalse(first.is_current)
+        self.assertEqual(second.supersedes_id, first.pk)
+        self.assertEqual(first.note, "Согласовано по обращению специалиста.")
+
+        # The pilot director has group authority without Django staff/superuser flags.
+        director = User.objects.create_user("group-only-leave-director", password="x")
+        director.groups.add(Group.objects.get_or_create(name="Руководители")[0])
+        self.client.force_login(director)
+        for page in ("work_queue", "tomorrow"):
+            with self.subTest(director_page=page):
+                response = self.client.get(reverse(page))
+                self.assertContains(response, "Подтвердить отказ")
+                self.assertContains(response, "Основание решения руководителя")
+                self.assertNotContains(response, '<details class="time-off-decision-change">')
+
+        self.client.post(endpoint, {"action": "approve", "reason": "Руководитель проверил и согласовал отсутствие."})
+        request.refresh_from_db()
+        final = request.decision_history.get(is_current=True)
+        self.assertEqual(request.status, TimeOffRequest.Status.APPROVED)
+        self.assertEqual(final.actor_id, director.pk)
+        self.assertFalse(final.awaits_director_review)
+        self.assertFalse(time_off_svc.attention_queryset().filter(pk=request.pk).exists())
+        self.client.force_login(self.admin)
+        response = self.client.post(endpoint, {"action": "reject", "reason": "Попытка изменить итог руководителя."}, follow=True)
+        self.assertContains(response, "Решение руководителя может изменить только руководитель.")
+        self.assertEqual(request.decision_history.count(), 3)
+
     def test_administrator_decision_creates_history(self):
         request = self.create_request()
         self.client.force_login(self.admin)
@@ -290,6 +338,7 @@ class TimeOffDecisionViewTests(TimeOffDecisionFixture):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "требуется контроль руководителя")
+        self.assertContains(response, "Подтвердить согласование")
         self.assertContains(
             response,
             reverse("time_off_request_decide", args=[request.pk]),
