@@ -13,6 +13,7 @@ from .appointments import (
     appointment_edit,
     appointment_move,
     appointment_participant_program,
+    appointment_people_search,
 )
 from .assets import equipment_asset_create, equipment_asset_edit, equipment_asset_list
 from .attendance import appointment_attendance_decide, appointment_schedule_decide
@@ -212,6 +213,7 @@ __all__ = [
     "appointment_edit",
     "appointment_move",
     "appointment_participant_program",
+    "appointment_people_search",
     "appointment_reschedule_plan_create",
     "appointment_reschedule_plan_detail",
     "appointment_schedule_decide",

@@ -766,7 +766,12 @@ class AppointmentWorkflowTests(TestCase):
         response = self.client.get(reverse("appointment_create"), {"child_id": self.child.pk})
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, f'value="{self.child.pk}" selected')
+        self.assertEqual(response.context["form"]["participants"].value(), [str(self.child.pk)])
+        self.assertRegex(
+            response.content.decode(),
+            rf'<input type="checkbox" name="participants" value="{self.child.pk}" '
+            r'id="id_participants_\d+" checked>',
+        )
 
     def test_specialist_cannot_open_child_register(self):
         self.client.logout()

@@ -20,6 +20,7 @@
       <input type="hidden" name="participant_selection" value="lists">
       {% for hidden in form.hidden_fields %}{{ hidden }}{% if hidden.errors %}<div class="form-error">{{ hidden.errors }}</div>{% endif %}{% endfor %}
       <p class="appointment-form-intro">Заполните три раздела. Поля со звёздочкой обязательны.</p>
+      <noscript><p class="form-error">Для поиска и добавления участников включите JavaScript в браузере.</p></noscript>
       {% if form.non_field_errors %}
         <div class="form-error">{{ form.non_field_errors }}</div>
       {% endif %}
@@ -70,24 +71,8 @@
           {% include 'operations/includes/appointment_form_field.html' with field=form.service %}
         </div>
         <div class="form-grid">
-          <fieldset class="appointment-person-picker" data-picker="participants">
-            <legend>Получатели занятия <span class="required-mark">*</span></legend>
-            <p class="muted" id="id_participants_helptext">Кто приходит на занятие. Отметьте одного получателя или несколько для группы.</p>
-            <label class="picker-search-label" for="participant-search">Найти получателя</label>
-            <input type="search" id="participant-search" class="picker-search" placeholder="Начните вводить имя" autocomplete="off">
-            <div class="appointment-choice-list">{{ form.participants }}</div>
-            <p class="muted picker-empty" hidden>По этому имени никого не найдено.</p>
-            {% if form.participants.errors %}<div class="form-error">{{ form.participants.errors }}</div>{% endif %}
-          </fieldset>
-          <fieldset class="appointment-person-picker" data-picker="staff_members">
-            <legend>Кто проводит <span class="required-mark">*</span></legend>
-            <p class="muted" id="id_staff_members_helptext">{{ form.staff_members.help_text }}</p>
-            <label class="picker-search-label" for="staff-search">Найти специалиста</label>
-            <input type="search" id="staff-search" class="picker-search" placeholder="Начните вводить имя" autocomplete="off">
-            <div class="appointment-choice-list">{{ form.staff_members }}</div>
-            <p class="muted picker-empty" hidden>По этому имени никого не найдено.</p>
-            {% if form.staff_members.errors %}<div class="form-error">{{ form.staff_members.errors }}</div>{% endif %}
-          </fieldset>
+          {% include 'operations/includes/appointment_people_picker.html' with field=form.participants label="Получатели занятия" search_id="participant-search" search_label="Добавить получателя" %}
+          {% include 'operations/includes/appointment_people_picker.html' with field=form.staff_members label="Кто проводит" search_id="staff-search" search_label="Добавить специалиста" %}
         </div>
         <p class="appointment-composition-note" id="appointment-composition-note" hidden>В составе несколько получателей или специалистов — выбран групповой формат.</p>
       </section>
@@ -106,13 +91,8 @@
         <div class="appointment-form-section-head"><span aria-hidden="true">3</span><h2 id="appointment-status-heading">Готовность занятия</h2></div>
         <div class="form-grid">
           {% include 'operations/includes/appointment_form_field.html' with field=form.status %}
-          <div class="appointment-status-explanation" aria-live="polite" id="appointment-status-help">
-            <strong>Что означает статус</strong>
-            <p>Предложено — время ещё нужно согласовать. Согласовано — занятие включено в рабочее расписание. Бронь — время занято предварительно. Черновик — запись для подготовки.</p>
-          </div>
           {% include 'operations/includes/appointment_form_field.html' with field=form.admin_note wide=True %}
         </div>
-        <p class="muted">Проведение занятия и списание оплаты отмечаются отдельно, после создания.</p>
       </section>
 
       <details class="appointment-form-section appointment-optional"{% if form.program_block.value or form.billing_account.value or form.program_block.errors or form.billing_account.errors %} open{% endif %}>
@@ -155,5 +135,6 @@
 {% endblock %}
 {% block extra_js %}
 <script src="{% static 'operations/hold_confirm.js' %}"></script>
+<script src="{% static 'operations/appointment_people_picker.js' %}"></script>
 <script src="{% static 'operations/appointment_form.js' %}"></script>
 {% endblock %}

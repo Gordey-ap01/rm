@@ -379,6 +379,11 @@ urlpatterns = [
     ),
     path("children/", views.recipient_list, name="child_list"),
     path("children/<int:pk>/", views.recipient_detail, name="child_detail"),
+    path(
+        "appointments/people-search/",
+        views.appointment_people_search,
+        name="appointment_people_search",
+    ),
     path("appointments/new/", views.appointment_create, name="appointment_create"),
     path("appointments/<int:pk>/", views.appointment_detail, name="appointment_detail"),
     path("appointments/<int:pk>/edit/", views.appointment_edit, name="appointment_edit"),

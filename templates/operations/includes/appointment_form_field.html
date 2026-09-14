@@ -1,6 +1,8 @@
 <div class="field{% if wide %} form-wide{% endif %}">
-  <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="required-mark" aria-hidden="true"> *</span>{% endif %}</label>
+  <div class="appointment-field-label">
+    <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="required-mark" aria-hidden="true"> *</span>{% endif %}</label>
+    {% if field.help_text %}{% with help_id=field.auto_id|add:"_helptext" %}{% include 'operations/includes/appointment_field_help.html' with label=field.label text=field.help_text %}{% endwith %}{% endif %}
+  </div>
   {{ field }}
-  {% if field.help_text %}<small class="muted" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</small>{% endif %}
   {% if field.errors %}<div class="form-error">{{ field.errors }}</div>{% endif %}
 </div>

@@ -1,0 +1,24 @@
+<fieldset class="appointment-person-picker" data-picker="{{ field.name }}" data-search-url="{% url 'appointment_people_search' %}">
+  <legend class="appointment-field-label">
+    {{ label }} <span class="required-mark" aria-hidden="true">*</span>
+    {% if field.help_text %}{% with help_id=field.auto_id|add:"_helptext" %}{% include 'operations/includes/appointment_field_help.html' with text=field.help_text %}{% endwith %}{% endif %}
+  </legend>
+  <div class="picker-selection-heading">Выбрано: <span data-selected-count>0</span></div>
+  <div class="picker-selected" aria-label="Выбранные: {{ label }}">{{ field }}</div>
+  <p class="picker-none muted">Пока никто не выбран.</p>
+  <div class="picker-search-area">
+    <label class="picker-search-label" for="{{ search_id }}">{{ search_label }}</label>
+    <input type="search" id="{{ search_id }}" class="picker-search" placeholder="Введите имя или фамилию" autocomplete="off" maxlength="100" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="{{ search_id }}-results" aria-describedby="{{ search_id }}-status">
+    <div class="picker-dropdown" hidden>
+      <p class="picker-search-status" id="{{ search_id }}-status" role="status"></p>
+      <ul class="picker-results" id="{{ search_id }}-results" role="listbox" aria-label="{{ search_label }}"></ul>
+      <div class="picker-pagination" hidden>
+        <button type="button" class="picker-page-prev">Назад</button>
+        <span class="picker-page-label"></span>
+        <button type="button" class="picker-page-next">Далее</button>
+      </div>
+      <button type="button" class="picker-retry" hidden>Повторить поиск</button>
+    </div>
+  </div>
+  {% if field.errors %}<div class="form-error">{{ field.errors }}</div>{% endif %}
+</fieldset>

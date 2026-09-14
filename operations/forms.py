@@ -265,7 +265,7 @@ class AppointmentForm(forms.ModelForm):
         label="Специалисты",
         queryset=StaffMember.objects.none(),
         required=False,
-        help_text="Отметьте специалиста, который ведёт занятие. Если ведут вместе — отметьте всех.",
+        help_text="Найдите и добавьте специалиста, который ведёт занятие. Для совместной работы добавьте всех.",
         widget=forms.CheckboxSelectMultiple(),
     )
     staff_availability_override = forms.BooleanField(required=False, widget=forms.HiddenInput())
@@ -361,6 +361,7 @@ class AppointmentForm(forms.ModelForm):
         self.fields["staff_members"].queryset = StaffMember.objects.filter(
             status=StaffMember.Status.ACTIVE
         ).order_by("full_name")
+        self._limit_people_widget_choices()
         self.fields["room"].queryset = Room.objects.filter(is_active=True).order_by("name")
         self.fields["room"].required = False
         self.fields["program_block"].queryset = ProgramBlock.objects.select_related(
@@ -373,6 +374,7 @@ class AppointmentForm(forms.ModelForm):
         self.fields["admin_note"].required = False
         help_texts = {
             "session_type": "Индивидуальное — один получатель и один специалист. Групповое — несколько получателей или совместная работа специалистов.",
+            "participants": "Найдите и добавьте одного получателя или нескольких для группы.",
             "service": "Выберите занятие из перечня услуг центра. Название услуги и формат занятия — отдельные настройки.",
             "date": "День, в который состоится занятие.",
             "time": "Время начала по местному времени центра.",
@@ -381,6 +383,11 @@ class AppointmentForm(forms.ModelForm):
             "program_block": "Необязательно. Связь с этапом программы получателя; оставьте пустым для отдельного занятия.",
             "billing_account": "Необязательно. Откуда оплачивается занятие. Выбор счёта сейчас не списывает деньги или занятия.",
             "admin_note": "Необязательно. Организационная заметка для сотрудников центра.",
+            "status": (
+                "Черновик — подготовка; предложено — ждёт согласования; "
+                "согласовано — в расписании; бронь — предварительно занято. "
+                "Проведение и оплата отмечаются отдельно после создания."
+            ),
         }
         for name, text in help_texts.items():
             self.fields[name].help_text = text
@@ -409,6 +416,49 @@ class AppointmentForm(forms.ModelForm):
         self.fields["staff_availability_override"].initial = bool(
             instance and getattr(instance, "staff_availability_override", False)
         )
+
+    def _widget_selected_ids(self, field_name: str, legacy_field_name: str) -> set[int]:
+        if self.is_bound:
+            raw_values = (
+                self.data.getlist(self.add_prefix(field_name))
+                if hasattr(self.data, "getlist")
+                else self.data.get(self.add_prefix(field_name), [])
+            )
+            if not isinstance(raw_values, list | tuple | set):
+                raw_values = [raw_values]
+            if self.data.get("participant_selection") != "lists":
+                raw_values = [*raw_values, self.data.get(self.add_prefix(legacy_field_name))]
+        else:
+            raw_values = self.initial.get(field_name, [])
+            if not isinstance(raw_values, list | tuple | set):
+                raw_values = [raw_values]
+            raw_values = [*raw_values, self.initial.get(legacy_field_name)]
+        ids = set()
+        for value in raw_values:
+            value = getattr(value, "pk", value)
+            try:
+                ids.add(int(value))
+            except (TypeError, ValueError):
+                continue
+        return ids
+
+    def _limit_people_widget_choices(self) -> None:
+        participant_ids = self._widget_selected_ids("participants", "child")
+        selected_children = Child.objects.filter(pk__in=participant_ids).order_by(
+            "last_name", "first_name", "middle_name", "pk"
+        )
+        self.fields["participants"].widget.choices = [
+            (str(child.pk), str(child)) for child in selected_children
+        ]
+
+        staff_ids = self._widget_selected_ids("staff_members", "staff_member")
+        selected_staff = StaffMember.objects.filter(
+            status=StaffMember.Status.ACTIVE,
+            pk__in=staff_ids,
+        ).order_by("full_name", "pk")
+        self.fields["staff_members"].widget.choices = [
+            (str(staff.pk), str(staff)) for staff in selected_staff
+        ]
 
     def _is_stale_legacy_child(self, child: Child | None) -> bool:
         return bool(

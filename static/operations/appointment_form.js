@@ -10,7 +10,7 @@
   }
   function selected(name) {
     return Array.from(form.querySelectorAll('input[name="' + name + '"]:checked')).map(function (input) {
-      return input.closest('label').textContent.trim();
+      return input.dataset.personLabel || input.closest('label').textContent.trim();
     });
   }
   function setSummary(index, main, detail) {
@@ -35,7 +35,10 @@
       type.dispatchEvent(new Event('change', { bubbles: true }));
     }
     document.getElementById('appointment-composition-note').hidden = !group;
-    var names = (people.join(', ') || 'Получатель не выбран') + ' · ' + (staff.join(', ') || 'Специалист не выбран');
+    function brief(names, empty) {
+      return names.length ? names.slice(0, 2).join(', ') + (names.length > 2 ? ' и ещё ' + (names.length - 2) : '') : empty;
+    }
+    var names = brief(people, 'Получатель не выбран') + ' · ' + brief(staff, 'Специалист не выбран');
     setSummary(0, choice('session_type', 'Индивидуальное'), names);
     var date = value('date').split('-').reverse().join('.');
     var start = value('time');
@@ -51,23 +54,29 @@
     setSummary(2, choice('service', 'Услуга не выбрана'), choice('room', 'Кабинет пока не выбран'));
     var status = choice('status', 'Статус не выбран');
     var explanation = statuses[value('status')] || 'Проверьте текущий статус занятия.';
-    setSummary(3, status, explanation);
-    document.getElementById('appointment-status-help').querySelector('p').textContent = explanation;
+    setSummary(3, status, '');
+    var statusHelp = document.getElementById('id_status_helptext');
+    if (statusHelp) statusHelp.textContent = explanation + ' Проведение занятия и списание оплаты отмечаются отдельно.';
   }
   form.addEventListener('input', update);
   form.addEventListener('change', update);
-  form.querySelectorAll('[data-picker]').forEach(function (picker) {
-    var search = picker.querySelector('.picker-search');
-    search.addEventListener('input', function () {
-      var query = search.value.toLocaleLowerCase().trim();
-      var visible = 0;
-      picker.querySelectorAll('.appointment-choice-list label').forEach(function (label) {
-        var show = label.textContent.toLocaleLowerCase().includes(query) || label.querySelector('input').checked;
-        label.parentElement.hidden = !show;
-        if (show) visible += 1;
-      });
-      picker.querySelector('.picker-empty').hidden = visible > 0;
+  form.querySelectorAll('.appointment-help').forEach(function (help) {
+    var button = help.querySelector('button');
+    var content = help.querySelector('[role="tooltip"]');
+    var pinned = false;
+    var timer;
+    button.setAttribute('aria-describedby', content.id);
+    function show() { clearTimeout(timer); content.hidden = false; button.setAttribute('aria-expanded', 'true'); }
+    function hide() { clearTimeout(timer); pinned = false; content.hidden = true; button.setAttribute('aria-expanded', 'false'); }
+    help.addEventListener('pointerenter', show);
+    help.addEventListener('pointerleave', function () {
+      if (!pinned && document.activeElement !== button) timer = setTimeout(hide, 150);
     });
+    button.addEventListener('focus', show);
+    button.addEventListener('blur', hide);
+    button.addEventListener('click', function () { if (pinned) hide(); else { pinned = true; show(); } });
+    document.addEventListener('keydown', function (event) { if (event.key === 'Escape') hide(); });
+    document.addEventListener('pointerdown', function (event) { if (!help.contains(event.target)) hide(); });
   });
   update();
 }());

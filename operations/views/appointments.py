@@ -11,9 +11,11 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import Prefetch, Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_GET
 
 from operations.forms import (
     AppointmentCancelForm,
@@ -25,7 +27,13 @@ from operations.forms import (
     ManualAttendanceDecisionForm,
     ManualScheduleDecisionForm,
 )
-from operations.models import Appointment, AppointmentConfirmationDecision, LedgerEntry
+from operations.models import (
+    Appointment,
+    AppointmentConfirmationDecision,
+    Child,
+    LedgerEntry,
+    StaffMember,
+)
 from operations.services import (
     appointments as appointment_svc,
     schedule_decisions as schedule_decisions_svc,
@@ -34,6 +42,10 @@ from operations.services.authority import AuthorityRole, authority_role
 
 from ._common import is_admin_user, safe_next_url
 from .scheduling_helpers import suggested_shift_candidates, suggested_transfer_slots
+
+PEOPLE_SEARCH_PAGE_SIZE = 10
+PEOPLE_SEARCH_MAX_PAGE = 1_000
+PEOPLE_SEARCH_MAX_QUERY_LENGTH = 100
 
 
 def appointment_participants_label(appointment, participants=None) -> str:
@@ -58,6 +70,58 @@ def appointment_staff_label(appointment, staff_assignments=None) -> str:
     if staff_assignments:
         return ", ".join(assignment.staff_member.full_name for assignment in staff_assignments)
     return appointment.staff_member.full_name
+
+
+def _people_search_page(raw_page: str) -> int:
+    try:
+        return min(max(int(raw_page), 1), PEOPLE_SEARCH_MAX_PAGE)
+    except (TypeError, ValueError):
+        return 1
+
+
+def _people_search_tokens(raw_query: str) -> list[str]:
+    return raw_query.strip()[:PEOPLE_SEARCH_MAX_QUERY_LENGTH].split()
+
+
+@login_required
+@user_passes_test(is_admin_user)
+@require_GET
+def appointment_people_search(request):
+    kind = request.GET.get("kind", "")
+    tokens = _people_search_tokens(request.GET.get("q", ""))
+    page = _people_search_page(request.GET.get("page", "1"))
+
+    if kind == "participants":
+        queryset = Child.objects.order_by("last_name", "first_name", "middle_name", "pk")
+        for token in tokens:
+            queryset = queryset.filter(
+                Q(last_name__icontains=token)
+                | Q(first_name__icontains=token)
+                | Q(middle_name__icontains=token)
+            )
+    elif kind == "staff_members":
+        queryset = StaffMember.objects.filter(status=StaffMember.Status.ACTIVE).order_by(
+            "full_name", "pk"
+        )
+        for token in tokens:
+            queryset = queryset.filter(full_name__icontains=token)
+    else:
+        response = JsonResponse({"detail": "Unknown people-search kind."}, status=400)
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+    offset = (page - 1) * PEOPLE_SEARCH_PAGE_SIZE
+    rows = list(queryset[offset : offset + PEOPLE_SEARCH_PAGE_SIZE + 1])
+    results = rows[:PEOPLE_SEARCH_PAGE_SIZE]
+    response = JsonResponse(
+        {
+            "results": [{"id": str(row.pk), "label": str(row)} for row in results],
+            "has_more": len(rows) > PEOPLE_SEARCH_PAGE_SIZE,
+            "page": page,
+        }
+    )
+    response["Cache-Control"] = "private, no-store"
+    return response
 
 
 def appointment_attendance_summary_label(appointment, participants=None) -> str:
