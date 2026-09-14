@@ -17,6 +17,7 @@
     rooms: [],
     appointments: [],
     loading: false,
+    appointmentLoadState: "idle",
   };
 
   var statusDefs = {
@@ -42,6 +43,8 @@
   var roomLaneMode = document.getElementById("roomLaneMode");
   var meta = document.getElementById("staffDayMeta");
   var statusSummary = document.getElementById("staffDayStatusSummary");
+  var dayListCount = document.getElementById("staffDayListCount");
+  var dayListItems = document.getElementById("staffDayListItems");
   var staffFilter = document.getElementById("staffFilter");
   var serviceFilter = document.getElementById("serviceFilter");
   var roomFilter = document.getElementById("roomFilter");
@@ -239,6 +242,85 @@
       .join("");
   }
 
+  function appointmentRecipient(item) {
+    var props = item.extendedProps || {};
+    var groupTitle = item.title ? String(item.title).split(" / ")[0] : "";
+    if (props.participantCount > 1) return groupTitle || "Группа";
+    return props.child || item.title || "Занятие";
+  }
+
+  function appendListDetail(parent, label, value) {
+    var detail = document.createElement("span");
+    var labelNode = document.createElement("b");
+    labelNode.textContent = label + ": ";
+    detail.append(labelNode, document.createTextNode(value || "Не указано"));
+    parent.appendChild(detail);
+  }
+
+  function renderDayList(appointments, listState) {
+    if (!dayListItems || !dayListCount) return;
+    dayListItems.replaceChildren();
+    var isLoading = listState === "loading";
+    var isError = listState === "error";
+    dayListCount.textContent = isLoading
+      ? "· загрузка"
+      : isError
+        ? "· ошибка"
+        : "· " + appointments.length;
+
+    if (isLoading || isError) {
+      var stateItem = document.createElement("li");
+      stateItem.className = "staff-day-list-empty";
+      stateItem.textContent = isError
+        ? "Не удалось загрузить занятия. Обновите страницу."
+        : "Загрузка занятий...";
+      dayListItems.appendChild(stateItem);
+      return;
+    }
+    if (!appointments.length) {
+      var emptyItem = document.createElement("li");
+      emptyItem.className = "staff-day-list-empty";
+      emptyItem.textContent = "Нет занятий по выбранным фильтрам.";
+      dayListItems.appendChild(emptyItem);
+      return;
+    }
+
+    var fragment = document.createDocumentFragment();
+    appointments.forEach(function (item) {
+      var props = item.extendedProps || {};
+      var status = props.status || "confirmed";
+      var statusDef = statusDefs[status] || { label: status, color: "#64748b" };
+      var link = document.createElement("a");
+      link.className = "staff-day-list-item";
+      link.href = detailUrl(item.id);
+      link.style.setProperty("--status-color", statusDef.color);
+      link.setAttribute("aria-label", "Открыть занятие: " + appointmentRecipient(item));
+
+      var time = document.createElement("span");
+      time.className = "staff-day-list-time";
+      time.textContent = formatMinutes(readTimeMinutes(item.start)) + "–" + formatMinutes(readTimeMinutes(item.end));
+      var main = document.createElement("span");
+      main.className = "staff-day-list-main";
+      var recipient = document.createElement("strong");
+      recipient.className = "staff-day-list-recipient";
+      recipient.textContent = appointmentRecipient(item);
+      var details = document.createElement("span");
+      details.className = "staff-day-list-details";
+      appendListDetail(details, "Услуга", props.service);
+      appendListDetail(details, "Специалист", props.staff);
+      appendListDetail(details, "Кабинет", props.room);
+      main.append(recipient, details);
+      var statusNode = document.createElement("span");
+      statusNode.className = "staff-day-list-status";
+      statusNode.textContent = statusDef.label;
+      link.append(time, main, statusNode);
+      var row = document.createElement("li");
+      row.appendChild(link);
+      fragment.appendChild(row);
+    });
+    dayListItems.appendChild(fragment);
+  }
+
   function renderTimeColumn() {
     var html = '<div class="staff-day-time-column">';
     for (var minute = START_HOUR * 60; minute <= END_HOUR * 60; minute += STEP_MINUTES) {
@@ -381,8 +463,15 @@
   function render() {
     var columns = filteredColumns();
     var appointments = filteredAppointments();
+    if (state.appointmentLoadState === "loading" || state.appointmentLoadState === "error") {
+      setMeta(columns, []);
+      renderStatusSummary([]);
+      renderDayList([], state.appointmentLoadState);
+      return;
+    }
     setMeta(columns, appointments);
     renderStatusSummary(appointments);
+    renderDayList(appointments);
 
     if (!columns.length) {
       root.innerHTML = '<div class="staff-day-empty">Нет колонок для выбранного фильтра.</div>';
@@ -422,8 +511,11 @@
   }
 
   function loadAppointments() {
+    state.appointments = [];
     state.loading = true;
+    state.appointmentLoadState = "loading";
     root.innerHTML = '<div class="staff-day-empty">Загрузка расписания...</div>';
+    renderDayList([], "loading");
     var range = dayRange(state.date);
     return fetch("/api/appointments/?start=" + encodeURIComponent(range.start) + "&end=" + encodeURIComponent(range.end))
       .then(function (response) {
@@ -433,11 +525,15 @@
       .then(function (items) {
         state.appointments = items || [];
         state.loading = false;
+        state.appointmentLoadState = "ready";
         render();
       })
       .catch(function () {
+        state.appointments = [];
         state.loading = false;
+        state.appointmentLoadState = "error";
         root.innerHTML = '<div class="staff-day-empty">Не удалось загрузить расписание. Обновите страницу.</div>';
+        renderDayList([], "error");
       });
   }
 

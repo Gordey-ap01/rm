@@ -6761,7 +6761,9 @@ class SpecialistHomeTests(NewViewsTestBase):
         self.assertContains(response, f'id="appointment-{appointment.pk}"')
         self.assertContains(response, "staff-ops-table")
         self.assertContains(response, 'data-label="Действие"')
-        self.assertContains(response, 'data-label="Период"')
+        self.assertContains(response, 'aria-label="Отправленные заявки"')
+        self.assertContains(response, 'class="staff-request-card is-pending"')
+        self.assertContains(response, "Ожидает решения")
 
     def test_specialist_home_includes_legacy_appointment_without_assignment(self):
         appointment = Appointment.objects.create(
@@ -8122,9 +8124,9 @@ class AppointmentDetailAndMoveTests(NewViewsTestBase):
             },
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Формат и время")
-        self.assertContains(response, "Участники")
-        self.assertContains(response, "Сводка")
+        self.assertContains(response, "Какое занятие и для кого")
+        self.assertContains(response, "Когда и где")
+        self.assertContains(response, "Проверьте перед сохранением")
         self.assertContains(response, "получателей: 1 · специалистов: 1")
         self.assertContains(response, "Кабинет 1")
         self.assertContains(response, "10:00")

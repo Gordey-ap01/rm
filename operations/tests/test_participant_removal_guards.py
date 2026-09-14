@@ -127,6 +127,7 @@ class ParticipantRemovalGuardTests(TestCase):
         return self.client.post(
             reverse("appointment_edit", args=[self.appointment.pk]),
             {
+                "participant_selection": "lists",
                 "session_type": Appointment.SessionType.GROUP,
                 "child": self.primary_child.pk,
                 "participants": [self.primary_child.pk],

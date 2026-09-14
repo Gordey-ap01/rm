@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from urllib.parse import urlencode
 
 from auditlog.models import LogEntry
 from django.contrib import messages
@@ -796,9 +795,8 @@ def appointment_create(request):
             except IntegrityError:
                 form.add_error(None, "Не удалось сохранить: найден конфликт расписания.")
             else:
-                messages.success(request, "Занятие создано.")
-                day = timezone.localtime(appointment.starts_at).date()
-                return redirect(f"{reverse('schedule')}?{urlencode({'date': day.isoformat()})}")
+                messages.success(request, "Занятие создано. Проверьте дату, участников и статус в карточке ниже.")
+                return redirect("appointment_detail", pk=appointment.pk)
     else:
         form = AppointmentForm(initial=initial, actor=request.user)
     return render(

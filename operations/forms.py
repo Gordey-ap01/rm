@@ -259,14 +259,14 @@ class AppointmentForm(forms.ModelForm):
         queryset=Child.objects.none(),
         required=False,
         help_text="Для индивидуального занятия выберите одного получателя. Для группового можно выбрать несколько.",
-        widget=forms.SelectMultiple(attrs={"size": 8, "data-searchable": "off"}),
+        widget=forms.CheckboxSelectMultiple(),
     )
     staff_members = forms.ModelMultipleChoiceField(
         label="Специалисты",
         queryset=StaffMember.objects.none(),
         required=False,
-        help_text="Первый выбранный специалист станет основным для совместимости с календарем.",
-        widget=forms.SelectMultiple(attrs={"size": 6, "data-searchable": "off"}),
+        help_text="Отметьте специалиста, который ведёт занятие. Если ведут вместе — отметьте всех.",
+        widget=forms.CheckboxSelectMultiple(),
     )
     staff_availability_override = forms.BooleanField(required=False, widget=forms.HiddenInput())
     room_limit_override = forms.BooleanField(required=False, widget=forms.HiddenInput())
@@ -290,6 +290,22 @@ class AppointmentForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.actor = kwargs.pop("actor", None)
+        data = args[0] if args else kwargs.get("data")
+        if data is not None and data.get("participant_selection") == "lists":
+            data = data.copy()
+            # Visible participant lists are authoritative; a hidden compatibility
+            # field must not re-add someone the operator has deselected.
+            for primary, selected in (("child", "participants"), ("staff_member", "staff_members")):
+                values = data.getlist(selected) if hasattr(data, "getlist") else data.get(selected, [])
+                if not isinstance(values, list | tuple):
+                    values = [values]
+                values = [str(value) for value in values]
+                if str(data.get(primary, "")) not in values:
+                    data[primary] = values[0] if values else ""
+            if args:
+                args = (data, *args[1:])
+            else:
+                kwargs["data"] = data
         instance = kwargs.get("instance")
         initial = kwargs.pop("initial", {}).copy()
         self._original_updated_at = instance.updated_at if instance and instance.pk else None
@@ -315,6 +331,10 @@ class AppointmentForm(forms.ModelForm):
             initial.setdefault("duration_minutes", instance.duration_minutes)
             initial.setdefault("participants", list(self._original_participant_ids))
             initial.setdefault("staff_members", list(self._original_staff_assignment_ids))
+            if not self._original_participant_ids and instance.child_id:
+                initial["participants"] = [instance.child_id]
+            if not self._original_staff_assignment_ids and instance.staff_member_id:
+                initial["staff_members"] = [instance.staff_member_id]
         else:
             initial.setdefault("status", Appointment.Status.CONFIRMED)
             if initial.get("child") and not initial.get("participants"):
@@ -329,12 +349,14 @@ class AppointmentForm(forms.ModelForm):
         self.fields["child"].queryset = Child.objects.order_by("last_name", "first_name")
         self.fields["child"].label = "Основной получатель"
         self.fields["child"].required = False
+        self.fields["child"].widget = forms.HiddenInput()
         self.fields["service"].queryset = Service.objects.filter(is_active=True).order_by("name")
         self.fields["staff_member"].queryset = StaffMember.objects.filter(
             status=StaffMember.Status.ACTIVE
         ).order_by("full_name")
         self.fields["staff_member"].label = "Основной специалист"
         self.fields["staff_member"].required = False
+        self.fields["staff_member"].widget = forms.HiddenInput()
         self.fields["participants"].queryset = Child.objects.order_by("last_name", "first_name")
         self.fields["staff_members"].queryset = StaffMember.objects.filter(
             status=StaffMember.Status.ACTIVE
@@ -349,6 +371,19 @@ class AppointmentForm(forms.ModelForm):
         configure_balance_account_choice_field(self.fields["billing_account"])
         self.fields["billing_account"].queryset = self._billing_accounts_queryset()
         self.fields["admin_note"].required = False
+        help_texts = {
+            "session_type": "Индивидуальное — один получатель и один специалист. Групповое — несколько получателей или совместная работа специалистов.",
+            "service": "Выберите занятие из перечня услуг центра. Название услуги и формат занятия — отдельные настройки.",
+            "date": "День, в который состоится занятие.",
+            "time": "Время начала по местному времени центра.",
+            "duration_minutes": "Сколько длится занятие. Например, 45 минут: с 10:00 до 10:45.",
+            "room": "Где проходит занятие. Если кабинет ещё не определён, можно выбрать его позже.",
+            "program_block": "Необязательно. Связь с этапом программы получателя; оставьте пустым для отдельного занятия.",
+            "billing_account": "Необязательно. Откуда оплачивается занятие. Выбор счёта сейчас не списывает деньги или занятия.",
+            "admin_note": "Необязательно. Организационная заметка для сотрудников центра.",
+        }
+        for name, text in help_texts.items():
+            self.fields[name].help_text = text
         editable_statuses = (
             Appointment.Status.DRAFT,
             Appointment.Status.PROPOSED,

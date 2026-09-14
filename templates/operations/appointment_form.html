@@ -1,26 +1,25 @@
 {% extends "base.html" %}
 {% load static %}
-
 {% block title %}{{ title }}{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'operations/appointment_form.css' %}">{% endblock %}
 
 {% block content %}
 <section class="page-header">
   <div>
     <h1>{{ title }}</h1>
-    {% if appointment %}
-      <p>{{ appointment_participants_label|default:appointment.child }} · {{ appointment.starts_at|date:"d.m.Y H:i" }}</p>
-    {% else %}
-      <p>Заполните основные поля, система проверит конфликты получателя, специалиста и кабинета.</p>
-    {% endif %}
+    {% if appointment %}<p>{{ appointment_participants_label }} · {{ appointment.starts_at|date:"d.m.Y H:i" }}</p>
+    {% else %}<p>Назначьте занятие: выберите участников, услугу и время. После сохранения откроется карточка с результатом.</p>{% endif %}
   </div>
-  <a class="button-link secondary" href="{% if appointment %}{% url 'appointment_detail' appointment.pk %}{% else %}{% url 'schedule' %}{% endif %}">Назад</a>
+  <a class="button-link secondary" href="{% if appointment %}{% url 'appointment_detail' appointment.pk %}{% else %}{% url 'schedule' %}{% endif %}">{% if appointment %}К карточке занятия{% else %}В расписание{% endif %}</a>
 </section>
 
-<section class="appointment-form-layout">
+<section class="appointment-form-layout appointment-editor">
   <section class="panel form-panel appointment-form-main">
-    <form method="post" class="appointment-form-stack">
+    <form method="post" class="appointment-form-stack" id="appointment-editor-form">
       {% csrf_token %}
-      {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+      <input type="hidden" name="participant_selection" value="lists">
+      {% for hidden in form.hidden_fields %}{{ hidden }}{% if hidden.errors %}<div class="form-error">{{ hidden.errors }}</div>{% endif %}{% endfor %}
+      <p class="appointment-form-intro">Заполните три раздела. Поля со звёздочкой обязательны.</p>
       {% if form.non_field_errors %}
         <div class="form-error">{{ form.non_field_errors }}</div>
       {% endif %}
@@ -63,159 +62,98 @@
         </div>
       {% endif %}
 
-      <div class="appointment-form-section">
-        <div class="appointment-form-section-head">
-          <span>01</span>
-          <h2>Формат и время</h2>
+
+      <section class="appointment-form-section" aria-labelledby="appointment-people-heading">
+        <div class="appointment-form-section-head"><span aria-hidden="true">1</span><h2 id="appointment-people-heading">Какое занятие и для кого</h2></div>
+        <div class="form-grid">
+          {% include 'operations/includes/appointment_form_field.html' with field=form.session_type %}
+          {% include 'operations/includes/appointment_form_field.html' with field=form.service %}
         </div>
         <div class="form-grid">
-          <label class="field">
-            <span>{{ form.session_type.label }}</span>
-            {{ form.session_type }}
-            {% if form.session_type.errors %}<span class="form-error">{{ form.session_type.errors }}</span>{% endif %}
-          </label>
-          <label class="field">
-            <span>{{ form.service.label }}</span>
-            {{ form.service }}
-            {% if form.service.errors %}<span class="form-error">{{ form.service.errors }}</span>{% endif %}
-          </label>
-          <label class="field">
-            <span>{{ form.date.label }}</span>
-            {{ form.date }}
-            {% if form.date.errors %}<span class="form-error">{{ form.date.errors }}</span>{% endif %}
-          </label>
-          <label class="field">
-            <span>{{ form.time.label }}</span>
-            {{ form.time }}
-            {% if form.time.errors %}<span class="form-error">{{ form.time.errors }}</span>{% endif %}
-          </label>
-          <label class="field">
-            <span>{{ form.duration_minutes.label }}</span>
-            {{ form.duration_minutes }}
-            {% if form.duration_minutes.errors %}<span class="form-error">{{ form.duration_minutes.errors }}</span>{% endif %}
-          </label>
-          <label class="field">
-            <span>{{ form.room.label }}</span>
-            {{ form.room }}
-            {% if form.room.errors %}<span class="form-error">{{ form.room.errors }}</span>{% endif %}
-          </label>
+          <fieldset class="appointment-person-picker" data-picker="participants">
+            <legend>Получатели занятия <span class="required-mark">*</span></legend>
+            <p class="muted" id="id_participants_helptext">Кто приходит на занятие. Отметьте одного получателя или несколько для группы.</p>
+            <label class="picker-search-label" for="participant-search">Найти получателя</label>
+            <input type="search" id="participant-search" class="picker-search" placeholder="Начните вводить имя" autocomplete="off">
+            <div class="appointment-choice-list">{{ form.participants }}</div>
+            <p class="muted picker-empty" hidden>По этому имени никого не найдено.</p>
+            {% if form.participants.errors %}<div class="form-error">{{ form.participants.errors }}</div>{% endif %}
+          </fieldset>
+          <fieldset class="appointment-person-picker" data-picker="staff_members">
+            <legend>Кто проводит <span class="required-mark">*</span></legend>
+            <p class="muted" id="id_staff_members_helptext">{{ form.staff_members.help_text }}</p>
+            <label class="picker-search-label" for="staff-search">Найти специалиста</label>
+            <input type="search" id="staff-search" class="picker-search" placeholder="Начните вводить имя" autocomplete="off">
+            <div class="appointment-choice-list">{{ form.staff_members }}</div>
+            <p class="muted picker-empty" hidden>По этому имени никого не найдено.</p>
+            {% if form.staff_members.errors %}<div class="form-error">{{ form.staff_members.errors }}</div>{% endif %}
+          </fieldset>
         </div>
-      </div>
+        <p class="appointment-composition-note" id="appointment-composition-note" hidden>В составе несколько получателей или специалистов — выбран групповой формат.</p>
+      </section>
 
-      <div class="appointment-form-section">
-        <div class="appointment-form-section-head">
-          <span>02</span>
-          <h2>Участники</h2>
-        </div>
+      <section class="appointment-form-section" aria-labelledby="appointment-time-heading">
+        <div class="appointment-form-section-head"><span aria-hidden="true">2</span><h2 id="appointment-time-heading">Когда и где</h2></div>
         <div class="form-grid">
-          <label class="field form-wide">
-            <span>{{ form.participants.label }}</span>
-            {{ form.participants }}
-            {% if form.participants.help_text %}<small class="muted">{{ form.participants.help_text }}</small>{% endif %}
-            {% if form.participants.errors %}<span class="form-error">{{ form.participants.errors }}</span>{% endif %}
-          </label>
-          <label class="field form-wide">
-            <span>{{ form.staff_members.label }}</span>
-            {{ form.staff_members }}
-            {% if form.staff_members.help_text %}<small class="muted">{{ form.staff_members.help_text }}</small>{% endif %}
-            {% if form.staff_members.errors %}<span class="form-error">{{ form.staff_members.errors }}</span>{% endif %}
-          </label>
-          <label class="field">
-            <span>{{ form.child.label }}</span>
-            {{ form.child }}
-            {% if form.child.help_text %}<small class="muted">{{ form.child.help_text }}</small>{% endif %}
-            {% if form.child.errors %}<span class="form-error">{{ form.child.errors }}</span>{% endif %}
-          </label>
-          <label class="field">
-            <span>{{ form.staff_member.label }}</span>
-            {{ form.staff_member }}
-            {% if form.staff_member.help_text %}<small class="muted">{{ form.staff_member.help_text }}</small>{% endif %}
-            {% if form.staff_member.errors %}<span class="form-error">{{ form.staff_member.errors }}</span>{% endif %}
-          </label>
+          {% include 'operations/includes/appointment_form_field.html' with field=form.date %}
+          {% include 'operations/includes/appointment_form_field.html' with field=form.time %}
+          {% include 'operations/includes/appointment_form_field.html' with field=form.duration_minutes %}
+          {% include 'operations/includes/appointment_form_field.html' with field=form.room %}
         </div>
-      </div>
+      </section>
 
-      <div class="appointment-form-section">
-        <div class="appointment-form-section-head">
-          <span>03</span>
-          <h2>Программа и оплата</h2>
-        </div>
+      <section class="appointment-form-section" aria-labelledby="appointment-status-heading">
+        <div class="appointment-form-section-head"><span aria-hidden="true">3</span><h2 id="appointment-status-heading">Готовность занятия</h2></div>
         <div class="form-grid">
-          <label class="field">
-            <span>{{ form.program_block.label }}</span>
-            {{ form.program_block }}
-            {% if form.program_block.errors %}<span class="form-error">{{ form.program_block.errors }}</span>{% endif %}
-          </label>
-          <label class="field">
-            <span>{{ form.billing_account.label }}</span>
-            {{ form.billing_account }}
-            {% if form.billing_account.errors %}<span class="form-error">{{ form.billing_account.errors }}</span>{% endif %}
-          </label>
+          {% include 'operations/includes/appointment_form_field.html' with field=form.status %}
+          <div class="appointment-status-explanation" aria-live="polite" id="appointment-status-help">
+            <strong>Что означает статус</strong>
+            <p>Предложено — время ещё нужно согласовать. Согласовано — занятие включено в рабочее расписание. Бронь — время занято предварительно. Черновик — запись для подготовки.</p>
+          </div>
+          {% include 'operations/includes/appointment_form_field.html' with field=form.admin_note wide=True %}
         </div>
-      </div>
+        <p class="muted">Проведение занятия и списание оплаты отмечаются отдельно, после создания.</p>
+      </section>
 
-      <div class="appointment-form-section">
-        <div class="appointment-form-section-head">
-          <span>04</span>
-          <h2>Статус и примечание</h2>
-        </div>
+      <details class="appointment-form-section appointment-optional"{% if form.program_block.value or form.billing_account.value or form.program_block.errors or form.billing_account.errors %} open{% endif %}>
+        <summary>Программа и оплата <span>Необязательно</span></summary>
+        <p class="muted">Для отдельного занятия этот раздел можно пропустить. Для группы программа и оплата каждого получателя настраиваются в карточке занятия.</p>
         <div class="form-grid">
-          <label class="field">
-            <span>{{ form.status.label }}</span>
-            {{ form.status }}
-            {% if form.status.errors %}<span class="form-error">{{ form.status.errors }}</span>{% endif %}
-          </label>
-          <label class="field form-wide">
-            <span>{{ form.admin_note.label }}</span>
-            {{ form.admin_note }}
-            {% if form.admin_note.errors %}<span class="form-error">{{ form.admin_note.errors }}</span>{% endif %}
-          </label>
+          {% include 'operations/includes/appointment_form_field.html' with field=form.program_block %}
+          {% include 'operations/includes/appointment_form_field.html' with field=form.billing_account %}
         </div>
-        <p class="muted">Проведено и неявка отмечаются отдельной панелью в карточке занятия.</p>
-      </div>
+      </details>
 
-      <div class="form-actions">
-        <button type="submit">Сохранить</button>
-        <a class="button-link secondary" href="{% if appointment %}{% url 'appointment_detail' appointment.pk %}{% else %}{% url 'schedule' %}{% endif %}">Отмена</a>
+      <div class="appointment-save-bar">
+        <p>Система проверит занятость участников и кабинета. При ошибке введённые данные останутся в форме.</p>
+        <div class="form-actions">
+          <button type="submit">{% if appointment %}Сохранить изменения{% else %}Создать занятие{% endif %}</button>
+          <a class="button-link secondary" href="{% if appointment %}{% url 'appointment_detail' appointment.pk %}{% else %}{% url 'schedule' %}{% endif %}">Отмена</a>
+        </div>
       </div>
     </form>
   </section>
 
   <aside class="appointment-form-sidebar" aria-label="Сводка формы занятия">
     <article class="panel appointment-form-summary">
-      <h2>Сводка</h2>
-      <dl>
+      <h2>Проверьте перед сохранением</h2>
+      <dl id="appointment-live-summary" aria-live="polite">
         {% for item in appointment_form_summary_items %}
-          <div>
-            <dt>{{ item.label }}</dt>
-            <dd>
-              <strong>{{ item.value }}</strong>
-              <small>{{ item.hint }}</small>
-            </dd>
-          </div>
+          <div data-summary="{{ forloop.counter0 }}"><dt>{{ item.label }}</dt><dd><strong>{{ item.value }}</strong><small>{{ item.hint }}</small></dd></div>
         {% endfor %}
       </dl>
+      <p>После сохранения откроется карточка занятия. Из неё можно вернуться в расписание или исправить запись.</p>
     </article>
-
     <article class="panel appointment-form-summary">
-      <h2>Контроль</h2>
+      <h2>Проверка расписания</h2>
       {% if appointment_form_attention_items %}
-        <div class="appointment-form-alerts">
-          {% for item in appointment_form_attention_items %}
-            <div class="appointment-attention-item is-{{ item.tone }}">
-              <strong>{{ item.title }}</strong>
-              <span>{{ item.text }}</span>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p>Критичных предупреждений сейчас нет.</p>
-      {% endif %}
+        <div class="appointment-form-alerts">{% for item in appointment_form_attention_items %}<div class="appointment-attention-item is-{{ item.tone }}"><strong>{{ item.title }}</strong><span>{{ item.text }}</span></div>{% endfor %}</div>
+      {% else %}<p>Занятость получателей, специалистов и кабинета проверяется при сохранении.</p>{% endif %}
     </article>
   </aside>
 </section>
 {% endblock %}
-
 {% block extra_js %}
 <script src="{% static 'operations/hold_confirm.js' %}"></script>
+<script src="{% static 'operations/appointment_form.js' %}"></script>
 {% endblock %}

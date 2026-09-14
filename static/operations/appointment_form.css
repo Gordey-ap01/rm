@@ -1,0 +1,35 @@
+.appointment-editor { max-width: 1480px; margin-inline: auto; }
+.appointment-editor .appointment-form-main { background: #fff; }
+.appointment-form-intro { margin: 0; color: var(--muted); }
+.appointment-editor .appointment-form-section { background: #fff; padding: 1.25rem; gap: 1.25rem; }
+.appointment-editor .appointment-form-section-head h2 { font-size: 1.25rem; color: var(--heading); }
+.appointment-editor .appointment-form-section-head span { flex-shrink: 0; color: var(--heading); }
+.appointment-editor .field > label { font-weight: 700; margin: 0; }
+.appointment-editor .field small { line-height: 1.45; }
+.required-mark { color: var(--danger); }
+.appointment-person-picker { min-width: 0; border: 0; padding: 0; margin: 0; }
+.appointment-person-picker legend { float: none; width: auto; font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
+.appointment-person-picker p { font-size: .875rem; line-height: 1.45; }
+.picker-search-label { display: block; margin-bottom: .25rem; font-size: .875rem; font-weight: 600; }
+.picker-search { width: 100%; margin-bottom: .5rem; }
+.appointment-choice-list { max-height: 240px; overflow: auto; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: .5rem; }
+.appointment-choice-list label { display: flex; gap: .75rem; align-items: flex-start; padding: .625rem .5rem; line-height: 1.4; cursor: pointer; overflow-wrap: anywhere; border-radius: .5rem; }
+.appointment-choice-list label:has(input:checked) { background: var(--ok-soft); font-weight: 700; }
+.appointment-choice-list input[type="checkbox"] { width: 1.125rem; height: 1.125rem; flex-shrink: 0; margin: .125rem 0 0; accent-color: var(--accent-hover); }
+.appointment-choice-list label:focus-within { outline: 2px solid var(--accent-hover); outline-offset: -2px; }
+.appointment-composition-note, .appointment-status-explanation { background: var(--bg); padding: .875rem 1rem; border-radius: var(--radius-sm); font-size: .875rem; }
+.appointment-composition-note { margin: 0; }
+.appointment-status-explanation p { margin: .375rem 0 0; line-height: 1.5; }
+.appointment-optional > summary { cursor: pointer; font-weight: 700; }
+.appointment-optional > summary span { color: var(--muted); font-weight: 400; font-size: .875rem; margin-left: .5rem; }
+.appointment-optional[open] > summary { margin-bottom: 1rem; }
+.appointment-optional > p { font-size: .875rem; }
+.appointment-save-bar { border-top: 2px solid var(--accent-hover); padding-top: 1rem; }
+.appointment-save-bar p { font-size: .875rem; color: var(--muted); }
+.appointment-editor .appointment-form-sidebar { position: static; }
+.appointment-editor [hidden] { display: none !important; }
+@media (max-width: 600px) {
+  .appointment-editor .appointment-form-section { padding: .875rem; }
+  .appointment-editor .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .appointment-editor .form-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+}
