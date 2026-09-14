@@ -1,13 +1,91 @@
 # Текущее состояние проекта
 
-Дата продолжения: 2026-09-13. Ветка: `codex/domain-appointments-v2`.
+Дата продолжения: 2026-09-14. Ветка: `codex/domain-appointments-v2`.
 
 ## Откуда продолжать
 
 Короткая точка восстановления: [continuation.md](continuation.md).
 
-Следующий практический этап — подготовка учебного комплекта и репетиция первого
-выезда по [плану 63](63-first-field-test-and-pilot-plan.md): 21 сентября 10:00–12:30
+### Учебный комплект 64: фактический checkpoint
+
+Финальная поставка находится в `dist/RM-pilot-5cae343ee720`, source commit —
+`5cae343ee720b580f4a09ca4d1d65aa103d12463`. Это самостоятельный Docker Desktop
+стенд без зависимости от окна Codex: `START_PILOT.bat` / `STOP_PILOT.bat`,
+Windows PowerShell 5.1, URL `http://127.0.0.1:18000`, непубликованный PostgreSQL
+и отдельные containers/volumes. Seed — 21 сентября 2026 года, четыре учетные
+записи в трех ролях: администратор, руководитель и два специалиста. Пароль существует только как `RM_PILOT_PASSWORD` в
+`pilot/.pilot-local.env`; значение не документировать и не логировать.
+
+История поставки: `c45c97df8b6ae2d7da7d690e8b32eaabcd226569` создал
+source-only изолированный комплект; `1c734b5dfa764a04402421f948faca08c92f7f77`
+защитил committed bytes от Windows `core.autocrlf`;
+`bfd3ea65f572222b4bf76398258e275fa7896b8d` перевел календарь и навигацию
+руководителя на operator authority; `5cae343ee720b580f4a09ca4d1d65aa103d12463`
+одной JS-правкой сохраняет закрытыми фильтры календаря при асинхронной загрузке
+вариантов.
+
+Локальные подтверждения: export 11 passed, 9.65s
+(`.runtime/pilot-package-tests.log`); seed PostgreSQL 11 passed
+(`.runtime/pilot-seed-postgresql.log`); settings 5 passed, 1.23s; director
+schedule access 7 passed, 1 warning, 41.80s
+(`.runtime/director-schedule-access.log`). На реальном Windows PowerShell 5.1
+для `1c734b5`: Start, hash guard, concurrent Stop lock, отказ одноименного
+проекта из другой папки и Stop/Start без image build; 4 users, 2 recipients,
+1 appointment, 0 ledger, password unchanged. Orphan-volume guard `c45c97d` принят runtime,
+disposable volume удален (`.runtime/pilot-kit-orphan-guard.log`).
+
+[CI 34774667645](https://github.com/Gordey-ap01/rm/actions/runs/34774667645)
+успешен на точном `bfd3ea6`: **1243 passed, 522 warnings, 1086.55s (18m06s)**;
+restore passed (`.runtime/pilot-kit-ci.log`). Финальный
+[CI 34778462107](https://github.com/Gordey-ap01/rm/actions/runs/34778462107)
+успешен на точном `5cae343ee720b580f4a09ca4d1d65aa103d12463`:
+**1243 passed, 522 warnings, 1045.22s (17m25s)**, backup/restore успешен;
+полный лог `.runtime/pilot-kit-release-ci.log`.
+Предыдущий общий [CI 34758296947](https://github.com/Gordey-ap01/rm/actions/runs/34758296947)
+успешен: 1209 passed, 515 warnings, 1036.08s.
+
+Фактический Start финального комплекта прошел с native exit 0
+(`.runtime/pilot-kit-release-start.log`). В браузере проверены вход руководителя,
+operator navigation и «Ставки»; `/schedule/?date=2026-09-21` показывает 1 group,
+2 staff, 2 recipients, 10:00–10:45, пять API заполнены, console clean. Последняя
+JS-правка принята в браузере: четыре listbox закрыты на load; поиск «Первый»
+дает 1 staff/1 group, reset — 2 staff/1 group, меню закрыты. UI persistence
+после Stop/Start принята: Stop и Start на Windows PowerShell 5.1 дали native
+exit 0, хеш сгенерированного env не изменился, image build/pull не было,
+повторный запуск не потребовал новых миграций; seed сохранил данные без дублей
+(`.runtime/pilot-kit-release-stop.log`, `.runtime/pilot-kit-release-restart.log`).
+Администратор сохранил учебную заметку и после Stop/Start прочитал ее в том же
+UI-сеансе. Новый вход `pilot-specialist1` показывает только профиль
+«Учебный Специалист Первый», без меню оператора, поиска и ссылки на общий календарь.
+
+Read-only БД подтверждает users=4, recipients=2, appointments=1, ledger=0,
+marker=1, note_persisted=true, `rm_pilot_training`, DEBUG=false и locmem mail
+(`.runtime/pilot-kit-release-database.json`). Docker inspect: web/db healthy,
+web опубликован только на `127.0.0.1:18000`, DB ports=0, user=rehab,
+restart=unless-stopped (`.runtime/pilot-kit-release-verification.json`).
+Техническая приемка 64 завершена; проект `5cae343` оставлен запущенным для
+пользователя. Проверочный браузерный сеанс завершен, временная вкладка закрыта.
+Ожидаются физический ноутбук выезда, настоящий Windows reboot и первый тест с людьми.
+
+Предтестовая копия учебной БД: `dist/pilot-backups/5cae343ee720-pretest-20260914.dump`,
+902104 байта, PostgreSQL custom format. SHA-256:
+`187B01CB85C7E5BD084C814A4777F81D70BE4A689DD6BB2A0EE295BFC8D92E38`.
+Восстановление в новую `rm_pilot_restore_qa` на PostgreSQL 17 прошло с exit 0:
+4 пользователя, 2 получателя, 1 занятие, 0 проводок, 1 маркер seed; заметка
+в `operations_child.notes` с датой `14.09.2026` сохранена. Временный контейнер
+с tmpfs и без внешних портов удален, исходная БД не изменялась. Доказательства:
+`.runtime/pilot-snapshot-qa-20260914.json` и одноименный `.log`; инструкция рядом
+с dump. Это состояние после технической QA до теста сотрудников, а не нетронутый
+seed. Копия содержит только БД и не заменяет резервирование файлов и настроек.
+
+Пять существующих контейнеров пользователя не затронуты; старые кандидаты `1c`
+и `bfd` остановлены с сохраненными volumes. После закрытия Codex контейнеры
+финального предшественника оставались healthy около часа. Это не устанавливает
+причину закрытия Codex и не доказывает ее исправление. Windows reboot и
+физический ноутбук выезда не тестировались.
+
+Следующий практический этап — проверить компьютер выезда и провести
+репетицию первого выезда по [плану 63](63-first-field-test-and-pilot-plan.md): 21 сентября 10:00–12:30
 при допуске 18 сентября. Реальный пилот — ориентир 5 октября при допуске
 2 октября; запас 12 октября не заменяет закрытия условий.
 
@@ -19,13 +97,13 @@
 лог `.runtime/pilot-workday-postgresql.log`.
 [Общий CI 34758296947](https://github.com/Gordey-ap01/rm/actions/runs/34758296947)
 проверяет точный head `7b6fb46aeecf73c0890a5125780af7f8f9ccee97`.
-Код приложения и схема в этом срезе не менялись. Ручная репетиция, подготовка
-учебной исходной БД, физические устройства и запуск после перезагрузки
-остаются открытыми. Новые тесты не подменяют эти пункты приемки.
+Код приложения и схема в этом срезе не менялись. Учебная БД и локальная
+репетиция позднее приняты в срезе 64 выше. Компьютер выезда, запуск после
+перезагрузки Windows и тест с сотрудниками остаются открытыми.
 Одноразовый `rm-pilot-workday-qa` с учебной PostgreSQL на 5448 после локальной
 проверки удален; пять контейнеров пользователя продолжают работать.
 
-Последний принятый пакет с изменением приложения — 61D-7c (`34697fb`):
+Предыдущий принятый пакет с изменением приложения — 61D-7c (`34697fb`):
 [CI 34754752273](https://github.com/Gordey-ap01/rm/actions/runs/34754752273)
 успешен на `34697fbdce1fe7ab6d02ad8723662a687e45b1ba`: **1207 passed,
 513 warnings за 1093.92s (18m13s)**; приложение 19m34s,

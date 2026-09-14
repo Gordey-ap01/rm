@@ -1,10 +1,22 @@
 # 64: отдельный учебный комплект первого выезда
 
-Дата: 14 сентября 2026 года. Статус: в работе.
+Дата: 14 сентября 2026 года. Статус: техническая приемка, общий CI и восстановление
+учебной копии завершены; полевые проверки еще ожидаются.
 
 Основание: [план первого выезда](63-first-field-test-and-pilot-plan.md).
-В этом срезе собирается локальный учебный стенд; рабочее развертывание центра
-и отложенный информационный экран не входят в объем.
+Это локальный учебный стенд; рабочее развертывание центра и отложенный
+информационный экран не входят в объем.
+
+## Поставленный комплект
+
+- Корень: `dist/RM-pilot-5cae343ee720`.
+- Источник: `5cae343ee720b580f4a09ca4d1d65aa103d12463`.
+- Windows entry points: `START_PILOT.bat` и `STOP_PILOT.bat` (Windows
+  PowerShell 5.1); URL: `http://127.0.0.1:18000`.
+- Seed учебного дня: 21 сентября 2026 года; четыре учетные записи в трех ролях:
+  администратор, руководитель и два специалиста.
+- Общий пароль находится лишь в `pilot/.pilot-local.env` как
+  `RM_PILOT_PASSWORD`; его значение не включается в Git, документацию или логи.
 
 ## Проверяемый результат
 
@@ -39,7 +51,8 @@
   зафиксированы в `pilot-manifest.json`; пароль создается при первой настройке.
 - `scripts/build_pilot.py` и тесты сборки: источник — committed Git tree;
   разрешены только необходимые исходники приложения и файлы запуска.
-  Сборка не меняет и не перезаписывает существующую папку. Manifest содержит
+  Сборка не меняет и не перезаписывает существующую папку; при Windows
+  `core.autocrlf` сохраняются committed bytes. Manifest содержит
   полный source commit, версию формата, имя Compose проекта и учебную дату.
 - Manifest v1: `format_version` = 1, `source_commit` = полный SHA,
   `project_name` = `rm-pilot-` + первые 12 знаков SHA, `training_date` = ISO-дата,
@@ -70,3 +83,46 @@ Windows PowerShell 5.1. Docker Desktop запускается пользоват
 - Подготовка Docker и загрузка зависимостей выполняются до выезда; возможность
   запуска на другом компьютере и после перезагрузки Windows подтверждается
   отдельной репетицией на компьютере выезда.
+
+## Принятые доказательства
+
+| Проверка | Результат |
+| --- | --- |
+| Export package | 11 passed, 9.65s; `.runtime/pilot-package-tests.log` |
+| Seed PostgreSQL | 11 passed; `.runtime/pilot-seed-postgresql.log` |
+| Pilot settings | 5 passed, 1.23s |
+| Director schedule access | 7 passed, 1 warning, 41.80s; `.runtime/director-schedule-access.log` |
+| CI `bfd3ea6` | [34774667645](https://github.com/Gordey-ap01/rm/actions/runs/34774667645): 1243 passed, 522 warnings, 1086.55s; restore passed; `.runtime/pilot-kit-ci.log` |
+| Финальный CI `5cae343` | [34778462107](https://github.com/Gordey-ap01/rm/actions/runs/34778462107): 1243 passed, 522 warnings, 1045.22s; backup/restore успешен; `.runtime/pilot-kit-release-ci.log` |
+| Windows PowerShell 5.1 (`1c734b5`) | Start, hash guard, concurrent Stop lock, отказ из другой папки, Stop/Start без image build; 4 users, 2 recipients, 1 appointment, 0 ledger, password unchanged |
+| Orphan-volume guard (`c45c97d`) | runtime accepted; disposable volume removed; `.runtime/pilot-kit-orphan-guard.log` |
+| Final Start `5cae343` | native exit 0; `.runtime/pilot-kit-release-start.log` |
+| Browser: director/calendar | директорский вход, operator nav и «Ставки» доступны; `/schedule/?date=2026-09-21`: 1 group, 2 staff, 2 recipients, 10:00–10:45; 5 API populated; console clean |
+| Browser: closed filters | 4 listbox closed on load; поиск «Первый» дает 1 staff/1 group; reset — 2 staff/1 group; меню закрыты |
+| Stop + Start `5cae343` | WinPS 5.1, native exit 0; generated-env hash unchanged; без image build/pull; новых миграций нет, seed сохранил данные без дублей; `.runtime/pilot-kit-release-stop.log`, `.runtime/pilot-kit-release-restart.log` |
+| Admin persistence | учебная заметка сохранена, после Stop/Start прочитана из того же UI-сеанса |
+| Specialist role | новый вход `pilot-specialist1`: свой профиль «Учебный Специалист Первый», без меню оператора, поиска и ссылки на общий календарь |
+| Read-only DB | users=4, recipients=2, appointments=1, ledger=0, marker=1, note_persisted=true; `rm_pilot_training`, DEBUG=false, locmem mail; `.runtime/pilot-kit-release-database.json` |
+| Docker inspect | web/db healthy; только `127.0.0.1:18000`, DB ports=0, user=rehab, restart=unless-stopped; `.runtime/pilot-kit-release-verification.json` |
+| Учебная копия БД | `dist/pilot-backups/5cae343ee720-pretest-20260914.dump`, custom format, 902104 байта; восстановление в новую PostgreSQL 17 прошло с exit 0, совпали счетчики и `Child.notes` с датой 14.09.2026; `.runtime/pilot-snapshot-qa-20260914.json` |
+
+Пять существующих контейнеров пользователя не затронуты. Старые кандидаты `1c`
+и `bfd` остановлены с сохраненными volumes. Контейнеры финального предшественника
+после закрытия Codex были healthy около часа; это не объясняет и не исправляет
+причину закрытия Codex.
+
+Учебная копия фиксирует состояние после технической QA до первого теста
+сотрудников. Это только БД; файлы и локальные настройки в нее не входят.
+SHA-256: `187B01CB85C7E5BD084C814A4777F81D70BE4A689DD6BB2A0EE295BFC8D92E38`.
+Временный контейнер восстановления с tmpfs без внешних портов удален.
+
+Техническая приемка 64 завершена. Проект `5cae343` оставлен запущенным для
+пользователя; старые кандидаты `1c` и `bfd` остановлены с сохраненными volumes.
+
+## Открытая приемка
+
+- Физический ноутбук выезда и настоящий Windows reboot не проверялись. Эти
+  действия не выполнять без отдельного решения владельца.
+- Даты плана 63 не менялись: 21 сентября 10:00–12:30, готовность 18 сентября
+  до 16:00; пилот 5 октября при готовности 2 октября, резерв 12 октября.
+  Сотрудники и оборудование еще не подтверждены.
