@@ -12,7 +12,7 @@
 .appointment-help-content { position: absolute; z-index: 80; top: 100%; left: 0; right: 0; display: block; padding: .75rem; background: var(--heading); color: #fff; box-shadow: 0 .25rem .75rem #0002; border-radius: var(--radius-sm); font-size: .875rem; font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
 .appointment-help-toggle:focus-visible, .picker-remove:focus-visible, .picker-dropdown button:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 2px; }
 .required-mark { color: var(--danger); }
-.appointment-editor .required-mark::after { content: none; }
+.appointment-editor .field .required-mark::after { content: none; }
 .appointment-person-picker { min-width: 0; border: 0; padding: 0; margin: 0; }
 .appointment-person-picker legend { float: none; width: 100%; font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
 .appointment-person-picker p { font-size: .875rem; line-height: 1.45; }
@@ -44,6 +44,11 @@
 .appointment-optional > summary span { color: var(--muted); font-weight: 400; font-size: .875rem; margin-left: .5rem; }
 .appointment-optional[open] > summary { margin-bottom: 1rem; }
 .appointment-optional > p { font-size: .875rem; }
+.group-finance-help { padding: 1rem; background: var(--ok-soft); border-radius: var(--radius-sm); font-size: .875rem; line-height: 1.5; }
+.group-finance-help p { margin: .5rem 0 0; }
+.group-finance-changes { margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--line-strong); }
+.group-finance-changes button { margin-top: .75rem; }
+#appointment-finance-fields:not([hidden]) { margin-top: 1rem; }
 .appointment-save-bar { border-top: 2px solid var(--accent-hover); padding-top: 1rem; }
 .appointment-save-bar p { font-size: .875rem; color: var(--muted); }
 .appointment-editor .appointment-form-sidebar { position: static; }

@@ -95,10 +95,20 @@
         </div>
       </section>
 
-      <details class="appointment-form-section appointment-optional"{% if form.program_block.value or form.billing_account.value or form.program_block.errors or form.billing_account.errors %} open{% endif %}>
+      <details class="appointment-form-section appointment-optional" id="appointment-finance-section" data-original-program="{{ form.initial.program_block|default_if_none:'' }}" data-original-account="{{ form.initial.billing_account|default_if_none:'' }}" data-original-child="{{ form.initial.child|default_if_none:'' }}"{% if form.program_block.value or form.billing_account.value or form.program_block.errors or form.billing_account.errors %} open{% endif %}>
         <summary>Программа и оплата <span>Необязательно</span></summary>
-        <p class="muted">Для отдельного занятия этот раздел можно пропустить. Для группы программа и оплата каждого получателя настраиваются в карточке занятия.</p>
-        <div class="form-grid">
+        <p class="muted" id="individual-finance-help">Для отдельного занятия этот раздел можно пропустить.</p>
+        <div id="group-finance-help" class="group-finance-help" hidden>
+          <strong>У каждого получателя — своя программа и свой счёт</strong>
+          <p>Сохраните состав и время группы. В карточке занятия настройте программу и оплату отдельно для каждого участника.</p>
+          <p id="group-finance-existing" class="muted" hidden>Ранее сохранённые привязки остаются без изменений.</p>
+          <div id="group-finance-changes" class="group-finance-changes" hidden>
+            <p id="group-finance-warning" role="status"></p>
+            <button type="button" class="secondary" id="group-finance-reset">Настроить после сохранения</button>
+          </div>
+          <p id="group-finance-owner-warning" class="form-error" hidden>Сохранённая программа или счёт относятся к получателю, которого убрали из состава. Верните его в состав или сначала разберите его привязки в карточке занятия.</p>
+        </div>
+        <div class="form-grid" id="appointment-finance-fields">
           {% include 'operations/includes/appointment_form_field.html' with field=form.program_block %}
           {% include 'operations/includes/appointment_form_field.html' with field=form.billing_account %}
         </div>
@@ -137,4 +147,5 @@
 <script src="{% static 'operations/hold_confirm.js' %}"></script>
 <script src="{% static 'operations/appointment_people_picker.js' %}"></script>
 <script src="{% static 'operations/appointment_form.js' %}"></script>
+<script src="{% static 'operations/appointment_group_finance.js' %}"></script>
 {% endblock %}
