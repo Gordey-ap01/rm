@@ -46,7 +46,7 @@ class AppointmentFormClarityTests(TestCase):
         self.assertIsNone(appointment.billing_account)
         duplicate = self.client.post(reverse("appointment_create"), self.payload())
         self.assertEqual(duplicate.status_code, 200)
-        self.assertContains(duplicate, "Конфликт расписания")
+        self.assertContains(duplicate, "Конфликт расписания:", count=1)
         self.assertEqual(duplicate.context["form"]["participants"].value(), [str(self.child.pk)])
         self.assertEqual(Appointment.objects.count(), 1)
 

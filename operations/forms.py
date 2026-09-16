@@ -3146,9 +3146,15 @@ class StaffAvailabilityForm(forms.ModelForm):
         fields = ("weekday", "starts_at", "ends_at", "note")
         labels = {
             "weekday": "День недели",
-            "starts_at": "Начало",
-            "ends_at": "Окончание",
-            "note": "Комментарий",
+            "starts_at": "Начало работы",
+            "ends_at": "Окончание работы",
+            "note": "Комментарий (необязательно)",
+        }
+        help_texts = {
+            "weekday": (
+                "Время работы повторяется каждую неделю и помогает подбирать занятия. "
+                "Это не отдельное занятие; разовый отпуск или больничный оформляйте заявкой."
+            ),
         }
         widgets = {
             "starts_at": TIME_INPUT,

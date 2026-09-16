@@ -22,7 +22,9 @@
       <p class="appointment-form-intro">Заполните три раздела. Поля со звёздочкой обязательны.</p>
       <noscript><p class="form-error">Для поиска и добавления участников включите JavaScript в браузере.</p></noscript>
       {% if form.non_field_errors %}
-        <div class="form-error">{{ form.non_field_errors }}</div>
+        <div class="form-error"><ul class="errorlist nonfield">
+          {% for error in appointment_form_errors %}<li>{{ error }}</li>{% endfor %}
+        </ul></div>
       {% endif %}
       {% if form.room_limit_warning %}
         <div class="hold-confirm-card">

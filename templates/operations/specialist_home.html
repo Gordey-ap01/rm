@@ -168,10 +168,10 @@
   </article>
 
   <article class="panel" id="staff-availability">
-    <h2>Рабочий график</h2>
+    <h2>Регулярный график</h2>
     <div class="staff-ops-table-wrap">
     <table class="staff-ops-table staff-availability-table">
-      <thead><tr><th>День</th><th>Время</th><th>Статус</th><th></th></tr></thead>
+      <thead><tr><th>День</th><th>Время работы</th><th>Статус</th><th></th></tr></thead>
       <tbody>
       {% for window in availability_windows %}
         <tr>
@@ -197,13 +197,19 @@
       {% if can_manage_specialists %}<input type="hidden" name="staff_id" value="{{ staff.pk }}">{% endif %}
       <div class="form-grid">
         {% for field in availability_form %}
-          <label class="field">
-            <span>{{ field.label }}</span>
+          <div class="field">
+            <label for="{{ field.id_for_label }}"><span>{{ field.label }}</span></label>
+            {% if field.help_text %}
+              <details>
+                <summary title="{{ field.help_text }}" aria-label="Пояснение: {{ field.label }}">?</summary>
+                <p>{{ field.help_text }}</p>
+              </details>
+            {% endif %}
             {{ field }}
-          </label>
+          </div>
         {% endfor %}
       </div>
-      <button type="submit">Добавить рабочее окно</button>
+      <button type="submit">Добавить время работы</button>
     </form>
   </article>
 

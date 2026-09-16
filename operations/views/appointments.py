@@ -457,6 +457,9 @@ def appointment_form_attention_items(form) -> list[dict]:
 def appointment_form_context(form, title: str, appointment=None) -> dict:
     context = {
         "form": form,
+        # Model and form validation may report the same conflict; retain both
+        # validators but show each complete message only once.
+        "appointment_form_errors": list(dict.fromkeys(form.non_field_errors())),
         "title": title,
         "appointment": appointment,
         "appointment_form_summary_items": appointment_form_summary_items(form, appointment),

@@ -411,9 +411,9 @@ def staff_availability_create(request):
             availability = form.save(commit=False)
             availability.staff_member = staff
             availability.save()
-            messages.success(request, "Рабочее окно добавлено.")
+            messages.success(request, "Время работы добавлено в регулярный график.")
         else:
-            messages.error(request, "Рабочее окно не сохранено. Проверьте время.")
+            messages.error(request, "Время работы не сохранено. Проверьте время.")
     return redirect(specialist_home_redirect(request, staff))
 
 
@@ -431,7 +431,7 @@ def staff_availability_toggle(request, pk: int):
     if request.method == "POST":
         availability.is_active = not availability.is_active
         availability.save(update_fields=["is_active", "updated_at"])
-        messages.success(request, "Рабочее окно обновлено.")
+        messages.success(request, "Время работы в регулярном графике обновлено.")
     return redirect(specialist_home_redirect(request, availability.staff_member))
 
 
