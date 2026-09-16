@@ -69,3 +69,13 @@
 .staff-schedule-form [data-add-window]:disabled,
 .staff-schedule-form [data-remove-window]:disabled { opacity: .5; }
 .staff-schedule-form .schedule-day-closed { gap: .5rem; }
+.hint-button {
+  color: #174b39;
+  background: #f0f7f3;
+  border: 1px solid #9bb7a9;
+  border-radius: 50%;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  padding: 0 .35rem;
+  font-weight: 700;
+}
