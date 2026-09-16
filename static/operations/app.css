@@ -1409,6 +1409,59 @@ th {
   vertical-align: top;
 }
 
+#staff-availability .field {
+  align-self: start;
+}
+
+.availability-field-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  position: relative;
+}
+
+.availability-field-label label {
+  margin: 0;
+}
+
+.availability-help summary {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.availability-help summary::-webkit-details-marker {
+  display: none;
+}
+
+.availability-help summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.availability-help p {
+  position: absolute;
+  z-index: 80;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 4px 0 0;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--heading);
+  color: #fff;
+  box-shadow: 0 4px 12px #0002;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .staff-ops-actions {
   text-align: right;
   white-space: nowrap;

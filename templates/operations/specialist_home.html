@@ -198,13 +198,15 @@
       <div class="form-grid">
         {% for field in availability_form %}
           <div class="field">
-            <label for="{{ field.id_for_label }}"><span>{{ field.label }}</span></label>
-            {% if field.help_text %}
-              <details>
-                <summary title="{{ field.help_text }}" aria-label="Пояснение: {{ field.label }}">?</summary>
-                <p>{{ field.help_text }}</p>
-              </details>
-            {% endif %}
+            <div class="availability-field-label">
+              <label for="{{ field.id_for_label }}"><span>{{ field.label }}</span></label>
+              {% if field.help_text %}
+                <details class="availability-help">
+                  <summary title="{{ field.help_text }}" aria-label="Пояснение: {{ field.label }}">?</summary>
+                  <p>{{ field.help_text }}</p>
+                </details>
+              {% endif %}
+            </div>
             {{ field }}
           </div>
         {% endfor %}

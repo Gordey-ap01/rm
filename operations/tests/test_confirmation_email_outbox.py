@@ -329,6 +329,11 @@ class ConfirmationEmailOutboxTests(TestCase):
         send.assert_not_called()
 
     def test_changed_group_composition_or_labels_is_not_sent(self):
+        self.room.allow_group_sessions = True
+        self.room.max_recipient_count = 2
+        self.room.save(
+            update_fields=["allow_group_sessions", "max_recipient_count", "updated_at"]
+        )
         self.appointment.session_type = Appointment.SessionType.GROUP
         self.appointment.save(update_fields=["session_type", "updated_at"])
         primary_participant = self.appointment.participants.get(child=self.child)
@@ -366,6 +371,11 @@ class ConfirmationEmailOutboxTests(TestCase):
                 self.appointment, actor=self.admin, days=2, limit=1
             )
             step = plan.steps.get()
+            self.assertEqual(
+                step.action_type,
+                AppointmentRescheduleStep.ActionType.MOVE,
+                step.validation_messages,
+            )
             result = plan_svc.create_confirmations_for_step(step, actor=self.admin)
             return ConfirmationEmailDelivery.objects.get(confirmation=result.created[0]), step
 
