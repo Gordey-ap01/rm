@@ -7993,6 +7993,59 @@ class AppointmentConfirmation(TimeStampedModel):
         return f"{self.appointment} -> {self.email}"
 
 
+class ConfirmationEmailDelivery(TimeStampedModel):
+    """Durable delivery intent; creation belongs to the confirmation transaction."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Ожидает отправки"
+        PROCESSING = "processing", "Отправляется"
+        RETRY = "retry", "Ожидает повторной попытки"
+        SENT = "sent", "Отправлено"
+        FAILED = "failed", "Не удалось отправить"
+        CANCELLED = "cancelled", "Отправка больше не требуется"
+
+    confirmation = models.OneToOneField(
+        AppointmentConfirmation, on_delete=models.CASCADE, related_name="email_delivery",
+    )
+    email = models.EmailField("адрес доставки")
+    subject = models.CharField("тема", max_length=200)
+    body = models.TextField("снимок письма")
+    fingerprint = models.CharField("снимок согласования", max_length=64)
+    message_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(default=timezone.now)
+    claim_token = models.UUIDField(null=True, blank=True, editable=False)
+    locked_until = models.DateTimeField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=80, blank=True)
+
+    class Meta:
+        verbose_name = "доставка письма согласования"
+        verbose_name_plural = "доставка писем согласований"
+        indexes = [models.Index(fields=["status", "next_attempt_at"], name="confirmation_email_due_idx")]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(status__in=["pending", "processing", "retry", "sent", "failed", "cancelled"]),
+                name="confirmation_email_valid_status",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(status="processing", claim_token__isnull=False, locked_until__isnull=False)
+                    | (~Q(status="processing") & Q(claim_token__isnull=True, locked_until__isnull=True))
+                ),
+                name="confirmation_email_claim_state",
+            ),
+            models.CheckConstraint(
+                condition=Q(status="sent", sent_at__isnull=False) | (~Q(status="sent") & Q(sent_at__isnull=True)),
+                name="confirmation_email_sent_state",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Согласование {self.confirmation_id}: {self.get_status_display()}"
+
+
 class AppointmentConfirmationDecision(TimeStampedModel):
     class Decision(models.TextChoices):
         CONFIRMED = AppointmentConfirmation.Status.CONFIRMED, "Подтвердить"

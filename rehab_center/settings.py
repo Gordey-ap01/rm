@@ -180,6 +180,8 @@ EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "1") == "1"
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
+RM_PUBLIC_BASE_URL = os.environ.get("RM_PUBLIC_BASE_URL", "")
 
 if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True

@@ -19,9 +19,9 @@ from operations.models import Appointment, AppointmentConfirmation
 from operations.services import (
     appointments as appointment_svc,
     confirmation_decisions as decision_svc,
+    confirmation_email_outbox as email_outbox,
     schedule_decisions as schedule_decisions_svc,
 )
-from operations.tasks import send_appointment_confirmation_email
 
 from ._common import is_admin_user, safe_next_url
 from .appointments import (
@@ -191,6 +191,9 @@ def appointment_send_confirmation(request, pk: int):
                         action="отправить согласование",
                         target_participant_id=confirmation.participant_id,
                     )
+                email_outbox.queue_confirmation(
+                    confirmation, base_url=request.build_absolute_uri("/"),
+                )
         except appointment_svc.AppointmentStateConflict as exc:
             form.add_error(None, str(exc))
             messages.error(request, "Письмо не отправлено: состояние занятия изменилось.")
@@ -201,7 +204,14 @@ def appointment_send_confirmation(request, pk: int):
                 | {"confirmation_form": form},
                 status=409,
             )
-        send_appointment_confirmation_email.enqueue(confirmation.pk)
+        except ValueError as exc:
+            form.add_error(None, str(exc))
+            messages.error(request, "Письмо не поставлено в очередь. Проверьте настройки адреса приложения.")
+            return render(
+                request, "operations/appointment_detail.html",
+                appointment_detail_context(appointment, actor=request.user) | {"confirmation_form": form},
+                status=400,
+            )
         messages.success(
             request,
             f"Письмо поставлено в очередь на {confirmation.email}.",

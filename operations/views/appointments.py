@@ -684,6 +684,7 @@ def appointment_detail_context(
     )
     confirmations = list(
         appointment.confirmations.select_related(
+            "email_delivery",
             "participant__child",
             "representative",
             "sent_by",

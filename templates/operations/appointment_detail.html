@@ -375,7 +375,20 @@
               {% endif %}
             {% endif %}
           </td>
-          <td data-label="Отправка">{{ item.get_delivery_status_display }}</td>
+          <td data-label="Отправка">
+            {% if item.email_delivery %}
+              {{ item.email_delivery.get_status_display }}
+              <br><small>Попыток: {{ item.email_delivery.attempts }} из 5</small>
+              {% if item.email_delivery.status == 'retry' %}
+                <br><small>Следующая: {{ item.email_delivery.next_attempt_at|date:"d.m H:i" }}</small>
+              {% endif %}
+              {% if item.email_delivery.status == 'failed' or item.email_delivery.status == 'cancelled' %}
+                <br><small>{{ item.delivery_error }}</small>
+              {% endif %}
+            {% else %}
+              {{ item.get_delivery_status_display }}
+            {% endif %}
+          </td>
           <td data-label="Действие">
             <a class="button-link secondary small-action" href="{% url 'appointment_confirmation_public' item.token %}">Ссылка</a>
             {% if item.can_resolve_manually %}

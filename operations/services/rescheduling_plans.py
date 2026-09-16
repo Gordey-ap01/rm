@@ -911,6 +911,7 @@ def create_confirmations_for_step(
     step: AppointmentRescheduleStep,
     *,
     actor: Any = None,
+    base_url: str | None = None,
 ) -> StepConfirmationResult:
     step = (
         AppointmentRescheduleStep.objects.select_for_update(
@@ -1004,6 +1005,13 @@ def create_confirmations_for_step(
             )
         )
 
+    from operations.services.confirmation_email_outbox import queue_confirmation
+
+    try:
+        for confirmation in created:
+            queue_confirmation(confirmation, base_url=base_url)
+    except ValueError as exc:
+        raise ValidationError(str(exc)) from exc
     step = _update_step_confirmation_state(step)
     return StepConfirmationResult(step=step, created=created, existing=existing)
 

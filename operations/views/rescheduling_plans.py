@@ -15,7 +15,6 @@ from operations.models import (
     AppointmentRescheduleStep,
 )
 from operations.services import rescheduling_plans as plan_svc
-from operations.tasks import send_appointment_confirmation_email
 
 from ._common import is_admin_user
 
@@ -684,12 +683,12 @@ def appointment_reschedule_plan_detail(request, pk: int):
         if action == "send_step_confirmations":
             step = get_object_or_404(plan.steps.all(), pk=request.POST.get("step_id"))
             try:
-                result = plan_svc.create_confirmations_for_step(step, actor=request.user)
+                result = plan_svc.create_confirmations_for_step(
+                    step, actor=request.user, base_url=request.build_absolute_uri("/"),
+                )
             except ValidationError as exc:
                 messages.error(request, "; ".join(exc.messages))
             else:
-                for confirmation in result.created:
-                    send_appointment_confirmation_email.enqueue(confirmation.pk)
                 if result.created:
                     messages.success(
                         request,

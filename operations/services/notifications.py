@@ -2,19 +2,13 @@
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from typing import Any
 
-from django.conf import settings
-from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils import timezone
 
-from operations.models import Appointment, AppointmentConfirmation
-from operations.services import appointments as appointment_svc
-
-logger = logging.getLogger(__name__)
+from operations.models import Appointment
 
 
 @dataclass(frozen=True)
@@ -82,76 +76,7 @@ def build_confirmation_email(
 
 
 def send_confirmation_email(confirmation_id: int) -> bool:
-    """Отправляет письмо для существующего ``AppointmentConfirmation``.
+    """Send via the durable queue shared with the background task."""
+    from operations.services.confirmation_email_outbox import send_confirmation
 
-    Возвращает ``True`` при успехе. При ошибке обновляет
-    ``delivery_status=FAILED`` и ``delivery_error`` и возвращает ``False``.
-    Используется как задача :py:mod:`operations.tasks` (django-tasks).
-    """
-    confirmation = (
-        AppointmentConfirmation.objects.select_related(
-            "appointment",
-            "appointment__child",
-            "appointment__staff_member",
-            "appointment__service",
-            "appointment__room",
-            "participant",
-        )
-        .filter(pk=confirmation_id)
-        .first()
-    )
-    if confirmation is None:
-        logger.warning("Confirmation %s disappeared before send", confirmation_id)
-        return False
-
-    if confirmation.participant_id and (
-        confirmation.participant.appointment_status
-        in {Appointment.Status.CANCELLED, Appointment.Status.RESCHEDULED}
-        or appointment_svc.participant_has_series_result(confirmation.participant)
-    ):
-        confirmation.delivery_status = AppointmentConfirmation.DeliveryStatus.FAILED
-        confirmation.delivery_error = (
-            "По участию зафиксирован результат серии до отправки согласования."
-        )
-        confirmation.save(
-            update_fields=["delivery_status", "delivery_error", "updated_at"]
-        )
-        return False
-
-    confirmation.appointment._pending_token = confirmation.token
-    email = build_confirmation_email(confirmation.appointment)
-    body = f"{confirmation.message}\n\nСсылка для ответа: {email.url}"
-    try:
-        send_mail(
-            confirmation.subject,
-            body,
-            settings.DEFAULT_FROM_EMAIL,
-            [confirmation.email],
-            fail_silently=False,
-        )
-    except Exception as exc:
-        confirmation.delivery_status = AppointmentConfirmation.DeliveryStatus.FAILED
-        confirmation.delivery_error = str(exc)
-        confirmation.save(update_fields=["delivery_status", "delivery_error", "updated_at"])
-        logger.exception("Confirmation email failed: %s", confirmation_id)
-        return False
-
-    confirmation.delivery_status = AppointmentConfirmation.DeliveryStatus.SENT
-    confirmation.sent_at = timezone.now()
-    confirmation.save(update_fields=["delivery_status", "sent_at", "updated_at"])
-
-    if confirmation.appointment.status == Appointment.Status.DRAFT:
-        try:
-            appointment_svc.transition_appointment_status(
-                confirmation.appointment,
-                status=Appointment.Status.PROPOSED,
-                allowed_from={Appointment.Status.DRAFT},
-                action="отправить согласование",
-                target_participant_id=confirmation.participant_id,
-            )
-        except appointment_svc.AppointmentStateConflict:
-            logger.info(
-                "Confirmation %s was sent after appointment state changed; status was not reactivated",
-                confirmation.pk,
-            )
-    return True
+    return send_confirmation(confirmation_id)
