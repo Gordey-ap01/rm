@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Изменение постоянного графика{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'operations/staff_schedule_form.css' %}">{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div><h1>Изменение постоянного графика</h1><p>Укажите все семь дней недели. Выходной — это явное правило, а не пустая строка.</p></div>
+  <a class="button-link secondary" href="{% url 'staff_schedule_list' %}">К запросам</a>
+</section>
+
+<form method="post" class="staff-schedule-form" data-staff-schedule-form>
+  {% csrf_token %}
+  {% for hidden in form.hidden_fields %}{{ hidden }}{% for error in hidden.errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}{% endfor %}
+  {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+  <section class="panel form-panel">
+    <div class="form-grid">
+      {% if is_operator %}
+      <div><label for="{{ form.staff_member.id_for_label }}">{{ form.staff_member.label }}</label>{{ form.staff_member }}{% for error in form.staff_member.errors %}<div class="field-error">{{ error }}</div>{% endfor %}</div>
+      {% else %}
+      <div><span class="form-label">Специалист</span><strong>{{ staff }}</strong></div>
+      {% endif %}
+      <div><label for="{{ form.effective_from.id_for_label }}">{{ form.effective_from.label }}</label>{{ form.effective_from }}<small>Не ранее завтрашнего дня.</small>{% for error in form.effective_from.errors %}<div class="field-error">{{ error }}</div>{% endfor %}</div>
+    </div>
+    <div class="mt-3"><label for="{{ form.reason.id_for_label }}">{{ form.reason.label }} <button type="button" class="hint-button" aria-label="Подсказка к основанию" title="Основание попадет в историю запроса и решения.">?</button></label>{{ form.reason }}<small>{{ form.reason.help_text }}</small>{% for error in form.reason.errors %}<div class="field-error">{{ error }}</div>{% endfor %}</div>
+  </section>
+
+  <section class="panel form-panel mt-3">
+    <div class="directory-panel-head"><div><h2>Недельный график</h2><p>Можно задать несколько интервалов за день: например, до и после перерыва.</p></div></div>
+    <div class="weekly-schedule" aria-label="Недельный график">
+      {% for day in week %}
+      <fieldset class="schedule-day" data-schedule-day data-day="{{ day.weekday }}">
+        <legend>{{ day.label }}</legend>
+        <label class="form-check schedule-day-closed"><input class="form-check-input" type="checkbox" name="day_{{ day.weekday }}_closed" value="1"{% if day.closed %} checked{% endif %} data-day-closed> <span>Выходной</span></label>
+        <div class="schedule-windows" data-windows aria-live="polite">
+          {% for window in day.windows %}
+          <div class="schedule-window" data-window-row>
+            <label>С <input type="time" name="day_{{ day.weekday }}_start" value="{{ window.start }}" required></label>
+            <label>До <input type="time" name="day_{{ day.weekday }}_end" value="{{ window.end }}" required></label>
+            <button class="btn btn-outline-secondary btn-sm" type="button" data-remove-window aria-label="Удалить интервал">Удалить</button>
+          </div>
+          {% endfor %}
+        </div>
+        <button class="btn btn-outline-success btn-sm" type="button" data-add-window><i class="bi bi-plus-lg"></i> Добавить интервал</button>
+        <small class="schedule-day-help">При проверке интервалы не должны пересекаться, а окончание должно быть позже начала.</small>
+      </fieldset>
+      {% endfor %}
+    </div>
+  </section>
+  <div class="form-actions mt-3"><button class="button-link" type="submit"><i class="bi bi-send"></i> Отправить на согласование</button><a class="button-link secondary" href="{% url 'staff_schedule_list' %}">Отмена</a></div>
+</form>
+{% endblock %}
+
+{% block extra_js %}<script src="{% static 'operations/staff_schedule_form.js' %}"></script>{% endblock %}

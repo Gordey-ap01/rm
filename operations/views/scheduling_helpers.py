@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.urls import reverse
@@ -11,8 +11,8 @@ from django.utils import timezone
 from operations.models import Appointment, StaffMember
 from operations.schedule_validation import (
     appointment_group_conflicts,
-    build_local_datetime,
     conflict_messages,
+    iter_available_slot_times,
     staff_unavailability_reason,
 )
 
@@ -67,15 +67,12 @@ def suggested_transfer_slots(appointment, days: int = 7, limit: int = 12) -> lis
     for day_offset in range(days):
         day = start_day + timedelta(days=day_offset)
         for staff_member in staff_members:
-            for minute in range(9 * 60, (18 * 60) - duration + 1, 30):
-                hour, clock_minute = divmod(minute, 60)
-                starts_at = build_local_datetime(
-                    day, datetime.strptime(f"{hour:02d}:{clock_minute:02d}", "%H:%M").time()
-                )
-                ends_at = starts_at + timedelta(minutes=duration)
+            move_staff_members = _appointment_staff_for_move(appointment, staff_member)
+            for starts_at, ends_at in iter_available_slot_times(
+                day, duration, staff_members=move_staff_members
+            ):
                 if starts_at == appointment.starts_at:
                     continue
-                move_staff_members = _appointment_staff_for_move(appointment, staff_member)
                 conflicts = appointment_group_conflicts(
                     starts_at,
                     ends_at,
@@ -90,7 +87,7 @@ def suggested_transfer_slots(appointment, days: int = 7, limit: int = 12) -> lis
                     continue
                 params = {
                     "date": day.isoformat(),
-                    "time": f"{hour:02d}:{clock_minute:02d}",
+                    "time": starts_at.strftime("%H:%M"),
                     "staff_id": staff_member.id,
                 }
                 if appointment.room_id:
@@ -98,7 +95,7 @@ def suggested_transfer_slots(appointment, days: int = 7, limit: int = 12) -> lis
                 slots.append(
                     {
                         "date": day,
-                        "time": f"{hour:02d}:{clock_minute:02d}",
+                        "time": starts_at.strftime("%H:%M"),
                         "staff": staff_member,
                         "room": appointment.room,
                         "move_url": f"{reverse('appointment_move', args=[appointment.pk])}?{urlencode(params)}",
@@ -122,15 +119,12 @@ def suggested_shift_candidates(appointment, days: int = 7, limit: int = 8) -> li
     for day_offset in range(days):
         day = start_day + timedelta(days=day_offset)
         for staff_member in staff_members:
-            for minute in range(9 * 60, (18 * 60) - duration + 1, 30):
-                hour, clock_minute = divmod(minute, 60)
-                starts_at = build_local_datetime(
-                    day, datetime.strptime(f"{hour:02d}:{clock_minute:02d}", "%H:%M").time()
-                )
-                ends_at = starts_at + timedelta(minutes=duration)
+            move_staff_members = _appointment_staff_for_move(appointment, staff_member)
+            for starts_at, ends_at in iter_available_slot_times(
+                day, duration, staff_members=move_staff_members
+            ):
                 if starts_at == appointment.starts_at:
                     continue
-                move_staff_members = _appointment_staff_for_move(appointment, staff_member)
                 if not _all_staff_available(move_staff_members, starts_at, ends_at):
                     continue
 
@@ -161,7 +155,7 @@ def suggested_shift_candidates(appointment, days: int = 7, limit: int = 8) -> li
 
                 params = {
                     "date": day.isoformat(),
-                    "time": f"{hour:02d}:{clock_minute:02d}",
+                    "time": starts_at.strftime("%H:%M"),
                     "staff_id": staff_member.id,
                 }
                 if appointment.room_id:
@@ -169,7 +163,7 @@ def suggested_shift_candidates(appointment, days: int = 7, limit: int = 8) -> li
                 candidates.append(
                     {
                         "date": day,
-                        "time": f"{hour:02d}:{clock_minute:02d}",
+                        "time": starts_at.strftime("%H:%M"),
                         "staff": staff_member,
                         "room": appointment.room,
                         "messages": messages,

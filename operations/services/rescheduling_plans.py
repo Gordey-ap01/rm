@@ -32,6 +32,7 @@ from operations.schedule_validation import (
     appointment_group_conflicts,
     build_local_datetime,
     conflict_messages,
+    iter_available_slot_times,
     staff_unavailability_reason,
 )
 
@@ -742,11 +743,10 @@ def create_plan_for_appointment(
     for day_offset in range(days):
         day = start_day + timedelta(days=day_offset)
         for staff_member in staff_members:
-            for minute in range(9 * 60, (18 * 60) - duration + 1, 30):
-                hour, clock_minute = divmod(minute, 60)
-                starts_at, ends_at = _slot_times(
-                    day, f"{hour:02d}:{clock_minute:02d}", duration
-                )
+            move_staff_members = _appointment_staff_for_move(appointment, staff_member)
+            for starts_at, ends_at in iter_available_slot_times(
+                day, duration, staff_members=move_staff_members
+            ):
                 if starts_at == appointment.starts_at:
                     continue
                 messages, conflicts = _step_messages(
@@ -782,11 +782,10 @@ def create_plan_for_appointment(
         for day_offset in range(days):
             day = start_day + timedelta(days=day_offset)
             for staff_member in staff_members:
-                for minute in range(9 * 60, (18 * 60) - duration + 1, 30):
-                    hour, clock_minute = divmod(minute, 60)
-                    starts_at, ends_at = _slot_times(
-                        day, f"{hour:02d}:{clock_minute:02d}", duration
-                    )
+                move_staff_members = _appointment_staff_for_move(appointment, staff_member)
+                for starts_at, ends_at in iter_available_slot_times(
+                    day, duration, staff_members=move_staff_members
+                ):
                     if starts_at == appointment.starts_at:
                         continue
                     messages, conflicts = _step_messages(

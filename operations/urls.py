@@ -56,6 +56,10 @@ urlpatterns = [
         name="staff_compensation_rule_toggle",
     ),
     path("work-queue/", views.work_queue, name="work_queue"),
+    path("staff-schedules/", views.staff_schedule_list, name="staff_schedule_list"),
+    path("staff-schedules/new/", views.staff_schedule_create, name="staff_schedule_create"),
+    path("staff-schedules/<int:pk>/", views.staff_schedule_detail, name="staff_schedule_detail"),
+    path("staff-schedules/<int:pk>/decide/", views.staff_schedule_decide, name="staff_schedule_decide"),
     path(
         "certificates/backfill-readiness/",
         views.certificate_backfill_readiness_report,

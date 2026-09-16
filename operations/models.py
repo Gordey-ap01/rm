@@ -8235,6 +8235,169 @@ class StaffAvailability(TimeStampedModel):
             raise ValidationError({"ends_at": "Окончание должно быть позже начала."})
 
 
+class StaffScheduleChangeRequest(TimeStampedModel):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Ожидает решения"
+        APPROVED = "approved", "Согласовано"
+        REJECTED = "rejected", "Отклонено"
+
+    staff_member = models.ForeignKey(
+        StaffMember,
+        verbose_name="специалист",
+        on_delete=models.PROTECT,
+        related_name="schedule_change_requests",
+    )
+    class CreatedByRole(models.TextChoices):
+        SPECIALIST = "specialist", "Специалист"
+        ADMINISTRATOR = "administrator", "Администратор"
+        DIRECTOR = "director", "Руководитель"
+
+    effective_from = models.DateField("действует с")
+    week = models.JSONField("недельный график", default=list)
+    reason = models.TextField("основание")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="заявку создал",
+        on_delete=models.PROTECT,
+        related_name="created_staff_schedule_requests",
+    )
+    created_by_role = models.CharField(
+        "роль автора на момент заявки", max_length=20, choices=CreatedByRole.choices
+    )
+    request_key = models.UUIDField("ключ повтора", unique=True, editable=False)
+    fingerprint = models.CharField("отпечаток запроса", max_length=64)
+    status = models.CharField(
+        "статус", max_length=20, choices=Status.choices, default=Status.PENDING
+    )
+    director_priority = models.BooleanField("приоритет руководителя", default=True)
+
+    class Meta:
+        verbose_name = "заявка на изменение постоянного графика"
+        verbose_name_plural = "заявки на изменение постоянного графика"
+        ordering = ["effective_from", "-created_at"]
+        indexes = [
+            models.Index(fields=["staff_member", "effective_from", "status"]),
+        ]
+
+    @property
+    def current_decision(self):
+        return self.decisions.filter(is_current=True).first()
+
+    def clean(self) -> None:
+        if len(self.reason.strip()) < 5:
+            raise ValidationError({"reason": "Укажите основание не короче 5 символов."})
+
+    def __str__(self) -> str:
+        return f"{self.staff_member}: график с {self.effective_from:%d.%m.%Y}"
+
+
+class StaffScheduleChangeDecision(TimeStampedModel):
+    class Action(models.TextChoices):
+        APPROVE = "approve", "Согласовать"
+        REJECT = "reject", "Отклонить"
+        CONFIRM = "confirm", "Подтвердить"
+
+    class ActorRole(models.TextChoices):
+        ADMINISTRATOR = "administrator", "Администратор"
+        DIRECTOR = "director", "Руководитель"
+
+    request = models.ForeignKey(
+        StaffScheduleChangeRequest,
+        verbose_name="заявка",
+        on_delete=models.PROTECT,
+        related_name="decisions",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="решение зафиксировал",
+        on_delete=models.PROTECT,
+        related_name="staff_schedule_decisions",
+    )
+    actor_role = models.CharField("роль на момент решения", max_length=20, choices=ActorRole.choices)
+    action = models.CharField("действие", max_length=20, choices=Action.choices)
+    reason = models.TextField("основание решения")
+    request_key = models.UUIDField("ключ повтора", unique=True, editable=False)
+    fingerprint = models.CharField("отпечаток решения", max_length=64)
+    is_current = models.BooleanField("текущее решение", default=True)
+    supersedes = models.ForeignKey(
+        "self",
+        verbose_name="переопределяет решение",
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name="superseded_by",
+    )
+    requires_director_review = models.BooleanField(
+        "требует контроля руководителя", default=False
+    )
+
+    class Meta:
+        verbose_name = "решение по постоянному графику"
+        verbose_name_plural = "решения по постоянному графику"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["request"],
+                condition=Q(is_current=True),
+                name="unique_current_staff_schedule_decision",
+            ),
+            models.CheckConstraint(
+                condition=~Q(reason=""), name="staff_schedule_decision_reason_required"
+            ),
+        ]
+        indexes = [models.Index(fields=["request", "is_current", "created_at"])]
+
+    def clean(self) -> None:
+        if len(self.reason.strip()) < 5:
+            raise ValidationError({"reason": "Укажите основание не короче 5 символов."})
+
+    def __str__(self) -> str:
+        return f"{self.request}: {self.get_action_display()}"
+
+
+class StaffScheduleRevision(TimeStampedModel):
+    """Immutable weekly snapshot selected by its effective date."""
+
+    staff_member = models.ForeignKey(
+        StaffMember,
+        verbose_name="специалист",
+        on_delete=models.PROTECT,
+        related_name="schedule_revisions",
+    )
+    request = models.ForeignKey(
+        StaffScheduleChangeRequest,
+        verbose_name="заявка",
+        on_delete=models.PROTECT,
+        related_name="revisions",
+    )
+    decision = models.ForeignKey(
+        StaffScheduleChangeDecision,
+        verbose_name="решение",
+        on_delete=models.PROTECT,
+        related_name="created_revisions",
+    )
+    effective_from = models.DateField("действует с")
+    week = models.JSONField("снимок недельного графика", default=list)
+    uses_legacy = models.BooleanField("использовать прежний график", default=False)
+    is_current = models.BooleanField("действующая версия", default=True)
+
+    class Meta:
+        verbose_name = "версия постоянного графика"
+        verbose_name_plural = "версии постоянного графика"
+        ordering = ["-effective_from", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["staff_member", "effective_from"],
+                condition=Q(is_current=True),
+                name="unique_current_staff_schedule_effective_date",
+            ),
+        ]
+        indexes = [models.Index(fields=["staff_member", "effective_from", "is_current"])]
+
+    def __str__(self) -> str:
+        return f"{self.staff_member}: версия с {self.effective_from:%d.%m.%Y}"
+
+
 class TimeOffRequest(TimeStampedModel):
     class RequestType(models.TextChoices):
         VACATION = "vacation", "Отпуск"

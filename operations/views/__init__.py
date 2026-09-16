@@ -199,6 +199,12 @@ from .staff_members import (
     staff_member_list,
     staff_member_restore,
 )
+from .staff_schedules import (
+    staff_schedule_create,
+    staff_schedule_decide,
+    staff_schedule_detail,
+    staff_schedule_list,
+)
 from .tomorrow import tomorrow
 
 __all__ = [
@@ -376,6 +382,10 @@ __all__ = [
     "staff_member_edit",
     "staff_member_list",
     "staff_member_restore",
+    "staff_schedule_create",
+    "staff_schedule_decide",
+    "staff_schedule_detail",
+    "staff_schedule_list",
     "staff_timesheet",
     "suggested_transfer_slots",
     "time_off_request_create",

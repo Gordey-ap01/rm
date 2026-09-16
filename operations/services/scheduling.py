@@ -16,14 +16,13 @@ from operations.models import (
     Appointment,
     AppointmentConfirmation,
     AppointmentParticipant,
-    StaffAvailability,
     StaffMember,
-    TimeOffRequest,
     room_usage_counts,
 )
 from operations.schedule_validation import (
     appointment_group_conflicts,
-    build_local_datetime,
+    iter_available_slot_times,
+    staff_unavailability_reason,
 )
 from operations.services import appointments as appointment_svc
 
@@ -175,47 +174,8 @@ def is_within_availability(
     starts_at: datetime | None,
     ends_at: datetime | None,
 ) -> str:
-    """Возвращает ``""`` если время попадает в доступность, иначе — человекочитаемую причину.
-
-    Учитывает:
-    - активные ``TimeOffRequest`` (одобренные);
-    - ``StaffAvailability`` (если есть) или базовое окно 09:00–18:00 (fallback).
-    """
-    if not staff_member or not starts_at or not ends_at:
-        return ""
-
-    local_start = timezone.localtime(starts_at)
-    local_end = timezone.localtime(ends_at)
-    day = local_start.date()
-    if local_end.date() != day:
-        return "занятие должно помещаться в один рабочий день"
-
-    if TimeOffRequest.objects.filter(
-        staff_member=staff_member,
-        status=TimeOffRequest.Status.APPROVED,
-        starts_on__lte=day,
-        ends_on__gte=day,
-    ).exists():
-        return "у специалиста согласован отпуск/отгул на эту дату"
-
-    windows = list(
-        StaffAvailability.objects.filter(
-            staff_member=staff_member,
-            weekday=day.weekday(),
-            is_active=True,
-        ).order_by("starts_at")
-    )
-    start_time = local_start.time().replace(second=0, microsecond=0)
-    end_time = local_end.time().replace(second=0, microsecond=0)
-
-    if not windows:
-        if time(9, 0) <= start_time and end_time <= time(18, 0):
-            return ""
-        return "время вне базового рабочего окна 09:00-18:00"
-
-    if any(w.starts_at <= start_time and end_time <= w.ends_at for w in windows):
-        return ""
-    return "время вне рабочего графика специалиста"
+    """Compatibility wrapper for the canonical availability validation."""
+    return staff_unavailability_reason(staff_member, starts_at, ends_at)
 
 
 def find_free_slots(
@@ -228,13 +188,15 @@ def find_free_slots(
     children: Iterable[Any] | None = None,
     staff_members: Iterable[Any] | None = None,
     slot_step_minutes: int = 30,
-    start_hour: int = 9,
-    end_hour: int = 18,
+    start_hour: int | None = None,
+    end_hour: int | None = None,
 ) -> list[datetime]:
     """Возвращает список свободных ``starts_at`` (datetime) на день.
 
     Алгоритм:
-    - генерируем слоты с шагом ``slot_step_minutes`` от ``start_hour`` до ``end_hour - duration``;
+    - генерируем слоты с шагом ``slot_step_minutes`` внутри пересечения рабочих окон;
+      при approved версии графика отсутствие границ включает её ранние и поздние окна,
+      а ``start_hour``/``end_hour`` остаются явным ограничением;
     - исключаем слоты, которые пересекаются с активными занятиями по участникам/специалистам;
     - исключаем слоты, нарушающие правила кабинета;
     - исключаем слоты вне окна доступности любого выбранного специалиста.
@@ -245,13 +207,14 @@ def find_free_slots(
     children_list = _normalize_entities(child, children)
     staff_members_list = _normalize_entities(staff_member, staff_members)
     starts: list[datetime] = []
-    step = timedelta(minutes=slot_step_minutes)
-    window = timedelta(minutes=duration_minutes)
-    cursor = build_local_datetime(day, time(start_hour, 0))
-    window_end = build_local_datetime(day, time(end_hour, 0))
-
-    while cursor + window <= window_end:
-        slot_end = cursor + window
+    for cursor, slot_end in iter_available_slot_times(
+        day,
+        duration_minutes,
+        staff_members=staff_members_list,
+        slot_step_minutes=slot_step_minutes,
+        start_hour=start_hour,
+        end_hour=end_hour,
+    ):
         report = find_overlaps(
             cursor,
             slot_end,
@@ -266,7 +229,6 @@ def find_free_slots(
         )
         if not report.has_conflict and not has_staff_unavailability:
             starts.append(cursor)
-        cursor += step
     return starts
 
 

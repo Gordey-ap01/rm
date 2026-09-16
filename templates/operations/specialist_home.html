@@ -43,6 +43,7 @@
   <nav class="specialist-quick-links" aria-label="Быстрые переходы">
     <a href="#specialist-schedule">Расписание</a>
     <a href="#staff-availability">График</a>
+    <a href="{% url 'staff_schedule_list' %}?staff_id={{ staff.pk }}">Заявки на график · {{ schedule_request_count }} (ожидают: {{ schedule_pending_count }})</a>
     <a href="#staff-time-off">Заявки и решения · {{ time_off_summary.total }}</a>
   </nav>
 </section>
@@ -118,7 +119,7 @@
 <section class="detail-grid staff-ops">
   <article class="panel staff-requests-panel" id="staff-time-off" aria-labelledby="staff-requests-heading">
     <h2 id="staff-requests-heading">{% if can_manage_specialists %}Заявки специалиста{% else %}Мои заявки{% endif %} · {{ time_off_summary.total }}</h2>
-    <p class="muted">Больничные, отпуск, отгулы и изменения графика. Здесь сохраняются отправленные заявки и решения по ним.</p>
+    <p class="muted">Больничные, отпуск и отгулы. Для постоянного недельного графика <a href="{% url 'staff_schedule_create' %}?staff_id={{ staff.pk }}">создайте заявку на изменение графика</a>.</p>
     <ul class="staff-request-list" aria-label="Отправленные заявки">
       {% for request_item in time_off_requests %}
         <li class="staff-request-card is-{{ request_item.status }}" id="staff-request-{{ request_item.pk }}">
@@ -169,6 +170,22 @@
 
   <article class="panel" id="staff-availability">
     <h2>Регулярный график</h2>
+    <nav class="specialist-quick-links" aria-label="Управление рабочим графиком">
+      <a href="{% url 'staff_schedule_create' %}?staff_id={{ staff.pk }}">Запросить изменение графика</a>
+      <a href="{% url 'staff_schedule_list' %}?staff_id={{ staff.pk }}">Заявки и история · {{ schedule_request_count }}</a>
+    </nav>
+    {% if next_schedule %}<p class="notice">С {{ next_schedule.effective_from|date:"d.m.Y" }} вступит в силу <a href="{% url 'staff_schedule_detail' next_schedule.request_id %}">согласованный график</a>.</p>{% endif %}
+    {% if schedule_week %}
+      <p>Действует с {{ current_schedule.effective_from|date:"d.m.Y" }} · <a href="{% url 'staff_schedule_detail' current_schedule.request_id %}">Решение и история</a></p>
+      <div class="staff-ops-table-wrap"><table class="staff-ops-table staff-availability-table">
+        <thead><tr><th>День</th><th>Время работы</th></tr></thead>
+        <tbody>{% for day in schedule_week %}<tr>
+          <td data-label="День">{{ day.label }}</td>
+          <td data-label="Время">{% if day.closed %}Выходной{% else %}{% for window in day.windows %}{{ window.start }}–{{ window.end }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</td>
+        </tr>{% endfor %}</tbody>
+      </table></div>
+    {% else %}
+    {% if next_schedule %}<p class="muted">До этой даты действует прежний график ниже.</p>{% endif %}
     <div class="staff-ops-table-wrap">
     <table class="staff-ops-table staff-availability-table">
       <thead><tr><th>День</th><th>Время работы</th><th>Статус</th><th></th></tr></thead>
@@ -179,10 +196,12 @@
           <td data-label="Время">{{ window.starts_at|time:"H:i" }}-{{ window.ends_at|time:"H:i" }}</td>
           <td data-label="Статус">{% if window.is_active %}Активно{% else %}Выключено{% endif %}</td>
           <td data-label="Действие" class="staff-ops-actions">
+            {% if not schedule_is_managed %}
             <form method="post" action="{% url 'staff_availability_toggle' window.pk %}" class="mini-form">
               {% csrf_token %}
               <button class="secondary-button small-action" type="submit">{% if window.is_active %}Выключить{% else %}Включить{% endif %}</button>
             </form>
+            {% endif %}
           </td>
         </tr>
       {% empty %}
@@ -191,7 +210,9 @@
       </tbody>
     </table>
     </div>
+    {% endif %}
 
+    {% if not schedule_is_managed %}
     <form method="post" action="{% url 'staff_availability_create' %}" class="form compact-stack">
       {% csrf_token %}
       {% if can_manage_specialists %}<input type="hidden" name="staff_id" value="{{ staff.pk }}">{% endif %}
@@ -213,6 +234,13 @@
       </div>
       <button type="submit">Добавить время работы</button>
     </form>
+    {% else %}<p class="muted">Дальнейшие изменения оформляются заявкой с датой начала действия.</p>{% endif %}
+    {% if recent_schedule_requests %}
+      <h3>Последние заявки на график</h3>
+      <ul class="staff-request-list">{% for item in recent_schedule_requests %}
+        <li class="staff-request-card is-{{ item.status }}"><a href="{% url 'staff_schedule_detail' item.pk %}">График с {{ item.effective_from|date:"d.m.Y" }}</a> · {{ item.get_status_display }}</li>
+      {% endfor %}</ul>
+    {% endif %}
   </article>
 
 </section>

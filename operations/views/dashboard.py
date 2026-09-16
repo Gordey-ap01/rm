@@ -7,7 +7,7 @@ from datetime import datetime, time, timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.paginator import Paginator
-from django.db.models import Case, Count, IntegerField, Max, Q, Sum, Value, When
+from django.db.models import Case, Count, IntegerField, Max, Prefetch, Q, Sum, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -27,6 +27,8 @@ from operations.models import (
     FinancialIntegrityCheckRun,
     FinancialIntegrityFinding,
     FinancialIntegrityFindingEvent,
+    StaffScheduleChangeDecision,
+    StaffScheduleChangeRequest,
 )
 from operations.services import (
     certificates as certificate_svc,
@@ -1349,6 +1351,7 @@ def work_queue_summary_items(
     certificate_attention_count: int,
     certificate_tone: str,
     lifecycle_attention_count: int,
+    staff_schedule_count: int = 0,
 ):
     chain_attention_count = ready_chain_count + stale_chain_count + failed_chain_count
     chain_tone = "success"
@@ -1436,6 +1439,13 @@ def work_queue_summary_items(
             "href": "#queue-time-off",
             "tone": "info" if time_off_count else "success",
             "detail": "Отпуска, отгулы и другие отсутствия.",
+        },
+        {
+            "label": "Изменения рабочего графика",
+            "value": staff_schedule_count,
+            "href": "#queue-staff-schedules",
+            "tone": "info" if staff_schedule_count else "success",
+            "detail": "Новые заявки и решения для контроля руководителем.",
         },
         {
             "label": "Проверить программы и каскады",
@@ -1764,6 +1774,18 @@ def work_queue(request):
         .order_by("status", "-created_at")[:40]
     )
     time_off_requests = time_off_svc.attention_rows(limit=40, actor=request.user)
+    schedule_attention = StaffScheduleChangeRequest.objects.filter(
+        Q(status=StaffScheduleChangeRequest.Status.PENDING)
+        | Q(decisions__is_current=True, decisions__requires_director_review=True)
+    ).distinct()
+    staff_schedule_count = schedule_attention.count()
+    staff_schedule_requests = schedule_attention.select_related("staff_member").prefetch_related(
+        Prefetch(
+            "decisions",
+            queryset=StaffScheduleChangeDecision.objects.filter(is_current=True),
+            to_attr="current_decisions",
+        )
+    ).order_by("effective_from", "pk")[:40]
     reschedule_chains_queryset = reschedule_chain_attention_queryset()
     chain_counts = reschedule_chain_attention_counts(reschedule_chains_queryset)
     reschedule_chains = list(reschedule_chains_queryset[:40])
@@ -1794,6 +1816,7 @@ def work_queue(request):
         low_balance_count=len(low_balances),
         confirmation_count=len(confirmation_tasks),
         time_off_count=len(time_off_requests),
+        staff_schedule_count=staff_schedule_count,
         ready_chain_count=chain_counts["ready"],
         stale_chain_count=chain_counts["stale"],
         failed_chain_count=chain_counts["failed"],
@@ -1834,6 +1857,8 @@ def work_queue(request):
             "certificate_preflight_sample_limit": CERTIFICATE_PREFLIGHT_SAMPLE_LIMIT,
             "confirmation_tasks": confirmation_tasks,
             "time_off_requests": time_off_requests,
+            "staff_schedule_requests": staff_schedule_requests,
+            "staff_schedule_count": staff_schedule_count,
             "reschedule_chains": reschedule_chains,
             "reschedule_steps": reschedule_steps,
             "ready_chain_count": chain_counts["ready"],

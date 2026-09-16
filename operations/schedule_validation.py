@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, time
+from collections.abc import Iterable, Iterator
+from datetime import date, datetime, time, timedelta
 
 from django.utils import timezone
 
@@ -198,24 +199,110 @@ def staff_unavailability_reason(staff_member, starts_at, ends_at):
     ).exists():
         return "у специалиста согласован отпуск/отгул на эту дату"
 
-    windows = list(
+    start_time = local_start.time().replace(second=0, microsecond=0)
+    end_time = local_end.time().replace(second=0, microsecond=0)
+    windows, _, uses_legacy_fallback = staff_working_windows(staff_member, day)
+    if any(window_start <= start_time and end_time <= window_end for window_start, window_end in windows):
+        return ""
+    if uses_legacy_fallback:
+        return "время вне базового рабочего окна 09:00-18:00"
+    return "время вне рабочего графика специалиста"
+
+
+def staff_working_windows(
+    staff_member, day: date
+) -> tuple[list[tuple[time, time]], bool, bool]:
+    """Return windows, whether they are legacy, and whether they use the 09:00–18:00 fallback.
+
+    ``effective_windows`` is deliberately imported here.  The schedule-change
+    service also depends on the domain models used by this module, so a lazy
+    import avoids coupling the validation module to service import order.
+    """
+    from operations.services.staff_schedules import effective_windows
+
+    revision_windows = effective_windows(staff_member, day)
+    if revision_windows is not None:
+        return list(revision_windows), False, False
+
+    legacy_windows = list(
         StaffAvailability.objects.filter(
             staff_member=staff_member,
             weekday=day.weekday(),
             is_active=True,
-        ).order_by("starts_at")
+        )
+        .order_by("starts_at")
+        .values_list("starts_at", "ends_at")
     )
+    if legacy_windows:
+        return legacy_windows, True, False
+    return [(time(9, 0), time(18, 0))], True, True
 
-    start_time = local_start.time().replace(second=0, microsecond=0)
-    end_time = local_end.time().replace(second=0, microsecond=0)
-    if not windows:
-        if time(9, 0) <= start_time and end_time <= time(18, 0):
-            return ""
-        return "время вне базового рабочего окна 09:00-18:00"
 
-    if any(window.starts_at <= start_time and end_time <= window.ends_at for window in windows):
-        return ""
-    return "время вне рабочего графика специалиста"
+def _intersect_working_windows(
+    window_sets: Iterable[Iterable[tuple[time, time]]],
+) -> list[tuple[time, time]]:
+    """Return shared same-day intervals for every assigned staff member."""
+    common: list[tuple[time, time]] | None = None
+    for windows in window_sets:
+        current = list(windows)
+        if common is None:
+            common = current
+            continue
+        common = [
+            (max(left_start, right_start), min(left_end, right_end))
+            for left_start, left_end in common
+            for right_start, right_end in current
+            if max(left_start, right_start) < min(left_end, right_end)
+        ]
+    return common or []
+
+
+def iter_available_slot_times(
+    day: date,
+    duration_minutes: int,
+    *,
+    staff_members: Iterable | None = None,
+    slot_step_minutes: int = 30,
+    start_hour: int | None = None,
+    end_hour: int | None = None,
+) -> Iterator[tuple[datetime, datetime]]:
+    """Yield starts and ends inside every shared staff window on ``day``.
+
+    An omitted bound lets an approved schedule extend the historical 09:00–18:00
+    search range.  Explicit bounds still constrain the result.  With no staff
+    members, and for the legacy fallback, the historical 09:00–18:00 range is
+    retained.
+    """
+    if duration_minutes <= 0:
+        raise ValueError("Длительность занятия должна быть положительной.")
+    if slot_step_minutes <= 0:
+        raise ValueError("Шаг поиска слотов должен быть положительным.")
+
+    members = [staff for staff in (staff_members or []) if staff]
+    if members:
+        resolved_windows = [staff_working_windows(staff, day) for staff in members]
+        windows = _intersect_working_windows(item[0] for item in resolved_windows)
+        all_legacy = all(item[1] for item in resolved_windows)
+    else:
+        windows = [(time(9, 0), time(18, 0))]
+        all_legacy = True
+
+    lower_bound = time(start_hour if start_hour is not None else 0, 0)
+    upper_bound = time(end_hour, 0) if end_hour is not None else time.max
+    if all_legacy:
+        lower_bound = max(lower_bound, time(9, 0))
+        upper_bound = min(upper_bound, time(18, 0))
+
+    duration = timedelta(minutes=duration_minutes)
+    step = timedelta(minutes=slot_step_minutes)
+    for window_start, window_end in windows:
+        bounded_start = max(window_start, lower_bound)
+        bounded_end = min(window_end, upper_bound)
+        cursor = build_local_datetime(day, bounded_start)
+        latest_end = build_local_datetime(day, bounded_end)
+        while cursor + duration <= latest_end:
+            yield cursor, cursor + duration
+            cursor += step
 
 
 def build_local_datetime(day, clock):

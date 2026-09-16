@@ -92,6 +92,17 @@
         </span>
       </a>
       {% endif %}
+      {% if personal_schedule_summary %}
+      <a class="personal-requests-link" href="{% url 'staff_schedule_list' %}">
+        <strong>Заявки на график · {{ personal_schedule_summary.total }}</strong>
+        <span class="personal-requests-statuses">
+          <span>Ожидают: {{ personal_schedule_summary.pending }}</span>
+          <span>Согласовано: {{ personal_schedule_summary.approved }}</span>
+          <span>Отклонено: {{ personal_schedule_summary.rejected }}</span>
+          {% if personal_schedule_summary.review %}<span>На контроле руководителя: {{ personal_schedule_summary.review }}</span>{% endif %}
+        </span>
+      </a>
+      {% endif %}
     </div>
   </nav>
 

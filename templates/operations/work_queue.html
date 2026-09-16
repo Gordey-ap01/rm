@@ -562,6 +562,25 @@
     </div>
   </article>
 
+  <article class="panel" id="queue-staff-schedules">
+    <h2>Изменения рабочего графика · {{ staff_schedule_count }}</h2>
+    <p><a href="{% url 'staff_schedule_list' %}">Все заявки и история</a> · <a href="{% url 'staff_schedule_create' %}">Новая заявка за специалиста</a></p>
+    <div class="task-list">
+      {% for item in staff_schedule_requests %}
+        <div class="task-card">
+          <div>
+            <strong>{{ item.staff_member }}</strong>
+            <p>График с {{ item.effective_from|date:"d.m.Y" }} · {{ item.get_status_display }}</p>
+            {% for decision in item.current_decisions %}
+              {% if decision.requires_director_review %}<p>Требуется контроль руководителя.</p>{% endif %}
+            {% endfor %}
+          </div>
+          <a href="{% url 'staff_schedule_detail' item.pk %}">График, затронутые занятия и решение</a>
+        </div>
+      {% empty %}<p class="empty-state">Нет заявок, требующих решения или контроля.</p>{% endfor %}
+    </div>
+  </article>
+
   <article class="panel" id="queue-balances">
     <h2>Низкие балансы</h2>
     <div class="queue-balance-table-wrap">

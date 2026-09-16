@@ -11,6 +11,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Prefetch
 from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
@@ -28,9 +29,12 @@ from operations.models import (
     AppointmentStaffAssignment,
     StaffAvailability,
     StaffMember,
+    StaffScheduleChangeRequest,
+    StaffScheduleRevision,
     TimeOffRequest,
 )
 from operations.services import appointments as appointment_svc, time_off_decisions as time_off_svc
+from operations.staff_schedule_forms import WEEKDAY_LABELS
 
 from ._common import is_admin_user, safe_next_url
 
@@ -306,6 +310,14 @@ def specialist_home(request):
         10,
     ).get_page(request.GET.get("requests_page"))
     time_off_requests = time_off_svc.decorate_rows(time_off_page, actor=request.user)
+    revisions = StaffScheduleRevision.objects.filter(staff_member=staff, is_current=True)
+    current_schedule = revisions.filter(effective_from__lte=today).first()
+    next_schedule = revisions.filter(effective_from__gt=today).order_by("effective_from").first()
+    schedule_requests = StaffScheduleChangeRequest.objects.filter(staff_member=staff)
+    schedule_week = [
+        {**day, "label": WEEKDAY_LABELS[day["weekday"]]}
+        for day in current_schedule.week
+    ] if current_schedule and not current_schedule.uses_legacy else None
     return render(
         request,
         "operations/specialist_home.html",
@@ -331,6 +343,13 @@ def specialist_home(request):
             "today": today,
             "week_end": week_end,
             "availability_windows": availability_windows,
+            "current_schedule": current_schedule,
+            "next_schedule": next_schedule,
+            "schedule_week": schedule_week,
+            "schedule_is_managed": revisions.exists(),
+            "schedule_request_count": schedule_requests.count(),
+            "schedule_pending_count": schedule_requests.filter(status="pending").count(),
+            "recent_schedule_requests": schedule_requests.order_by("-created_at", "-pk")[:3],
             "time_off_requests": time_off_requests,
             "time_off_summary": time_off_summary,
             "time_off_page": time_off_page,
@@ -408,9 +427,14 @@ def staff_availability_create(request):
     if request.method == "POST":
         form = StaffAvailabilityForm(request.POST)
         if form.is_valid():
-            availability = form.save(commit=False)
-            availability.staff_member = staff
-            availability.save()
+            with transaction.atomic():
+                StaffMember.objects.select_for_update().get(pk=staff.pk)
+                if StaffScheduleRevision.objects.filter(staff_member=staff, is_current=True).exists():
+                    messages.error(request, "График уже согласуется по заявкам. Создайте заявку на изменение.")
+                    return redirect(specialist_home_redirect(request, staff))
+                availability = form.save(commit=False)
+                availability.staff_member = staff
+                availability.save()
             messages.success(request, "Время работы добавлено в регулярный график.")
         else:
             messages.error(request, "Время работы не сохранено. Проверьте время.")
@@ -429,8 +453,14 @@ def staff_availability_toggle(request, pk: int):
     if not has_mobile_access(request, availability.staff_member):
         return deny_mobile_access()
     if request.method == "POST":
-        availability.is_active = not availability.is_active
-        availability.save(update_fields=["is_active", "updated_at"])
+        with transaction.atomic():
+            StaffMember.objects.select_for_update().get(pk=availability.staff_member_id)
+            if StaffScheduleRevision.objects.filter(staff_member=availability.staff_member, is_current=True).exists():
+                messages.error(request, "График уже согласуется по заявкам. Создайте заявку на изменение.")
+                return redirect(specialist_home_redirect(request, availability.staff_member))
+            availability.refresh_from_db()
+            availability.is_active = not availability.is_active
+            availability.save(update_fields=["is_active", "updated_at"])
         messages.success(request, "Время работы в регулярном графике обновлено.")
     return redirect(specialist_home_redirect(request, availability.staff_member))
 

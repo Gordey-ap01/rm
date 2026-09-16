@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Запрос на постоянный график{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'operations/staff_schedule_form.css' %}">{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div><h1>Постоянный график: {{ schedule_request.staff_member }}</h1><p>Запрос от {{ schedule_request.created_at|date:"d.m.Y H:i" }} · действует с {{ schedule_request.effective_from|date:"d.m.Y" }}</p></div>
+  <a class="button-link secondary" href="{% url 'staff_schedule_list' %}">К запросам</a>
+</section>
+
+<section class="panel form-panel mb-3">
+  <div class="request-facts"><div><span>Статус</span><strong class="status-pill">{{ schedule_request.get_status_display }}</strong></div><div><span>Автор</span><strong>{{ schedule_request.created_by|default:"не указан" }}</strong></div><div><span>Основание</span><strong>{{ schedule_request.reason }}</strong></div></div>
+  {% if awaits_director_review %}<div class="alert alert-warning mt-3 mb-0">Решение администратора принято. {% if schedule_request.effective_from > today %}График начнёт действовать с{% else %}График согласован с{% endif %} {{ schedule_request.effective_from|date:"d.m.Y" }}. Требуется контроль руководителя.</div>{% endif %}
+</section>
+
+<section class="panel form-panel mb-3">
+  <div class="directory-panel-head"><div><h2>Предложенный недельный график</h2><p>Эта версия применяется только после согласования и с указанной даты.</p></div></div>
+  <div class="weekly-schedule weekly-schedule-readonly">
+    {% for day in schedule_week %}
+    <div class="schedule-day"><h3>{{ day.label }}</h3>{% if day.closed %}<span class="status-pill muted-pill">Выходной</span>{% else %}<ul class="schedule-window-list">{% for window in day.windows %}<li>{{ window.start }}–{{ window.end }}</li>{% empty %}<li>Интервалы не указаны</li>{% endfor %}</ul>{% endif %}</div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel directory-panel mb-3">
+  <div class="directory-panel-head"><div><h2>Затронутые будущие занятия</h2><p>После даты действия эти занятия не помещаются в предложенный график. Они не будут перенесены или изменены автоматически.</p></div></div>
+  <div class="table-wrap directory-table-wrap"><table class="directory-table"><thead><tr><th>Время</th><th>Получатель</th><th>Услуга</th><th>Статус</th><th></th></tr></thead><tbody>
+    {% for appointment in impact_rows %}<tr><td>{{ appointment.starts_at|date:"d.m.Y H:i" }}–{{ appointment.ends_at|date:"H:i" }}</td><td>{{ appointment.child|default:"Группа" }}</td><td>{{ appointment.service }}</td><td>{{ appointment.get_status_display }}</td><td><a class="small-action" href="{% url 'appointment_detail' appointment.pk %}">Открыть</a></td></tr>{% empty %}<tr><td colspan="5"><div class="empty-state">Затронутых будущих занятий нет.</div></td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+
+{% if can_decide %}
+<section class="panel form-panel mb-3" id="decision-form"><div class="directory-panel-head"><div><h2>{% if is_director %}Решение руководителя{% else %}Решение администратора{% endif %}</h2><p>{% if is_director %}Подтвердите эффективное решение администратора или примите новое с основанием.{% else %}Согласование становится эффективным с даты графика и направляется руководителю на контроль.{% endif %}</p></div></div>
+  <form method="post" action="{% url 'staff_schedule_decide' schedule_request.pk %}">{% csrf_token %}{{ decision_form.expected_decision_id }}{{ decision_form.expected_revision_id }}{{ decision_form.request_key }}<input type="hidden" name="next" value="{% url 'staff_schedule_detail' schedule_request.pk %}">
+    {% if decision_form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ decision_form.non_field_errors }}<br><strong>Обновите страницу, чтобы увидеть актуальное решение, затем повторите действие.</strong></div>{% endif %}
+    {% for hidden in decision_form.hidden_fields %}{% for error in hidden.errors %}<div class="alert alert-danger" role="alert">{{ error }}<br><strong>Обновите страницу, чтобы увидеть актуальное решение, затем повторите действие.</strong></div>{% endfor %}{% endfor %}
+    <div class="form-grid"><div><label for="{{ decision_form.action.id_for_label }}">{{ decision_form.action.label }}</label>{{ decision_form.action }}{% for error in decision_form.action.errors %}<div class="field-error">{{ error }}</div>{% endfor %}</div><div><label for="{{ decision_form.reason.id_for_label }}">{{ decision_form.reason.label }} <button type="button" class="hint-button" title="Основание неизменно сохранится в истории." aria-label="Подсказка к основанию">?</button></label>{{ decision_form.reason }}{% for error in decision_form.reason.errors %}<div class="field-error">{{ error }}</div>{% endfor %}</div></div>
+    <div class="form-actions mt-3"><button class="button-link" type="submit">Сохранить решение</button></div>
+  </form>
+</section>
+{% endif %}
+
+<section class="panel directory-panel"><div class="directory-panel-head"><div><h2>История решений</h2><p>Предыдущие решения остаются в журнале и не редактируются.</p></div></div>
+  <ol class="decision-history">{% for decision in decision_history %}<li{% if decision.is_current %} class="is-current"{% endif %}><strong>{{ decision.get_action_display }}</strong> · {{ decision.actor|default:"Система" }} · {{ decision.get_actor_role_display }}<div>{{ decision.reason }}</div><small>{{ decision.created_at|date:"d.m.Y H:i" }}{% if decision.is_current %} · текущее решение{% endif %}</small></li>{% empty %}<li class="muted">Решений пока нет.</li>{% endfor %}</ol>
+</section>
+{% if revision_history %}
+<section class="panel form-panel mt-3">
+  <h2>Утверждённые версии по этой заявке</h2>
+  <p>При поздней отмене прежний период сохраняется; восстановленный график начинается со следующего дня.</p>
+  {% for item in revision_history %}
+    <details class="mb-3"><summary>С {{ item.revision.effective_from|date:"d.m.Y" }} · {% if item.revision.is_current %}в истории действующих графиков{% else %}отменена до вступления в силу{% endif %}</summary>
+      <ul>{% for day in item.week %}<li>{{ day.label }}: {% if day.closed %}выходной{% else %}{% for window in day.windows %}{{ window.start }}–{{ window.end }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</li>{% endfor %}</ul>
+    </details>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}
