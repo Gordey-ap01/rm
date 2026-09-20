@@ -67,7 +67,8 @@ production_compose exec -T web \
 production_compose exec -T web python manage.py check --deploy --fail-level WARNING
 production_compose exec -T web python manage.py audit_donor_report_submissions --strict
 production_compose exec -T web python -c "import urllib.request; request = urllib.request.Request('http://127.0.0.1:8000/healthz/', headers={'X-Forwarded-Proto': 'https'}); urllib.request.urlopen(request, timeout=5)"
-production_compose exec -T web python -c "from django.core.mail import get_connection; connection = get_connection(); connection.open(); connection.close()"
+production_compose exec -T web env DJANGO_SETTINGS_MODULE=rehab_center.settings \
+  python -c "from django.core.mail import get_connection; connection = get_connection(); connection.open(); connection.close()"
 if [[ "$INTERNAL_ONLY" == true ]]; then
   printf 'Production internal preflight passed.\n'
   exit 0
