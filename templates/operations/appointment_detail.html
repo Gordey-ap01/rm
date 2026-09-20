@@ -391,6 +391,14 @@
           </td>
           <td data-label="Действие">
             <a class="button-link secondary small-action" href="{% url 'appointment_confirmation_public' item.token %}">Ссылка</a>
+            {% if item.email_delivery.status == 'failed' and can_resolve_confirmations and not item.email_delivery.manual_retry_granted %}
+              <form method="post" action="{% url 'appointment_confirmation_retry_email' item.pk %}" class="confirmation-manual-form">
+                {% csrf_token %}<input type="hidden" name="next" value="{% url 'appointment_detail' appointment.pk %}">
+                <input type="hidden" name="request_key" value="{{ item.manual_retry_request_key }}">
+                <label><span class="visually-hidden">Основание повторной отправки</span><input type="text" name="reason" minlength="5" maxlength="1000" required placeholder="Почему повторяем отправку"></label>
+                <button type="submit" class="small-action">Повторить отправку</button>
+              </form>
+            {% endif %}
             {% if item.can_resolve_manually %}
               <form method="post" action="{% url 'appointment_confirmation_resolve' item.pk %}" class="confirmation-manual-form">
                 {% csrf_token %}

@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from operations.forms import (
     AppointmentConfirmationSendForm,
+    ConfirmationEmailManualRetryForm,
     ConfirmationResponseForm,
     ManualConfirmationDecisionForm,
 )
@@ -345,4 +346,28 @@ def appointment_confirmation_resolve(request, pk: int):
             request,
             f"{record.get_decision_display()}: {record.get_source_display()}.",
         )
+    return redirect(safe_next_url(request, fallback))
+
+
+@login_required
+@user_passes_test(is_admin_user)
+def appointment_confirmation_retry_email(request, pk: int):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    confirmation = get_object_or_404(AppointmentConfirmation, pk=pk)
+    fallback = redirect("appointment_detail", pk=confirmation.appointment_id).url
+    form = ConfirmationEmailManualRetryForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Укажите основание повторной отправки не короче 5 символов.")
+        return redirect(safe_next_url(request, fallback))
+    try:
+        audit = email_outbox.request_manual_retry(
+            delivery_id=confirmation.email_delivery.pk,
+            reason=form.cleaned_data["reason"], request_key=form.cleaned_data["request_key"],
+            actor=request.user,
+        )
+    except (AttributeError, PermissionDenied, ValueError) as exc:
+        messages.error(request, str(exc) or "Повторная отправка недоступна.")
+    else:
+        messages.success(request, f"Повторная отправка: {audit.get_outcome_display()}.")
     return redirect(safe_next_url(request, fallback))

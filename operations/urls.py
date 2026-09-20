@@ -435,6 +435,7 @@ urlpatterns = [
         views.appointment_confirmation_resolve,
         name="appointment_confirmation_resolve",
     ),
+    path("confirmations/<int:pk>/retry-email/", views.appointment_confirmation_retry_email, name="appointment_confirmation_retry_email"),
     path("specialist/", views.specialist_home, name="specialist_home"),
     path("specialist/appointments/<int:pk>/mark/", views.mark_appointment, name="mark_appointment"),
     path(

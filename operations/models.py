@@ -8019,6 +8019,8 @@ class ConfirmationEmailDelivery(TimeStampedModel):
     locked_until = models.DateTimeField(null=True, blank=True)
     sent_at = models.DateTimeField(null=True, blank=True)
     last_error = models.CharField(max_length=80, blank=True)
+    manual_retry_granted = models.BooleanField(default=False)
+    manual_retry_used = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = "доставка письма согласования"
@@ -8044,6 +8046,42 @@ class ConfirmationEmailDelivery(TimeStampedModel):
 
     def __str__(self):
         return f"Согласование {self.confirmation_id}: {self.get_status_display()}"
+
+
+class ConfirmationEmailManualRetry(TimeStampedModel):
+    class Outcome(models.TextChoices):
+        QUEUED = "queued", "Поставлено в очередь"
+        OBSOLETE = "obsolete", "Согласование больше не актуально"
+        STALE = "stale", "Данные доставки устарели"
+        BUDGET_EXHAUSTED = "budget_exhausted", "Ручная попытка уже использована"
+
+    delivery = models.ForeignKey(ConfirmationEmailDelivery, on_delete=models.PROTECT, related_name="manual_retry_history")
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="confirmation_email_manual_retries")
+    actor_role_snapshot = models.CharField(max_length=20)
+    reason = models.TextField()
+    request_key = models.UUIDField(unique=True, editable=False)
+    fingerprint = models.CharField(max_length=64)
+    outcome = models.CharField(max_length=20, choices=Outcome.choices)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        indexes = [models.Index(fields=["delivery", "created_at"])]
+
+    objects = ImmutableHistoryManager()
+
+    def clean(self) -> None:
+        self.reason = normalize_immutable_reason(self.reason)
+        if self.actor_role_snapshot not in {"administrator", "director"}:
+            raise ValidationError({"actor_role_snapshot": "Недопустимая роль оператора."})
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk:
+            raise ValidationError("Журнал ручных повторов нельзя изменять.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Ручной retry {self.delivery_id}: {self.get_outcome_display()}"
 
 
 class AppointmentConfirmationDecision(TimeStampedModel):

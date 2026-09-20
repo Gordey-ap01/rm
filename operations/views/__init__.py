@@ -28,6 +28,7 @@ from .compensation_rules import (
 from .confirmations import (
     appointment_confirmation_public,
     appointment_confirmation_resolve,
+    appointment_confirmation_retry_email,
     appointment_send_confirmation,
 )
 from .consents import (
@@ -213,6 +214,7 @@ __all__ = [
     "appointment_cancel",
     "appointment_confirmation_public",
     "appointment_confirmation_resolve",
+    "appointment_confirmation_retry_email",
     "appointment_create",
     "appointment_detail",
     "appointment_detail_context",

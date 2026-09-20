@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from uuid import uuid4
 
 from auditlog.models import LogEntry
 from django.contrib import messages
@@ -710,6 +711,7 @@ def appointment_detail_context(
         AuthorityRole.ADMINISTRATOR,
     }
     for confirmation in confirmations:
+        confirmation.manual_retry_request_key = uuid4()
         confirmation.current_decision_record = (
             confirmation.current_decision_rows[0]
             if confirmation.current_decision_rows

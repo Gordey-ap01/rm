@@ -3051,6 +3051,11 @@ class ManualConfirmationDecisionForm(forms.Form):
     )
 
 
+class ConfirmationEmailManualRetryForm(forms.Form):
+    reason = forms.CharField(min_length=5, max_length=1000, strip=True)
+    request_key = forms.UUIDField(widget=forms.HiddenInput)
+
+
 class ManualAttendanceDecisionForm(forms.Form):
     ACTION_CHOICES = (
         ("completed", "Проведено"),

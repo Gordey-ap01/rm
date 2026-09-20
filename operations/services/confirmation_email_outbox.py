@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 from uuid import uuid4
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.mail import EmailMessage, get_connection
 from django.core.validators import URLValidator, validate_email
 from django.db import connection, transaction
@@ -18,8 +18,15 @@ from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
-from operations.models import Appointment, AppointmentConfirmation, ConfirmationEmailDelivery
+from operations.models import (
+    Appointment,
+    AppointmentConfirmation,
+    ConfirmationEmailDelivery,
+    ConfirmationEmailManualRetry,
+    normalize_immutable_reason,
+)
 from operations.services import appointments as appointment_svc, schedule_decisions
+from operations.services.authority import AuthorityRole, authority_role
 
 logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 5
@@ -223,7 +230,50 @@ def _error_label(code):
         "empty_result": "Почтовый сервис не подтвердил отправку. Повторная попытка запланирована.",
         "invalid_backend": "Для отправки требуется настроенный почтовый сервис.",
         "invalid_timeout": "Настройте ограничение времени отправки EMAIL_TIMEOUT от 1 до 299 секунд.",
+        "manual_retry_failed": "Ручная попытка отправки не удалась. Повторный запуск недоступен.",
     }.get(code, "Не удалось отправить письмо.")
+
+
+@transaction.atomic
+def request_manual_retry(*, delivery_id, reason, request_key, actor):
+    role = authority_role(actor)
+    if role not in {AuthorityRole.DIRECTOR, AuthorityRole.ADMINISTRATOR}:
+        raise PermissionDenied("Недостаточно прав для повторной отправки.")
+    try:
+        reason = normalize_immutable_reason(reason)
+    except ValidationError as exc:
+        raise ValueError(exc.messages[0]) from exc
+    delivery = _lock(ConfirmationEmailDelivery.objects.filter(pk=delivery_id)).first()
+    if delivery is None:
+        raise ValueError("Доставка не найдена.")
+    fingerprint = hashlib.sha256(f"{delivery.pk}:{delivery.fingerprint}:{reason}".encode()).hexdigest()
+    existing = ConfirmationEmailManualRetry.objects.filter(request_key=request_key).first()
+    if existing:
+        if existing.fingerprint != fingerprint:
+            raise ValueError("Этот ключ уже использован для другого запроса.")
+        return existing
+    confirmation = _confirmation(delivery.confirmation_id)
+    if delivery.status != ConfirmationEmailDelivery.Status.FAILED or delivery.manual_retry_granted or delivery.manual_retry_used:
+        outcome = ConfirmationEmailManualRetry.Outcome.BUDGET_EXHAUSTED
+    elif _obsolete(confirmation):
+        _finish(delivery, status="cancelled", error="obsolete")
+        outcome = ConfirmationEmailManualRetry.Outcome.OBSOLETE
+    elif delivery.fingerprint != _fingerprint(confirmation):
+        _finish(delivery, status="cancelled", error="changed")
+        outcome = ConfirmationEmailManualRetry.Outcome.STALE
+    else:
+        try:
+            validate_email(delivery.email)
+        except ValidationError:
+            outcome = ConfirmationEmailManualRetry.Outcome.STALE
+        else:
+            delivery.status = ConfirmationEmailDelivery.Status.PENDING
+            delivery.last_error = ""
+            delivery.next_attempt_at = timezone.now()
+            delivery.manual_retry_granted = True
+            delivery.save(update_fields=["status", "last_error", "next_attempt_at", "manual_retry_granted", "updated_at"])
+            outcome = ConfirmationEmailManualRetry.Outcome.QUEUED
+    return ConfirmationEmailManualRetry.objects.create(delivery=delivery, actor=actor, actor_role_snapshot=role, reason=reason, request_key=request_key, fingerprint=fingerprint, outcome=outcome)
 
 
 @transaction.atomic
@@ -239,15 +289,18 @@ def claim_delivery(*, confirmation_id=None):
     if confirmation_id is not None:
         candidates = candidates.filter(confirmation_id=confirmation_id)
     while (delivery := candidates.first()) is not None:
-        if delivery.attempts >= MAX_ATTEMPTS:
+        manual_retry = delivery.manual_retry_granted and not delivery.manual_retry_used
+        if delivery.attempts >= MAX_ATTEMPTS and not manual_retry:
             _finish(delivery, status="failed", error="attempts_exhausted")
             continue
         delivery.status = ConfirmationEmailDelivery.Status.PROCESSING
         delivery.claim_token = uuid4()
         delivery.locked_until = now + timedelta(seconds=LEASE_SECONDS)
         delivery.attempts += 1
+        if manual_retry:
+            delivery.manual_retry_used = True
         delivery.save(
-            update_fields=["status", "claim_token", "locked_until", "attempts", "updated_at"]
+            update_fields=["status", "claim_token", "locked_until", "attempts", "manual_retry_used", "updated_at"]
         )
         return delivery
     return None
@@ -340,14 +393,14 @@ def deliver_claim(delivery_id, claim_token):
             # SMTP exceptions may contain addresses, tokens, server replies or credentials.
             error = "smtp_error"
         if error:
-            exhausted = delivery.attempts >= MAX_ATTEMPTS
+            exhausted = delivery.manual_retry_used or delivery.attempts >= MAX_ATTEMPTS
             delivery.next_attempt_at = timezone.now() + timedelta(
                 seconds=min(3600, 60 * 2 ** (delivery.attempts - 1))
             )
             _finish(
                 delivery,
                 status="failed" if exhausted else "retry",
-                error="attempts_exhausted" if exhausted else error,
+                error="manual_retry_failed" if delivery.manual_retry_used else "attempts_exhausted" if exhausted else error,
             )
             logger.warning(
                 "Confirmation delivery %s: %s (attempt %s)",

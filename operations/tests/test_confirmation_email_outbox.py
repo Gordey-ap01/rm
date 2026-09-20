@@ -26,6 +26,7 @@ from operations.models import (
     AppointmentRescheduleStep,
     Child,
     ConfirmationEmailDelivery,
+    ConfirmationEmailManualRetry,
     ParentGuardian,
     Room,
     Service,
@@ -177,6 +178,81 @@ class ConfirmationEmailOutboxTests(TestCase):
         delivery.refresh_from_db()
         self.assertEqual(delivery.status, ConfirmationEmailDelivery.Status.FAILED)
         self.assertIsNone(outbox_svc.claim_delivery(confirmation_id=delivery.confirmation_id))
+
+    def test_manual_retry_allows_exactly_one_extra_attempt(self):
+        delivery = self.queue()
+        ConfirmationEmailDelivery.objects.filter(pk=delivery.pk).update(
+            status=ConfirmationEmailDelivery.Status.FAILED, attempts=5
+        )
+        audit = outbox_svc.request_manual_retry(
+            delivery_id=delivery.pk,
+            reason="Почтовый сервис снова доступен.",
+            request_key=uuid4(),
+            actor=self.admin,
+        )
+        self.assertEqual(audit.outcome, ConfirmationEmailManualRetry.Outcome.QUEUED)
+        claim = self.claim(delivery.confirmation_id)
+        self.assertEqual(claim.attempts, 6)
+        self.assertTrue(claim.manual_retry_used)
+        with patch(
+            "operations.services.confirmation_email_outbox.EmailMessage.send", return_value=0
+        ):
+            self.assertFalse(outbox_svc.deliver_claim(claim.pk, claim.claim_token))
+        delivery.refresh_from_db()
+        self.assertEqual(delivery.status, ConfirmationEmailDelivery.Status.FAILED)
+        self.assertEqual(delivery.last_error, "manual_retry_failed")
+
+    def test_manual_retry_request_key_is_idempotent(self):
+        delivery = self.queue()
+        ConfirmationEmailDelivery.objects.filter(pk=delivery.pk).update(
+            status=ConfirmationEmailDelivery.Status.FAILED, attempts=5
+        )
+        key = uuid4()
+        first = outbox_svc.request_manual_retry(
+            delivery_id=delivery.pk, reason="Почтовый сервис доступен.", request_key=key, actor=self.admin
+        )
+        second = outbox_svc.request_manual_retry(
+            delivery_id=delivery.pk, reason="Почтовый сервис доступен.", request_key=key, actor=self.admin
+        )
+        self.assertEqual(first.pk, second.pk)
+        self.assertEqual(ConfirmationEmailManualRetry.objects.count(), 1)
+
+    def test_manual_retry_cancels_obsolete_confirmation(self):
+        delivery = self.queue()
+        ConfirmationEmailDelivery.objects.filter(pk=delivery.pk).update(
+            status=ConfirmationEmailDelivery.Status.FAILED, attempts=5
+        )
+        self.appointment.status = Appointment.Status.CANCELLED
+        self.appointment.save(update_fields=["status", "updated_at"])
+
+        audit = outbox_svc.request_manual_retry(
+            delivery_id=delivery.pk,
+            reason="Заявка проверена перед повторной отправкой.",
+            request_key=uuid4(),
+            actor=self.admin,
+        )
+
+        delivery.refresh_from_db()
+        self.assertEqual(audit.outcome, ConfirmationEmailManualRetry.Outcome.OBSOLETE)
+        self.assertEqual(delivery.status, ConfirmationEmailDelivery.Status.CANCELLED)
+
+    def test_operator_retry_endpoint_queues_terminal_delivery(self):
+        delivery = self.queue()
+        ConfirmationEmailDelivery.objects.filter(pk=delivery.pk).update(
+            status=ConfirmationEmailDelivery.Status.FAILED, attempts=5
+        )
+        client = Client()
+        client.force_login(self.admin)
+
+        response = client.post(
+            reverse("appointment_confirmation_retry_email", args=[delivery.confirmation_id]),
+            {"reason": "Почтовый сервис снова доступен.", "request_key": uuid4()},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        delivery.refresh_from_db()
+        self.assertEqual(delivery.status, ConfirmationEmailDelivery.Status.PENDING)
+        self.assertEqual(ConfirmationEmailManualRetry.objects.count(), 1)
 
     def test_missing_or_stale_claim_cannot_send(self):
         delivery = self.queue()
