@@ -115,10 +115,10 @@ class SeedPilotCommandTests(TestCase):
         self.mock_environment_guard.assert_called_once_with()
         self.mock_advisory_lock.assert_called_once_with()
 
-        administrator = User.objects.get(username="pilot-admin")
-        director = User.objects.get(username="pilot-director")
+        administrator = User.objects.get(username="admin")
+        director = User.objects.get(username="director")
         specialist_users = list(
-            User.objects.filter(username__startswith="pilot-specialist").order_by("username")
+            User.objects.filter(username__startswith="specialist").order_by("username")
         )
         self.assertEqual(authority_role(administrator), AuthorityRole.ADMINISTRATOR)
         self.assertTrue(administrator.is_staff)
@@ -178,7 +178,11 @@ class SeedPilotCommandTests(TestCase):
         outsider.refresh_from_db()
         self.assertTrue(outsider.check_password("keep-me"))
         self.assertFalse(Group.objects.filter(name=seed_pilot.PILOT_MARKER_GROUP).exists())
-        self.assertFalse(User.objects.filter(username__startswith="pilot-").exists())
+        self.assertFalse(
+            User.objects.filter(
+                username__in=["admin", "director", "specialist1", "specialist2"]
+            ).exists()
+        )
         self.assertFalse(Child.objects.exists())
 
     def test_environment_guard_runs_before_known_marker_check(self):
@@ -194,7 +198,7 @@ class SeedPilotCommandTests(TestCase):
         self.seed()
         child = Child.objects.order_by("pk").first()
         account = BalanceAccount.objects.order_by("pk").first()
-        specialist = User.objects.get(username="pilot-specialist1")
+        specialist = User.objects.get(username="specialist1")
         child.first_name = "Изменено оператором"
         child.save(update_fields=["first_name"])
         account.initial_amount = Decimal("7.00")

@@ -82,8 +82,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"Учебная база создана для {training_date.isoformat()}. "
-                "Пользователи: pilot-admin, pilot-director, "
-                "pilot-specialist1, pilot-specialist2."
+                "Пользователи: admin, director, specialist1, specialist2."
             )
         )
 
@@ -124,13 +123,13 @@ class Command(BaseCommand):
     def _create_baseline(self, training_date: date, password: str) -> None:
         user_model = get_user_model()
         administrator = user_model.objects.create_user(
-            username="pilot-admin",
+            username="admin",
             password=password,
             is_staff=True,
             is_superuser=False,
         )
         director = user_model.objects.create_user(
-            username="pilot-director",
+            username="director",
             password=password,
             is_staff=False,
             is_superuser=False,
@@ -147,7 +146,7 @@ class Command(BaseCommand):
             start=1,
         ):
             user = user_model.objects.create_user(
-                username=f"pilot-specialist{number}",
+                username=f"specialist{number}",
                 password=password,
             )
             specialists.append(
