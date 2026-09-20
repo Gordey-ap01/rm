@@ -22,10 +22,10 @@
 Все четыре учетные записи используют значение `RM_PILOT_PASSWORD` из локального
 файла `pilot\.pilot-local.env`:
 
-- `pilot-admin`
-- `pilot-director`
-- `pilot-specialist1`
-- `pilot-specialist2`
+- `admin`
+- `director`
+- `specialist1`
+- `specialist2`
 
 Файл содержит и пароль БД, но он не нужен для работы с приложением и не должен
 передаваться участникам учебного теста.
