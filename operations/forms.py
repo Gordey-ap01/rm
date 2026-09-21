@@ -1947,6 +1947,20 @@ class FundingSourceForm(forms.ModelForm):
 
 
 class StaffMemberForm(forms.ModelForm):
+    login_username = forms.CharField(
+        label="Новый логин для входа",
+        max_length=150,
+        required=False,
+        help_text="Укажите, если специалисту нужен новый доступ к мобильному кабинету.",
+    )
+    login_password = forms.CharField(
+        label="Временный пароль",
+        required=False,
+        strip=False,
+        widget=forms.PasswordInput(render_value=False),
+        help_text="Передайте специалисту отдельно. При первом тесте он сможет войти с этим паролем.",
+    )
+
     class Meta:
         model = StaffMember
         fields = (
@@ -1960,7 +1974,7 @@ class StaffMemberForm(forms.ModelForm):
             "can_use_mobile",
         )
         labels = {
-            "user": "Пользователь для входа",
+            "user": "Существующая учётная запись",
             "full_name": "ФИО",
             "specializations": "Специализации",
             "phone": "Телефон",
@@ -1968,6 +1982,10 @@ class StaffMemberForm(forms.ModelForm):
             "status": "Статус",
             "color": "Цвет",
             "can_use_mobile": "Доступ к мобильному кабинету",
+        }
+        help_texts = {
+            "user": "Выберите только если учётная запись уже создана. Для нового входа заполните поля выше.",
+            "can_use_mobile": "Включайте, когда специалисту назначена или создана учётная запись.",
         }
         widgets = {"color": forms.TextInput(attrs={"type": "color"})}
 
@@ -1984,6 +2002,45 @@ class StaffMemberForm(forms.ModelForm):
         )
         self.fields["user"].required = False
         self.fields["color"].required = False
+        if not self.is_bound and not self.instance.pk:
+            self.initial.setdefault("can_use_mobile", False)
+
+    def clean(self):
+        cleaned = super().clean()
+        existing_user = cleaned.get("user")
+        login_username = (cleaned.get("login_username") or "").strip()
+        login_password = cleaned.get("login_password") or ""
+
+        if existing_user and login_username:
+            self.add_error(
+                "login_username",
+                "Выберите существующую учётную запись или создайте новую, но не оба варианта.",
+            )
+        if login_password and not login_username:
+            self.add_error("login_username", "Для пароля укажите новый логин.")
+        if login_username and not login_password:
+            self.add_error("login_password", "Для нового входа задайте временный пароль.")
+        if login_username and get_user_model().objects.filter(username=login_username).exists():
+            self.add_error("login_username", "Такой логин уже используется.")
+        if cleaned.get("can_use_mobile") and not (existing_user or login_username):
+            self.add_error(
+                "can_use_mobile",
+                "Для мобильного кабинета выберите существующую учётную запись или создайте новую.",
+            )
+        return cleaned
+
+    def save(self, commit=True):
+        staff = super().save(commit=False)
+        login_username = (self.cleaned_data.get("login_username") or "").strip()
+        if login_username:
+            staff.user = get_user_model().objects.create_user(
+                username=login_username,
+                password=self.cleaned_data["login_password"],
+            )
+        if commit:
+            staff.save()
+            self.save_m2m()
+        return staff
 
     def clean_color(self):
         return self.cleaned_data.get("color") or StaffMember._meta.get_field("color").default

@@ -2491,6 +2491,32 @@ th {
   color: var(--accent-hover);
 }
 
+.color-presets {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.color-preset {
+  background: var(--preset-color);
+  border: 2px solid var(--surface-strong);
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px var(--line-strong);
+  cursor: pointer;
+  height: 20px;
+  padding: 0;
+  width: 20px;
+}
+
+.color-preset:hover,
+.color-preset:focus-visible {
+  box-shadow: 0 0 0 2px var(--heading);
+  outline: 0;
+}
+
 .form-errors,
 .field-error {
   color: var(--danger);

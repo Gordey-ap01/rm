@@ -3715,13 +3715,35 @@ class StaffMemberViewTests(NewViewsTestBase):
                 "email": "new-staff@example.local",
                 "status": StaffMember.Status.ACTIVE,
                 "color": "#123456",
-                "can_use_mobile": "on",
             },
         )
 
         staff = StaffMember.objects.get(full_name="Новый специалист")
         self.assertRedirects(response, reverse("staff_member_edit", args=[staff.pk]))
         self.assertEqual(staff.specializations, "Психолог")
+        self.assertFalse(staff.can_use_mobile)
+
+    def test_staff_member_create_can_make_mobile_login(self):
+        response = self.client.post(
+            reverse("staff_member_create"),
+            {
+                "user": "",
+                "login_username": "new-mobile-specialist",
+                "login_password": "temporary-pass-2026",
+                "full_name": "Специалист с входом",
+                "specializations": "Психолог",
+                "phone": "",
+                "email": "",
+                "status": StaffMember.Status.ACTIVE,
+                "color": "#123456",
+                "can_use_mobile": "on",
+            },
+        )
+
+        staff = StaffMember.objects.get(full_name="Специалист с входом")
+        self.assertRedirects(response, reverse("staff_member_edit", args=[staff.pk]))
+        self.assertEqual(staff.user.username, "new-mobile-specialist")
+        self.assertTrue(staff.user.check_password("temporary-pass-2026"))
         self.assertTrue(staff.can_use_mobile)
 
     def test_staff_member_edit_can_bind_user(self):

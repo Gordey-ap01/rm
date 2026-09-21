@@ -30,6 +30,17 @@
         <label class="field {% if field.name == 'notes' or field.name == 'note' or field.name == 'diagnosis' or field.name == 'legal_address' or field.name == 'postal_address' or field.name == 'location_address' or field.name == 'registration_address' or field.name == 'residential_address' or field.name == 'passport_issued_by' or field.name == 'bank_details' or field.name == 'license_authority' %}form-wide{% endif %}">
           <span>{{ field.label }}</span>
           {{ field }}
+          {% if field.name == "color" %}
+            <span class="color-presets" aria-label="Готовые цвета">
+              <span>Готовые цвета:</span>
+              <button type="button" class="color-preset" data-color-preset="#2563eb" style="--preset-color: #2563eb" aria-label="Синий"></button>
+              <button type="button" class="color-preset" data-color-preset="#16a34a" style="--preset-color: #16a34a" aria-label="Зелёный"></button>
+              <button type="button" class="color-preset" data-color-preset="#f97316" style="--preset-color: #f97316" aria-label="Оранжевый"></button>
+              <button type="button" class="color-preset" data-color-preset="#dc2626" style="--preset-color: #dc2626" aria-label="Красный"></button>
+              <button type="button" class="color-preset" data-color-preset="#7c3aed" style="--preset-color: #7c3aed" aria-label="Фиолетовый"></button>
+              <button type="button" class="color-preset" data-color-preset="#0f766e" style="--preset-color: #0f766e" aria-label="Бирюзовый"></button>
+            </span>
+          {% endif %}
           {% if related_create and field.name == related_create.field_name %}
             <button class="related-create-button" type="button" data-related-create-url="{{ related_create.url }}" data-related-create-target="{{ field.name }}">{{ related_create.label }}</button>
             <small class="muted">{{ related_create.help }}</small>
@@ -84,7 +95,6 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if related_create or quick_create %}
 <script>
   (() => {
     const createButtons = document.querySelectorAll('[data-related-create-url]');
@@ -111,6 +121,15 @@
       });
     });
 
+    document.querySelectorAll('[data-color-preset]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const input = button.closest('.field')?.querySelector('input[type="color"]');
+        if (!input) return;
+        input.value = button.dataset.colorPreset;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    });
+
     window.addEventListener('message', (event) => {
       if (event.origin !== window.location.origin || event.data?.type !== 'rm-related-created') return;
       const { target, objectId, objectLabel } = event.data;
@@ -130,5 +149,4 @@
     });
   })();
 </script>
-{% endif %}
 {% endblock %}
