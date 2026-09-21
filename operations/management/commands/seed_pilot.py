@@ -135,10 +135,11 @@ class Command(BaseCommand):
         director = user_model.objects.create_user(
             username="director",
             password=password,
-            is_staff=False,
+            is_staff=True,
             is_superuser=False,
         )
         director_group = Group.objects.create(name=DIRECTOR_GROUP)
+        director_group.permissions.set(Permission.objects.all())
         director.groups.add(director_group)
 
         specialists = []
