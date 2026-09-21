@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Связанная карточка создана</title>
+</head>
+<body>
+  <p>Карточка «{{ popup_object_label }}» создана. Окно можно закрыть.</p>
+  <script>
+    if (window.opener) {
+      window.opener.postMessage(
+        {
+          type: 'rm-related-created',
+          target: '{{ popup_target|escapejs }}',
+          objectId: '{{ popup_object_id }}',
+          objectLabel: '{{ popup_object_label|escapejs }}'
+        },
+        window.location.origin
+      );
+      window.close();
+    }
+  </script>
+</body>
+</html>

@@ -33,6 +33,24 @@ from operations.services.program_progress import get_program_block_progress
 from ._common import is_admin_user
 
 
+def _related_popup_target(request) -> str:
+    """Return an allowed field name for the opener, never arbitrary page data."""
+    target = request.POST.get("popup_target") or request.GET.get("target")
+    return target if request.GET.get("popup") == "1" and target == "primary_parent" else ""
+
+
+def _related_popup_response(request, *, object_label: str, object_id: int):
+    return render(
+        request,
+        "operations/related_create_complete.html",
+        {
+            "popup_target": _related_popup_target(request),
+            "popup_object_label": object_label,
+            "popup_object_id": object_id,
+        },
+    )
+
+
 def _recipient_detail_summary_items(
     recipient: Child,
     *,
@@ -659,6 +677,16 @@ def representative_create(request):
         if form.is_valid():
             representative = form.save()
             messages.success(request, "Представитель создан.")
+            if _related_popup_target(request):
+                return _related_popup_response(
+                    request,
+                    object_label=representative.full_name,
+                    object_id=representative.pk,
+                )
+            if request.POST.get("next_action") == "create_recipient":
+                return redirect(
+                    f"{reverse('recipient_create')}?representative_id={representative.pk}"
+                )
             return redirect("representative_edit", pk=representative.pk)
     else:
         form = RepresentativeForm()
@@ -673,6 +701,12 @@ def representative_create(request):
             "form_intro": "Заполните контактные данные человека, который может быть связан с одним или несколькими получателями.",
             "control_title": "Контроль контакта",
             "object_form_control_items": _representative_profile_control_items(),
+            "popup_target": _related_popup_target(request),
+            "secondary_submit": {
+                "name": "next_action",
+                "value": "create_recipient",
+                "label": "Сохранить и создать получателя",
+            },
             "cancel_url": reverse("recipient_list"),
         },
     )
@@ -701,6 +735,11 @@ def representative_edit(request, pk: int):
             "form_intro": "Изменения контактов будут использоваться в карточках получателей и будущих согласованиях.",
             "control_title": "Контроль контакта",
             "object_form_control_items": _representative_profile_control_items(),
+            "quick_create": {
+                "url": f"{reverse('recipient_create')}?representative_id={representative.pk}&popup=1",
+                "label": "Создать получателя",
+                "help": "Откроется отдельное окно. Этот представитель уже будет выбран в карточке получателя.",
+            },
             "cancel_url": reverse("recipient_list"),
         },
     )
@@ -730,6 +769,12 @@ def recipient_create(request):
         if form.is_valid():
             recipient = form.save()
             messages.success(request, "Получатель создан.")
+            if request.GET.get("popup") == "1":
+                return _related_popup_response(
+                    request,
+                    object_label=recipient.full_name,
+                    object_id=recipient.pk,
+                )
             return redirect("recipient_detail", pk=recipient.pk)
     else:
         form = RecipientForm(initial=initial)
@@ -744,6 +789,12 @@ def recipient_create(request):
             "form_intro": "Эта карточка связывает расписание, программы занятий, счета баланса и документы.",
             "control_title": "Контроль получателя",
             "object_form_control_items": _recipient_form_control_items(),
+            "related_create": {
+                "field_name": "primary_parent",
+                "url": f"{reverse('representative_create')}?popup=1&target=primary_parent",
+                "label": "Создать представителя",
+                "help": "Откроется отдельное окно. Уже введённые данные получателя останутся в этой форме.",
+            },
             "cancel_url": reverse("recipient_list"),
         },
     )
@@ -772,6 +823,12 @@ def recipient_edit(request, pk: int):
             "form_intro": "Проверьте основного представителя, статус, контакты и данные, которые видны в расписании.",
             "control_title": "Контроль получателя",
             "object_form_control_items": _recipient_form_control_items(),
+            "related_create": {
+                "field_name": "primary_parent",
+                "url": f"{reverse('representative_create')}?popup=1&target=primary_parent",
+                "label": "Создать представителя",
+                "help": "Откроется отдельное окно. Уже введённые изменения получателя останутся в этой форме.",
+            },
             "cancel_url": reverse("recipient_detail", args=[recipient.pk]),
         },
     )

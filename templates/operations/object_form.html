@@ -13,6 +13,7 @@
 
 <form method="post" class="object-form-layout">
   {% csrf_token %}
+  {% if popup_target %}<input type="hidden" name="popup_target" value="{{ popup_target }}">{% endif %}
   <section class="panel form-panel object-form-main">
     <div class="object-form-head">
       <div>
@@ -29,6 +30,10 @@
         <label class="field {% if field.name == 'notes' or field.name == 'note' or field.name == 'diagnosis' or field.name == 'legal_address' or field.name == 'postal_address' or field.name == 'location_address' or field.name == 'registration_address' or field.name == 'residential_address' or field.name == 'passport_issued_by' or field.name == 'bank_details' or field.name == 'license_authority' %}form-wide{% endif %}">
           <span>{{ field.label }}</span>
           {{ field }}
+          {% if related_create and field.name == related_create.field_name %}
+            <button class="related-create-button" type="button" data-related-create-url="{{ related_create.url }}" data-related-create-target="{{ field.name }}">{{ related_create.label }}</button>
+            <small class="muted">{{ related_create.help }}</small>
+          {% endif %}
           {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
           {% if field.errors %}<span class="form-error">{{ field.errors }}</span>{% endif %}
         </label>
@@ -64,9 +69,66 @@
       </ul>
       <div class="form-actions object-form-actions">
         <button type="submit">Сохранить</button>
+        {% if secondary_submit %}
+          <button class="secondary-submit" type="submit" name="{{ secondary_submit.name }}" value="{{ secondary_submit.value }}">{{ secondary_submit.label }}</button>
+        {% endif %}
+        {% if quick_create %}
+          <button class="related-create-button" type="button" data-related-create-url="{{ quick_create.url }}">{{ quick_create.label }}</button>
+          <small class="muted">{{ quick_create.help }}</small>
+        {% endif %}
         {% if cancel_url %}<a class="button-link secondary" href="{{ cancel_url }}">Отмена</a>{% endif %}
       </div>
     </section>
   </aside>
 </form>
+{% endblock %}
+
+{% block extra_js %}
+{% if related_create or quick_create %}
+<script>
+  (() => {
+    const createButtons = document.querySelectorAll('[data-related-create-url]');
+    const form = document.querySelector('.object-form-layout');
+    const showNotice = (text) => {
+      let notice = document.querySelector('[data-related-create-notice]');
+      if (!notice) {
+        notice = document.createElement('div');
+        notice.dataset.relatedCreateNotice = '';
+        notice.className = 'alert alert-success mt-3';
+        form.prepend(notice);
+      }
+      notice.textContent = text;
+    };
+
+    createButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const popup = window.open(
+          button.dataset.relatedCreateUrl,
+          'rmRelatedCreate',
+          'popup=yes,width=760,height=860,resizable=yes,scrollbars=yes'
+        );
+        if (popup) popup.focus();
+      });
+    });
+
+    window.addEventListener('message', (event) => {
+      if (event.origin !== window.location.origin || event.data?.type !== 'rm-related-created') return;
+      const { target, objectId, objectLabel } = event.data;
+      if (target) {
+        const select = document.getElementById(`id_${target}`);
+        if (select) {
+          let option = select.querySelector(`option[value="${CSS.escape(String(objectId))}"]`);
+          if (!option) {
+            option = new Option(objectLabel, objectId, true, true);
+            select.add(option);
+          }
+          select.value = String(objectId);
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+      showNotice(`Создано: ${objectLabel}. ${target ? 'Представитель уже выбран — сохраните карточку получателя.' : ''}`);
+    });
+  })();
+</script>
+{% endif %}
 {% endblock %}

@@ -2473,6 +2473,24 @@ th {
   width: 100%;
 }
 
+.related-create-button,
+.secondary-submit {
+  background: var(--surface-strong);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--heading);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 9px 12px;
+}
+
+.related-create-button:hover,
+.secondary-submit:hover {
+  border-color: var(--accent);
+  color: var(--accent-hover);
+}
+
 .form-errors,
 .field-error {
   color: var(--danger);

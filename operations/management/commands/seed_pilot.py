@@ -29,6 +29,7 @@ PILOT_DATABASE_NAME = "rm_pilot_training"
 PILOT_MARKER_GROUP = "RM_PILOT_SEED_V1"
 PILOT_INITIALIZATION_LOCK = 7_310_199_715_100_001
 DIRECTOR_GROUP = "Руководители"
+ADMINISTRATOR_GROUP = "Администраторы"
 
 
 def _iso_date(value: str) -> date:
@@ -128,6 +129,9 @@ class Command(BaseCommand):
             is_staff=True,
             is_superuser=False,
         )
+        administrator_group = Group.objects.create(name=ADMINISTRATOR_GROUP)
+        administrator_group.permissions.set(Permission.objects.all())
+        administrator.groups.add(administrator_group)
         director = user_model.objects.create_user(
             username="director",
             password=password,

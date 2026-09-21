@@ -817,6 +817,64 @@ class AppointmentWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Child.objects.filter(last_name="Петров", first_name="Петр").exists())
 
+    def test_recipient_form_offers_popup_creation_of_representative(self):
+        response = self.client.get(reverse("recipient_create"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Создать представителя")
+        self.assertContains(response, "target=primary_parent")
+
+    def test_popup_representative_creation_returns_selected_representative(self):
+        response = self.client.post(
+            f"{reverse('representative_create')}?popup=1&target=primary_parent",
+            {
+                "popup_target": "primary_parent",
+                "last_name": "Попова",
+                "first_name": "Анна",
+                "middle_name": "",
+                "relationship_type": ParentGuardian.RelationshipType.OTHER,
+                "phone": "+7 900 000-00-03",
+                "phone_alt": "",
+                "email": "",
+                "notes": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        representative = ParentGuardian.objects.get(phone="+7 900 000-00-03")
+        self.assertContains(response, "rm-related-created")
+        self.assertContains(response, "primary_parent")
+        self.assertContains(response, str(representative.pk))
+
+    def test_representative_can_continue_directly_to_recipient_creation(self):
+        response = self.client.post(
+            reverse("representative_create"),
+            {
+                "next_action": "create_recipient",
+                "last_name": "Смирнова",
+                "first_name": "Мария",
+                "middle_name": "",
+                "relationship_type": ParentGuardian.RelationshipType.OTHER,
+                "phone": "+7 900 000-00-04",
+                "phone_alt": "",
+                "email": "",
+                "notes": "",
+            },
+        )
+
+        representative = ParentGuardian.objects.get(phone="+7 900 000-00-04")
+        self.assertRedirects(
+            response,
+            f"{reverse('recipient_create')}?representative_id={representative.pk}",
+        )
+
+    def test_representative_edit_offers_popup_recipient_creation(self):
+        response = self.client.get(reverse("representative_edit", args=[self.parent.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Создать получателя")
+        self.assertContains(response, f"representative_id={self.parent.pk}&amp;popup=1")
+
     def test_admin_can_create_balance_account_from_recipient_card(self):
         response = self.client.post(
             reverse("balance_account_create"),

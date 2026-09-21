@@ -123,6 +123,11 @@ class SeedPilotCommandTests(TestCase):
         self.assertEqual(authority_role(administrator), AuthorityRole.ADMINISTRATOR)
         self.assertTrue(administrator.is_staff)
         self.assertFalse(administrator.is_superuser)
+        self.assertEqual(
+            list(administrator.groups.values_list("name", flat=True)),
+            [seed_pilot.ADMINISTRATOR_GROUP],
+        )
+        self.assertTrue(administrator.has_module_perms("operations"))
         self.assertEqual(authority_role(director), AuthorityRole.DIRECTOR)
         self.assertFalse(director.is_staff)
         self.assertFalse(director.is_superuser)
